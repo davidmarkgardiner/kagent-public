@@ -1,0 +1,463 @@
+# WorkflowTemplate: Holmes Analysis + Auto-Fix with RocketChat Notifications
+# Analyzes K8s issues, applies safe fixes, notifies SREs via RocketChat
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: auto-healer-holmes
+  namespace: argo-events
+spec:
+  serviceAccountName: argo-events-sa
+  entrypoint: main
+  # Auto-cleanup: delete completed workflows after 2 minutes
+  ttlStrategy:
+    secondsAfterCompletion: 120
+    secondsAfterSuccess: 120
+    secondsAfterFailure: 300
+  # Clean up pods immediately
+  podGC:
+    strategy: OnPodCompletion
+
+  arguments:
+    parameters:
+      - name: event-reason
+        description: Kubernetes event reason (e.g., BackOff, Failed)
+      - name: resource-name
+        description: Name of affected resource
+      - name: resource-namespace
+        description: Namespace of affected resource
+      - name: resource-kind
+        description: Kind of resource (Pod, Deployment, etc.)
+      - name: event-message
+        description: Full event message
+
+  templates:
+    - name: main
+      dag:
+        tasks:
+          # Step 1: Triage - determine severity
+          - name: triage
+            template: triage-event
+            arguments:
+              parameters:
+                - name: event-reason
+                  value: "{{workflow.parameters.event-reason}}"
+                - name: event-message
+                  value: "{{workflow.parameters.event-message}}"
+                - name: resource-kind
+                  value: "{{workflow.parameters.resource-kind}}"
+
+          # Step 2: Full analysis (only if triage says proceed)
+          - name: analyze-with-holmes
+            template: call-holmes
+            dependencies: [triage]
+            when: "{{tasks.triage.outputs.parameters.should-process}} == true"
+            arguments:
+              parameters:
+                - name: question
+                  value: "Kubernetes {{workflow.parameters.resource-kind}} '{{workflow.parameters.resource-name}}' in namespace '{{workflow.parameters.resource-namespace}}' has issue: {{workflow.parameters.event-reason}}. Message: {{workflow.parameters.event-message}}. What is causing this and how can I fix it? Provide specific kubectl commands."
+
+          - name: evaluate-fix
+            template: evaluate-fix-safety
+            dependencies: [analyze-with-holmes]
+            arguments:
+              parameters:
+                - name: analysis
+                  value: "{{tasks.analyze-with-holmes.outputs.parameters.analysis}}"
+                - name: resource-name
+                  value: "{{workflow.parameters.resource-name}}"
+                - name: resource-namespace
+                  value: "{{workflow.parameters.resource-namespace}}"
+
+          - name: apply-fix
+            template: apply-safe-fix
+            dependencies: [evaluate-fix]
+            when: "{{tasks.evaluate-fix.outputs.parameters.is-safe}} == true"
+            arguments:
+              parameters:
+                - name: fix-command
+                  value: "{{tasks.evaluate-fix.outputs.parameters.fix-command}}"
+                - name: resource-namespace
+                  value: "{{workflow.parameters.resource-namespace}}"
+
+          - name: notify-fix-applied
+            template: notify-rocketchat
+            dependencies: [apply-fix]
+            when: "{{tasks.evaluate-fix.outputs.parameters.is-safe}} == true"
+            arguments:
+              parameters:
+                - name: title
+                  value: "Auto-Fix Applied"
+                - name: color
+                  value: "#2ecc71"
+                - name: summary
+                  value: "{{tasks.evaluate-fix.outputs.parameters.summary}}"
+                - name: commands
+                  value: "{{tasks.evaluate-fix.outputs.parameters.fix-command}}"
+                - name: resource-name
+                  value: "{{workflow.parameters.resource-name}}"
+                - name: resource-namespace
+                  value: "{{workflow.parameters.resource-namespace}}"
+                - name: event-reason
+                  value: "{{workflow.parameters.event-reason}}"
+
+          - name: notify-manual-required
+            template: notify-rocketchat
+            dependencies: [evaluate-fix]
+            when: "{{tasks.evaluate-fix.outputs.parameters.is-safe}} == false"
+            arguments:
+              parameters:
+                - name: title
+                  value: "SRE Action Required"
+                - name: color
+                  value: "#f39c12"
+                - name: summary
+                  value: "{{tasks.evaluate-fix.outputs.parameters.summary}}"
+                - name: commands
+                  value: "{{tasks.evaluate-fix.outputs.parameters.manual-commands}}"
+                - name: resource-name
+                  value: "{{workflow.parameters.resource-name}}"
+                - name: resource-namespace
+                  value: "{{workflow.parameters.resource-namespace}}"
+                - name: event-reason
+                  value: "{{workflow.parameters.event-reason}}"
+
+    # Triage: Determine event severity and whether to process
+    - name: triage-event
+      inputs:
+        parameters:
+          - name: event-reason
+          - name: event-message
+          - name: resource-kind
+      script:
+        image: python:3.11-slim
+        command: [python]
+        source: |
+          import datetime
+          import json
+
+          reason = '''{{inputs.parameters.event-reason}}'''
+          message = '''{{inputs.parameters.event-message}}'''
+          kind = '''{{inputs.parameters.resource-kind}}'''
+
+          # Current hour (UTC)
+          hour = datetime.datetime.utcnow().hour
+          is_night = hour >= 22 or hour < 6  # 22:00-06:00 UTC
+
+          # Severity classification
+          CRITICAL_REASONS = ['OOMKilled', 'CrashLoopBackOff', 'Evicted']
+          WARNING_REASONS = ['ImagePullBackOff', 'Failed', 'FailedScheduling', 'Unhealthy']
+          NOISE_REASONS = ['Pulling', 'Pulled', 'Created', 'Started', 'Scheduled']
+
+          # Determine severity
+          if reason in CRITICAL_REASONS:
+              severity = 'critical'
+              should_process = True
+          elif reason in WARNING_REASONS:
+              severity = 'warning'
+              # Only process warnings during night hours
+              should_process = is_night
+          elif reason in NOISE_REASONS:
+              severity = 'noise'
+              should_process = False
+          else:
+              # Unknown - check message for critical keywords
+              critical_keywords = ['oom', 'crash', 'killed', 'evict', 'memory', 'cpu limit']
+              is_critical = any(kw in message.lower() for kw in critical_keywords)
+              severity = 'critical' if is_critical else 'warning'
+              should_process = is_critical or is_night
+
+          # Output results
+          with open('/tmp/severity', 'w') as f:
+              f.write(severity)
+
+          with open('/tmp/should-process', 'w') as f:
+              f.write('true' if should_process else 'false')
+
+          print(f"Triage: reason={reason}, severity={severity}, night={is_night}, process={should_process}")
+      outputs:
+        parameters:
+          - name: severity
+            valueFrom:
+              path: /tmp/severity
+          - name: should-process
+            valueFrom:
+              path: /tmp/should-process
+
+    # Call HolmesGPT for analysis
+    - name: call-holmes
+      inputs:
+        parameters:
+          - name: question
+      script:
+        image: python:3.11-slim
+        command: [python]
+        source: |
+          import json
+          import urllib.request
+          import sys
+
+          question = '''{{inputs.parameters.question}}'''
+          # Clean up the question - remove problematic characters
+          question = question.replace('\n', ' ').replace('\r', ' ').strip()
+
+          print(f"Calling Holmes: {question[:100]}...", file=sys.stderr)
+
+          payload = {
+              "ask": question,
+              "conversation_history": [],
+              "stream": False
+          }
+
+          req = urllib.request.Request(
+              "http://holmesgpt-holmes.holmesgpt.svc.cluster.local:80/api/chat",
+              data=json.dumps(payload).encode('utf-8'),
+              headers={'Content-Type': 'application/json'}
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=180) as resp:
+                  result = json.loads(resp.read().decode('utf-8'))
+                  analysis = result.get('analysis', 'No analysis available')
+          except Exception as e:
+              analysis = f"Holmes analysis failed: {str(e)}"
+              print(f"Error: {e}", file=sys.stderr)
+
+          # Write output
+          with open('/tmp/analysis.txt', 'w') as f:
+              f.write(analysis)
+
+          print("Analysis complete", file=sys.stderr)
+      outputs:
+        parameters:
+          - name: analysis
+            valueFrom:
+              path: /tmp/analysis.txt
+
+    # Evaluate if the fix is safe to auto-apply
+    - name: evaluate-fix-safety
+      inputs:
+        parameters:
+          - name: analysis
+          - name: resource-name
+          - name: resource-namespace
+      script:
+        image: python:3.11-slim
+        command: [python]
+        source: |
+          import re
+          import json
+
+          analysis = '''{{inputs.parameters.analysis}}'''
+          resource_name = '{{inputs.parameters.resource-name}}'
+          resource_namespace = '{{inputs.parameters.resource-namespace}}'
+
+          # Extract kubectl commands from analysis
+          commands = re.findall(r'(kubectl\s+[^\n]+)', analysis)
+          # Clean up commands - remove trailing backticks and whitespace
+          commands = [re.sub(r'`+$', '', c.strip()) for c in commands]
+          # Remove duplicates while preserving order
+          seen = set()
+          unique_commands = []
+          for c in commands:
+              if c not in seen:
+                  seen.add(c)
+                  unique_commands.append(c)
+          commands = unique_commands
+
+          # Define safe commands that can be auto-executed
+          SAFE_PATTERNS = [
+              r'^kubectl\s+rollout\s+restart',
+              r'^kubectl\s+delete\s+pod\s+',
+              r'^kubectl\s+scale\s+',
+          ]
+
+          # Define dangerous commands that require manual approval
+          DANGEROUS_PATTERNS = [
+              r'delete\s+(deployment|service|namespace|pvc|secret|configmap)',
+              r'--all',
+              r'--force',
+              r'-f\s+',
+              r'apply',
+              r'create',
+              r'patch',
+              r'edit',
+          ]
+
+          # Classify commands
+          fix_commands = []  # Commands that actually fix the issue
+          info_commands = []  # Commands for checking/verification
+
+          INFO_PATTERNS = [r'^kubectl\s+get\s+', r'^kubectl\s+describe\s+', r'^kubectl\s+logs\s+']
+
+          for cmd in commands:
+              is_info = any(re.search(p, cmd, re.IGNORECASE) for p in INFO_PATTERNS)
+              if is_info:
+                  info_commands.append(cmd)
+              else:
+                  fix_commands.append(cmd)
+
+          # Check if we have a safe auto-fix command
+          safe_commands = []
+          for cmd in fix_commands:
+              is_dangerous = any(re.search(p, cmd, re.IGNORECASE) for p in DANGEROUS_PATTERNS)
+              is_safe = any(re.search(p, cmd, re.IGNORECASE) for p in SAFE_PATTERNS)
+              if is_safe and not is_dangerous and resource_namespace in cmd:
+                  safe_commands.append(cmd)
+
+          can_auto_fix = len(safe_commands) == 1 and len(fix_commands) == 1
+
+          # Output results
+          with open('/tmp/is-safe', 'w') as f:
+              f.write('true' if can_auto_fix else 'false')
+
+          with open('/tmp/fix-command', 'w') as f:
+              f.write(safe_commands[0] if can_auto_fix else '')
+
+          # Format manual commands - pick top 2 most relevant fix commands
+          with open('/tmp/manual-commands', 'w') as f:
+              top_fixes = fix_commands[:2] if fix_commands else []
+              if top_fixes:
+                  f.write('\n'.join(top_fixes))
+              else:
+                  f.write('Review Holmes analysis for recommendations')
+
+          # Extract root cause summary - get meaningful content up to first code block
+          with open('/tmp/summary', 'w') as f:
+              # Remove markdown code blocks for summary
+              clean_analysis = re.sub(r'```[\s\S]*?```', '', analysis)
+              # Get lines until we hit a header or empty content
+              lines = [l.strip() for l in clean_analysis.split('\n') if l.strip()]
+
+              summary_lines = []
+              for line in lines[:10]:  # First 10 meaningful lines
+                  # Skip headers and list markers
+                  if line.startswith('#') or line.startswith('Option '):
+                      continue
+                  # Clean up the line
+                  line = re.sub(r'^[-*]\s*', '', line)
+                  if line and len(line) > 10:
+                      summary_lines.append(line)
+                  if len(' '.join(summary_lines)) > 400:
+                      break
+
+              summary = ' '.join(summary_lines)[:500]
+              f.write(summary or 'Analysis available - check Holmes logs')
+
+          print(f"Safe: {can_auto_fix}, Fix cmds: {fix_commands[:2]}")
+      outputs:
+        parameters:
+          - name: is-safe
+            valueFrom:
+              path: /tmp/is-safe
+          - name: fix-command
+            valueFrom:
+              path: /tmp/fix-command
+          - name: manual-commands
+            valueFrom:
+              path: /tmp/manual-commands
+          - name: summary
+            valueFrom:
+              path: /tmp/summary
+
+    # Apply the safe fix
+    - name: apply-safe-fix
+      inputs:
+        parameters:
+          - name: fix-command
+          - name: resource-namespace
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+
+          FIX_CMD="{{inputs.parameters.fix-command}}"
+
+          echo "Applying fix: $FIX_CMD"
+
+          # Execute the fix command
+          eval "$FIX_CMD"
+
+          echo "Fix applied successfully"
+
+    # Send notification to RocketChat
+    - name: notify-rocketchat
+      inputs:
+        parameters:
+          - name: title
+          - name: color
+          - name: summary
+          - name: commands
+          - name: resource-name
+          - name: resource-namespace
+          - name: event-reason
+      script:
+        image: python:3.11-slim
+        command: [python]
+        source: |
+          import json
+          import urllib.request
+
+          title = '''{{inputs.parameters.title}}'''
+          color = '''{{inputs.parameters.color}}'''
+          summary = '''{{inputs.parameters.summary}}'''
+          commands = '''{{inputs.parameters.commands}}'''
+          resource = '''{{inputs.parameters.resource-name}}'''
+          namespace = '''{{inputs.parameters.resource-namespace}}'''
+          reason = '''{{inputs.parameters.event-reason}}'''
+
+          # Build clean command list
+          cmd_lines = [c.strip() for c in commands.split('\n') if c.strip()]
+
+          # Format commands with triple backticks for easy copying
+          if cmd_lines:
+              cmd_blocks = []
+              for i, cmd in enumerate(cmd_lines[:3], 1):
+                  cmd_blocks.append(f"**{i}.** Copy and run:\n```\n{cmd}\n```")
+              cmd_text = '\n\n'.join(cmd_blocks)
+          else:
+              cmd_text = '_No specific commands identified_'
+
+          # Determine icon based on title
+          icon = ':white_check_mark:' if 'Applied' in title else ':warning:'
+
+          # Build attachments
+          attachments = [
+              {
+                  'title': f'{icon} {title}',
+                  'text': f'**Resource:** `{resource}`\n**Namespace:** `{namespace}`\n**Event:** `{reason}`',
+                  'color': color
+              },
+              {
+                  'title': 'Analysis',
+                  'text': summary[:600] if summary else 'See Holmes for details',
+                  'color': '#3498db'
+              },
+              {
+                  'title': 'Fix Commands (click to copy)',
+                  'text': cmd_text,
+                  'color': '#9b59b6',
+                  'collapsed': False
+              }
+          ]
+
+          payload = {
+              'username': 'Auto-Healer',
+              'icon_emoji': ':robot:',
+              'attachments': attachments
+          }
+
+          # Post to RocketChat
+          webhook_url = 'http://rocketchat.rocketchat.svc.cluster.local:3000/hooks/694b1105982439a1cae9fce0/SxW5B5bq2PcwNuJAnMzJ7vtNW3nktckH5eivJFZKBjhqm8z2'
+
+          req = urllib.request.Request(
+              webhook_url,
+              data=json.dumps(payload).encode('utf-8'),
+              headers={'Content-Type': 'application/json'}
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=10) as resp:
+                  print(f'Notification sent: {resp.status}')
+          except Exception as e:
+              print(f'Failed to send notification: {e}')

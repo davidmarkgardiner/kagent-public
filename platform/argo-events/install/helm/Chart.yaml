@@ -1,0 +1,33 @@
+apiVersion: v2
+# WARNING — azureEventsHub source: v1.9.6 introduced a nil-pointer crash in
+# pkg/eventsources/sources/azureeventshub/start.go:133 when consuming messages
+# without a messageId field (Issue #3595). Confirmed unfixed in v1.9.7.
+# Last known good for Event Hub use is v1.9.5 (chart 2.4.14).
+# If you hit the crash, either:
+#   - downgrade to chart 2.4.14 / appVersion v1.9.5, OR
+#   - ensure every producer sets messageId, OR
+#   - move to a non-Event-Hub source.
+# Workload Identity for azureEventsHub was added in PR #3434 (~v1.9.4-1.9.5)
+# and does NOT bypass this crash — it's a message-shape bug, not auth.
+# Pinned: v1.9.6+ crashes on EventHub messages without messageId (upstream Issue #3595)
+appVersion: v1.9.5
+description: A Helm chart for Argo Events, the event-driven workflow automation framework
+name: argo-events
+version: 2.4.14
+home: https://github.com/argoproj/argo-helm
+icon: https://avatars.githubusercontent.com/u/30269780?s=200&v=4
+keywords:
+  - argoproj
+  - argo-events
+sources:
+  - https://github.com/argoproj/argo-events
+maintainers:
+  - name: argoproj
+    url: https://argoproj.github.io/
+annotations:
+  artifacthub.io/signKey: |
+    fingerprint: 2B8F22F57260EFA67BE1C5824B11F800CD9D2252
+    url: https://argoproj.github.io/argo-helm/pgp_keys.asc
+  artifacthub.io/changes: |
+    - kind: changed
+      description: Pinned to v1.9.5 — v1.9.6+ crashes on EventHub messages without messageId (Issue #3595)

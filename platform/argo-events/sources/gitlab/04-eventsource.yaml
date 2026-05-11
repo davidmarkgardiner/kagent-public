@@ -1,0 +1,121 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: namespace-onboarding-webhook
+  namespace: argo-events
+spec:
+  template:
+    container:
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+  service:
+    ports:
+      - port: 12000
+        targetPort: 12000
+  webhook:
+    # Namespace onboarding endpoint
+    namespace-onboarding:
+      port: "12000"
+      endpoint: /onboard
+      method: POST
+      url: ""
+      # Authentication using bearer token
+      authSecret:
+        name: webhook-auth
+        key: token
+      # Server configuration
+      serverCertSecret:
+        name: webhook-tls
+        key: tls.crt
+      serverKeySecret:
+        name: webhook-tls
+        key: tls.key
+      # Metadata for event processing
+      metadata:
+        service-name: "namespace-onboarding"
+        event-type: "webhook"
+      # Response configuration for JSON responses
+      response:
+        success:
+          statusCode: 200
+          headers:
+            Content-Type: "application/json"
+        error:
+          statusCode: 400
+          headers:
+            Content-Type: "application/json"
+      # Include request body in the event payload
+      payload:
+        - path: body
+          type: json
+          
+    # App onboarding endpoint (full application provisioning)
+    app-onboarding:
+      port: "12000"
+      endpoint: /onboard-app
+      method: POST
+      url: ""
+      authSecret:
+        name: webhook-auth
+        key: token
+      serverCertSecret:
+        name: webhook-tls
+        key: tls.crt
+      serverKeySecret:
+        name: webhook-tls
+        key: tls.key
+      metadata:
+        service-name: "app-onboarding"
+        event-type: "webhook"
+      response:
+        success:
+          statusCode: 200
+          headers:
+            Content-Type: "application/json"
+        error:
+          statusCode: 400
+          headers:
+            Content-Type: "application/json"
+      payload:
+        - path: body
+          type: json
+
+    # Health check endpoint
+    health-check:
+      port: "12000"
+      endpoint: /health
+      method: GET
+      url: ""
+      # No authentication for health checks
+      # Just basic health response
+      response:
+        success:
+          statusCode: 200
+          headers:
+            Content-Type: "application/json"
+        error:
+          statusCode: 500
+          headers:
+            Content-Type: "application/json"
+      
+    # Status endpoint for monitoring
+    status-check:
+      port: "12000"
+      endpoint: /status
+      method: GET
+      url: ""
+      # No authentication for status checks
+      response:
+        success:
+          statusCode: 200
+          headers:
+            Content-Type: "application/json"
+        error:
+          statusCode: 500
+          headers:
+            Content-Type: "application/json"
