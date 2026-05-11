@@ -29,7 +29,7 @@ gitleaks detect --no-git -v
 trufflehog filesystem --only-verified=false .
 
 # 4. Internal value sweep — every hit must resolve to a placeholder or be in .secrets.baseline
-rg -i '(your-internal-domain|kind-homelab|proxmox-k8s|-100[0-9]{10}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})' \
+rg -i '(your-internal-domain|your-internal-cluster-name|-100[0-9]{10}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})' \
    --glob '!.git/**'
 ```
 
