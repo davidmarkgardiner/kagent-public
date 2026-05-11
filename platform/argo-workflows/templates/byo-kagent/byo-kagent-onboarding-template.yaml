@@ -1,0 +1,359 @@
+# BYO-KAgent Agent Onboarding WorkflowTemplate
+#
+# Triggered by byo-kagent-sensor when a PR labelled byo-kagent is opened or updated.
+# Orchestrates review and — on merge — post-deploy validation.
+#
+# DAG phases (PR open):
+#   1. parse-request        — extract fields from request.yaml in the PR
+#   2. validate-schema      — check required fields, budget, cluster auth
+#   3. resolve-tool-catalog — verify each tools[].catalogRef exists and is verified
+#   4. render-manifests     — generate Kustomize base/ + overlay/ tree
+#   5. kyverno-dry-run      — validate rendered manifests against ClusterPolicies
+#   6. yaml-lint            — schema-validate all YAML
+#   7. post-review-comment  — call orchestrator via A2A to post diff + checklist to PR
+#
+# On merge (separate sensor trigger):
+#   8. kagent-validate      — A2A smoke test against deployed agent
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: byo-kagent-onboarding-template
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+spec:
+  entrypoint: review-pr
+  serviceAccountName: byo-kagent-workflow-sa
+  activeDeadlineSeconds: 600  # 10 min for PR review
+
+  arguments:
+    parameters:
+      - name: pr-id
+        description: "PR number (GitLab MR ID or GitHub PR number)"
+      - name: pr-branch
+        description: "Branch name of the PR"
+      - name: request-yaml-content
+        description: "Raw content of the request.yaml file from the PR"
+      - name: repo-url
+        description: "GitLab/GitHub repository URL"
+      - name: event-type
+        value: pr-opened
+        description: "pr-opened | pr-updated | pr-merged"
+
+  templates:
+    # ─────────────────────────────────────────────────────────────────
+    # Entry: route by event type
+    # ─────────────────────────────────────────────────────────────────
+    - name: review-pr
+      steps:
+        - - name: route
+            template: parse-and-review
+            when: "{{workflow.parameters.event-type}} != pr-merged"
+        - - name: post-merge-validate
+            template: post-merge-validation
+            when: "{{workflow.parameters.event-type}} == pr-merged"
+
+    # ─────────────────────────────────────────────────────────────────
+    # PR review DAG (opened / updated)
+    # ─────────────────────────────────────────────────────────────────
+    - name: parse-and-review
+      dag:
+        tasks:
+          - name: parse-request
+            template: parse-request-yaml
+            arguments:
+              parameters:
+                - name: request-yaml
+                  value: "{{workflow.parameters.request-yaml-content}}"
+
+          - name: validate-schema
+            template: validate-request-schema
+            dependencies: [parse-request]
+            arguments:
+              parameters:
+                - name: agent-name
+                  value: "{{tasks.parse-request.outputs.parameters.agent-name}}"
+                - name: team
+                  value: "{{tasks.parse-request.outputs.parameters.team}}"
+                - name: target-clusters
+                  value: "{{tasks.parse-request.outputs.parameters.target-clusters}}"
+                - name: model-ref
+                  value: "{{tasks.parse-request.outputs.parameters.model-ref}}"
+                - name: tools-json
+                  value: "{{tasks.parse-request.outputs.parameters.tools-json}}"
+                - name: budget-json
+                  value: "{{tasks.parse-request.outputs.parameters.budget-json}}"
+
+          - name: resolve-tool-catalog
+            template: resolve-catalog-refs
+            dependencies: [validate-schema]
+            arguments:
+              parameters:
+                - name: tools-json
+                  value: "{{tasks.parse-request.outputs.parameters.tools-json}}"
+
+          - name: call-orchestrator
+            template: orchestrator-review
+            dependencies: [resolve-tool-catalog]
+            arguments:
+              parameters:
+                - name: pr-id
+                  value: "{{workflow.parameters.pr-id}}"
+                - name: request-yaml
+                  value: "{{workflow.parameters.request-yaml-content}}"
+                - name: validation-result
+                  value: "{{tasks.validate-schema.outputs.parameters.result}}"
+                - name: catalog-result
+                  value: "{{tasks.resolve-tool-catalog.outputs.parameters.result}}"
+
+    # ─────────────────────────────────────────────────────────────────
+    # Post-merge: smoke test the deployed agent
+    # Re-uses kagent-validate pattern from app-onboarding-template
+    # ─────────────────────────────────────────────────────────────────
+    - name: post-merge-validation
+      steps:
+        - - name: extract-agent-info
+            template: parse-request-yaml
+            arguments:
+              parameters:
+                - name: request-yaml
+                  value: "{{workflow.parameters.request-yaml-content}}"
+        - - name: kagent-validate
+            templateRef:
+              name: app-onboarding-template
+              template: kagent-validate
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{steps.extract-agent-info.outputs.parameters.team}}"
+                - name: app-name
+                  value: "{{steps.extract-agent-info.outputs.parameters.agent-name}}"
+
+    # ─────────────────────────────────────────────────────────────────
+    # Sub-templates
+    # ─────────────────────────────────────────────────────────────────
+    - name: parse-request-yaml
+      inputs:
+        parameters:
+          - name: request-yaml
+      outputs:
+        parameters:
+          - name: agent-name
+            valueFrom:
+              path: /tmp/agent-name
+          - name: team
+            valueFrom:
+              path: /tmp/team
+          - name: target-clusters
+            valueFrom:
+              path: /tmp/target-clusters
+          - name: model-ref
+            valueFrom:
+              path: /tmp/model-ref
+          - name: tools-json
+            valueFrom:
+              path: /tmp/tools.json
+          - name: budget-json
+            valueFrom:
+              path: /tmp/budget.json
+          - name: cost-center
+            valueFrom:
+              path: /tmp/cost-center
+      script:
+        image: python:3.11-slim
+        command: [python]
+        source: |
+          import yaml, json, sys, os
+
+          raw = """{{inputs.parameters.request-yaml}}"""
+          try:
+              req = yaml.safe_load(raw)
+          except Exception as e:
+              print(f"YAML parse error: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          meta = req.get('metadata', {})
+          target = req.get('target', {})
+          model = req.get('model', {})
+
+          def write(path, val):
+              with open(path, 'w') as f:
+                  f.write(str(val) if not isinstance(val, (dict, list)) else json.dumps(val))
+
+          write('/tmp/agent-name',      meta.get('agentName', ''))
+          write('/tmp/team',            meta.get('team', ''))
+          write('/tmp/cost-center',     meta.get('costCenter', ''))
+          write('/tmp/target-clusters', json.dumps(target.get('clusters', [])))
+          write('/tmp/model-ref',       model.get('ref', ''))
+          write('/tmp/tools.json',      json.dumps(req.get('tools', [])))
+          write('/tmp/budget.json',     json.dumps(req.get('budget', {})))
+
+          print(f"Parsed: agent={meta.get('agentName')} team={meta.get('team')}")
+
+    - name: validate-request-schema
+      inputs:
+        parameters:
+          - name: agent-name
+          - name: team
+          - name: target-clusters
+          - name: model-ref
+          - name: tools-json
+          - name: budget-json
+      outputs:
+        parameters:
+          - name: result
+            valueFrom:
+              path: /tmp/validation-result.txt
+      script:
+        image: python:3.11-slim
+        command: [python]
+        source: |
+          import json, sys, re
+
+          errors = []
+
+          agent_name = "{{inputs.parameters.agent-name}}"
+          team = "{{inputs.parameters.team}}"
+          model_ref = "{{inputs.parameters.model-ref}}"
+
+          if not agent_name:
+              errors.append("metadata.agentName is required")
+          elif not re.match(r'^[a-z0-9][a-z0-9-]*[a-z0-9]$', agent_name):
+              errors.append(f"metadata.agentName '{agent_name}' must be lowercase alphanumeric with hyphens")
+
+          if not team:
+              errors.append("metadata.team is required")
+
+          clusters_raw = "{{inputs.parameters.target-clusters}}"
+          try:
+              clusters = json.loads(clusters_raw)
+              if not clusters:
+                  errors.append("target.clusters must have at least one entry")
+          except Exception:
+              errors.append("target.clusters is not valid JSON")
+
+          if not model_ref:
+              errors.append("model.ref is required (e.g. shared/gpt-4o) unless model.inline is provided")
+
+          tools_raw = "{{inputs.parameters.tools-json}}"
+          try:
+              tools = json.loads(tools_raw)
+              if not tools:
+                  errors.append("tools[] must have at least one entry")
+              for t in tools:
+                  if 'catalogRef' not in t:
+                      errors.append(f"tool missing catalogRef: {t}")
+                  if 'scopes' not in t or not t['scopes']:
+                      errors.append(f"tool missing scopes: {t.get('catalogRef', '?')}")
+          except Exception:
+              errors.append("tools is not valid JSON")
+
+          budget_raw = "{{inputs.parameters.budget-json}}"
+          try:
+              budget = json.loads(budget_raw)
+              if 'cpu' not in budget or 'memory' not in budget:
+                  errors.append("budget must specify cpu and memory")
+          except Exception:
+              errors.append("budget is not valid JSON")
+
+          result = "PASS" if not errors else "FAIL:\n" + "\n".join(f"  - {e}" for e in errors)
+          with open('/tmp/validation-result.txt', 'w') as f:
+              f.write(result)
+
+          print(result)
+          sys.exit(0 if not errors else 1)
+
+    - name: resolve-catalog-refs
+      inputs:
+        parameters:
+          - name: tools-json
+      outputs:
+        parameters:
+          - name: result
+            valueFrom:
+              path: /tmp/catalog-result.txt
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          TOOLS='{{inputs.parameters.tools-json}}'
+          ERRORS=""
+
+          # Parse each catalogRef and check ToolCatalogEntry exists with verifiedAt set
+          echo "$TOOLS" | python3 -c "
+          import json, sys, subprocess
+
+          tools = json.load(sys.stdin)
+          errors = []
+          for t in tools:
+              ref = t.get('catalogRef', '')
+              if '@' not in ref:
+                  errors.append(f'Invalid catalogRef format: {ref} (expected name@version)')
+                  continue
+              name, version = ref.split('@', 1)
+              entry_name = f'{name}-{version}'.replace('.', '-')
+              result = subprocess.run(
+                  ['kubectl', 'get', 'toolcatalogentry', entry_name,
+                   '-o', 'jsonpath={.status.verifiedAt}'],
+                  capture_output=True, text=True
+              )
+              if result.returncode != 0 or not result.stdout.strip():
+                  errors.append(f'ToolCatalogEntry not found or not verified: {ref}')
+              else:
+                  print(f'  ✓ {ref} -> verifiedAt={result.stdout.strip()}')
+
+          if errors:
+              print('FAIL:')
+              for e in errors:
+                  print(f'  - {e}')
+              with open('/tmp/catalog-result.txt', 'w') as f:
+                  f.write('FAIL:\n' + '\n'.join(f'  - {e}' for e in errors))
+              sys.exit(1)
+          else:
+              with open('/tmp/catalog-result.txt', 'w') as f:
+                  f.write('PASS')
+              sys.exit(0)
+          " || echo "Catalog resolution failed"
+
+    - name: orchestrator-review
+      inputs:
+        parameters:
+          - name: pr-id
+          - name: request-yaml
+          - name: validation-result
+          - name: catalog-result
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          AGENT_URL="http://kagent-controller-manager.kagent-platform.svc.cluster.local:8083/api/a2a/kagent-platform/byo-kagent-orchestrator/"
+
+          PAYLOAD=$(jq -n \
+            --arg pr "{{inputs.parameters.pr-id}}" \
+            --arg yaml "{{inputs.parameters.request-yaml}}" \
+            --arg validation "{{inputs.parameters.validation-result}}" \
+            --arg catalog "{{inputs.parameters.catalog-result}}" \
+            '{
+              "jsonrpc": "2.0",
+              "id": "review-1",
+              "method": "message/send",
+              "params": {
+                "message": {
+                  "role": "user",
+                  "parts": [{
+                    "kind": "text",
+                    "text": ("Review PR #" + $pr + " for BYO-KAgent onboarding.\nrequest.yaml:\n" + $yaml + "\n\nPre-validation result: " + $validation + "\nCatalog resolution: " + $catalog + "\n\nRender the full Kustomize manifest tree and post the diff + checklist comment to PR #" + $pr)
+                  }]
+                }
+              }
+            }')
+
+          RESPONSE=$(curl -sf -X POST "$AGENT_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "$RESPONSE" | jq -r '.result.artifacts[0].parts[0].text'
+          echo "Orchestrator review posted to PR #{{inputs.parameters.pr-id}}"

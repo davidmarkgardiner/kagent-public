@@ -1,0 +1,1529 @@
+# App Onboarding WorkflowTemplate
+# Universal payload-driven application onboarding.
+# Conditional DAG: skips sections not present in the payload.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: app-onboarding-template
+  namespace: argo
+  labels:
+    app: app-onboarding
+spec:
+  entrypoint: main
+  serviceAccountName: app-onboarding-sa
+  activeDeadlineSeconds: 900  # 15 min timeout
+
+  arguments:
+    parameters:
+      - name: payload
+        description: "JSON payload from onboarding form or API"
+
+  onExit: send-notification
+
+  # Mount the golden-path payload JSON Schema for validate-payload.
+  # `optional: true` keeps existing runs working if the ConfigMap hasn't
+  # been applied yet — the validate-payload script detects the missing
+  # mount and surfaces a clear error rather than crashing on startup.
+  volumes:
+    - name: golden-path-payload-schema
+      configMap:
+        name: golden-path-payload-schema
+        optional: true
+
+  templates:
+    # ──────────────────────────────────────────────
+    # Main DAG
+    # ──────────────────────────────────────────────
+    - name: main
+      dag:
+        tasks:
+          # --- Phase 1: Parse & Validate ---
+          - name: parse-payload
+            template: parse-payload
+
+          - name: validate-payload
+            template: validate-payload
+            dependencies: [parse-payload]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: environment
+                  value: "{{tasks.parse-payload.outputs.parameters.environment}}"
+
+          # --- Phase 2: Namespace & Foundations ---
+          - name: create-namespace
+            template: create-namespace
+            dependencies: [validate-payload]
+            when: "{{tasks.parse-payload.outputs.parameters.create-namespace}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: labels
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace-labels}}"
+                - name: environment
+                  value: "{{tasks.parse-payload.outputs.parameters.environment}}"
+                - name: swc
+                  value: "{{tasks.parse-payload.outputs.parameters.swc}}"
+
+          - name: create-quota
+            template: create-resource-quota
+            depends: "create-namespace.Succeeded || create-namespace.Skipped"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: cpu
+                  value: "{{tasks.parse-payload.outputs.parameters.quota-cpu}}"
+                - name: memory
+                  value: "{{tasks.parse-payload.outputs.parameters.quota-memory}}"
+                - name: storage
+                  value: "{{tasks.parse-payload.outputs.parameters.quota-storage}}"
+                - name: pods
+                  value: "{{tasks.parse-payload.outputs.parameters.quota-pods}}"
+
+          - name: create-netpol
+            template: create-network-policy
+            depends: "create-namespace.Succeeded || create-namespace.Skipped"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: default-deny
+                  value: "{{tasks.parse-payload.outputs.parameters.netpol-default-deny}}"
+                - name: allow-from
+                  value: "{{tasks.parse-payload.outputs.parameters.netpol-allow-from}}"
+
+          # --- Phase 3: Identity & Access ---
+          - name: create-service-account
+            template: create-service-account
+            depends: "create-namespace.Succeeded || create-namespace.Skipped"
+            when: "{{tasks.parse-payload.outputs.parameters.has-service-account}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: sa-name
+                  value: "{{tasks.parse-payload.outputs.parameters.sa-name}}"
+                - name: wi-enabled
+                  value: "{{tasks.parse-payload.outputs.parameters.wi-enabled}}"
+                - name: wi-client-id
+                  value: "{{tasks.parse-payload.outputs.parameters.wi-client-id}}"
+
+          - name: create-rbac
+            template: create-rbac
+            depends: "create-namespace.Succeeded || create-namespace.Skipped"
+            when: "{{tasks.parse-payload.outputs.parameters.has-rbac}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: ad-group
+                  value: "{{tasks.parse-payload.outputs.parameters.rbac-ad-group}}"
+                - name: cluster-role
+                  value: "{{tasks.parse-payload.outputs.parameters.rbac-cluster-role}}"
+
+          # --- Phase 4: Application ---
+          - name: create-configmap
+            template: create-configmap
+            depends: "create-namespace.Succeeded || create-namespace.Skipped"
+            when: "{{tasks.parse-payload.outputs.parameters.has-configmap}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: configmap-name
+                  value: "{{tasks.parse-payload.outputs.parameters.configmap-name}}"
+                - name: configmap-data
+                  value: "{{tasks.parse-payload.outputs.parameters.configmap-data}}"
+
+          - name: create-deployment
+            template: create-deployment
+            depends: "(create-service-account.Succeeded || create-service-account.Skipped) && (create-configmap.Succeeded || create-configmap.Skipped) && create-quota.Succeeded"
+            when: "{{tasks.parse-payload.outputs.parameters.has-application}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: app-name
+                  value: "{{tasks.parse-payload.outputs.parameters.app-name}}"
+                - name: image
+                  value: "{{tasks.parse-payload.outputs.parameters.app-image}}"
+                - name: replicas
+                  value: "{{tasks.parse-payload.outputs.parameters.app-replicas}}"
+                - name: sa-name
+                  value: "{{tasks.parse-payload.outputs.parameters.sa-name}}"
+                - name: resources-json
+                  value: "{{tasks.parse-payload.outputs.parameters.app-resources}}"
+                - name: env-json
+                  value: "{{tasks.parse-payload.outputs.parameters.app-env}}"
+                - name: ports-json
+                  value: "{{tasks.parse-payload.outputs.parameters.app-ports}}"
+                - name: health-check-json
+                  value: "{{tasks.parse-payload.outputs.parameters.app-health-check}}"
+
+          - name: create-service
+            template: create-service
+            depends: "create-deployment.Succeeded || create-deployment.Skipped"
+            when: "{{tasks.parse-payload.outputs.parameters.has-service}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: app-name
+                  value: "{{tasks.parse-payload.outputs.parameters.app-name}}"
+                - name: service-type
+                  value: "{{tasks.parse-payload.outputs.parameters.service-type}}"
+                - name: service-port
+                  value: "{{tasks.parse-payload.outputs.parameters.service-port}}"
+                - name: target-port
+                  value: "{{tasks.parse-payload.outputs.parameters.service-target-port}}"
+
+          # --- Phase 5: Istio (conditional) ---
+          - name: create-virtualservice
+            template: create-virtualservice
+            depends: "create-service.Succeeded || create-service.Skipped"
+            when: "{{tasks.parse-payload.outputs.parameters.has-istio}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: app-name
+                  value: "{{tasks.parse-payload.outputs.parameters.app-name}}"
+                - name: istio-json
+                  value: "{{tasks.parse-payload.outputs.parameters.istio-config}}"
+                - name: service-port
+                  value: "{{tasks.parse-payload.outputs.parameters.service-port}}"
+
+          # --- Phase 6: Azure ASO (conditional) ---
+          - name: create-managed-identity
+            template: create-managed-identity
+            dependencies: [validate-payload]
+            when: "{{tasks.parse-payload.outputs.parameters.has-azure}} == true"
+            arguments:
+              parameters:
+                - name: azure-json
+                  value: "{{tasks.parse-payload.outputs.parameters.azure-config}}"
+
+          - name: wait-for-identity
+            template: wait-for-identity
+            dependencies: [create-managed-identity]
+            when: "{{tasks.parse-payload.outputs.parameters.has-azure}} == true"
+            arguments:
+              parameters:
+                - name: identity-name
+                  value: "{{tasks.parse-payload.outputs.parameters.azure-identity-name}}"
+                - name: azure-namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+
+          - name: create-federated-credential
+            template: create-federated-credential
+            dependencies: [wait-for-identity]
+            when: "{{tasks.parse-payload.outputs.parameters.has-azure}} == true"
+            arguments:
+              parameters:
+                - name: azure-json
+                  value: "{{tasks.parse-payload.outputs.parameters.azure-config}}"
+
+          - name: create-role-assignments
+            template: create-role-assignments
+            dependencies: [wait-for-identity]
+            when: "{{tasks.parse-payload.outputs.parameters.has-azure}} == true"
+            arguments:
+              parameters:
+                - name: azure-json
+                  value: "{{tasks.parse-payload.outputs.parameters.azure-config}}"
+
+          # --- Phase 7: GitOps ---
+          - name: store-gitops-config
+            template: store-config-gitops
+            depends: "create-quota.Succeeded && create-netpol.Succeeded && (create-deployment.Succeeded || create-deployment.Skipped) && (create-rbac.Succeeded || create-rbac.Skipped)"
+            arguments:
+              parameters:
+                - name: payload
+                  value: "{{workflow.parameters.payload}}"
+
+          # --- Phase 8: Validation ---
+          - name: validate-deployment
+            template: kagent-validate
+            depends: "create-deployment.Succeeded && (create-service.Succeeded || create-service.Skipped)"
+            when: "{{tasks.parse-payload.outputs.parameters.has-application}} == true"
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: app-name
+                  value: "{{tasks.parse-payload.outputs.parameters.app-name}}"
+
+    # ──────────────────────────────────────────────
+    # Parse Payload
+    # ──────────────────────────────────────────────
+    - name: parse-payload
+      script:
+        image: python:3.12-slim
+        command: [python]
+        env:
+          - name: PAYLOAD_JSON
+            value: "{{workflow.parameters.payload}}"
+        source: |
+          import json, sys, os
+
+          payload = json.loads(os.environ["PAYLOAD_JSON"])
+
+          # --- Required fields ---
+          meta = payload.get('metadata', {})
+          ns = payload.get('namespace', {})
+          quota = payload.get('resourceQuota', {})
+          netpol = payload.get('networkPolicy', {})
+
+          namespace = ns.get('name', '')
+          environment = meta.get('environment', 'DEV')
+          swc = meta.get('swc', '')
+          create_ns = str(ns.get('createIfNotExists', True)).lower()
+          ns_labels = json.dumps(ns.get('labels', {}))
+
+          # Quota
+          cpu = quota.get('cpu', '2')
+          memory = quota.get('memory', '4Gi')
+          storage = quota.get('storage', '10Gi')
+          pods = quota.get('pods', '20')
+
+          # Network policy
+          default_deny = str(netpol.get('defaultDeny', True)).lower()
+          allow_from = json.dumps(netpol.get('allowFrom', []))
+
+          # --- Optional: Service Account ---
+          sa = payload.get('serviceAccount', {})
+          has_sa = str(bool(sa)).lower()
+          sa_name = sa.get('name', 'default')
+          wi = sa.get('workloadIdentity', {})
+          wi_enabled = str(wi.get('enabled', False)).lower()
+          wi_client_id = wi.get('clientId', '')
+
+          # --- Optional: RBAC ---
+          rbac = payload.get('rbac', {})
+          has_rbac = str(bool(rbac)).lower()
+          ad_group = rbac.get('teamAdGroup', '')
+          cluster_role = rbac.get('clusterRole', 'view')
+
+          # --- Optional: Application ---
+          app = payload.get('application', {})
+          has_app = str(bool(app)).lower()
+          app_name = app.get('name', '')
+          app_image = app.get('image', '')
+          app_replicas = str(app.get('replicas', 1))
+          app_resources = json.dumps(app.get('resources', {}))
+          app_env = json.dumps(app.get('env', []))
+          app_ports = json.dumps(app.get('ports', []))
+          app_health = json.dumps(app.get('healthCheck', {}))
+
+          # ConfigMap
+          cm = app.get('configMap', {})
+          has_cm = str(bool(cm)).lower()
+          cm_name = cm.get('name', f'{app_name}-config')
+          cm_data = json.dumps(cm.get('data', {}))
+
+          # --- Optional: Networking ---
+          net = payload.get('networking', {})
+          svc = net.get('service', {})
+          has_svc = str(bool(svc)).lower()
+          svc_type = svc.get('type', 'ClusterIP')
+          svc_port = str(svc.get('port', 80))
+          svc_target = str(svc.get('targetPort', 8080))
+
+          # Istio
+          istio = net.get('istio', {})
+          has_istio = str(istio.get('enabled', False)).lower()
+          istio_config = json.dumps(istio)
+
+          # --- Optional: Azure ---
+          azure = payload.get('azure', {})
+          has_azure = str(azure.get('enabled', False)).lower()
+          azure_config = json.dumps(azure)
+          azure_id_name = azure.get('managedIdentity', {}).get('name', '')
+
+          # Write all outputs
+          outputs = {
+              'namespace': namespace,
+              'environment': environment,
+              'swc': swc,
+              'create-namespace': create_ns,
+              'namespace-labels': ns_labels,
+              'quota-cpu': cpu,
+              'quota-memory': memory,
+              'quota-storage': storage,
+              'quota-pods': pods,
+              'netpol-default-deny': default_deny,
+              'netpol-allow-from': allow_from,
+              'has-service-account': has_sa,
+              'sa-name': sa_name,
+              'wi-enabled': wi_enabled,
+              'wi-client-id': wi_client_id,
+              'has-rbac': has_rbac,
+              'rbac-ad-group': ad_group,
+              'rbac-cluster-role': cluster_role,
+              'has-application': has_app,
+              'app-name': app_name,
+              'app-image': app_image,
+              'app-replicas': app_replicas,
+              'app-resources': app_resources,
+              'app-env': app_env,
+              'app-ports': app_ports,
+              'app-health-check': app_health,
+              'has-configmap': has_cm,
+              'configmap-name': cm_name,
+              'configmap-data': cm_data,
+              'has-service': has_svc,
+              'service-type': svc_type,
+              'service-port': svc_port,
+              'service-target-port': svc_target,
+              'has-istio': has_istio,
+              'istio-config': istio_config,
+              'has-azure': has_azure,
+              'azure-config': azure_config,
+              'azure-identity-name': azure_id_name,
+          }
+
+          for key, val in outputs.items():
+              with open(f'/tmp/{key}', 'w') as f:
+                  f.write(str(val))
+
+          print(f"Parsed payload for {namespace} ({environment})")
+          print(f"  App: {has_app}, Istio: {has_istio}, Azure: {has_azure}")
+      outputs:
+        parameters:
+          - name: namespace
+            valueFrom: { path: /tmp/namespace }
+          - name: environment
+            valueFrom: { path: /tmp/environment }
+          - name: swc
+            valueFrom: { path: /tmp/swc }
+          - name: create-namespace
+            valueFrom: { path: /tmp/create-namespace }
+          - name: namespace-labels
+            valueFrom: { path: /tmp/namespace-labels }
+          - name: quota-cpu
+            valueFrom: { path: /tmp/quota-cpu }
+          - name: quota-memory
+            valueFrom: { path: /tmp/quota-memory }
+          - name: quota-storage
+            valueFrom: { path: /tmp/quota-storage }
+          - name: quota-pods
+            valueFrom: { path: /tmp/quota-pods }
+          - name: netpol-default-deny
+            valueFrom: { path: /tmp/netpol-default-deny }
+          - name: netpol-allow-from
+            valueFrom: { path: /tmp/netpol-allow-from }
+          - name: has-service-account
+            valueFrom: { path: /tmp/has-service-account }
+          - name: sa-name
+            valueFrom: { path: /tmp/sa-name }
+          - name: wi-enabled
+            valueFrom: { path: /tmp/wi-enabled }
+          - name: wi-client-id
+            valueFrom: { path: /tmp/wi-client-id }
+          - name: has-rbac
+            valueFrom: { path: /tmp/has-rbac }
+          - name: rbac-ad-group
+            valueFrom: { path: /tmp/rbac-ad-group }
+          - name: rbac-cluster-role
+            valueFrom: { path: /tmp/rbac-cluster-role }
+          - name: has-application
+            valueFrom: { path: /tmp/has-application }
+          - name: app-name
+            valueFrom: { path: /tmp/app-name }
+          - name: app-image
+            valueFrom: { path: /tmp/app-image }
+          - name: app-replicas
+            valueFrom: { path: /tmp/app-replicas }
+          - name: app-resources
+            valueFrom: { path: /tmp/app-resources }
+          - name: app-env
+            valueFrom: { path: /tmp/app-env }
+          - name: app-ports
+            valueFrom: { path: /tmp/app-ports }
+          - name: app-health-check
+            valueFrom: { path: /tmp/app-health-check }
+          - name: has-configmap
+            valueFrom: { path: /tmp/has-configmap }
+          - name: configmap-name
+            valueFrom: { path: /tmp/configmap-name }
+          - name: configmap-data
+            valueFrom: { path: /tmp/configmap-data }
+          - name: has-service
+            valueFrom: { path: /tmp/has-service }
+          - name: service-type
+            valueFrom: { path: /tmp/service-type }
+          - name: service-port
+            valueFrom: { path: /tmp/service-port }
+          - name: service-target-port
+            valueFrom: { path: /tmp/service-target-port }
+          - name: has-istio
+            valueFrom: { path: /tmp/has-istio }
+          - name: istio-config
+            valueFrom: { path: /tmp/istio-config }
+          - name: has-azure
+            valueFrom: { path: /tmp/has-azure }
+          - name: azure-config
+            valueFrom: { path: /tmp/azure-config }
+          - name: azure-identity-name
+            valueFrom: { path: /tmp/azure-identity-name }
+
+    # ──────────────────────────────────────────────
+    # Validate Payload
+    #
+    # Two layers:
+    #   1. Whole-payload JSON Schema validation against the contract at
+    #      schemas/golden-path-payload.schema.json (mounted from the
+    #      golden-path-payload-schema ConfigMap). This catches type
+    #      errors, unknown fields, malformed UUIDs, etc. before we
+    #      mutate any cluster state.
+    #   2. The existing namespace + environment sanity checks, kept as
+    #      a belt-and-braces guard for the parse-payload outputs.
+    #
+    # If the schema ConfigMap is not mounted (optional: true), the
+    # script fails loudly with a clear error pointing at the missing CM
+    # rather than silently skipping validation.
+    # ──────────────────────────────────────────────
+    - name: validate-payload
+      inputs:
+        parameters:
+          - name: namespace
+          - name: environment
+      script:
+        image: python:3.12-slim
+        command: [python]
+        env:
+          - name: NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: ENV
+            value: "{{inputs.parameters.environment}}"
+          - name: PAYLOAD_JSON
+            value: "{{workflow.parameters.payload}}"
+        volumeMounts:
+          - name: golden-path-payload-schema
+            mountPath: /etc/schema
+            readOnly: true
+        source: |
+          import json, os, re, subprocess, sys
+
+          # jsonschema is not in python:3.12-slim by default. Pip install
+          # at runtime keeps the workflow image dependency-free; the wheel
+          # is small (<200KB) and adds ~5s to the step.
+          subprocess.check_call(
+              [sys.executable, "-m", "pip", "install", "--quiet",
+               "--disable-pip-version-check", "jsonschema==4.26.0"],
+              stdout=subprocess.DEVNULL,
+          )
+          from jsonschema import Draft202012Validator
+
+          ns = os.environ["NS"]
+          env = os.environ["ENV"]
+          errors = []
+
+          # ---- Layer 1: schema validation against the raw payload ----
+          schema_path = "/etc/schema/golden-path-payload.schema.json"
+          schema = None
+          if not os.path.exists(schema_path):
+              errors.append(
+                  f"schema not mounted at {schema_path} — apply the "
+                  "golden-path-payload-schema ConfigMap "
+                  "(see application-stack/core/app-onboarding/schemas/)"
+              )
+          else:
+              try:
+                  with open(schema_path) as f:
+                      schema = json.load(f)
+                  Draft202012Validator.check_schema(schema)
+              except (json.JSONDecodeError, Exception) as e:
+                  errors.append(f"schema file invalid: {e}")
+                  schema = None
+
+          if schema is not None:
+              try:
+                  payload = json.loads(os.environ["PAYLOAD_JSON"])
+              except json.JSONDecodeError as e:
+                  errors.append(f"payload is not valid JSON: {e}")
+                  payload = None
+
+              if payload is not None:
+                  validator = Draft202012Validator(schema)
+                  for v_err in sorted(
+                      validator.iter_errors(payload),
+                      key=lambda e: list(e.absolute_path),
+                  ):
+                      path = "/".join(str(x) for x in v_err.absolute_path) or "<root>"
+                      errors.append(f"schema: {path}: {v_err.message}")
+
+          # ---- Layer 2: belt-and-braces sanity on parse outputs ----
+          if not ns:
+              errors.append("namespace.name is required")
+          if len(ns) > 63:
+              errors.append("namespace.name must be <= 63 characters")
+          if not re.match(r'^[a-z][a-z0-9-]{0,61}[a-z0-9]$', ns):
+              errors.append("namespace must be lowercase alphanumeric + hyphens, start with letter")
+          if env not in ("DEV", "STAGING", "PROD"):
+              errors.append(f"environment must be DEV/STAGING/PROD, got: {env}")
+
+          if errors:
+              print("Validation failed:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+
+          print(f"Validation passed: namespace={ns}, environment={env}, schema OK")
+
+    # ──────────────────────────────────────────────
+    # Create Namespace
+    # ──────────────────────────────────────────────
+    - name: create-namespace
+      inputs:
+        parameters:
+          - name: namespace
+          - name: labels
+          - name: environment
+          - name: swc
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        env:
+          - name: NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: ENV
+            value: "{{inputs.parameters.environment}}"
+          - name: SWC
+            value: "{{inputs.parameters.swc}}"
+          - name: LABELS
+            value: "{{inputs.parameters.labels}}"
+        source: |
+          set -euo pipefail
+
+          echo "Creating namespace: $NS"
+          kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace "$NS" \
+            managed-by=argo-workflows \
+            onboarding=true \
+            environment="${ENV}" \
+            swc="${SWC}" \
+            --overwrite
+
+          # Add custom labels from payload
+          echo "$LABELS" | python3 -c "
+          import sys, json
+          labels = json.load(sys.stdin)
+          for k, v in labels.items():
+              print(f'{k}={v}')
+          " 2>/dev/null | while read -r label; do
+            [ -z "$label" ] && continue
+            kubectl label namespace "$NS" "$label" --overwrite
+          done
+
+          echo "Namespace $NS created/updated"
+
+    # ──────────────────────────────────────────────
+    # Create ResourceQuota
+    # ──────────────────────────────────────────────
+    - name: create-resource-quota
+      inputs:
+        parameters:
+          - name: namespace
+          - name: cpu
+          - name: memory
+          - name: storage
+          - name: pods
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        env:
+          - name: NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: CPU
+            value: "{{inputs.parameters.cpu}}"
+          - name: MEMORY
+            value: "{{inputs.parameters.memory}}"
+          - name: STORAGE
+            value: "{{inputs.parameters.storage}}"
+          - name: PODS
+            value: "{{inputs.parameters.pods}}"
+        source: |
+          set -euo pipefail
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ResourceQuota
+          metadata:
+            name: namespace-quota
+            namespace: ${NS}
+            labels:
+              managed-by: argo-workflows
+          spec:
+            hard:
+              requests.cpu: "${CPU}"
+              requests.memory: ${MEMORY}
+              requests.storage: ${STORAGE}
+              limits.cpu: "${CPU}"
+              limits.memory: ${MEMORY}
+              pods: "${PODS}"
+          EOF
+          echo "ResourceQuota applied to ${NS}"
+
+    # ──────────────────────────────────────────────
+    # Create NetworkPolicy
+    # ──────────────────────────────────────────────
+    - name: create-network-policy
+      inputs:
+        parameters:
+          - name: namespace
+          - name: default-deny
+          - name: allow-from
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        env:
+          - name: NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: DEFAULT_DENY
+            value: "{{inputs.parameters.default-deny}}"
+          - name: ALLOW_FROM
+            value: "{{inputs.parameters.allow-from}}"
+        source: |
+          set -euo pipefail
+
+          if [ "$DEFAULT_DENY" = "true" ]; then
+            echo "Applying default-deny policy to $NS"
+            cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: default-deny-all
+            namespace: ${NS}
+            labels:
+              managed-by: argo-workflows
+          spec:
+            podSelector: {}
+            policyTypes:
+            - Ingress
+            - Egress
+          EOF
+          fi
+
+          # Always allow DNS egress
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: allow-dns-egress
+            namespace: ${NS}
+            labels:
+              managed-by: argo-workflows
+          spec:
+            podSelector: {}
+            policyTypes:
+            - Egress
+            egress:
+            - to:
+              - namespaceSelector: {}
+              ports:
+              - protocol: UDP
+                port: 53
+              - protocol: TCP
+                port: 53
+          EOF
+
+          # Allow ingress from specified namespaces
+          echo "$ALLOW_FROM" | python3 -c "
+          import sys, json
+          for ns in json.load(sys.stdin):
+              print(ns)
+          " 2>/dev/null | while read -r src_ns; do
+            [ -z "$src_ns" ] && continue
+            echo "Allowing ingress from namespace: $src_ns"
+            cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: allow-from-${src_ns}
+            namespace: ${NS}
+            labels:
+              managed-by: argo-workflows
+          spec:
+            podSelector: {}
+            policyTypes:
+            - Ingress
+            ingress:
+            - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: ${src_ns}
+          EOF
+          done
+
+          echo "NetworkPolicies applied to $NS"
+
+    # ──────────────────────────────────────────────
+    # Create ServiceAccount
+    # ──────────────────────────────────────────────
+    - name: create-service-account
+      inputs:
+        parameters:
+          - name: namespace
+          - name: sa-name
+          - name: wi-enabled
+          - name: wi-client-id
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        env:
+          - name: NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: SA
+            value: "{{inputs.parameters.sa-name}}"
+          - name: WI
+            value: "{{inputs.parameters.wi-enabled}}"
+          - name: CLIENT_ID
+            value: "{{inputs.parameters.wi-client-id}}"
+        source: |
+          set -euo pipefail
+
+          if [ "$WI" = "true" ] && [ -n "$CLIENT_ID" ]; then
+            echo "Creating SA $SA with workload identity (clientId: $CLIENT_ID)"
+            cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: ${SA}
+            namespace: ${NS}
+            labels:
+              managed-by: argo-workflows
+              azure.workload.identity/use: "true"
+            annotations:
+              azure.workload.identity/client-id: "${CLIENT_ID}"
+          EOF
+          else
+            echo "Creating SA $SA (no workload identity)"
+            cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: ${SA}
+            namespace: ${NS}
+            labels:
+              managed-by: argo-workflows
+          EOF
+          fi
+          echo "ServiceAccount $SA created in $NS"
+
+    # ──────────────────────────────────────────────
+    # Create RBAC
+    # ──────────────────────────────────────────────
+    - name: create-rbac
+      inputs:
+        parameters:
+          - name: namespace
+          - name: ad-group
+          - name: cluster-role
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        env:
+          - name: NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: AD_GROUP
+            value: "{{inputs.parameters.ad-group}}"
+          - name: ROLE
+            value: "{{inputs.parameters.cluster-role}}"
+        source: |
+          set -euo pipefail
+
+          echo "Creating RoleBinding for AD group $AD_GROUP -> $ROLE in $NS"
+          cat <<EOF | kubectl apply -f -
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: team-${ROLE}-binding
+            namespace: ${NS}
+            labels:
+              managed-by: argo-workflows
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: ${ROLE}
+          subjects:
+          - apiGroup: rbac.authorization.k8s.io
+            kind: Group
+            name: ${AD_GROUP}
+          EOF
+          echo "RoleBinding created in $NS"
+
+    # ──────────────────────────────────────────────
+    # Create ConfigMap
+    # ──────────────────────────────────────────────
+    - name: create-configmap
+      inputs:
+        parameters:
+          - name: namespace
+          - name: configmap-name
+          - name: configmap-data
+      script:
+        image: bitnami/kubectl:latest
+        command: [python3]
+        env:
+          - name: PARAM_NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: PARAM_CM_NAME
+            value: "{{inputs.parameters.configmap-name}}"
+          - name: PARAM_CM_DATA
+            value: "{{inputs.parameters.configmap-data}}"
+        source: |
+          import json, subprocess, sys, os
+
+          ns = os.environ["PARAM_NS"]
+          cm_name = os.environ["PARAM_CM_NAME"]
+          cm_data = json.loads(os.environ["PARAM_CM_DATA"])
+
+          print(f"Creating ConfigMap {cm_name} in {ns}")
+
+          # Build kubectl command with --from-literal for each key
+          cmd = ["kubectl", "create", "configmap", cm_name, "-n", ns]
+          for k, v in cm_data.items():
+              cmd.append(f"--from-literal={k}={v}")
+          cmd.extend(["--dry-run=client", "-o", "yaml"])
+
+          result = subprocess.run(cmd, capture_output=True, text=True)
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(1)
+
+          # Get as JSON, add label, apply
+          result2 = subprocess.run(
+              ["kubectl", "create", "configmap", cm_name, "-n", ns] +
+              [f"--from-literal={k}={v}" for k, v in cm_data.items()] +
+              ["--dry-run=client", "-o", "json"],
+              capture_output=True, text=True
+          )
+          if result2.returncode != 0:
+              print(result2.stderr, file=sys.stderr)
+              sys.exit(1)
+
+          manifest = json.loads(result2.stdout)
+          manifest.setdefault("metadata", {}).setdefault("labels", {})["managed-by"] = "argo-workflows"
+
+          with open("/tmp/configmap.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+
+          apply = subprocess.run(
+              ["kubectl", "apply", "-f", "/tmp/configmap.json"],
+              capture_output=True, text=True
+          )
+          print(apply.stdout)
+          if apply.returncode != 0:
+              print(apply.stderr, file=sys.stderr)
+              sys.exit(1)
+          print(f"ConfigMap {cm_name} created in {ns}")
+
+    # ──────────────────────────────────────────────
+    # Create Deployment
+    # ──────────────────────────────────────────────
+    - name: create-deployment
+      inputs:
+        parameters:
+          - name: namespace
+          - name: app-name
+          - name: image
+          - name: replicas
+          - name: sa-name
+          - name: resources-json
+          - name: env-json
+          - name: ports-json
+          - name: health-check-json
+      script:
+        image: bitnami/kubectl:latest
+        command: [python3]
+        env:
+          - name: PARAM_NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: PARAM_APP
+            value: "{{inputs.parameters.app-name}}"
+          - name: PARAM_IMAGE
+            value: "{{inputs.parameters.image}}"
+          - name: PARAM_REPLICAS
+            value: "{{inputs.parameters.replicas}}"
+          - name: PARAM_SA
+            value: "{{inputs.parameters.sa-name}}"
+          - name: PARAM_RESOURCES
+            value: "{{inputs.parameters.resources-json}}"
+          - name: PARAM_ENV
+            value: "{{inputs.parameters.env-json}}"
+          - name: PARAM_PORTS
+            value: "{{inputs.parameters.ports-json}}"
+          - name: PARAM_HEALTH
+            value: "{{inputs.parameters.health-check-json}}"
+        source: |
+          import json, subprocess, sys, os
+
+          ns = os.environ["PARAM_NS"]
+          app = os.environ["PARAM_APP"]
+          image = os.environ["PARAM_IMAGE"]
+          replicas = int(os.environ["PARAM_REPLICAS"])
+          sa = os.environ["PARAM_SA"]
+
+          resources = json.loads(os.environ["PARAM_RESOURCES"])
+          env_list = json.loads(os.environ["PARAM_ENV"])
+          ports = json.loads(os.environ["PARAM_PORTS"])
+          health = json.loads(os.environ["PARAM_HEALTH"])
+
+          # Build container spec
+          container = {
+              "name": app,
+              "image": image,
+              "resources": resources if resources else {
+                  "requests": {"cpu": "100m", "memory": "128Mi"},
+                  "limits": {"cpu": "500m", "memory": "512Mi"}
+              },
+          }
+
+          if env_list:
+              container["env"] = env_list
+          if ports:
+              container["ports"] = ports
+          if health:
+              probe = {
+                  "httpGet": {
+                      "path": health.get("path", "/healthz"),
+                      "port": health.get("port", 8080),
+                  },
+                  "initialDelaySeconds": health.get("initialDelaySeconds", 10),
+                  "periodSeconds": health.get("periodSeconds", 15),
+              }
+              container["livenessProbe"] = probe
+              container["readinessProbe"] = probe
+
+          deployment = {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "metadata": {
+                  "name": app,
+                  "namespace": ns,
+                  "labels": {"app": app, "managed-by": "argo-workflows"},
+              },
+              "spec": {
+                  "replicas": replicas,
+                  "selector": {"matchLabels": {"app": app}},
+                  "template": {
+                      "metadata": {"labels": {"app": app}},
+                      "spec": {
+                          "containers": [container],
+                      },
+                  },
+              },
+          }
+
+          if sa and sa != "default":
+              deployment["spec"]["template"]["spec"]["serviceAccountName"] = sa
+
+          manifest = json.dumps(deployment, indent=2)
+          with open("/tmp/deployment.json", "w") as f:
+              f.write(manifest)
+
+          print(f"Applying deployment {app} in {ns}")
+          result = subprocess.run(
+              ["kubectl", "apply", "-f", "/tmp/deployment.json"],
+              capture_output=True, text=True
+          )
+          print(result.stdout)
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(1)
+
+          print(f"Waiting for rollout of {app}...")
+          result = subprocess.run(
+              ["kubectl", "rollout", "status", f"deployment/{app}",
+               "-n", ns, "--timeout=300s"],
+              capture_output=True, text=True
+          )
+          print(result.stdout)
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(1)
+
+    # ──────────────────────────────────────────────
+    # Create Service
+    # ──────────────────────────────────────────────
+    - name: create-service
+      inputs:
+        parameters:
+          - name: namespace
+          - name: app-name
+          - name: service-type
+          - name: service-port
+          - name: target-port
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        env:
+          - name: NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: APP
+            value: "{{inputs.parameters.app-name}}"
+          - name: SVC_TYPE
+            value: "{{inputs.parameters.service-type}}"
+          - name: SVC_PORT
+            value: "{{inputs.parameters.service-port}}"
+          - name: TARGET_PORT
+            value: "{{inputs.parameters.target-port}}"
+        source: |
+          set -euo pipefail
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: ${APP}
+            namespace: ${NS}
+            labels:
+              app: ${APP}
+              managed-by: argo-workflows
+          spec:
+            type: ${SVC_TYPE}
+            selector:
+              app: ${APP}
+            ports:
+            - port: ${SVC_PORT}
+              targetPort: ${TARGET_PORT}
+              protocol: TCP
+          EOF
+          echo "Service ${APP} created in ${NS}"
+
+    # ──────────────────────────────────────────────
+    # Create VirtualService (Istio)
+    # ──────────────────────────────────────────────
+    - name: create-virtualservice
+      inputs:
+        parameters:
+          - name: namespace
+          - name: app-name
+          - name: istio-json
+          - name: service-port
+      script:
+        image: bitnami/kubectl:latest
+        command: [python3]
+        env:
+          - name: PARAM_NS
+            value: "{{inputs.parameters.namespace}}"
+          - name: PARAM_APP
+            value: "{{inputs.parameters.app-name}}"
+          - name: PARAM_SVC_PORT
+            value: "{{inputs.parameters.service-port}}"
+          - name: PARAM_ISTIO
+            value: "{{inputs.parameters.istio-json}}"
+        source: |
+          import json, subprocess, sys, os
+
+          ns = os.environ["PARAM_NS"]
+          app = os.environ["PARAM_APP"]
+          svc_port = int(os.environ["PARAM_SVC_PORT"])
+          istio = json.loads(os.environ["PARAM_ISTIO"])
+
+          gateway = istio.get("gateway", "istio-system/main-gateway")
+          host = istio.get("host", "")
+          paths = istio.get("paths", [{"prefix": "/", "rewrite": "/"}])
+          cors = istio.get("cors", {})
+          timeout = istio.get("timeout", "60s")
+          retries = istio.get("retries", {"attempts": 3, "perTryTimeout": "10s"})
+
+          http_routes = []
+          for p in paths:
+              route = {
+                  "match": [{"uri": {"prefix": p["prefix"]}}],
+                  "route": [{
+                      "destination": {
+                          "host": f"{app}.{ns}.svc.cluster.local",
+                          "port": {"number": svc_port},
+                      }
+                  }],
+                  "timeout": timeout,
+                  "retries": retries,
+              }
+              if p.get("rewrite") and p["rewrite"] != p["prefix"]:
+                  route["rewrite"] = {"uri": p["rewrite"]}
+              if cors:
+                  route["corsPolicy"] = {
+                      "allowOrigins": [{"exact": o} for o in cors.get("allowOrigins", ["*"])],
+                      "allowMethods": cors.get("allowMethods", ["GET", "POST"]),
+                      "allowHeaders": cors.get("allowHeaders", ["Authorization", "Content-Type"]),
+                      "maxAge": cors.get("maxAge", "86400s"),
+                  }
+              http_routes.append(route)
+
+          vs = {
+              "apiVersion": "networking.istio.io/v1beta1",
+              "kind": "VirtualService",
+              "metadata": {
+                  "name": app,
+                  "namespace": ns,
+                  "labels": {"app": app, "managed-by": "argo-workflows"},
+              },
+              "spec": {
+                  "hosts": [host],
+                  "gateways": [gateway],
+                  "http": http_routes,
+              },
+          }
+
+          manifest = json.dumps(vs, indent=2)
+          with open("/tmp/virtualservice.json", "w") as f:
+              f.write(manifest)
+
+          print(f"Applying VirtualService for {app} -> {host}")
+          result = subprocess.run(
+              ["kubectl", "apply", "-f", "/tmp/virtualservice.json"],
+              capture_output=True, text=True
+          )
+          print(result.stdout)
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(1)
+
+    # ──────────────────────────────────────────────
+    # Create Managed Identity (ASO)
+    # ──────────────────────────────────────────────
+    - name: create-managed-identity
+      inputs:
+        parameters:
+          - name: azure-json
+      script:
+        image: bitnami/kubectl:latest
+        command: [python3]
+        env:
+          - name: PARAM_AZURE
+            value: "{{inputs.parameters.azure-json}}"
+        source: |
+          import json, subprocess, sys, os
+
+          azure = json.loads(os.environ["PARAM_AZURE"])
+          rg = azure["resourceGroup"]
+          location = azure.get("location", "uksouth")
+          mi = azure["managedIdentity"]
+          sub_id = azure["subscriptionId"]
+
+          manifest = {
+              "apiVersion": "managedidentity.azure.com/v1api20230131",
+              "kind": "UserAssignedIdentity",
+              "metadata": {
+                  "name": mi["name"],
+                  "namespace": "azure-system",
+                  "labels": {"managed-by": "argo-workflows"},
+              },
+              "spec": {
+                  "location": location,
+                  "owner": {
+                      "armId": f"/subscriptions/{sub_id}/resourceGroups/{rg}"
+                  },
+                  "tags": {"managed-by": "argo-workflows"},
+              },
+          }
+
+          with open("/tmp/identity.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+
+          print(f"Creating UserAssignedIdentity: {mi['name']}")
+          result = subprocess.run(
+              ["kubectl", "apply", "-f", "/tmp/identity.json"],
+              capture_output=True, text=True
+          )
+          print(result.stdout)
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(1)
+
+    # ──────────────────────────────────────────────
+    # Wait for Identity
+    # ──────────────────────────────────────────────
+    - name: wait-for-identity
+      inputs:
+        parameters:
+          - name: identity-name
+          - name: azure-namespace
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        env:
+          - name: NAME
+            value: "{{inputs.parameters.identity-name}}"
+        source: |
+          set -euo pipefail
+          echo "Waiting for UserAssignedIdentity $NAME to be ready..."
+
+          for i in $(seq 1 60); do
+            STATUS=$(kubectl get userassignedidentity "$NAME" -n azure-system \
+              -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+            if [ "$STATUS" = "True" ]; then
+              echo "Identity $NAME is ready"
+              exit 0
+            fi
+            echo "Attempt $i/60: status=$STATUS, waiting 10s..."
+            sleep 10
+          done
+
+          echo "ERROR: Identity $NAME did not become ready within 10 minutes"
+          exit 1
+
+    # ──────────────────────────────────────────────
+    # Create Federated Credential (ASO)
+    # ──────────────────────────────────────────────
+    - name: create-federated-credential
+      inputs:
+        parameters:
+          - name: azure-json
+      script:
+        image: bitnami/kubectl:latest
+        command: [python3]
+        env:
+          - name: PARAM_AZURE
+            value: "{{inputs.parameters.azure-json}}"
+        source: |
+          import json, subprocess, sys, os
+
+          azure = json.loads(os.environ["PARAM_AZURE"])
+          mi = azure["managedIdentity"]
+          fc = mi["federatedCredential"]
+
+          manifest = {
+              "apiVersion": "managedidentity.azure.com/v1api20230131",
+              "kind": "FederatedIdentityCredential",
+              "metadata": {
+                  "name": fc["name"],
+                  "namespace": "azure-system",
+                  "labels": {"managed-by": "argo-workflows"},
+              },
+              "spec": {
+                  "owner": {"name": mi["name"]},
+                  "audiences": ["api://AzureADTokenExchange"],
+                  "issuer": fc["issuer"],
+                  "subject": fc["subject"],
+              },
+          }
+
+          with open("/tmp/fedcred.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+
+          print(f"Creating FederatedIdentityCredential: {fc['name']}")
+          result = subprocess.run(
+              ["kubectl", "apply", "-f", "/tmp/fedcred.json"],
+              capture_output=True, text=True
+          )
+          print(result.stdout)
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(1)
+
+    # ──────────────────────────────────────────────
+    # Create Role Assignments (ASO)
+    # ──────────────────────────────────────────────
+    - name: create-role-assignments
+      inputs:
+        parameters:
+          - name: azure-json
+      script:
+        image: bitnami/kubectl:latest
+        command: [python3]
+        env:
+          - name: PARAM_AZURE
+            value: "{{inputs.parameters.azure-json}}"
+        source: |
+          import json, subprocess, sys, hashlib, os
+
+          azure = json.loads(os.environ["PARAM_AZURE"])
+          mi_name = azure["managedIdentity"]["name"]
+          assignments = azure.get("roleAssignments", [])
+
+          for i, ra in enumerate(assignments):
+              hash_input = f"{ra['scope']}-{ra['roleDefinitionId']}"
+              short_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:8]
+              name = f"ra-{mi_name}-{short_hash}"
+
+              manifest = {
+                  "apiVersion": "authorization.azure.com/v1api20220401",
+                  "kind": "RoleAssignment",
+                  "metadata": {
+                      "name": name,
+                      "namespace": "azure-system",
+                      "labels": {"managed-by": "argo-workflows"},
+                  },
+                  "spec": {
+                      "owner": {"armId": ra["scope"]},
+                      "principalIdFromConfig": {
+                          "name": mi_name,
+                          "key": ".status.principalId",
+                      },
+                      "roleDefinitionReference": {
+                          "armId": ra["roleDefinitionId"],
+                      },
+                  },
+              }
+
+              path = f"/tmp/role-assignment-{i}.json"
+              with open(path, "w") as f:
+                  json.dump(manifest, f, indent=2)
+
+              desc = ra.get("description", f"role-{i}")
+              print(f"Creating RoleAssignment {i+1}/{len(assignments)}: {desc}")
+
+              result = subprocess.run(
+                  ["kubectl", "apply", "-f", path],
+                  capture_output=True, text=True
+              )
+              print(result.stdout)
+              if result.returncode != 0:
+                  print(result.stderr, file=sys.stderr)
+                  sys.exit(1)
+
+          print(f"All {len(assignments)} role assignments created")
+
+    # ──────────────────────────────────────────────
+    # Store Config for GitOps
+    # ──────────────────────────────────────────────
+    - name: store-config-gitops
+      inputs:
+        parameters:
+          - name: payload
+      script:
+        image: bitnami/kubectl:latest
+        command: [python3]
+        env:
+          - name: PARAM_PAYLOAD
+            value: "{{inputs.parameters.payload}}"
+        source: |
+          import json, subprocess, sys, os
+          from datetime import datetime, timezone
+
+          payload = json.loads(os.environ["PARAM_PAYLOAD"])
+          ns = payload["namespace"]["name"]
+          # Strip sensitive fields before storing
+          safe_payload = {k: v for k, v in payload.items() if k != "azure"}
+          if "serviceAccount" in safe_payload:
+              sa = safe_payload["serviceAccount"]
+              if "workloadIdentity" in sa:
+                  sa["workloadIdentity"].pop("clientId", None)
+          now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          print(f"Storing onboarding config as ConfigMap in {ns}")
+          result = subprocess.run([
+              "kubectl", "create", "configmap", "onboarding-config",
+              f"--from-literal=payload={json.dumps(safe_payload)}",
+              f"--from-literal=onboarded-at={now}",
+              "-n", ns,
+              "--dry-run=client", "-o", "yaml",
+          ], capture_output=True, text=True)
+
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(1)
+
+          # Pipe through kubectl apply
+          apply = subprocess.run(
+              ["kubectl", "apply", "-f", "-"],
+              input=result.stdout, capture_output=True, text=True
+          )
+          print(apply.stdout)
+          if apply.returncode != 0:
+              print(apply.stderr, file=sys.stderr)
+              sys.exit(1)
+
+          print(f"GitOps config stored for {ns}")
+
+    # ──────────────────────────────────────────────
+    # KAgent Validation (A2A)
+    # ──────────────────────────────────────────────
+    - name: kagent-validate
+      inputs:
+        parameters:
+          - name: namespace
+          - name: app-name
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        source: |
+          set -eu
+          NS="{{inputs.parameters.namespace}}"
+          APP="{{inputs.parameters.app-name}}"
+          KAGENT_URL="${KAGENT_URL:-http://kagent-server.kagent.svc.cluster.local:8081}"
+          AGENT="sre-triage-agent"
+          TASK_ID="validate-$(date +%s)"
+
+          PROMPT="CRITICAL: use exact namespace \"${NS}\". Validate the deployment of application \"${APP}\" in namespace \"${NS}\". Check: 1) Deployment exists and has ready replicas, 2) Service exists and has endpoints, 3) Pods are running without errors. Report status as HEALTHY or UNHEALTHY with details."
+
+          echo "Calling KAgent $AGENT for validation..."
+
+          jq -n \
+            --arg task_id "$TASK_ID" \
+            --arg prompt "$PROMPT" \
+            '{
+              "jsonrpc": "2.0",
+              "id": $task_id,
+              "method": "message/send",
+              "params": {
+                "message": {
+                  "role": "user",
+                  "parts": [{"kind": "text", "text": $prompt}]
+                }
+              }
+            }' > /tmp/a2a-request.json
+
+          RESPONSE=$(curl -s -X POST "${KAGENT_URL}/api/a2a/kagent/${AGENT}/" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/a2a-request.json \
+            --max-time 120 || echo '{"error": "KAgent unreachable"}')
+
+          echo "$RESPONSE" > /tmp/a2a-response.json
+
+          # Extract analysis
+          ANALYSIS=$(echo "$RESPONSE" | jq -r '[.result.artifacts[]?.parts[]? | select(.kind == "text") | .text] | join("\n\n")' 2>/dev/null || echo "No analysis available")
+
+          if [ -z "$ANALYSIS" ] || [ "$ANALYSIS" = "null" ]; then
+            ANALYSIS=$(echo "$RESPONSE" | jq -r '[.result.history[]? | select(.role == "agent") | .parts[]? | select(.kind == "text") | .text] | last' 2>/dev/null || echo "No analysis available")
+          fi
+
+          echo "=== KAgent Validation Result ==="
+          echo "$ANALYSIS"
+          printf '%s' "$ANALYSIS" > /tmp/validation-result
+      outputs:
+        parameters:
+          - name: validation-result
+            valueFrom:
+              path: /tmp/validation-result
+
+    # ──────────────────────────────────────────────
+    # Send Notification (exit handler)
+    # ──────────────────────────────────────────────
+    - name: send-notification
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        source: |
+          set -eu
+          STATUS="{{workflow.status}}"
+          NAME="{{workflow.name}}"
+          WEBHOOK_URL="${NOTIFICATION_WEBHOOK_URL:-}"
+
+          if [ "$STATUS" = "Succeeded" ]; then
+            ICON="ok"
+            MSG="App onboarding workflow ${NAME} completed successfully."
+          else
+            ICON="error"
+            MSG="App onboarding workflow ${NAME} failed with status: ${STATUS}."
+          fi
+
+          echo "[${ICON}] ${MSG}"
+
+          if [ -n "$WEBHOOK_URL" ]; then
+            jq -n \
+              --arg text "${MSG}" \
+              --arg icon "${ICON}" \
+              '{"text": ("[" + $icon + "] " + $text)}' | \
+              curl -s -X POST "$WEBHOOK_URL" \
+                -H "Content-Type: application/json" \
+                -d @- || echo "Notification send failed (non-critical)"
+          else
+            echo "No NOTIFICATION_WEBHOOK_URL set, skipping webhook notification"
+          fi

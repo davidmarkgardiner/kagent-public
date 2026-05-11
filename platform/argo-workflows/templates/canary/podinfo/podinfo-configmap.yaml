@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: podinfo-config
+  namespace: podinfo
+data:
+  deployment.yaml: |
+    application:
+      name: "podinfo"
+      initialImage: "stefanprodan/podinfo:6.4.0"
+      canaryImage: "stefanprodan/podinfo:6.5.0"
+      replicas: 3
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "64Mi"
+        limits:
+          cpu: "200m"
+          memory: "128Mi"
+
+    canary:
+      autoPromotionEnabled: false
+      steps:
+        - setWeight: 10
+        - pause: {duration: 30s}
+        - setWeight: 25
+        - pause: {duration: 30s}
+        - setWeight: 50
+        - pause: {duration: 30s}
+        - setWeight: 100
+
+    testing:
+      healthCheckTimeout: "2m"
+      loadTestDuration: "30s"
+      errorRateThreshold: "1%"
+      responseTimeThreshold: "500ms"

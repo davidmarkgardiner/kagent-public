@@ -1,0 +1,188 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: blue-green-deployment-workflow
+spec:
+  entrypoint: deploy-blue-green
+  arguments:
+    parameters:
+    - name: applicationName
+      value: "blue-green-demo"
+    - name: newImageTag
+      value: "nginx:1.21"
+    - name: environment
+      value: "staging"
+    - name: autoPromote
+      value: "false"
+    - name: rollbackOnFailure
+      value: "true"
+    - name: notificationChannel
+      value: "slack-deployments"
+
+  templates:
+  - name: deploy-blue-green
+    steps:
+    - - name: validate-parameters
+        template: validate-parameters
+    - - name: update-rollout
+        template: update-rollout
+    - - name: wait-for-preview
+        template: wait-for-preview
+    - - name: pre-promotion-analysis
+        template: run-analysis
+        arguments:
+          parameters:
+          - name: analysis-type
+            value: "pre-promotion"
+    - - name: check-analysis-results
+        template: check-analysis-results
+        arguments:
+          parameters:
+          - name: analysis-type
+            value: "pre-promotion"
+    - - name: handle-promotion-decision
+        template: handle-promotion-decision
+        when: "{{steps.check-analysis-results.outputs.result}} == passed"
+    - - name: post-promotion-analysis
+        template: run-analysis
+        arguments:
+          parameters:
+          - name: analysis-type
+            value: "post-promotion"
+        when: "{{steps.handle-promotion-decision.outputs.result}} == promoted"
+    - - name: check-post-analysis-results
+        template: check-analysis-results
+        arguments:
+          parameters:
+          - name: analysis-type
+            value: "post-promotion"
+        when: "{{steps.handle-promotion-decision.outputs.result}} == promoted"
+    - - name: handle-rollback
+        template: handle-rollback
+        when: "{{steps.check-analysis-results.outputs.result}} == failed || {{steps.check-post-analysis-results.outputs.result}} == failed"
+
+  - name: validate-parameters
+    script:
+      image: alpine:latest
+      command: [sh]
+      source: |
+        echo "Validating deployment parameters..."
+        echo "Application: {{workflow.parameters.applicationName}}"
+        echo "New Image: {{workflow.parameters.newImageTag}}"
+        echo "Environment: {{workflow.parameters.environment}}"
+        echo "Auto Promote: {{workflow.parameters.autoPromote}}"
+        
+        # Simple validation
+        if [ -z "{{workflow.parameters.applicationName}}" ]; then
+          echo "Error: Application name is required"
+          exit 1
+        fi
+        
+        if [ -z "{{workflow.parameters.newImageTag}}" ]; then
+          echo "Error: New image tag is required"
+          exit 1
+        fi
+        
+        echo "Parameters validated successfully"
+
+  - name: update-rollout
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+      - |
+        echo "Updating Rollout with new image: {{workflow.parameters.newImageTag}}"
+        kubectl patch rollout {{workflow.parameters.applicationName}} \
+          -p '{"spec":{"template":{"spec":{"containers":[{"name":"demo-app","image":"{{workflow.parameters.newImageTag}}"}]}}}}' \
+          --type='merge'
+        echo "Rollout updated successfully"
+
+  - name: wait-for-preview
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+      - |
+        echo "Waiting for preview environment to be ready..."
+        # Wait for the preview ReplicaSet to be created and have available replicas
+        timeout=300
+        while [ $timeout -gt 0 ]; do
+          preview_replicas=$(kubectl get rollout {{workflow.parameters.applicationName}} -o jsonpath='{.status.previewReplicas}')
+          available_replicas=$(kubectl get rollout {{workflow.parameters.applicationName}} -o jsonpath='{.status.availableReplicas}')
+          
+          if [ "$preview_replicas" -gt 0 ] && [ "$available_replicas" -gt 0 ]; then
+            echo "Preview environment is ready with $preview_replicas preview replicas"
+            exit 0
+          fi
+          
+          echo "Waiting for preview environment... ($timeout seconds remaining)"
+          sleep 10
+          timeout=$((timeout-10))
+        done
+        
+        echo "Timeout waiting for preview environment"
+        exit 1
+
+  - name: run-analysis
+    inputs:
+      parameters:
+      - name: analysis-type
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+      - |
+        echo "Running {{inputs.parameters.analysis-type}} analysis..."
+        # In a real implementation, this would trigger the appropriate AnalysisRun
+        # For this example, we'll simulate analysis execution
+        echo "Analysis {{inputs.parameters.analysis-type}} completed"
+        echo "result: passed" > /tmp/analysis-result
+
+  - name: check-analysis-results
+    inputs:
+      parameters:
+      - name: analysis-type
+    script:
+      image: alpine:latest
+      command: [sh]
+      source: |
+        echo "Checking {{inputs.parameters.analysis-type}} analysis results..."
+        # In a real implementation, this would check the actual AnalysisRun results
+        # For this example, we'll simulate a successful result
+        echo "passed"
+      outputs:
+        result:
+          path: /tmp/analysis-result
+
+  - name: handle-promotion-decision
+    script:
+      image: bitnami/kubectl:latest
+      command: [sh]
+      source: |
+        echo "Handling promotion decision..."
+        if [ "{{workflow.parameters.autoPromote}}" = "true" ]; then
+          echo "Auto-promoting to active service..."
+          kubectl argo rollouts promote {{workflow.parameters.applicationName}}
+          echo "promoted"
+        else
+          echo "Manual promotion required. Please review results and promote manually."
+          echo "To promote, run: kubectl argo rollouts promote {{workflow.parameters.applicationName}}"
+          echo "promoted"  # For demo purposes, we'll assume manual promotion happens quickly
+        fi
+      outputs:
+        result:
+          path: /tmp/promotion-result
+
+  - name: handle-rollback
+    script:
+      image: bitnami/kubectl:latest
+      command: [sh]
+      source: |
+        echo "Handling rollback due to failed analysis..."
+        if [ "{{workflow.parameters.rollbackOnFailure}}" = "true" ]; then
+          echo "Rolling back deployment..."
+          kubectl argo rollouts undo {{workflow.parameters.applicationName}}
+          echo "Rollback completed"
+        else
+          echo "Rollback disabled. Manual intervention required."
+        fi

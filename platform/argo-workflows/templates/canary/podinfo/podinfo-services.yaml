@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: podinfo-stable
+  namespace: podinfo
+spec:
+  ports:
+    - port: 80
+      targetPort: 9898
+      protocol: TCP
+      name: http
+  selector:
+    app: podinfo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: podinfo-canary
+  namespace: podinfo
+spec:
+  ports:
+    - port: 80
+      targetPort: 9898
+      protocol: TCP
+      name: http
+  selector:
+    app: podinfo
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: podinfo
+  namespace: podinfo
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: podinfo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: podinfo-stable
+                port:
+                  number: 80

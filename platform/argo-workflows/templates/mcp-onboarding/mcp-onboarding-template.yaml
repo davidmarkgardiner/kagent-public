@@ -1,0 +1,391 @@
+# MCP Tool Onboarding WorkflowTemplate
+#
+# Handles the quarantine → verify → promote pipeline for BYO MCP tool servers.
+# Triggered by byo-kagent-sensor when a PR labelled byo-mcp-tool is opened.
+#
+# DAG phases:
+#   1. deploy-to-quarantine    — apply RemoteMCPServer in mcp-quarantine namespace
+#   2. wait-for-introspection  — poll until status.discoveredTools[] populated
+#   3. scan-dangerous-verbs    — Kyverno apply dry-run on quarantined server
+#   4. orchestrator-verify     — call byo-kagent-orchestrator via A2A to generate catalog entry
+#   5. open-promotion-pr       — create follow-up PR moving to _verified/ with ToolCatalogEntry
+#   6. cleanup-quarantine      — remove quarantine RemoteMCPServer (on success or failure)
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: mcp-onboarding-template
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+spec:
+  entrypoint: main
+  serviceAccountName: byo-kagent-workflow-sa
+  activeDeadlineSeconds: 1200  # 20 min timeout
+
+  arguments:
+    parameters:
+      - name: vendor
+        description: "Vendor/org name (e.g. acme-corp)"
+      - name: tool-name
+        description: "Tool server name (e.g. postgres-mcp)"
+      - name: tool-version
+        description: "Version string (e.g. v1.0)"
+      - name: pr-id
+        description: "GitLab/GitHub PR ID for status comments"
+      - name: mcp-url
+        description: "URL for the MCP server (deployed by the PR author into mcp-quarantine or provided as external HTTPS)"
+      - name: mcp-protocol
+        value: STREAMABLE_HTTP
+        description: "MCP protocol: STREAMABLE_HTTP or SSE"
+
+  onExit: cleanup-quarantine
+
+  templates:
+    # ─────────────────────────────────────────────────────────────────
+    # Main DAG
+    # ─────────────────────────────────────────────────────────────────
+    - name: main
+      dag:
+        tasks:
+          - name: post-pending-status
+            template: post-pr-comment
+            arguments:
+              parameters:
+                - name: pr-id
+                  value: "{{workflow.parameters.pr-id}}"
+                - name: message
+                  value: "🔍 **MCP Onboarding Started** — deploying `{{workflow.parameters.tool-name}}@{{workflow.parameters.tool-version}}` to quarantine namespace for verification."
+
+          - name: deploy-to-quarantine
+            template: create-quarantine-remotemcpserver
+            dependencies: [post-pending-status]
+            arguments:
+              parameters:
+                - name: tool-name
+                  value: "{{workflow.parameters.tool-name}}"
+                - name: mcp-url
+                  value: "{{workflow.parameters.mcp-url}}"
+                - name: mcp-protocol
+                  value: "{{workflow.parameters.mcp-protocol}}"
+
+          - name: wait-for-introspection
+            template: poll-discovered-tools
+            dependencies: [deploy-to-quarantine]
+            arguments:
+              parameters:
+                - name: tool-name
+                  value: "{{workflow.parameters.tool-name}}"
+
+          - name: scan-dangerous-verbs
+            template: kyverno-dangerous-verb-scan
+            dependencies: [wait-for-introspection]
+            arguments:
+              parameters:
+                - name: tool-name
+                  value: "{{workflow.parameters.tool-name}}"
+                - name: discovered-tools
+                  value: "{{tasks.wait-for-introspection.outputs.parameters.discovered-tools}}"
+
+          - name: orchestrator-verify
+            template: call-orchestrator-verify
+            dependencies: [scan-dangerous-verbs]
+            arguments:
+              parameters:
+                - name: vendor
+                  value: "{{workflow.parameters.vendor}}"
+                - name: tool-name
+                  value: "{{workflow.parameters.tool-name}}"
+                - name: tool-version
+                  value: "{{workflow.parameters.tool-version}}"
+                - name: discovered-tools
+                  value: "{{tasks.wait-for-introspection.outputs.parameters.discovered-tools}}"
+                - name: dangerous-verb-result
+                  value: "{{tasks.scan-dangerous-verbs.outputs.parameters.result}}"
+
+          - name: open-promotion-pr
+            template: create-promotion-pr
+            dependencies: [orchestrator-verify]
+            when: "{{tasks.scan-dangerous-verbs.outputs.parameters.has-dangerous}} == false"
+            arguments:
+              parameters:
+                - name: vendor
+                  value: "{{workflow.parameters.vendor}}"
+                - name: tool-name
+                  value: "{{workflow.parameters.tool-name}}"
+                - name: tool-version
+                  value: "{{workflow.parameters.tool-version}}"
+                - name: catalog-entry-yaml
+                  value: "{{tasks.orchestrator-verify.outputs.parameters.catalog-entry-yaml}}"
+                - name: pr-id
+                  value: "{{workflow.parameters.pr-id}}"
+
+          - name: flag-for-human-review
+            template: post-pr-comment
+            dependencies: [orchestrator-verify]
+            when: "{{tasks.scan-dangerous-verbs.outputs.parameters.has-dangerous}} == true"
+            arguments:
+              parameters:
+                - name: pr-id
+                  value: "{{workflow.parameters.pr-id}}"
+                - name: message
+                  value: "⚠️ **Dangerous verbs detected** in `{{workflow.parameters.tool-name}}`. Platform team manual review required before promotion. Tools flagged: {{tasks.scan-dangerous-verbs.outputs.parameters.dangerous-tools}}"
+
+    # ─────────────────────────────────────────────────────────────────
+    # Templates
+    # ─────────────────────────────────────────────────────────────────
+    - name: create-quarantine-remotemcpserver
+      inputs:
+        parameters:
+          - name: tool-name
+          - name: mcp-url
+          - name: mcp-protocol
+      resource:
+        action: apply
+        manifest: |
+          apiVersion: kagent.dev/v1alpha2
+          kind: RemoteMCPServer
+          metadata:
+            name: quarantine-{{inputs.parameters.tool-name}}
+            namespace: mcp-quarantine
+            labels:
+              platform.kagent.dev/quarantine: "true"
+              platform.kagent.dev/pr-id: "{{workflow.parameters.pr-id}}"
+          spec:
+            description: "Quarantine instance for verification — not for production use"
+            protocol: {{inputs.parameters.mcp-protocol}}
+            url: {{inputs.parameters.mcp-url}}
+            timeout: 5m
+            allowedNamespaces:
+              from: Selector
+              selector:
+                matchLabels:
+                  kubernetes.io/metadata.name: mcp-quarantine
+
+    - name: poll-discovered-tools
+      inputs:
+        parameters:
+          - name: tool-name
+      outputs:
+        parameters:
+          - name: discovered-tools
+            valueFrom:
+              path: /tmp/discovered-tools.json
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          TOOL_NAME="{{inputs.parameters.tool-name}}"
+          MAX_WAIT=120
+          ELAPSED=0
+
+          echo "Polling RemoteMCPServer quarantine-${TOOL_NAME} for discoveredTools..."
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            TOOLS=$(kubectl get remotemcpserver "quarantine-${TOOL_NAME}" \
+              -n mcp-quarantine \
+              -o jsonpath='{.status.discoveredTools}' 2>/dev/null || echo "")
+
+            if [ -n "$TOOLS" ] && [ "$TOOLS" != "null" ] && [ "$TOOLS" != "[]" ]; then
+              echo "discoveredTools populated: $TOOLS"
+              echo "$TOOLS" > /tmp/discovered-tools.json
+              exit 0
+            fi
+
+            echo "Waiting for introspection... (${ELAPSED}s elapsed)"
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+
+          echo "[]" > /tmp/discovered-tools.json
+          echo "ERROR: discoveredTools did not populate within ${MAX_WAIT}s" >&2
+          exit 1
+
+    - name: kyverno-dangerous-verb-scan
+      inputs:
+        parameters:
+          - name: tool-name
+          - name: discovered-tools
+      outputs:
+        parameters:
+          - name: result
+            valueFrom:
+              path: /tmp/scan-result.txt
+          - name: has-dangerous
+            valueFrom:
+              path: /tmp/has-dangerous.txt
+          - name: dangerous-tools
+            valueFrom:
+              path: /tmp/dangerous-tools.txt
+      script:
+        image: python:3.11-slim
+        command: [python]
+        source: |
+          import json, re, sys
+
+          dangerous_patterns = re.compile(
+            r'\b(delete|exec|apply|drop|truncate|admin|escalate|impersonate|sudo)\b',
+            re.IGNORECASE
+          )
+
+          tools_raw = '''{{inputs.parameters.discovered-tools}}'''
+          try:
+              tools = json.loads(tools_raw)
+          except Exception:
+              tools = []
+
+          dangerous = []
+          for t in tools:
+              name = t.get('name', '')
+              desc = t.get('description', '')
+              if dangerous_patterns.search(name) or dangerous_patterns.search(desc):
+                  dangerous.append(name)
+
+          has_dangerous = len(dangerous) > 0
+          result = f"PASS" if not has_dangerous else f"DANGEROUS_VERBS_DETECTED: {', '.join(dangerous)}"
+
+          with open('/tmp/scan-result.txt', 'w') as f:
+              f.write(result)
+          with open('/tmp/has-dangerous.txt', 'w') as f:
+              f.write(str(has_dangerous).lower())
+          with open('/tmp/dangerous-tools.txt', 'w') as f:
+              f.write(', '.join(dangerous) if dangerous else 'none')
+
+          print(f"Scan result: {result}")
+          sys.exit(0)
+
+    - name: call-orchestrator-verify
+      inputs:
+        parameters:
+          - name: vendor
+          - name: tool-name
+          - name: tool-version
+          - name: discovered-tools
+          - name: dangerous-verb-result
+      outputs:
+        parameters:
+          - name: catalog-entry-yaml
+            valueFrom:
+              path: /tmp/catalog-entry.yaml
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          AGENT_URL="http://kagent-controller-manager.kagent-platform.svc.cluster.local:8083/api/a2a/kagent-platform/byo-kagent-orchestrator/"
+
+          # Build A2A message using jq for safe JSON construction
+          PAYLOAD=$(jq -n \
+            --arg vendor "{{inputs.parameters.vendor}}" \
+            --arg tool "{{inputs.parameters.tool-name}}" \
+            --arg version "{{inputs.parameters.tool-version}}" \
+            --arg tools "{{inputs.parameters.discovered-tools}}" \
+            --arg scan "{{inputs.parameters.dangerous-verb-result}}" \
+            '{
+              "jsonrpc": "2.0",
+              "id": "mcp-verify-1",
+              "method": "message/send",
+              "params": {
+                "message": {
+                  "role": "user",
+                  "parts": [{
+                    "kind": "text",
+                    "text": ("Generate a ToolCatalogEntry YAML for vendor=" + $vendor + " tool=" + $tool + " version=" + $version + ". discovered-tools=" + $tools + " danger-scan=" + $scan + ". Output ONLY the YAML, no explanation.")
+                  }]
+                }
+              }
+            }')
+
+          RESPONSE=$(curl -sf -X POST "$AGENT_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "$RESPONSE" | jq -r '.result.artifacts[0].parts[0].text' > /tmp/catalog-entry.yaml
+          echo "Catalog entry generated:"
+          cat /tmp/catalog-entry.yaml
+
+    - name: create-promotion-pr
+      inputs:
+        parameters:
+          - name: vendor
+          - name: tool-name
+          - name: tool-version
+          - name: catalog-entry-yaml
+          - name: pr-id
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          # Call orchestrator via A2A to create the promotion PR
+          AGENT_URL="http://kagent-controller-manager.kagent-platform.svc.cluster.local:8083/api/a2a/kagent-platform/byo-kagent-orchestrator/"
+          TARGET_PATH="apps/04-applications/mcp-tools/_verified/{{inputs.parameters.vendor}}/{{inputs.parameters.tool-name}}"
+
+          PAYLOAD=$(jq -n \
+            --arg vendor "{{inputs.parameters.vendor}}" \
+            --arg tool "{{inputs.parameters.tool-name}}" \
+            --arg version "{{inputs.parameters.tool-version}}" \
+            --arg yaml "{{inputs.parameters.catalog-entry-yaml}}" \
+            --arg path "$TARGET_PATH" \
+            --arg pr "{{inputs.parameters.pr-id}}" \
+            '{
+              "jsonrpc": "2.0",
+              "id": "promote-1",
+              "method": "message/send",
+              "params": {
+                "message": {
+                  "role": "user",
+                  "parts": [{
+                    "kind": "text",
+                    "text": ("Create a promotion PR: commit the following ToolCatalogEntry YAML to " + $path + "/toolcatalogentry.yaml and post a comment on PR #" + $pr + " linking to the new PR. Add annotation platform.kagent.dev/promoted-from-quarantine=true to the RemoteMCPServer. YAML: " + $yaml)
+                  }]
+                }
+              }
+            }')
+
+          curl -sf -X POST "$AGENT_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" | jq -r '.result.artifacts[0].parts[0].text'
+
+    - name: post-pr-comment
+      inputs:
+        parameters:
+          - name: pr-id
+          - name: message
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          AGENT_URL="http://kagent-controller-manager.kagent-platform.svc.cluster.local:8083/api/a2a/kagent-platform/byo-kagent-orchestrator/"
+
+          PAYLOAD=$(jq -n \
+            --arg pr "{{inputs.parameters.pr-id}}" \
+            --arg msg "{{inputs.parameters.message}}" \
+            '{
+              "jsonrpc": "2.0",
+              "id": "comment-1",
+              "method": "message/send",
+              "params": {
+                "message": {
+                  "role": "user",
+                  "parts": [{"kind": "text", "text": ("Post PR comment on PR #" + $pr + ": " + $msg)}]
+                }
+              }
+            }')
+
+          curl -sf -X POST "$AGENT_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+
+    # Exit handler — always runs to clean up quarantine resources
+    - name: cleanup-quarantine
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          TOOL_NAME="{{workflow.parameters.tool-name}}"
+          echo "Cleaning up quarantine resources for ${TOOL_NAME}..."
+          kubectl delete remotemcpserver "quarantine-${TOOL_NAME}" \
+            -n mcp-quarantine --ignore-not-found=true
+          echo "Cleanup complete. Status: {{workflow.status}}"

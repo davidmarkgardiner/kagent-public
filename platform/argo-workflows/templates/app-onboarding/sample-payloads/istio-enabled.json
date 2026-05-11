@@ -1,0 +1,95 @@
+{
+  "metadata": {
+    "name": "dashboard-dev",
+    "swc": "DD22222",
+    "environment": "DEV",
+    "owner": "platform-team",
+    "costCenter": "CC-2222",
+    "requestedBy": "alice.wong@company.com",
+    "requestedAt": "2026-03-24T09:30:00Z"
+  },
+  "namespace": {
+    "name": "dashboard-dev",
+    "createIfNotExists": true,
+    "labels": {
+      "team": "platform",
+      "project": "dashboard",
+      "istio-injection": "enabled"
+    }
+  },
+  "resourceQuota": {
+    "cpu": "4",
+    "memory": "8Gi",
+    "storage": "20Gi",
+    "pods": "30"
+  },
+  "networkPolicy": {
+    "defaultDeny": true,
+    "allowFrom": ["istio-system"],
+    "allowEgress": ["kube-dns", "istio-system"]
+  },
+  "serviceAccount": {
+    "name": "dashboard-sa",
+    "workloadIdentity": {
+      "enabled": false
+    }
+  },
+  "rbac": {
+    "teamAdGroup": "sg-platform-devs",
+    "clusterRole": "edit"
+  },
+  "application": {
+    "name": "dashboard",
+    "image": "myregistry.azurecr.io/dashboard:v2.0.0-rc1",
+    "replicas": 1,
+    "resources": {
+      "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+      },
+      "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      }
+    },
+    "env": [
+      { "name": "REACT_APP_ENV", "value": "development" },
+      { "name": "REACT_APP_API_URL", "value": "https://api-dev.company.com" }
+    ],
+    "ports": [
+      { "name": "http", "containerPort": 8080 }
+    ],
+    "healthCheck": {
+      "path": "/",
+      "port": 8080,
+      "initialDelaySeconds": 5,
+      "periodSeconds": 10
+    }
+  },
+  "networking": {
+    "service": {
+      "type": "ClusterIP",
+      "port": 80,
+      "targetPort": 8080
+    },
+    "istio": {
+      "enabled": true,
+      "gateway": "istio-system/main-gateway",
+      "host": "dashboard-dev.company.com",
+      "paths": [
+        { "prefix": "/", "rewrite": "/" }
+      ],
+      "cors": {
+        "allowOrigins": ["*"],
+        "allowMethods": ["GET", "POST", "OPTIONS"],
+        "allowHeaders": ["Authorization", "Content-Type"],
+        "maxAge": "3600s"
+      },
+      "timeout": "60s",
+      "retries": {
+        "attempts": 2,
+        "perTryTimeout": "15s"
+      }
+    }
+  }
+}

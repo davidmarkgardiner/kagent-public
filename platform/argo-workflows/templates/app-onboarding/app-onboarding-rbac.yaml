@@ -1,0 +1,93 @@
+# App Onboarding RBAC
+# Combined ClusterRole for the app onboarding workflow template.
+# Merges namespace-provisioner + Istio + ASO + cert-manager permissions.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-onboarding-sa
+  namespace: argo
+  labels:
+    app: app-onboarding
+    managed-by: argo-workflows
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: app-onboarding-provisioner
+  labels:
+    app: app-onboarding
+rules:
+  # --- Core Kubernetes resources (from namespace-provisioner) ---
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["create", "get", "list", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: ["create", "get", "list", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts", "configmaps", "secrets", "services"]
+    verbs: ["create", "get", "list", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+  # --- Workloads ---
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["create", "get", "list", "update", "patch", "delete", "watch"]
+
+  # --- Networking ---
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies", "ingresses"]
+    verbs: ["create", "get", "list", "update", "patch", "delete"]
+
+  # --- RBAC (restricted: only create RoleBindings referencing existing ClusterRoles) ---
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create", "get", "list", "update", "patch"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["get", "list"]
+
+  # --- Istio networking ---
+  - apiGroups: ["networking.istio.io"]
+    resources: ["virtualservices", "destinationrules", "gateways"]
+    verbs: ["create", "get", "list", "update", "patch", "delete"]
+
+  # --- ASO: Managed Identity ---
+  - apiGroups: ["managedidentity.azure.com"]
+    resources: ["userassignedidentities", "federatedidentitycredentials"]
+    verbs: ["create", "get", "list", "update", "patch", "delete", "watch"]
+
+  # --- ASO: Role Assignments ---
+  - apiGroups: ["authorization.azure.com"]
+    resources: ["roleassignments"]
+    verbs: ["create", "get", "list", "update", "patch", "delete", "watch"]
+
+  # --- cert-manager ---
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates", "issuers", "clusterissuers"]
+    verbs: ["create", "get", "list", "update", "patch", "delete"]
+
+  # --- Argo Workflows (for workflow task results) ---
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflowtaskresults"]
+    verbs: ["create", "get", "list", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: app-onboarding-provisioner-binding
+  labels:
+    app: app-onboarding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: app-onboarding-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: app-onboarding-sa
+    namespace: argo

@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "name": "my-api-dev",
+    "swc": "AA12345",
+    "environment": "DEV",
+    "owner": "platform-team",
+    "costCenter": "CC-1234",
+    "requestedBy": "david.gardiner@company.com",
+    "requestedAt": "2026-03-24T10:00:00Z"
+  },
+  "namespace": {
+    "name": "my-api-dev",
+    "createIfNotExists": true,
+    "labels": {
+      "team": "platform",
+      "project": "my-api"
+    }
+  },
+  "resourceQuota": {
+    "cpu": "2",
+    "memory": "4Gi",
+    "storage": "10Gi",
+    "pods": "20"
+  },
+  "networkPolicy": {
+    "defaultDeny": true,
+    "allowFrom": [],
+    "allowEgress": ["kube-dns"]
+  }
+}

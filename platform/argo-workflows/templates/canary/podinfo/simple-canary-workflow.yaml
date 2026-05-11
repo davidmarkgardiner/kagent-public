@@ -1,0 +1,218 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: simple-canary-test-
+  namespace: argo
+spec:
+  entrypoint: simple-canary-demo
+  serviceAccountName: argo-namespace-provisioner
+
+  templates:
+    - name: simple-canary-demo
+      steps:
+        - - name: check-current-deployment
+            template: check-deployment-status
+
+        - - name: simulate-canary-update
+            template: update-deployment-image
+            arguments:
+              parameters:
+                - name: newImage
+                  value: "stefanprodan/podinfo:6.5.0"
+
+        - - name: wait-for-rollout
+            template: wait-for-deployment
+
+        - - name: run-playwright-monitoring
+            template: run-monitoring
+
+        - - name: test-both-versions
+            template: test-services
+
+    - name: check-deployment-status
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Checking Current Deployment Status ==="
+
+          echo "Pods in podinfo namespace:"
+          kubectl get pods -n podinfo
+
+          echo "Services in podinfo namespace:"
+          kubectl get services -n podinfo
+
+          echo "Deployment status:"
+          kubectl get deployment -n podinfo
+
+    - name: update-deployment-image
+      inputs:
+        parameters:
+          - name: newImage
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Simulating Canary Update ==="
+          echo "Updating deployment to use image: {{inputs.parameters.newImage}}"
+
+          # Update deployment image and color
+          kubectl patch deployment podinfo -n podinfo -p '{
+            "spec": {
+              "template": {
+                "spec": {
+                  "containers": [{
+                    "name": "podinfo",
+                    "image": "{{inputs.parameters.newImage}}",
+                    "env": [{
+                      "name": "PODINFO_UI_COLOR",
+                      "value": "#ff6b6b"
+                    }]
+                  }]
+                }
+              }
+            }
+          }'
+
+          echo "Deployment updated successfully"
+
+    - name: wait-for-deployment
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Waiting for Deployment Rollout ==="
+
+          # Wait for rollout to complete
+          kubectl rollout status deployment/podinfo -n podinfo --timeout=300s
+
+          echo "Deployment rollout completed"
+
+    - name: run-monitoring
+      script:
+        image: mcr.microsoft.com/playwright:v1.40.0-focal
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Running Playwright Monitoring ==="
+
+          # Start port forwarding in background
+          kubectl port-forward -n podinfo service/podinfo-stable 8080:80 &
+          PF_PID=$!
+
+          # Wait for port forward to be ready
+          sleep 5
+
+          # Install dependencies
+          cd /tmp
+          npm init -y
+          npm install playwright
+
+          # Create monitoring script
+          cat > monitor.js << 'EOF'
+          const { chromium } = require('playwright');
+
+          async function monitorApp() {
+            console.log('Starting Playwright monitoring...');
+
+            const browser = await chromium.launch({
+              headless: true,
+              args: ['--no-sandbox', '--disable-dev-shm-usage']
+            });
+
+            const page = await browser.newPage();
+
+            try {
+              console.log('Navigating to http://localhost:8080');
+
+              // Set longer timeout and try to navigate
+              await page.goto('http://localhost:8080', {
+                waitUntil: 'networkidle',
+                timeout: 30000
+              });
+
+              console.log('Page loaded successfully');
+
+              // Take screenshot
+              await page.screenshot({
+                path: '/tmp/podinfo-screenshot.png',
+                fullPage: true
+              });
+              console.log('Screenshot saved to /tmp/podinfo-screenshot.png');
+
+              // Get page title
+              const title = await page.title();
+              console.log('Page title:', title);
+
+              // Get page content
+              const content = await page.textContent('body');
+              console.log('Page contains podinfo content:', content.includes('podinfo'));
+
+              // Try to get version info
+              try {
+                const response = await page.goto('http://localhost:8080/version');
+                const versionData = await response.json();
+                console.log('Version info:', JSON.stringify(versionData, null, 2));
+              } catch (e) {
+                console.log('Could not get version info:', e.message);
+              }
+
+              return 'SUCCESS';
+
+            } catch (error) {
+              console.error('Error during monitoring:', error.message);
+              return 'FAILED';
+            } finally {
+              await browser.close();
+            }
+          }
+
+          monitorApp().then(result => {
+            console.log('Monitoring result:', result);
+          }).catch(err => {
+            console.error('Monitoring error:', err);
+          });
+          EOF
+
+          # Run monitoring
+          if timeout 60 node monitor.js; then
+            echo "Playwright monitoring completed successfully"
+          else
+            echo "Playwright monitoring completed with issues"
+          fi
+
+          # Cleanup
+          kill $PF_PID 2>/dev/null || true
+
+          echo "Monitoring step completed"
+
+    - name: test-services
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          echo "=== Testing Services ==="
+
+          # Test stable service
+          echo "Testing podinfo-stable service..."
+          if curl -s --connect-timeout 5 --max-time 10 \
+            http://podinfo-stable.podinfo.svc.cluster.local/healthz; then
+            echo "Stable service is healthy"
+          else
+            echo "Stable service health check failed"
+          fi
+
+          # Test canary service (same as stable in this simple example)
+          echo "Testing podinfo-canary service..."
+          if curl -s --connect-timeout 5 --max-time 10 \
+            http://podinfo-canary.podinfo.svc.cluster.local/healthz; then
+            echo "Canary service is healthy"
+          else
+            echo "Canary service health check failed"
+          fi
+
+          echo "Service testing completed"

@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aso-stack-deployer
+  namespace: argo
+  labels:
+    app.kubernetes.io/name: aso-stack-deployer
+    app.kubernetes.io/component: workflow-executor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aso-stack-deployer-binding
+  labels:
+    app.kubernetes.io/name: aso-stack-deployer
+    app.kubernetes.io/component: workflow-executor
+subjects:
+  - kind: ServiceAccount
+    name: aso-stack-deployer
+    namespace: argo
+roleRef:
+  kind: ClusterRole
+  name: azureserviceoperator-manager-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Additional binding for Argo Workflow permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aso-stack-deployer-argo-binding
+  labels:
+    app.kubernetes.io/name: aso-stack-deployer
+    app.kubernetes.io/component: workflow-executor
+subjects:
+  - kind: ServiceAccount
+    name: aso-stack-deployer
+    namespace: argo
+roleRef:
+  kind: ClusterRole
+  name: argo-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Additional binding for namespace management
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aso-stack-deployer-namespace-binding
+  labels:
+    app.kubernetes.io/name: aso-stack-deployer
+    app.kubernetes.io/component: workflow-executor
+subjects:
+  - kind: ServiceAccount
+    name: aso-stack-deployer
+    namespace: argo
+roleRef:
+  kind: ClusterRole
+  name: namespace-provisioner
+  apiGroup: rbac.authorization.k8s.io

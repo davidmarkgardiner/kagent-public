@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: blue-green-test-deployment
+  namespace: default
+spec:
+  entrypoint: test-deployment
+  templates:
+  - name: test-deployment
+    steps:
+    - - name: deploy-demo-app
+        template: deploy-demo-app
+    - - name: create-services
+        template: create-services
+    - - name: create-rollout
+        template: create-rollout
+    - - name: verify-deployment
+        template: verify-deployment
+
+  - name: deploy-demo-app
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+      - |
+        echo "Checking demo application deployment..."
+        kubectl get deployment blue-green-demo 2>/dev/null || echo "Rollout already exists, skipping deploy"
+
+  - name: create-services
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+      - |
+        echo "Checking services..."
+        kubectl get service blue-green-active blue-green-preview
+
+  - name: create-rollout
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+      - |
+        echo "Checking rollout status..."
+        kubectl get rollout blue-green-demo
+
+  - name: verify-deployment
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+      - |
+        echo "Verifying deployment..."
+        kubectl get rollout blue-green-demo
+        kubectl get services

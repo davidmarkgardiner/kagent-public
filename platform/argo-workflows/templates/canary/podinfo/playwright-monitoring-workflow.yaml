@@ -1,0 +1,242 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: playwright-monitoring-template
+  namespace: argo
+spec:
+  entrypoint: playwright-monitoring
+  serviceAccountName: argo-namespace-provisioner
+
+  arguments:
+    parameters:
+      - name: namespace
+        value: "podinfo"
+      - name: stablePort
+        value: "8080"
+      - name: canaryPort
+        value: "8081"
+
+  templates:
+    - name: playwright-monitoring
+      dag:
+        tasks:
+          - name: setup-port-forwards
+            template: setup-port-forwarding
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+                - name: stablePort
+                  value: "{{workflow.parameters.stablePort}}"
+                - name: canaryPort
+                  value: "{{workflow.parameters.canaryPort}}"
+
+          - name: monitor-stable-version
+            template: playwright-monitor
+            dependencies: [setup-port-forwards]
+            arguments:
+              parameters:
+                - name: targetUrl
+                  value: "http://localhost:{{workflow.parameters.stablePort}}"
+                - name: version
+                  value: "stable"
+
+          - name: monitor-canary-version
+            template: playwright-monitor
+            dependencies: [setup-port-forwards]
+            arguments:
+              parameters:
+                - name: targetUrl
+                  value: "http://localhost:{{workflow.parameters.canaryPort}}"
+                - name: version
+                  value: "canary"
+
+          - name: compare-versions
+            template: version-comparison
+            dependencies: [monitor-stable-version, monitor-canary-version]
+            arguments:
+              parameters:
+                - name: stableResult
+                  value: "{{tasks.monitor-stable-version.outputs.parameters.monitoringResult}}"
+                - name: canaryResult
+                  value: "{{tasks.monitor-canary-version.outputs.parameters.monitoringResult}}"
+
+    - name: setup-port-forwarding
+      inputs:
+        parameters:
+          - name: namespace
+          - name: stablePort
+          - name: canaryPort
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "Setting up port forwarding for monitoring..."
+
+          # Start port forwarding for stable service
+          kubectl port-forward -n {{inputs.parameters.namespace}} service/podinfo-stable {{inputs.parameters.stablePort}}:80 &
+          STABLE_PF_PID=$!
+
+          # Start port forwarding for canary service
+          kubectl port-forward -n {{inputs.parameters.namespace}} service/podinfo-canary {{inputs.parameters.canaryPort}}:80 &
+          CANARY_PF_PID=$!
+
+          # Wait for port forwards to be ready
+          sleep 5
+
+          # Test connectivity
+          echo "Testing stable service connectivity..."
+          timeout 10 bash -c 'until curl -s http://localhost:{{inputs.parameters.stablePort}}/healthz; do sleep 1; done'
+
+          echo "Testing canary service connectivity..."
+          timeout 10 bash -c 'until curl -s http://localhost:{{inputs.parameters.canaryPort}}/healthz; do sleep 1; done'
+
+          echo "Port forwarding setup completed"
+          echo "Stable PID: $STABLE_PF_PID"
+          echo "Canary PID: $CANARY_PF_PID"
+
+          # Store PIDs for cleanup (in a real scenario, you'd need a cleanup step)
+          echo "$STABLE_PF_PID" > /tmp/stable-pf-pid
+          echo "$CANARY_PF_PID" > /tmp/canary-pf-pid
+
+    # Playwright monitoring step - this is where we'll use the MCP
+    - name: playwright-monitor
+      inputs:
+        parameters:
+          - name: targetUrl
+          - name: version
+      script:
+        image: mcr.microsoft.com/playwright:v1.40.0-focal
+        command: [bash]
+        workingDir: /tmp
+        source: |
+          set -e
+          echo "=== Playwright Monitoring for {{inputs.parameters.version}} version ==="
+
+          # Install Node.js dependencies
+          npm init -y
+          npm install playwright
+
+          # Create Playwright monitoring script
+          cat > monitor.js << 'EOF'
+          const { chromium } = require('playwright');
+
+          async function monitorPodinfo() {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+
+            try {
+              console.log('Navigating to:', process.env.TARGET_URL);
+              await page.goto(process.env.TARGET_URL, { waitUntil: 'networkidle' });
+
+              // Take screenshot
+              await page.screenshot({
+                path: `/tmp/${process.env.VERSION}-screenshot.png`,
+                fullPage: true
+              });
+              console.log('Screenshot saved');
+
+              // Get page title
+              const title = await page.title();
+              console.log('Page title:', title);
+
+              // Get version information if available
+              try {
+                const versionElement = await page.locator('.version, #version, [data-testid="version"]').first();
+                const versionText = await versionElement.textContent();
+                console.log('Version text:', versionText);
+              } catch (e) {
+                console.log('Version element not found, trying API endpoint');
+
+                // Try to get version from API
+                const response = await page.goto(process.env.TARGET_URL + '/version');
+                const versionData = await response.json();
+                console.log('Version from API:', JSON.stringify(versionData, null, 2));
+              }
+
+              // Check if page loaded successfully
+              const bodyText = await page.locator('body').textContent();
+              if (bodyText.includes('podinfo') || bodyText.includes('version')) {
+                console.log('SUCCESS: Page loaded and contains expected content');
+                return 'SUCCESS';
+              } else {
+                console.log('WARNING: Page loaded but content verification failed');
+                return 'WARNING';
+              }
+
+            } catch (error) {
+              console.error('Error during monitoring:', error.message);
+              return 'FAILED';
+            } finally {
+              await browser.close();
+            }
+          }
+
+          monitorPodinfo().then(result => {
+            console.log('Monitoring result:', result);
+            process.exit(result === 'SUCCESS' ? 0 : 1);
+          });
+          EOF
+
+          # Set environment variables
+          export TARGET_URL="{{inputs.parameters.targetUrl}}"
+          export VERSION="{{inputs.parameters.version}}"
+
+          # Run the monitoring script
+          echo "Starting Playwright monitoring..."
+          if node monitor.js; then
+            echo "SUCCESS" > /tmp/monitoring-result
+            echo "Monitoring completed successfully"
+          else
+            echo "FAILED" > /tmp/monitoring-result
+            echo "Monitoring failed"
+          fi
+
+          # List generated files
+          echo "Generated files:"
+          ls -la /tmp/*.png 2>/dev/null || echo "No screenshots generated"
+
+      outputs:
+        parameters:
+          - name: monitoringResult
+            valueFrom:
+              path: /tmp/monitoring-result
+
+    - name: version-comparison
+      inputs:
+        parameters:
+          - name: stableResult
+          - name: canaryResult
+      script:
+        image: alpine:latest
+        command: [sh]
+        source: |
+          echo "=== VERSION COMPARISON REPORT ==="
+          echo "Timestamp: $(date)"
+          echo "Stable Version Result: {{inputs.parameters.stableResult}}"
+          echo "Canary Version Result: {{inputs.parameters.canaryResult}}"
+
+          # Determine overall health
+          if [ "{{inputs.parameters.stableResult}}" = "SUCCESS" ] && [ "{{inputs.parameters.canaryResult}}" = "SUCCESS" ]; then
+            echo "Overall Status: HEALTHY"
+            echo "Both versions are responding correctly"
+          elif [ "{{inputs.parameters.stableResult}}" = "SUCCESS" ] && [ "{{inputs.parameters.canaryResult}}" != "SUCCESS" ]; then
+            echo "Overall Status: CANARY_ISSUES"
+            echo "Stable version is healthy, but canary has issues"
+          elif [ "{{inputs.parameters.stableResult}}" != "SUCCESS" ] && [ "{{inputs.parameters.canaryResult}}" = "SUCCESS" ]; then
+            echo "Overall Status: STABLE_ISSUES"
+            echo "Canary version is healthy, but stable has issues"
+          else
+            echo "Overall Status: BOTH_FAILING"
+            echo "Both versions have issues"
+          fi
+
+          echo "=== RECOMMENDATIONS ==="
+          if [ "{{inputs.parameters.canaryResult}}" = "SUCCESS" ]; then
+            echo "✓ Canary version is ready for promotion"
+          else
+            echo "✗ Canary version should not be promoted"
+          fi
+
+          echo "================================="

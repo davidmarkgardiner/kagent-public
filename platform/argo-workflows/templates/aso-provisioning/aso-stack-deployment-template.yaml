@@ -1,0 +1,314 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: aso-stack-deployment-template
+  namespace: argo
+  labels:
+    workflows.argoproj.io/archive-strategy: "true"
+spec:
+  entrypoint: deploy-aso-stack
+  serviceAccountName: aso-stack-deployer
+  arguments:
+    parameters:
+      - name: namespace
+        value: "azure-system"
+        description: "Target namespace for ASO resources"
+      - name: aso-stack-path
+        value: "aso-stack"
+        description: "Path to ASO stack manifests"
+
+  templates:
+    - name: deploy-aso-stack
+      dag:
+        tasks:
+          # Phase 1: Create namespace if it doesn't exist
+          - name: ensure-namespace
+            template: ensure-namespace
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          # Phase 2: Deploy Resource Groups (must exist before dependent resources)
+          - name: deploy-resource-groups
+            template: apply-manifest
+            dependencies: [ensure-namespace]
+            arguments:
+              parameters:
+                - name: manifest-file
+                  value: "{{workflow.parameters.aso-stack-path}}/resourcegroup.yaml"
+                - name: resource-type
+                  value: "ResourceGroup"
+
+          # Phase 3: Deploy Managed Identities (depend on Resource Groups)
+          - name: deploy-identities
+            template: apply-manifest
+            dependencies: [deploy-resource-groups]
+            arguments:
+              parameters:
+                - name: manifest-file
+                  value: "{{workflow.parameters.aso-stack-path}}/identity.yaml"
+                - name: resource-type
+                  value: "UserAssignedIdentity"
+
+          # Phase 4: Wait for identities to be ready before role assignments
+          - name: wait-for-identities
+            template: wait-for-resources
+            dependencies: [deploy-identities]
+            arguments:
+              parameters:
+                - name: resource-type
+                  value: "UserAssignedIdentity"
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+                - name: timeout
+                  value: "300s"
+
+          # Phase 5: Deploy Role Assignments (depend on Identities)
+          - name: deploy-role-assignments
+            template: apply-manifest
+            dependencies: [wait-for-identities]
+            arguments:
+              parameters:
+                - name: manifest-file
+                  value: "{{workflow.parameters.aso-stack-path}}/roleassignment.yaml"
+                - name: resource-type
+                  value: "RoleAssignment"
+
+          # Phase 6: Deploy AKS Cluster (depends on Resource Groups and Identities)
+          - name: deploy-cluster
+            template: apply-manifest
+            dependencies: [wait-for-identities]
+            arguments:
+              parameters:
+                - name: manifest-file
+                  value: "{{workflow.parameters.aso-stack-path}}/cluster.yaml"
+                - name: resource-type
+                  value: "ManagedCluster"
+
+          # Phase 7: Wait for cluster to be ready
+          - name: wait-for-cluster
+            template: wait-for-resources
+            dependencies: [deploy-cluster]
+            arguments:
+              parameters:
+                - name: resource-type
+                  value: "ManagedCluster"
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+                - name: timeout
+                  value: "1800s"  # 30 minutes for cluster creation
+
+          # Phase 8: Deploy Federated Credentials (depend on cluster and identities)
+          - name: deploy-federated-credentials
+            template: apply-manifest
+            dependencies: [wait-for-cluster, deploy-role-assignments]
+            arguments:
+              parameters:
+                - name: manifest-file
+                  value: "{{workflow.parameters.aso-stack-path}}/federated.yaml"
+                - name: resource-type
+                  value: "FederatedIdentityCredential"
+
+          # Phase 9: Deploy Extensions (depend on cluster being ready)
+          - name: deploy-extensions
+            template: apply-manifest
+            dependencies: [wait-for-cluster]
+            arguments:
+              parameters:
+                - name: manifest-file
+                  value: "{{workflow.parameters.aso-stack-path}}/extension.yaml"
+                - name: resource-type
+                  value: "Extension"
+
+          # Phase 10: Deploy Flux Configuration (final step, depends on extensions)
+          - name: deploy-flux-configuration
+            template: apply-manifest
+            dependencies: [deploy-extensions, deploy-federated-credentials]
+            arguments:
+              parameters:
+                - name: manifest-file
+                  value: "{{workflow.parameters.aso-stack-path}}/fluxconfiguration.yaml"
+                - name: resource-type
+                  value: "FluxConfiguration"
+
+          # Phase 11: Verify deployment
+          - name: verify-deployment
+            template: verify-aso-stack
+            dependencies: [deploy-flux-configuration]
+
+    # Template to ensure namespace exists
+    - name: ensure-namespace
+      inputs:
+        parameters:
+          - name: namespace
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          NAMESPACE="{{inputs.parameters.namespace}}"
+
+          echo "Checking if namespace ${NAMESPACE} exists..."
+          if kubectl get namespace ${NAMESPACE} >/dev/null 2>&1; then
+            echo "Namespace ${NAMESPACE} already exists - continuing"
+          else
+            echo "Namespace ${NAMESPACE} does not exist - this workflow requires the namespace to be pre-created"
+            echo "Please create the namespace first: kubectl create namespace ${NAMESPACE}"
+            exit 1
+          fi
+          echo "Namespace ${NAMESPACE} is ready"
+
+    # Template to apply Kubernetes manifests
+    - name: apply-manifest
+      inputs:
+        parameters:
+          - name: manifest-file
+          - name: resource-type
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        volumeMounts:
+          - name: manifests
+            mountPath: /aso-stack
+        source: |
+          set -e
+
+          MANIFEST_FILE="{{inputs.parameters.manifest-file}}"
+          RESOURCE_TYPE="{{inputs.parameters.resource-type}}"
+
+          echo "Applying ${RESOURCE_TYPE} resources from ${MANIFEST_FILE}..."
+
+          if [ ! -f "${MANIFEST_FILE}" ]; then
+            echo "Error: Manifest file ${MANIFEST_FILE} not found"
+            exit 1
+          fi
+
+          # Apply the manifest with server-side apply for better handling
+          kubectl apply -f "${MANIFEST_FILE}" --server-side=true
+
+          echo "Successfully applied ${RESOURCE_TYPE} resources"
+
+          # Output applied resources for verification
+          echo "Applied resources:"
+          kubectl get -f "${MANIFEST_FILE}" -o wide || echo "Some resources may still be provisioning..."
+      volumes:
+        - name: manifests
+          configMap:
+            name: aso-stack-manifests
+
+    # Template to wait for resources to be ready
+    - name: wait-for-resources
+      inputs:
+        parameters:
+          - name: resource-type
+          - name: namespace
+          - name: timeout
+            value: "300s"
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+
+          RESOURCE_TYPE="{{inputs.parameters.resource-type}}"
+          NAMESPACE="{{inputs.parameters.namespace}}"
+          TIMEOUT="{{inputs.parameters.timeout}}"
+
+          echo "Waiting for ${RESOURCE_TYPE} resources in namespace ${NAMESPACE} to be ready..."
+
+          # Convert timeout to seconds if needed
+          TIMEOUT_SECONDS=$(echo ${TIMEOUT} | sed 's/s$//')
+
+          case "${RESOURCE_TYPE}" in
+            "UserAssignedIdentity")
+              echo "Waiting for UserAssignedIdentity resources to have clientId..."
+              kubectl wait --for=jsonpath='{.status.clientId}' \
+                userassignedidentity --all -n ${NAMESPACE} \
+                --timeout=${TIMEOUT} || true
+              ;;
+            "ManagedCluster")
+              echo "Waiting for ManagedCluster to be provisioned..."
+              kubectl wait --for=condition=Ready \
+                managedcluster --all -n ${NAMESPACE} \
+                --timeout=${TIMEOUT} || true
+              ;;
+            "ResourceGroup")
+              echo "Waiting for ResourceGroup to be provisioned..."
+              kubectl wait --for=condition=Ready \
+                resourcegroup --all -n ${NAMESPACE} \
+                --timeout=${TIMEOUT} || true
+              ;;
+            *)
+              echo "Waiting for ${RESOURCE_TYPE} resources to be ready..."
+              sleep 30
+              ;;
+          esac
+
+          echo "Resources of type ${RESOURCE_TYPE} are ready or timeout reached"
+
+          # Show current status
+          kubectl get ${RESOURCE_TYPE,,} -n ${NAMESPACE} -o wide || echo "No ${RESOURCE_TYPE} resources found"
+
+    # Template to verify the complete ASO stack deployment
+    - name: verify-aso-stack
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+
+          NAMESPACE="{{workflow.parameters.namespace}}"
+
+          echo "=== ASO Stack Deployment Verification ==="
+          echo "Checking all deployed resources in namespace: ${NAMESPACE}"
+
+          # Check Resource Groups
+          echo ""
+          echo "Resource Groups:"
+          kubectl get resourcegroup -n ${NAMESPACE} -o wide
+
+          # Check Managed Identities
+          echo ""
+          echo "User Assigned Identities:"
+          kubectl get userassignedidentity -n ${NAMESPACE} -o wide
+
+          # Check Role Assignments
+          echo ""
+          echo "Role Assignments:"
+          kubectl get roleassignment -n ${NAMESPACE} -o wide || echo "No RoleAssignments found"
+
+          # Check Managed Cluster
+          echo ""
+          echo "Managed Clusters:"
+          kubectl get managedcluster -n ${NAMESPACE} -o wide
+
+          # Check Federated Identity Credentials
+          echo ""
+          echo "Federated Identity Credentials:"
+          kubectl get federatedidentitycredential -n ${NAMESPACE} -o wide || echo "No FederatedIdentityCredentials found"
+
+          # Check Extensions
+          echo ""
+          echo "Extensions:"
+          kubectl get extension -n ${NAMESPACE} -o wide || echo "No Extensions found"
+
+          # Check Flux Configurations
+          echo ""
+          echo "Flux Configurations:"
+          kubectl get fluxconfiguration -n ${NAMESPACE} -o wide || echo "No FluxConfigurations found"
+
+          # Summary
+          echo ""
+          echo "=== Deployment Summary ==="
+          echo "All ASO stack resources have been deployed."
+          echo "Check the status of individual resources for any provisioning issues."
+          echo "Azure resources should be visible in the Azure portal."
+
+          # Check for any failed resources
+          echo ""
+          echo "Checking for any resources with errors..."
+          kubectl get all -n ${NAMESPACE} --field-selector=status.phase=Failed || echo "No failed resources found"
+
+          echo ""
+          echo "ASO Stack deployment verification completed!"

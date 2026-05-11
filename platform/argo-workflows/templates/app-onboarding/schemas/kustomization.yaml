@@ -1,0 +1,30 @@
+# Kustomize generator for the golden-path payload schema ConfigMap.
+#
+# Single source of truth: golden-path-payload.schema.json.
+# This kustomization bakes that file into a ConfigMap in the argo
+# namespace so the app-onboarding-template's validate-payload step
+# can mount and validate against it at runtime.
+#
+# Apply with:
+#   kubectl apply -k application-stack/core/app-onboarding/schemas/
+#
+# The disableNameSuffixHash option keeps the ConfigMap name stable
+# (golden-path-payload-schema), so the WorkflowTemplate's volume
+# reference doesn't have to track a content hash.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argo
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app: app-onboarding
+    component: payload-schema
+  annotations:
+    description: "JSON Schema for the golden-path onboarding payload"
+
+configMapGenerator:
+  - name: golden-path-payload-schema
+    files:
+      - golden-path-payload.schema.json
