@@ -10,6 +10,8 @@ triage.
 
 - `README.md`
 - `docs/PLAN.md`
+- `docs/mil-28-path-a-plan.md`
+- `docs/mil-28-path-a-evidence.md`
 - `docs/runbooks/redpanda-kafka-path.md`
 - `docs/runbooks/webhook-path.md`
 - `docs/comparison-results.md`
@@ -41,14 +43,15 @@ in `docs/comparison-results.md`.
 
 ## Known Gaps
 
-- End-to-end staging evidence was not captured in this workspace.
+- End-to-end staging evidence was captured for the Redpanda Kafka path only.
+  Direct webhook evidence remains pending.
 - The Redpanda bridge is mounted from a ConfigMap for POC speed. A pinned image
   is better for long-lived staging.
-- The EventBus uses the controller-managed JetStream version selector. Pin the
-  version to a supported value from the target controller config before
-  promoting beyond staging.
+- The live cluster ran Argo Events `v1.9.6`; the intake requested `v1.9.10`.
+  Resolve the version mismatch before promoting beyond staging.
 - Alertmanager integration is represented as sample receiver ConfigMaps; the
-  final patch depends on the target Alertmanager deployment mechanism.
+  Redpanda path now also includes a scoped Prometheus Operator
+  `AlertmanagerConfig` contact point for clusters that support it.
 
 ## Reviewer Outcome
 

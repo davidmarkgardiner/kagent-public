@@ -2,20 +2,20 @@
 
 ## Current Status
 
-The repository now contains review-ready manifests and runbooks for both paths.
-End-to-end staging execution evidence has not been captured in this workspace,
-so measured latency and reliability values are intentionally marked as pending.
+The repository contains manifests and runbooks for both paths. MIL-28 captured
+live end-to-end evidence for the Redpanda Kafka path on `proxmox-k8s`; direct
+webhook path measurements remain pending in this workspace.
 
-Do not treat this document as proof of production behavior until the staging
-validation checklist is completed.
+Do not treat this document as proof of production behavior until both paths are
+validated under the same alert load and Alertmanager timing settings.
 
 ## Summary
 
 | Dimension | Redpanda Kafka path | Direct webhook path |
 |---|---|---|
-| Latency | Pending measurement. Expected to be higher because the alert crosses a bridge and broker before Argo Events consumes it. | Pending measurement. Expected to be lower because Alertmanager posts straight to the EventSource. |
-| Reliability | Stronger buffering and replay story. Redpanda can absorb short Sensor/EventSource outages after the bridge accepts the alert. | Simpler but depends on Alertmanager retry behavior and EventSource availability at delivery time. |
-| Payload fidelity | Full Alertmanager body is preserved under `alertmanager`; bridge adds `pod_name`, `received_at`, and metadata. | Native Alertmanager body is passed directly to Argo Events with no bridge envelope. |
+| Latency | MIL-28 observed Alertmanager API POST at `12:22:54Z`, bridge delivery/EventSource/Sensor/consumer at `12:23:16Z`. This includes Alertmanager grouping behavior, not just Kafka transit. | Pending measurement. Expected to be lower because Alertmanager posts straight to the EventSource. |
+| Reliability | Confirmed Kafka consumer group `kagent-alertmanager-poc` reached `TOTAL-LAG 0` after three test records. Redpanda can absorb short Sensor/EventSource outages after the bridge accepts the alert. | Simpler but depends on Alertmanager retry behavior and EventSource availability at delivery time. |
+| Payload fidelity | Confirmed. Consumer pod `kafka-alert-consumer-7ppgf` logged `pod_name` and full parsed Alertmanager JSON under `alert_json`. | Native Alertmanager body is passed directly to Argo Events with no bridge envelope. |
 | Operations overhead | Higher: Redpanda, topic bootstrap, bridge deployment, Kafka EventSource, and broker health checks. | Lower: one webhook EventSource, explicit Service, Sensor, and consumer pod trigger. |
 | Best fit | Staging where broker parity, replay, or later Event Hub replacement matters. | Fast POC, lower maintenance, and environments where transient loss can be handled by Alertmanager retry. |
 
@@ -44,7 +44,7 @@ Use this table during staging:
 | Run | Path | POST time | EventSource time | Sensor time | Consumer time | Outcome | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | Redpanda Kafka | Pending | Pending | Pending | Pending | Pending |  |
-| 2 | Redpanda Kafka | Pending | Pending | Pending | Pending | Pending |  |
+| 2 | Redpanda Kafka | 2026-05-11T12:22:54Z | 2026-05-11T12:23:16Z | 2026-05-11T12:23:16Z | 2026-05-11T12:23:16.687680Z | Success | Alertmanager grouped two active synthetic alerts. Evidence: `docs/mil-28-path-a-evidence.md`. |
 | 3 | Redpanda Kafka | Pending | Pending | Pending | Pending | Pending |  |
 | 1 | Direct webhook | Pending | Pending | Pending | Pending | Pending |  |
 | 2 | Direct webhook | Pending | Pending | Pending | Pending | Pending |  |

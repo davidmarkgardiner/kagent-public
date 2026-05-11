@@ -9,6 +9,8 @@ metadata:
 spec:
   template:
     serviceAccountName: kagent-poc-sensor
+    nodeSelector:
+      kubernetes.io/hostname: k8s-worker1
   dependencies:
     - name: alertmanager
       eventSourceName: alertmanager-kafka
@@ -49,6 +51,7 @@ spec:
                         parsed = json.loads(payload)
                         result = {
                             "alert_count": len(parsed.get("alerts", [])),
+                            "alert_json": parsed,
                             "consumed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                             "path": "redpanda-kafka",
                             "payload_keys": sorted(parsed.keys()),

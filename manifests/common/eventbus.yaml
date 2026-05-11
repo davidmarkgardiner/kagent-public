@@ -8,5 +8,13 @@ metadata:
     app.kubernetes.io/component: eventbus
 spec:
   jetstream:
-    version: latest
+    version: 2.10.10
     replicas: 1
+    streamConfig: |
+      maxMsgs: 50000
+      maxAge: 168h
+      maxBytes: -1
+      replicas: 1
+      duplicates: 300s
+      retention: 0
+      discard: 0

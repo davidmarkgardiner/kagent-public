@@ -1,4 +1,4 @@
-# MIL-31 Plan
+# K-Agent Event-Flow POC Plan
 
 ## Goal
 
@@ -25,8 +25,8 @@ consumer pod proves that it received and parsed the alert payload.
 4. Add the direct webhook path: webhook EventSource, explicit Service, sample
    Alertmanager receiver config, and consumer Sensor.
 5. Write runbooks for deployment, testing, evidence capture, and rollback.
-6. Write comparison and handoff documents with measured-results placeholders
-   where staging evidence is still required.
+6. Write comparison and handoff documents with live evidence for validated
+   paths and measured-results placeholders where validation is still required.
 
 ## Validation Strategy
 
