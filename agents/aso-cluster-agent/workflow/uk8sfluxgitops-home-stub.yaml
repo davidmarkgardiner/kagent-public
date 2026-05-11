@@ -1,0 +1,53 @@
+---
+# Home-cluster stub for UK8SFluxGitOps RGD
+# Replaces Azure kubernetesconfiguration.azure.com CRDs (not installed on home cluster)
+# with a ConfigMap placeholder so the RGD goes Active and unblocks uk8sclusterpublic.
+# DO NOT apply to work/production clusters — use the full uk8sfluxgitops.yaml instead.
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8sfluxgitops.kro.run
+  labels:
+    kro.run/type: gitops
+    kro.run/category: platform
+    kro.run/environment: home-stub
+  annotations:
+    kro.run/description: "Home-cluster stub: schema-compatible with uk8sfluxgitops but no Azure CRDs"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8SFluxGitOps
+    spec:
+      clusterName: string | required=true description="The name of the AKS cluster" pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+      targetNamespace: string | required=true description="The namespace where the cluster resource is created"
+      resourceGroup: string | required=true description="The resource group that owns this cluster"
+      environment: string | required=true enum="dev,staging,production" description="Environment for path resolution"
+      flux:
+        core:
+          url: string | required=true description="Git repository URL for core cluster configuration"
+          branch: string | default="main" description="Git branch for core configuration"
+        config:
+          url: string | required=true description="Git repository URL for application configuration"
+          branch: string | default="main" description="Git branch for application configuration"
+
+  resources:
+    - id: fluxConfigRecord
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: flux-stub-${schema.spec.clusterName}
+          namespace: kro-system
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: gitops-stub
+            kro.run/environment: home-stub
+        data:
+          clusterName: ${schema.spec.clusterName}
+          resourceGroup: ${schema.spec.resourceGroup}
+          environment: ${schema.spec.environment}
+          fluxCoreUrl: ${schema.spec.flux.core.url}
+          fluxCoreBranch: ${schema.spec.flux.core.branch}
+          fluxConfigUrl: ${schema.spec.flux.config.url}
+          fluxConfigBranch: ${schema.spec.flux.config.branch}
+          note: "Home-cluster stub. No Azure Extension or FluxConfiguration resources created."

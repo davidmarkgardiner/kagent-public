@@ -1,0 +1,67 @@
+{
+  "updated": "2026-02-07T10:30:00Z",
+  "clusters": {
+    "{{CLUSTER_NAME}}": {
+      "context": "{{CLUSTER_NAME}}",
+      "nodes": [
+        {"name": "k8s-cp1", "ip": "192.168.6.4", "role": "control-plane"},
+        {"name": "k8s-worker1", "ip": "192.168.6.5", "role": "worker"},
+        {"name": "k8s-worker2", "ip": "192.168.6.6", "role": "worker"}
+      ]
+    },
+    "{{CLUSTER_NAME}}": {
+      "context": "{{CLUSTER_NAME}}",
+      "nodes": [
+        {"name": "homelab-control-plane", "ip": "192.168.6.4", "role": "control-plane"}
+      ]
+    }
+  },
+  "services": {
+    "infrastructure": [
+      {"name": "NPM", "url": "npm.lab.{{INGRESS_DOMAIN}}", "nodePort": 30033, "namespace": "proxy"},
+      {"name": "Glance", "url": "lab.{{INGRESS_DOMAIN}}", "nodePort": 30000, "namespace": "dashboard"},
+      {"name": "Uptime Kuma", "url": "uptime.lab.{{INGRESS_DOMAIN}}", "nodePort": 30031, "namespace": "uptime"},
+      {"name": "Longhorn", "url": "longhorn.lab.{{INGRESS_DOMAIN}}", "nodePort": 30081, "namespace": "longhorn-system"}
+    ],
+    "development": [
+      {"name": "Gitea", "url": "gitea.lab.{{INGRESS_DOMAIN}}", "nodePort": 30032, "namespace": "gitea"},
+      {"name": "Grafana", "url": "{{INGRESS_DOMAIN}}", "nodePort": 30030, "namespace": "monitoring"},
+      {"name": "Langfuse", "url": "langfuse.lab.{{INGRESS_DOMAIN}}", "nodePort": 32401, "namespace": "langfuse"},
+      {"name": "Vikunja", "url": "tasks.lab.{{INGRESS_DOMAIN}}", "nodePort": 32402, "namespace": "vikunja"}
+    ],
+    "ai": [
+      {"name": "KubeAI", "url": "ai.lab.{{INGRESS_DOMAIN}}", "nodePort": 30091, "namespace": "default"},
+      {"name": "Open WebUI", "url": null, "nodePort": 30090, "namespace": "default"}
+    ],
+    "applications": [
+      {"name": "Ghost", "url": "blog.lab.{{INGRESS_DOMAIN}}", "nodePort": 30092, "namespace": "ghost"},
+      {"name": "Ghostfolio", "url": "stocks.lab.{{INGRESS_DOMAIN}}", "nodePort": 32333, "namespace": "ghostfolio"},
+      {"name": "Flarum", "url": "forum.lab.{{INGRESS_DOMAIN}}", "nodePort": 30093, "namespace": "discourse"},
+      {"name": "VidAuto", "url": "vidauto.lab.{{INGRESS_DOMAIN}}", "nodePort": 30034, "namespace": "video-automation"},
+      {"name": "Motia", "url": "motia.lab.{{INGRESS_DOMAIN}}", "nodePort": 32080, "namespace": "motia-demo"},
+      {"name": "Authentik", "url": "authentik.lab.{{INGRESS_DOMAIN}}", "nodePort": 30094, "namespace": "authentik"}
+    ],
+    "home": [
+      {"name": "Home Assistant", "url": "ha.lab.{{INGRESS_DOMAIN}}", "ip": "192.168.6.11", "port": 8123},
+      {"name": "Proxmox VE", "url": "proxmox.lab.{{INGRESS_DOMAIN}}", "ip": "192.168.5.38", "port": 8006}
+    ]
+  },
+  "secrets": [
+    "gitea-api-token",
+    "gitea-scotty-bot-token",
+    "npm-credentials",
+    "langfuse-secret-key",
+    "langfuse-public-key",
+    "vikunja-api-token",
+    "home-assistant-api-token",
+    "proxmox-api-token",
+    "home-assistant-credentials"
+  ],
+  "agents": [
+    {"name": "Scotty", "emoji": "🔧", "host": "k8s1-master", "ip": "192.168.6.4", "model": "claude-opus-4-5"},
+    {"name": "Gem", "emoji": "💎", "host": "clawdbot-gemini", "ip": "192.168.6.10", "model": "gemini-3-pro"},
+    {"name": "Kimi", "emoji": "🧠", "host": "clawdbot-kimi", "ip": "192.168.6.104", "model": "kimi-for-coding"},
+    {"name": "Codex", "emoji": "🤖", "host": "clawdbot-codex", "ip": "192.168.6.105", "model": "gpt-4-turbo"},
+    {"name": "Data", "emoji": "🖥️", "host": "red-mac", "ip": "192.168.5.95", "model": "varies"}
+  ]
+}
