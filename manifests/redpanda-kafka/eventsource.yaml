@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: alertmanager-kafka
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: kagent-event-flow-poc
+    app.kubernetes.io/component: kafka-eventsource
+spec:
+  kafka:
+    alertmanager:
+      url: redpanda.kagent-poc.svc.cluster.local:9092
+      topic: alertmanager-events
+      jsonBody: true
+      consumerGroup:
+        groupName: kagent-alertmanager-poc
+        oldest: true
+      connectionBackoff:
+        duration: 10s
+        steps: 5
+        factor: 2
+        jitter: 0.2

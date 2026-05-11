@@ -1,0 +1,12 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: kagent-event-flow-poc
+    app.kubernetes.io/component: eventbus
+spec:
+  jetstream:
+    version: latest
+    replicas: 1
