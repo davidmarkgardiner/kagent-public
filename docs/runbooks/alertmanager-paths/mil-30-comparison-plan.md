@@ -2,7 +2,7 @@
 
 ## Scope
 
-Validate both K-Agent event-flow paths on `proxmox-k8s` and stop at the
+Validate both K-Agent event-flow paths on `{{CLUSTER_NAME}}` and stop at the
 consumer pod:
 
 - Path A: Alertmanager -> Redpanda -> Argo Events Kafka EventSource -> Sensor
@@ -15,7 +15,7 @@ for a small synthetic sample. It does not exercise K-Agent triage.
 
 ## Method
 
-1. Target Kubernetes with `kubectl --context proxmox-k8s`.
+1. Target Kubernetes with `kubectl --context {{CLUSTER_NAME}}`.
 2. Apply the Redpanda Kafka overlay and confirm Redpanda, bridge, EventSource,
    Sensor, topic bootstrap job, and consumer trigger support are healthy.
 3. Apply the webhook overlay and confirm EventSource Service, EventSource, and

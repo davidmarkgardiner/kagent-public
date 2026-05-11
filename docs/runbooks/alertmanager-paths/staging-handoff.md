@@ -2,7 +2,7 @@
 
 ## Status
 
-Path A has live validation evidence from `proxmox-k8s` in
+Path A has live validation evidence from `{{CLUSTER_NAME}}` in
 `docs/mil-28-path-a-evidence.md`. The package is not production-ready until the
 direct webhook path is validated under the same conditions and the Argo Events
 version mismatch is resolved.

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Prove Path A on `proxmox-k8s`: Alertmanager-compatible webhook payload ->
+Prove Path A on `{{CLUSTER_NAME}}`: Alertmanager-compatible webhook payload ->
 Redpanda Kafka -> Argo Events Kafka EventSource -> consumer pod. Stop after the
 consumer pod logs the pod name and parseable alert JSON summary.
 

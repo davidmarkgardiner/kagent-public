@@ -2,7 +2,7 @@
 
 ## Current Status
 
-MIL-30 validated both event-flow paths on `proxmox-k8s` with three synthetic
+MIL-30 validated both event-flow paths on `{{CLUSTER_NAME}}` with three synthetic
 Alertmanager API alerts per path. Both paths delivered all test alerts to
 consumer pods and preserved the full Alertmanager envelope.
 

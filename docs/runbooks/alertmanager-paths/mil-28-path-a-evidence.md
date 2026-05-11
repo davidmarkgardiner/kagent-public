@@ -3,7 +3,7 @@
 ## Environment
 
 - Date: 2026-05-11
-- Cluster: `proxmox-k8s`
+- Cluster: `{{CLUSTER_NAME}}`
 - Namespace: `kagent-poc`
 - Argo Events controller observed: `quay.io/argoproj/argo-events:v1.9.6`
 - Branch: `symphony/MIL-28-redpanda-kafka-path`
@@ -15,7 +15,7 @@ controller and CRDs.
 ## Deployment Evidence
 
 ```text
-kubectl --context proxmox-k8s apply -k manifests/redpanda-kafka
+kubectl --context {{CLUSTER_NAME}} apply -k manifests/redpanda-kafka
 namespace/kagent-poc created
 service/redpanda created
 deployment.apps/alertmanager-kafka-bridge created

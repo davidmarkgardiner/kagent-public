@@ -2,7 +2,7 @@
 
 ## Environment
 
-- Target context: `proxmox-k8s`
+- Target context: `{{CLUSTER_NAME}}`
 - Namespace: `kagent-poc`
 - Test time: 2026-05-11T13:12Z
 - Alert delivery: synthetic Alertmanager API alerts posted through a local
