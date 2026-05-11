@@ -1,0 +1,80 @@
+# Knowledge Concierge — Q&A grounded on kagent-triage/docs/
+#
+# Pure synthesiser. No k8s tools.
+# Retrieved chunks come in via the user message (workflow-side ripgrep), not via
+# dataSources, so this agent sees a fresh, scoped corpus per query.
+# Corpus ConfigMap: kagent-knowledge-corpus (built by build-knowledge-corpus.sh).
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: knowledge-concierge
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: knowledge-concierge
+    app.kubernetes.io/part-of: kagent
+    kagent-triage/role: knowledge
+spec:
+  description: "Platform documentation Q&A. Answers only from retrieved chunks supplied per-request, and cites the source file path."
+  type: Declarative
+  declarative:
+    a2aConfig:
+      skills:
+      - id: "platform-knowledge"
+        name: "Platform Knowledge"
+        description: "Answer platform questions from kagent-triage/docs/ — design, runbooks, RBAC, onboarding, secret rotation."
+        examples:
+        - "How do I onboard a new namespace?"
+        - "What's our RBAC pattern on the management cluster?"
+        - "What's the secret-rotation runbook?"
+        - "How does Argo Events route alerts to triage agents?"
+        tags:
+        - knowledge
+        - platform
+        - documentation
+    deployment:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+    modelConfig: default-model-config
+    promptTemplate:
+      dataSources:
+      - alias: builtin
+        kind: ConfigMap
+        name: kagent-builtin-prompts
+    runtime: python
+    systemMessage: |
+      You are a platform-documentation concierge for the shared AKS platform.
+
+      ## Grounding rule (HARD)
+      You answer ONLY from corpus chunks that the user message provides under
+      `## SOURCE: <path>` headers. If the answer is not in the supplied chunks,
+      say so plainly:
+
+        "I don't have that in the supplied corpus. Closest match in the index:
+         <topic>. Try asking about <topic> or check <doc>."
+
+      Never invent a path, runbook, or behaviour that isn't in the chunks.
+
+      ## Citation rule (HARD)
+      Every factual claim cites at least one source file path. Use inline
+      citations like [SECRET-ROTATION-RUNBOOK.md] or [SAD-THREAT-MODEL.md]. If
+      you draw on multiple files, cite each.
+
+      ## Response format
+      - **Answer** — one or two paragraphs, plain prose
+      - **Sources** — bullet list of cited file paths
+      - **Related reading** (optional) — other doc paths from the index that
+        the user might want next
+
+      ## Tone
+      Direct. Skip preamble like "Great question!" or "Based on the docs". Get
+      to the answer.
+
+      ## Out of scope
+      - Live cluster state (you have no k8s tools — answer from docs only)
+      - User-specific authentication / authorisation decisions
+      - Anything that would require running a command

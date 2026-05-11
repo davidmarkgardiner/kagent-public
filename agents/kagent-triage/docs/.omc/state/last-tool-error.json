@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"marp PROJECT-STATUS-SLIDES.md --pptx --pptx-editable --allow-local-files -o PROJECT-STATUS-SLIDES-editable.pptx 2>&1 | tail -5\\nstat -f \\\"%z bytes  %N\\\" PROJECT-STATUS-SLIDES-editable.pptx...",
+  "error": "Exit code 1\n          fully guaranteed.\n[  WARN ] Insecure local file accessing is enabled for conversion from\n          PROJECT-STATUS-SLIDES.md.\n[ ERROR ] Failed converting Markdown. (LibreOffice soffice binary could not be\n          found.)\n6982485 bytes  PROJECT-STATUS-SLIDES.pptx",
+  "timestamp": "2026-04-29T09:10:16.448Z",
+  "retry_count": 1
+}
