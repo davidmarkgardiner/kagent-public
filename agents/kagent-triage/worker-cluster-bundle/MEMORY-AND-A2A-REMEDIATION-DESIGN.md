@@ -336,7 +336,7 @@ Agent diagnoses → Agent creates MR → Human merges → Flux syncs → Cluster
 ## 5. What We Need
 
 ### For memory (when kagent re-enables it)
-- PostgreSQL with pgvector (already deployed on red cluster for LiteLLM)
+- PostgreSQL with pgvector (already deployed on red cluster for agentgateway)
 - Optional: pgvectorscale for StreamingDiskANN indexing (swap postgres image to `timescale/timescaledb-ha`)
 - An embedding ModelConfig (e.g. `text-embedding-3-small` via OpenAI, or a local embedding model via Ollama/KubeAI)
 
@@ -356,7 +356,7 @@ Agent diagnoses → Agent creates MR → Human merges → Flux syncs → Cluster
 | kagent memory | Waiting — reverted in v0.8.3, expected back in future release |
 | gitops-remediation-agent | Design only — needs git + GitLab MCP servers |
 | Agent-as-tool (triage → gitops) | Proven — tested today with dev pipeline (Kimi, 6/6 tool calls) |
-| PostgreSQL + pgvector | Deployed on red cluster (used by LiteLLM) |
+| PostgreSQL + pgvector | Deployed on red cluster (used by agentgateway) |
 
 ---
 

@@ -5,5 +5,4 @@ resources:
   - mcp-dangerous-verb.yaml
   - agent-tenant-defaults.yaml
   - protect-catalog-status.yaml
-  - validate-modelconfig-via-litellm.yaml
   - validate-agent-cluster-target.yaml

@@ -108,7 +108,7 @@ kubectl --context {{CLUSTER_NAME}} get workflows -n argo-events -w
 - **Argo Events** controller + EventBus (NATS) running (in `argo-events` namespace)
 - **EventSource** `k8s-warning-events` watching all namespaces
 - **Telegram bot token** stored in `telegram-bot-secret` secret (`argo-events` namespace)
-- **ModelConfig** configured (e.g., `default-model-config` pointing to LiteLLM/Kimi/OpenAI)
+- **ModelConfig** configured (e.g., `default-model-config` pointing to agentgateway/OpenAI)
 
 ## Self-Service (BYOA)
 
@@ -149,7 +149,7 @@ See [SENSOR-SAFEGUARDS.md](./SENSOR-SAFEGUARDS.md) for full details and emergenc
 |---------|-------|
 | Cluster | Kind (`{{CLUSTER_NAME}}` context) |
 | kagent version | v0.8.0-beta4 |
-| LLM Provider | Kimi For Coding via LiteLLM proxy |
+| LLM Provider | Kimi For Coding via agentgateway |
 | ModelConfig | `default-model-config` |
 | kagent UI | https://{{INGRESS_DOMAIN}} |
 | Telegram Channel | `{{REMOVED}}` |

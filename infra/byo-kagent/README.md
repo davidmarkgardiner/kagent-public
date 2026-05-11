@@ -48,7 +48,7 @@ BYO-KAgent gives teams a repeatable, auditable, GitOps-native path to ship their
                                   ├─ Agent has ToolGrants? ✓
                                   ├─ ToolGrants resolve catalog? ✓
                                   ├─ ToolGrants not expired? ✓
-                                  └─ ModelConfig via LiteLLM? ✓
+                                  └─ ModelConfig via agentgateway? ✓
                                   │
                                   ▼
                                  kagent controller spins up Agent pod
@@ -93,7 +93,7 @@ BYO-KAgent gives teams a repeatable, auditable, GitOps-native path to ship their
 
 ### Shared model pool (`apps/03-platform/kagent-shared/`)
 
-Three shared `ModelConfig` CRs routed through LiteLLM for cost attribution:
+Three shared `ModelConfig` CRs routed through agentgateway for cost attribution:
 
 | Name | Model | Cost tier |
 |---|---|---|
@@ -181,7 +181,7 @@ All 6 policies run in `Enforce` mode with `background: true`. They share one car
 | `mcp-dangerous-verb` | `RemoteMCPServer` CRs leaving quarantine with `delete/exec/apply/drop/admin` tool names |
 | `agent-tenant-defaults` | Tenant namespaces missing PSS restricted label, team/cost-center labels, or using ClusterRoleBinding |
 | `protect-catalog-status` | Any principal other than `byo-kagent-orchestrator` writing `ToolCatalogEntry/status`; also blocks mutation of `verifiedAt` |
-| `validate-modelconfig-via-litellm` | `ModelConfig` CRs not pointing at the LiteLLM proxy (unless `platform.kagent.dev/byo-model-approved=true`) |
+| `validate-modelconfig-via-litellm` | `ModelConfig` CRs not pointing at the agentgateway (unless `platform.kagent.dev/byo-model-approved=true`) |
 | `validate-agent-cluster-target` | Agents without `team`/`cost-center` labels or without resource limits |
 
 **Flux + Kyverno:** Flux applies with field manager `kustomize-controller`. None of the policies exclude this field manager — Flux gets the same enforcement as kubectl.
@@ -280,7 +280,7 @@ kubectl apply -f infra-stack/byo-kagent/crds/
 # 2. Install Kyverno policies (carve-out for kagent-platform built-in)
 kubectl apply -f infra-stack/byo-kagent/kyverno-policies/
 
-# 3. Apply shared ModelConfig pool (depends on LiteLLM already running)
+# 3. Apply shared ModelConfig pool (depends on agentgateway already running)
 kubectl apply -k apps/03-platform/kagent-shared/
 
 # 4. Apply bootstrap ToolCatalogEntry CRs
@@ -367,7 +367,7 @@ This triggers a second approval label requirement (`infra-approved`) in the orch
 |---|---|
 | Agent stdout/stderr | Alloy → Loki (existing LGTM stack) |
 | A2A request traces | OTel collector → Tempo |
-| LLM spend per team | LiteLLM dashboard (`team` label on each `ModelConfig`) |
+| LLM spend per team | agentgateway dashboard (`team` label on each `ModelConfig`) |
 | Workflow execution history | Argo Workflows UI |
 | Kyverno policy violations | `kubectl get policyreport -A` |
 | Tool catalog status | `kubectl get toolcatalogentries` |

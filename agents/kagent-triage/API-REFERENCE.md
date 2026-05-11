@@ -220,11 +220,11 @@ spec:
   apiKeySecret: litellm-key
   apiKeySecretKey: api-key
   openAI:
-    baseUrl: http://litellm-proxy.kagent:4000/v1  # LiteLLM proxy URL
+    baseUrl: http://litellm-proxy.kagent:4000/v1  # agentgateway URL
 ```
 
 **Supported Providers:**
-- `OpenAI` — Direct OpenAI or OpenAI-compatible (LiteLLM, vLLM, KubeAI)
+- `OpenAI` — Direct OpenAI or OpenAI-compatible (agentgateway, vLLM, KubeAI)
 - `Anthropic` — Claude models
 - `AzureOpenAI` — Azure OpenAI Service
 

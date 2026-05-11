@@ -247,9 +247,9 @@ spec:
 EOF
 ```
 
-### Option B: Remote LiteLLM Proxy over HTTPS (cross-cluster via VirtualService)
+### Option B: Remote agentgateway over HTTPS (cross-cluster via VirtualService)
 
-This is the setup when LiteLLM runs on a different cluster and is exposed via Istio VirtualService over HTTPS.
+This is the setup when agentgateway runs on a different cluster and is exposed via Istio VirtualService over HTTPS.
 
 ```bash
 # 1. Get the CA certificate
@@ -278,7 +278,7 @@ kubectl create secret generic litellm-key \
 kubectl apply -f modelconfig-remote-litellm.yaml
 ```
 
-The ModelConfig for remote HTTPS LiteLLM:
+The ModelConfig for remote HTTPS agentgateway:
 ```yaml
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
@@ -307,7 +307,7 @@ spec:
 
 **Troubleshooting if agents can't connect:**
 ```bash
-# Can you reach LiteLLM from inside the kagent namespace?
+# Can you reach agentgateway from inside the kagent namespace?
 kubectl run curl-test --rm -it --image=curlimages/curl -n kagent -- \
   curl -sv https://litellm.your-domain.com/health/liveliness
 
@@ -336,7 +336,7 @@ kubectl get networkpolicy -n kagent
 | `x509: certificate signed by unknown authority` | Missing or wrong CA cert in Secret | Get correct CA cert, recreate Secret |
 | `connection refused` | Wrong URL or port | Check VirtualService host + port |
 | `no such host` | DNS can't resolve the VirtualService hostname | Check CoreDNS, try IP instead of hostname |
-| `context deadline exceeded` | NetworkPolicy blocking egress from kagent namespace | Add egress rule allowing HTTPS to LiteLLM |
+| `context deadline exceeded` | NetworkPolicy blocking egress from kagent namespace | Add egress rule allowing HTTPS to agentgateway |
 | ModelConfig shows `Accepted` but agent still fails | API key wrong or model name mismatch | Verify key works with curl from inside the pod |
 | curl works but agent doesn't | Secret name/key mismatch in ModelConfig | Check `apiKeySecret` and `apiKeySecretKey` match exactly |
 

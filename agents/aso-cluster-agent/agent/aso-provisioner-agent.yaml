@@ -10,7 +10,7 @@
 #        k8s_get_resources (status polling)
 #        k8s_describe_resource (readable status for user)
 #
-# Model: default-model-config (Qwen 2.5-14B via LiteLLM)
+# Model: default-model-config (Qwen 2.5-14B via agentgateway)
 #
 # Deploy-time annotation DRY_RUN_DEFAULT controls whether new clusters
 # default to dry-run (true = home/safe, false = work/real).

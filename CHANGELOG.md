@@ -18,7 +18,7 @@ Complete repo refresh: narrow Alertmanager→Redpanda PoC → full platform mono
 - `observability/prometheus-alertmanager/` — AlertManager → Argo Events
 - `agents/kagent-triage/` — Worker-cluster AI triage: Agent CRs, sensors, workflow, BYOA builders
 - `agents/aso-cluster-agent/` — Chat-to-cluster-provisioning PoC
-- `agents/holmes-integration/` — HolmesGPT + Argo Workflows
+- 
 - `agents/networking-triage/` — Container Network Insights Agent
 - `agents/skills/` — kagent skill manifests
 - `a2a/` — A2A protocol memory reference and call examples

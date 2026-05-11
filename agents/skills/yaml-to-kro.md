@@ -449,7 +449,7 @@ spec:
 |------|-----------|---------|
 | RGD metadata.name | `uk8s<name>.kro.run` | `uk8slitellm.kro.run` |
 | RGD file name | `uk8s-<name>.yaml` | `uk8s-litellm.yaml` |
-| Schema kind | `UK8s<Name>` or `Kro<Name>` | `UK8sLiteLLM`, `KroAIStack` |
+| Schema kind | `UK8s<Name>` or `Kro<Name>` | `UK8sagentgateway`, `KroAIStack` |
 | Resource id | camelCase, descriptive | `serviceAccount`, `externalSecretsIdentity` |
 | Generated resource names | `${schema.spec.clusterName}-<suffix>` | `uami-${schema.spec.clusterName}-externalsecrets` |
 | Instance file name | `instance.yaml` or `<env>-instance.yaml` | `instance.yaml` |
@@ -533,9 +533,9 @@ resources:
 ## Reference Files in This Repo
 
 - **Definitions:** `infra-stack/kro-stack/definitions/` -- All production RGDs
-- **Simple example:** `uk8s-litellm.yaml` -- LiteLLM proxy (Namespace + SA + FedCred + ConfigMap + Deployment + Service + PDB + HPA)
+- **Simple example:** `uk8s-litellm.yaml` -- agentgateway (Namespace + SA + FedCred + ConfigMap + Deployment + Service + PDB + HPA)
 - **Complex example:** `uk8scluster-public.yaml` -- Full AKS cluster with nested RGDs and ASO resources
 - **Event collector:** `uk8s-kro-worker-alloy.yaml` -- Alloy deployment with HCL config templating
 - **AI stack:** `uk8s-kro-ai-stack.yaml` -- Argo Events + Sensor + WorkflowTemplate composition
-- **Instances:** `kro/instance.yaml`, `application-stack/apps/holmesgpt/instance.yaml`
+- **Instances:** `kro/instance.yaml`, `application-stack/apps/kagent/instance.yaml`
 - **KRO patterns reference:** `.claude/skills/k8s-specialist/kro-stack-builder/references/kro_patterns.md`

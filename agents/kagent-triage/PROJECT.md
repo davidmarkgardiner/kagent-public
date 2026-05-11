@@ -22,8 +22,8 @@ K8s Warning Event (any namespace)
 - EventSource: k8s-warning-events (watching all namespaces)
 - kagent: Running (kagent namespace, v0.8.0-beta4)
 - kagent agents: helm-agent, k8s-agent, kgateway-agent
-- LiteLLM proxy: routing to Kimi API
-- ModelConfig: kimi-for-coding via LiteLLM
+- agentgateway: routing to Kimi API
+- ModelConfig: kimi-for-coding via agentgateway
 
 ## Phase 1: Test Namespace (THIS SPRINT)
 1. Create test-agent in kagent (namespace-aware system prompt for test-ns)

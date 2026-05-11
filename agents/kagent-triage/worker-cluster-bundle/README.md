@@ -37,7 +37,7 @@ sensor-cert-manager.yaml               ← Filters: namespace=cert-manager, rate
 | `01-eventsource.yaml` | Watches K8s Warning events | `argo-events` |
 | `02-workflow-template.yaml` | Shared triage workflow (find agent → A2A → GitLab → notify) | `argo-events` |
 | `03-sensor-generic.yaml` | Generic sensor (fallback, uses k8s-agent) | `argo-events` |
-| `modelconfig-remote-litellm.yaml` | ModelConfig pointing to LiteLLM proxy | `kagent` |
+| `modelconfig-remote-litellm.yaml` | ModelConfig pointing to agentgateway | `kagent` |
 
 ### Per-Namespace Agents (deploy to `kagent` namespace)
 

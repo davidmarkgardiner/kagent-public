@@ -112,10 +112,10 @@ kubectl --context={{CLUSTER_NAME}} get pods -A
 |---------|-----|----------|-----------|---------|
 | KubeAI | ai.lab.{{INGRESS_DOMAIN}} | 30091 | kubeai | Local LLM serving (GPU) |
 | Open WebUI | chat.lab.{{INGRESS_DOMAIN}} | 30090 | kubeai | Chat interface |
-| LiteLLM | litellm.lab.{{INGRESS_DOMAIN}}/ui/ | — | litellm | OpenAI-compatible proxy (key: sk-poc-homelab-1234) |
+| agentgateway | litellm.lab.{{INGRESS_DOMAIN}}/ui/ | — | litellm | OpenAI-compatible proxy (key: sk-poc-homelab-1234) |
 | KAgent | kagent.lab.{{INGRESS_DOMAIN}} | — | kagent | AI agent framework |
 | AKS-MCP | — | — | aks-mcp | kubectl access for AI agents |
-| HolmesGPT | — | — | holmesgpt | AI-powered K8s triage (optional) |
+| kagent | — | — | kagent | AI-powered K8s triage (optional) |
 
 **KubeAI models:** qwen2.5-3b (running), qwen3-14b (degraded — GPU nodeSelector mismatch, RTX 3060 is Turing not Ampere)
 
@@ -346,7 +346,7 @@ agents-central/
 │   ├── manifests/           # Exported live manifests per namespace
 │   └── DEPLOYMENT-STATUS.md # Current deployment state
 ├── prometheus-alerting/     # Alerting pipeline
-└── ai-platform/config/      # KubeAI, LiteLLM, KAgent Helm values
+└── ai-platform/config/      # KubeAI, agentgateway, KAgent Helm values
 ```
 
 ## Related Skills

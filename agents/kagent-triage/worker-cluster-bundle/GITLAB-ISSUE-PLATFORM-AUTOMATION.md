@@ -34,7 +34,7 @@ Full proposal document: `PLATFORM-PROPOSAL.md`
 
 ## Desired State (Phases)
 
-- [ ] **Phase 1:** Management cluster setup — Argo Workflows, Argo Events, kagent, LiteLLM, ASO, LGTM monitoring stack
+- [ ] **Phase 1:** Management cluster setup — Argo Workflows, Argo Events, kagent, agentgateway, ASO, LGTM monitoring stack
 - [ ] **Phase 2:** Namespace onboarding — self-service creation with quotas, network policies, labels, audit trail
 - [ ] **Phase 3:** Runtime triage on worker clusters — event-driven K8s Warning → per-namespace agent diagnosis → GitLab + Teams
 - [ ] **Phase 4:** Application onboarding — three input modes (payload/manifest/Helm), workload identity via ASO, post-deploy validation via kagent
@@ -49,7 +49,7 @@ Full proposal document: `PLATFORM-PROPOSAL.md`
 | Argo Workflows | Orchestration engine for both projects |
 | Argo Events | Event-driven triggers — K8s events (triage), webhooks (onboarding) |
 | kagent | AI agents — triage diagnosis + post-deploy validation |
-| LiteLLM + PostgreSQL | LLM proxy, token tracking, spend dashboard |
+| agentgateway + PostgreSQL | LLM proxy, token tracking, spend dashboard |
 | Azure Service Operator (ASO) | Declarative Azure resource provisioning |
 | External Secrets Operator | Secret injection from Key Vault |
 | kube-prometheus-stack | Monitoring, alerting, Grafana dashboards |

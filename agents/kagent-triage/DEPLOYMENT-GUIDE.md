@@ -54,7 +54,7 @@ kill %1
 | Secret | Namespace | Key | Purpose |
 |--------|-----------|-----|---------|
 | `telegram-bot-secret` | `argo-events` | `token` | Telegram bot token for notifications |
-| `litellm-key` | `kagent` | `api-key` | LiteLLM API key for LLM access |
+| `litellm-key` | `kagent` | `api-key` | agentgateway API key for LLM access |
 
 ```bash
 # Create Telegram bot secret (if not exists)

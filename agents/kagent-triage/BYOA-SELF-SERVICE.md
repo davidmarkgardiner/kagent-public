@@ -144,7 +144,7 @@ spec:
 |-----------|-------------|
 | **KAgent controller** | Runs and manages all agents |
 | **kagent-tool-server** | MCP tools: kubectl equivalents (get, describe, logs, events, connectivity) |
-| **LLM endpoint** | Shared model pool via LiteLLM (default: `default-model-config`) |
+| **LLM endpoint** | Shared model pool via agentgateway (default: `default-model-config`) |
 | **Argo Events pipeline** | Routes alerts to the correct agent based on namespace annotation |
 | **Builder agents** | `byoa-builder-expert` and `byoa-builder-guided` for self-service onboarding |
 | **Claude skill** | `byoa-agent-builder` for Claude Code users |

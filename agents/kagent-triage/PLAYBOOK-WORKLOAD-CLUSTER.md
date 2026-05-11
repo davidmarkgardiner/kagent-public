@@ -37,7 +37,7 @@ Check these exist on the target AKS cluster before starting:
 - [ ] Argo Workflows installed
 - [ ] Argo Events installed + EventBus (NATS) running in `argo-events`
 - [ ] kagent installed (controller + tool-server in `kagent` namespace)
-- [ ] ModelConfig deployed in `kagent` namespace (Azure OpenAI or LiteLLM)
+- [ ] ModelConfig deployed in `kagent` namespace (Azure OpenAI or agentgateway)
 - [ ] `argo-events-sa` ServiceAccount with RBAC for workflows + workflowtaskresults
 
 ---

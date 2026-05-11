@@ -69,11 +69,11 @@ Method: message/send
 
 | Component | Location | Description |
 |-----------|----------|-------------|
-| **LiteLLM Gateway** | in-cluster | LLM routing proxy. Agents send inference requests here, and LiteLLM forwards to the configured backend |
-| **KubeAI (Qwen3-14b)** | self-hosted | Open-source LLM running on the cluster via KubeAI. Model: `qwen3-14b`. No external API calls, full data privacy. Referred to as `openai/qwen3-14b` in LiteLLM routing config |
+| **agentgateway Gateway** | in-cluster | LLM routing proxy. Agents send inference requests here, and agentgateway forwards to the configured backend |
+| **KubeAI (Qwen3-14b)** | self-hosted | Open-source LLM running on the cluster via KubeAI. Model: `qwen3-14b`. No external API calls, full data privacy. Referred to as `openai/qwen3-14b` in agentgateway routing config |
 | **OpenAI API (GPT-4o)** | cloud | Alternative cloud-hosted LLM backend. Higher capability but requires external API access and incurs per-token costs |
 
-LiteLLM can route to **either** backend. The `OR` relationship means you configure one or both — KubeAI for self-hosted/private workloads, OpenAI for higher-quality analysis when needed.
+agentgateway can route to **either** backend. The `OR` relationship means you configure one or both — KubeAI for self-hosted/private workloads, OpenAI for higher-quality analysis when needed.
 
 ### Step 7: REPORT — GitLab + Mattermost
 
@@ -114,7 +114,7 @@ LiteLLM can route to **either** backend. The `OR` relationship means you configu
 | Orange | `#ffd8a8` / `#e8590c` | Alerts and notifications (Mattermost) |
 | Grey | `#dee2e6` / `#495057` | Kubernetes resources (Pods, PrometheusRule CRDs) |
 | Red/Coral | `#ffc9c9` / `#e03131` | External integrations (GitLab) |
-| Purple | `#d0bfff` / `#7048e8` | AI / KAgent (Controller, agents, LiteLLM, LLM backends) |
+| Purple | `#d0bfff` / `#7048e8` | AI / KAgent (Controller, agents, agentgateway, LLM backends) |
 | Teal | `#96f2d7` / `#0ca678` | MCP tools (AKS-MCP, AKS Cluster) |
 | Dashed border | — | Namespace boundary |
 
@@ -129,12 +129,12 @@ LiteLLM can route to **either** backend. The `OR` relationship means you configu
 
 This separation ensures that automated alerts don't accidentally trigger destructive actions.
 
-### LiteLLM as LLM Gateway
+### agentgateway as LLM Gateway
 
-LiteLLM sits between the agents and the actual LLM backends. This provides:
+agentgateway sits between the agents and the actual LLM backends. This provides:
 - **Model routing** — switch between self-hosted Qwen3-14b and cloud GPT-4o without changing agent config
 - **Fallback** — if the self-hosted model is overloaded, requests can fall back to OpenAI
-- **Cost tracking** — LiteLLM tracks token usage per model
+- **Cost tracking** — agentgateway tracks token usage per model
 - **API compatibility** — both KubeAI and OpenAI expose OpenAI-compatible APIs, so agents use a single interface
 
 ### AKS-MCP for Kubernetes Access

@@ -149,7 +149,7 @@ kubectl --context $AKS wait --for=condition=Ready pod -l eventbus-name=default -
 kubectl --context $AKS get pods -n argo -n argo-events
 ```
 
-## Step 4: Deploy kagent + LiteLLM
+## Step 4: Deploy kagent + agentgateway
 
 ```bash
 AKS=aks-event-triage-dev-admin
@@ -173,7 +173,7 @@ helm --kube-context red get manifest kagent-crds -n kagent | kubectl --context $
 # Export kagent controller manifests
 helm --kube-context red get manifest kagent -n kagent | kubectl --context $AKS apply -f -
 
-# Create LiteLLM config + secrets
+# Create agentgateway config + secrets
 kubectl --context $AKS apply -f - <<'EOF'
 apiVersion: v1
 kind: ConfigMap
@@ -273,7 +273,7 @@ spec:
     targetPort: 4000
 EOF
 
-# Update ModelConfig to point at LiteLLM
+# Update ModelConfig to point at agentgateway
 kubectl --context $AKS patch modelconfig default-model-config -n kagent --type=merge -p '{
   "spec": {
     "model": "kimi-for-coding",
@@ -355,23 +355,23 @@ az group delete -g rg-event-triage-dev --yes --no-wait
 |-------|-----------|
 | Local accounts disabled by default | `az aks update --enable-local-accounts` for admin access |
 | Argo Events controller needs leases RBAC | Grant cluster-admin to argo-events SA (dev only) |
-| LiteLLM OOMKilled at 512Mi | Set memory limit to 1Gi |
+| agentgateway OOMKilled at 512Mi | Set memory limit to 1Gi |
 | Agent CRD too large for kubectl apply | Use `--server-side --force-conflicts` |
 | Karpenter may take 2-3 min to scale nodes | Wait for pods, don't retry immediately |
 | Kimi API rate limiting after ~10 calls | Space tests apart, use 1 call per agent |
 | Sensor cascade from PolicyViolation events | Filter `reason != PolicyViolation` in sensors |
 | kube-system extremely noisy | Rate limit to 2/min or remove sensor |
 
-## LiteLLM → Kimi Configuration
+## agentgateway → Kimi Configuration
 
 | Setting | Value |
 |---------|-------|
 | Kimi endpoint | `https://api.kimi.com/coding/v1` |
-| LiteLLM internal URL | `http://litellm-proxy.kagent:4000/v1` |
-| LiteLLM master key | `sk-litellm-kimi-1234` |
+| agentgateway internal URL | `http://litellm-proxy.kagent:4000/v1` |
+| agentgateway master key | `sk-litellm-kimi-1234` |
 | Model name | `kimi-for-coding` |
-| User-Agent header | `claude-code/1.0` (required by Kimi — LiteLLM adds it) |
-| Flow | kagent → LiteLLM (OpenAI-compatible) → Kimi API |
+| User-Agent header | `claude-code/1.0` (required by Kimi — agentgateway adds it) |
+| Flow | kagent → agentgateway (OpenAI-compatible) → Kimi API |
 
 ## Files Reference
 

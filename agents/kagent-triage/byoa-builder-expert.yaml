@@ -42,7 +42,7 @@ spec:
       - Escalation path? (Slack, PagerDuty, or "none")
 
       **Round 3 — Platform config**
-      - Model? (`default-model-config` / `litellm-qwen-14b` / `litellm-azure-gpt4o`)
+      - Model? (`default-model-config` / `agentgateway-qwen` / `agentgateway-azure`)
       - Any tools to add or remove from the standard set? (show list below)
       - Apply immediately after generation? (yes/no)
 

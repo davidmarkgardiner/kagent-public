@@ -3,7 +3,7 @@
 **Date:** 2026-03-13
 **Cluster:** {{CLUSTER_NAME}} (Kind, single node, always-on mini PC)
 **KAgent Version:** v0.8.0-beta4
-**LLM:** Kimi for Coding via LiteLLM proxy
+**LLM:** agentgateway
 **Tested by:** Scotty (orchestrator) + MC specialist agents (Sonnet)
 
 ---
@@ -14,7 +14,7 @@
 |-----------|--------|-----------|-------|
 | kagent controller | ✅ Running | kagent | v0.8.0-beta4 |
 | kagent UI | ✅ Running | kagent | Exposed at https://{{INGRESS_DOMAIN}} |
-| LiteLLM proxy | ✅ Running | kagent | Routing to Kimi API |
+| agentgateway | ✅ Running | kagent | Routing to Kimi API |
 | test-ns-agent | ✅ Ready | kagent | General test namespace diagnostics |
 | cert-manager-agent | ✅ Ready | kagent | TLS certificate lifecycle specialist |
 | kagent-triage WorkflowTemplate | ✅ Deployed | argo-events | Routes events → agents via A2A |

@@ -21,7 +21,7 @@ These components work identically on AKS:
 | EventSource | In-cluster K8s event watcher | Azure Event Hub consumer | Medium |
 | Secrets | K8s Secrets (manual) | Azure Key Vault + ESO/Workload Identity | Medium |
 | Ingress | Traefik IngressRoute + Cloudflare | AGIC or NGINX Ingress + Azure DNS | Low |
-| ModelConfig | LiteLLM → Kimi API | Azure OpenAI or direct provider | Low |
+| ModelConfig | agentgateway → Kimi API | Azure OpenAI or direct provider | Low |
 | Telegram chat ID | Homelab channel | Work/prod channel | Trivial |
 | kubectl context | `{{CLUSTER_NAME}}` | AKS cluster context | Trivial |
 

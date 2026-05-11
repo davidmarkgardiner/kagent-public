@@ -295,7 +295,7 @@ All model calls route through agentgateway on the management cluster (Istio Virt
 
 - A single choke point for model auth (Azure AD, API keys)
 - Per-model rate limiting and cost attribution
-- Token spend visible in LiteLLM/agentgateway dashboard
+- Token spend visible in agentgateway/agentgateway dashboard
 
 Participants do not configure the gateway directly — they reference a ModelConfig that already points at it.
 
@@ -428,7 +428,7 @@ spec:
     baseUrl: https://api.openai.com/v1    # direct — bypasses agentgateway cost tracking
 ```
 
-> **⚠ Cost attribution warning.** A BYO ModelConfig that points directly at an LLM provider bypasses the agentgateway and LiteLLM cost tracking. Your team's spend will not appear in the platform dashboard. The platform team should be made aware of any direct-provider configs in the sandbox.
+> **⚠ Cost attribution warning.** A BYO ModelConfig that points directly at an LLM provider bypasses the agentgateway and agentgateway cost tracking. Your team's spend will not appear in the platform dashboard. The platform team should be made aware of any direct-provider configs in the sandbox.
 
 ### Step 3 — Reference it in your Agent
 
@@ -639,10 +639,10 @@ kubectl run -it --rm debug \
 
 **Mitigations:**
 - `ResourceQuota` caps pod count and compute per namespace
-- agentgateway/LiteLLM rate limiting per API key — set `dailyTokenCap` in request.yaml
+- agentgateway/agentgateway rate limiting per API key — set `dailyTokenCap` in request.yaml
 - `Agent.spec.deployment.resources.limits` must be set (enforced by `validate-agent-cluster-target` Kyverno policy)
 - Set `activeDeadlineSeconds` on any Argo Workflows that invoke agents
-- Alert on LiteLLM spend spikes via the dashboard
+- Alert on agentgateway spend spikes via the dashboard
 
 ---
 

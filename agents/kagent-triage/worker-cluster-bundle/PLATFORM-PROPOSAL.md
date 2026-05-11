@@ -44,7 +44,7 @@ A self-service, observable, policy-compliant onboarding pipeline that provisions
 An autonomous, event-driven system that triages Kubernetes issues in real-time, provides immediate diagnosis, creates audit records (GitLab), notifies application teams (Teams), and can execute remediation with human approval. Operates independently of the LGTM/AlertManager stack.
 
 ### Infrastructure
-A management cluster per environment running shared platform components (Argo, kagent, LiteLLM, ASO, monitoring) that serves both onboarding and runtime triage. Fully observable — every component that builds or serves the solution is monitored, logged, and alertable.
+A management cluster per environment running shared platform components (Argo, kagent, agentgateway, ASO, monitoring) that serves both onboarding and runtime triage. Fully observable — every component that builds or serves the solution is monitored, logged, and alertable.
 
 ---
 
@@ -77,7 +77,7 @@ A management cluster per environment running shared platform components (Argo, k
 | # | Problem | Impact |
 |---|---------|--------|
 | I1 | No management cluster | No shared platform for orchestration, agent runtime, or Azure provisioning |
-| I2 | No monitoring of the platform components themselves | If kagent, LiteLLM, Argo, or ASO fail, nobody knows |
+| I2 | No monitoring of the platform components themselves | If kagent, agentgateway, Argo, or ASO fail, nobody knows |
 | I3 | No LLM token governance | Runaway agents or loops could burn tokens unnoticed |
 | I4 | No centralised logging for platform automation | Can't debug onboarding failures or triage issues across the pipeline |
 | I5 | No security baseline for AI agents | Agents with k8s access need RBAC, network isolation, and approval gates |
@@ -97,16 +97,16 @@ Stand up the management cluster with shared infrastructure. This is the foundati
 | Argo Workflows controller | Workflow execution engine for both projects |
 | Argo Events controller + NATS EventBus | Event-driven triggers (K8s events, webhooks) |
 | kagent + kagent-controller | AI agent runtime |
-| LiteLLM proxy + PostgreSQL | LLM routing, token tracking, spend dashboard (`/ui`) |
+| agentgateway + PostgreSQL | LLM routing, token tracking, spend dashboard (`/ui`) |
 | Azure Service Operator (ASO) | Declarative Azure resource provisioning |
 | kube-prometheus-stack | Prometheus + Grafana for monitoring the platform itself |
 | Alloy → Loki | Log collection for all platform components |
 | **Monitoring the solution itself:** | |
-| - ServiceMonitor for LiteLLM | Token usage, latency, error rates → Prometheus |
+| - ServiceMonitor for agentgateway | Token usage, latency, error rates → Prometheus |
 | - ServiceMonitor for Argo Workflows | Workflow success/failure rates → Prometheus |
 | - PrometheusRules for platform health | Alert on: LLM token anomaly, workflow failure rate, agent not ready |
 | - Grafana dashboards | Platform health, LLM usage, pipeline activity |
-| - LiteLLM UI dashboard | Visual spend tracking, per-model usage, request logs |
+| - agentgateway UI dashboard | Visual spend tracking, per-model usage, request logs |
 
 ### Phase 1: Namespace Onboarding + Observability
 **Solves:** O1, O7
@@ -211,7 +211,7 @@ Stand up the management cluster with shared infrastructure. This is the foundati
 | **Argo Workflows** | DAG-based workflow orchestration — deterministic, auditable | Both projects |
 | **Argo Events** | Event-driven triggers — K8s events (triage), webhooks (onboarding) | Both projects |
 | **kagent** | Kubernetes-native AI agents — triage diagnosis + post-deploy validation | Both projects |
-| **LiteLLM + PostgreSQL** | LLM proxy — model routing, token tracking, spend dashboard | I3, monitoring |
+| **agentgateway + PostgreSQL** | LLM proxy — model routing, token tracking, spend dashboard | I3, monitoring |
 | **Azure Service Operator (ASO)** | Declarative Azure resource provisioning from K8s | O3, O4 |
 
 ### Application Stack (Operators)
@@ -232,7 +232,7 @@ Stand up the management cluster with shared infrastructure. This is the foundati
 | **Grafana** | Dashboards — platform health, LLM usage, triage activity | I2 |
 | **Loki** | Log aggregation | I4 |
 | **Alloy** | Log/event collection agent — scrapes K8s events, ships to Loki and EventSource | R2, I4 |
-| **LiteLLM UI** | Visual token spend tracking (`/ui` on LiteLLM proxy) | I3 |
+| **agentgateway UI** | Visual token spend tracking (`/ui` on agentgateway) | I3 |
 
 ### Notification & Audit
 
@@ -263,7 +263,7 @@ Stand up the management cluster with shared infrastructure. This is the foundati
 │  ┌────────────▼───────────────────────────────▼────────────────────┐  │
 │  │                    Shared Infrastructure                          │  │
 │  │                                                                   │  │
-│  │  kagent          LiteLLM + PG     ASO        ESO                 │  │
+│  │  kagent          agentgateway + PG     ASO        ESO                 │  │
 │  │  (agents)        (LLM proxy)      (Azure)    (secrets)           │  │
 │  │                                                                   │  │
 │  │  Prometheus      Grafana          Loki       Alloy               │  │
@@ -300,7 +300,7 @@ Stand up the management cluster with shared infrastructure. This is the foundati
 |-----|------|
 | Worker cluster triage bundle | `README.md` (this folder) |
 | Namespace onboarding guide | `ONBOARDING-NEW-NAMESPACE.md` |
-| LiteLLM monitoring setup | In repo: `mission-control-shared/agents/LITELLM-MONITORING-SETUP.md` |
+| agentgateway monitoring setup | In repo: `mission-control-shared/agents/LITELLM-MONITORING-SETUP.md` |
 | Logging/monitoring SAD | In repo: `kagent-triage/docs/SAD-LOGGING-MONITORING-LLM.md` |
 | Security/compliance SAD | In repo: `kagent-triage/docs/SAD-COMPLIANCE-CHECKLIST.md` |
 | Threat model | In repo: `kagent-triage/docs/SAD-THREAT-MODEL.md` |

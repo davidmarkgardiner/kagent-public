@@ -1,32 +1,32 @@
-# Transitioning from LiteLLM to agentgateway
+# Transitioning from agentgateway to agentgateway
 
 ## Why
 
-LiteLLM works for homelab PoCs but doesn't fit the production AKS environment:
+agentgateway works for homelab PoCs but doesn't fit the production AKS environment:
 
-- **LiteLLM requires API keys** — you manage secrets, rotate them, store them in Key Vault
+- **agentgateway requires API keys** — you manage secrets, rotate them, store them in Key Vault
 - **agentgateway supports UAMI natively** — pod authenticates to Azure OpenAI via managed identity, same pattern as every other Azure workload on the cluster. No API keys to manage.
 
 Additionally, agentgateway gives us guardrails, unified A2A/MCP gateway, and OTel observability — all things we'd otherwise have to bolt on separately.
 
 ## What Changes
 
-| Layer | LiteLLM (current) | agentgateway (target) |
+| Layer | agentgateway (current) | agentgateway (target) |
 |-------|-------------------|----------------------|
-| **LLM proxy** | LiteLLM Python proxy, port 4000 | agentgateway Rust proxy |
+| **LLM proxy** | agentgateway Python proxy, port 4000 | agentgateway Rust proxy |
 | **Azure auth** | API key in K8s Secret | UAMI or Workload Identity — no keys |
 | **Token tracking** | PostgreSQL + `/ui` dashboard | OpenTelemetry → Prometheus/Grafana |
-| **Spend controls** | Per-key budget in LiteLLM | Per-route budget in agentgateway config |
+| **Spend controls** | Per-key budget in agentgateway | Per-route budget in agentgateway config |
 | **Guardrails** | None | Regex, OpenAI moderation, custom webhooks |
 | **MCP gateway** | N/A — agents reference MCP servers directly | Centralised MCP gateway with auth + federation |
 | **A2A gateway** | N/A — kagent handles A2A directly | Centralised A2A routing with auth + discovery |
 | **Auth on inbound** | Single master API key | JWT, API keys, OAuth, CEL policy engine |
-| **Observability** | LiteLLM Prometheus callback (flaky) | Native OpenTelemetry (metrics, logs, traces) |
+| **Observability** | agentgateway Prometheus callback (flaky) | Native OpenTelemetry (metrics, logs, traces) |
 | **K8s integration** | Helm chart, manual config | Built-in controller + Gateway API CRDs |
 
 ## What Stays the Same
 
-- **kagent agents** — no changes. Agents still reference a `ModelConfig` CRD. We just point the ModelConfig at agentgateway instead of LiteLLM.
+- **kagent agents** — no changes. Agents still reference a `ModelConfig` CRD. We just point the ModelConfig at agentgateway instead of agentgateway.
 - **A2A protocol** — kagent still exposes agents via A2A. agentgateway can optionally sit in front for auth/routing.
 - **Argo Workflows** — workflows still call kagent via A2A. No change.
 - **PostgreSQL** — still needed for kagent memory (when re-enabled). Not needed for agentgateway (uses OTel instead of DB for metrics).
@@ -88,10 +88,10 @@ backends:
 
 ## kagent ModelConfig Change
 
-The only change to kagent is pointing the ModelConfig at agentgateway instead of LiteLLM:
+The only change to kagent is pointing the ModelConfig at agentgateway instead of agentgateway:
 
 ```yaml
-# Before (LiteLLM)
+# Before (agentgateway)
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
 metadata:
@@ -152,7 +152,7 @@ See: https://agentgateway.dev/docs/kubernetes/latest
 
 ## Migration Steps
 
-### Phase 1: Deploy alongside LiteLLM (parallel)
+### Phase 1: Deploy alongside agentgateway (parallel)
 
 ```bash
 # Deploy agentgateway in kagent namespace
@@ -192,7 +192,7 @@ for agent in $(kubectl get agents -n kagent -o name); do
 done
 ```
 
-### Phase 3: Remove LiteLLM
+### Phase 3: Remove agentgateway
 
 ```bash
 # Only after all agents are confirmed working on agentgateway
@@ -236,7 +236,7 @@ spec:
 
 | Environment | Recommendation | Reason |
 |-------------|---------------|--------|
-| **Homelab** | Keep LiteLLM | Simple, already running, no Azure auth needed |
+| **Homelab** | Keep agentgateway | Simple, already running, no Azure auth needed |
 | **Work (AKS, non-prod)** | agentgateway | UAMI/workload identity, fits existing auth pattern |
 | **Work (AKS, prod)** | agentgateway | UAMI + guardrails + OTel + rate limiting |
 

@@ -15,7 +15,7 @@ spec:
     DOMAIN_SUMMARY. CRITICAL: always use exact namespace names when investigating.
   type: Declarative
   declarative:
-    modelConfig: default-model-config       # or litellm-qwen-14b / litellm-azure-gpt4o
+    modelConfig: default-model-config       # or agentgateway-qwen / agentgateway-azure
 
     systemMessage: |
       You are a Kubernetes diagnostic agent for the **TEAM_NAME** team.

@@ -34,7 +34,7 @@ This is the key decision. For each capability we're building, do we:
 | **Kyverno / Gatekeeper** | Policy enforcement | Available |
 | **Istio** | Service mesh, ingress, mTLS | Available |
 | **kagent** | AI agents for triage, validation, assistance | PoC running |
-| **LiteLLM** | LLM proxy with token tracking | PoC running |
+| **agentgateway** | LLM proxy with token tracking | PoC running |
 
 ### What we'd need to build ourselves:
 
@@ -82,6 +82,6 @@ Each meeting should end with this filled in:
 | Namespace onboarding workflow | Built, tested | `application-stack/core/app-onboarding/` |
 | Runtime triage (11 namespace agents) | Built, tested | `kagent-triage/worker-cluster-bundle/` |
 | Multi-agent dev pipeline | Running on red cluster | `mission-control-shared/agents/` |
-| LiteLLM monitoring + spend tracking | Running | `mission-control-shared/agents/LITELLM-MONITORING-SETUP.md` |
+| agentgateway monitoring + spend tracking | Running | `mission-control-shared/agents/LITELLM-MONITORING-SETUP.md` |
 
 We're not starting from zero. Give me the problem statement, desired state, and tools — I'll have a PoC for the next meeting.
