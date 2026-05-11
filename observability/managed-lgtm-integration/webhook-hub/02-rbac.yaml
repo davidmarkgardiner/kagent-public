@@ -1,0 +1,75 @@
+# RBAC for the Hub — reuses the existing `argo-events-sa` ServiceAccount that
+# the prometheus-alerting pipeline already provisions. This file only adds
+# the EXTRA permissions the Hub needs on top of the existing setup.
+#
+# Specifically, Sensors in the Hub create Workflows in the `argo-events`
+# namespace, and those Workflows need to read pod logs/events for triage
+# (same as ../../prometheus-alerting/08-workflow-rbac.yaml — kept here for
+# self-contained deployment).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argo-events-sa
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: webhook-hub-triage
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+rules:
+  # Workflow pods need to fetch diagnostics during triage
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: webhook-hub-triage
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: webhook-hub-triage
+subjects:
+  - kind: ServiceAccount
+    name: argo-events-sa
+    namespace: argo-events
+---
+# Sensor needs to create Workflow resources in argo-events
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: webhook-hub-sensor-trigger
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows", "workflowtemplates"]
+    verbs: ["create", "get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: webhook-hub-sensor-trigger
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: webhook-hub-sensor-trigger
+subjects:
+  - kind: ServiceAccount
+    name: argo-events-sa
+    namespace: argo-events

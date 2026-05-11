@@ -1,0 +1,10 @@
+# Reuses the existing argo-events namespace so Sensors share the NATS
+# EventBus already running there. This file only ensures the namespace
+# is labelled for the Hub — no new namespace is created.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+    istio-injection: enabled        # required for Istio sidecar (AuthorizationPolicy enforcement)

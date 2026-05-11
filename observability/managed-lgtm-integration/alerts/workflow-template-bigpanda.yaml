@@ -1,0 +1,385 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: bigpanda-triage
+  namespace: argo-events
+  labels:
+    app: k8s-event-triage
+    parser: bigpanda
+spec:
+  # Entry point: receives a raw BigPanda outbound webhook payload.
+  # Normalises it → fan-out one per alert → kagent A2A triage → GitLab issue.
+  #
+  # SPIKE REQUIRED: validate parse-bigpanda.jq against a real payload before
+  # deploying this template in a Sensor. See BIGPANDA-OPTION.md.
+  entrypoint: bigpanda-triage
+  serviceAccountName: argo-events-sa
+
+  arguments:
+    parameters:
+      - name: bigpanda-payload
+        description: Raw BigPanda outbound webhook JSON (incident + alerts[])
+      - name: kagent-url
+        value: "http://kagent-controller.kagent.svc.cluster.local:8083"
+      - name: fallback-agent
+        value: "sre-triage-agent"        # used when namespace routing finds no match
+      - name: gitlab-project-id
+        value: "68265584"                 # update to dedicated triage project when created
+
+  volumeClaimTemplates:
+    - metadata:
+        name: work
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 64Mi
+
+  templates:
+
+    # ── 0. Entrypoint DAG ────────────────────────────────────────────────────
+    - name: bigpanda-triage
+      dag:
+        tasks:
+          - name: parse-incident
+            template: parse-bigpanda-payload
+            arguments:
+              parameters:
+                - name: bigpanda-payload
+                  value: "{{workflow.parameters.bigpanda-payload}}"
+
+          - name: triage-alerts
+            template: triage-single-alert
+            dependencies: [parse-incident]
+            arguments:
+              parameters:
+                - name: alert
+                  value: "{{item}}"
+                - name: incident-url
+                  value: "{{tasks.parse-incident.outputs.parameters.incident-url}}"
+                - name: incident-id
+                  value: "{{tasks.parse-incident.outputs.parameters.incident-id}}"
+            withParam: "{{tasks.parse-incident.outputs.parameters.alerts}}"
+
+    # ── 1. Parse BigPanda payload → normalised alerts array ──────────────────
+    - name: parse-bigpanda-payload
+      inputs:
+        parameters:
+          - name: bigpanda-payload
+      outputs:
+        parameters:
+          - name: alerts
+            valueFrom:
+              path: /work/alerts.json
+          - name: incident-url
+            valueFrom:
+              path: /work/incident-url.txt
+          - name: incident-id
+            valueFrom:
+              path: /work/incident-id.txt
+      volumes:
+        - name: work
+          persistentVolumeClaim:
+            claimName: "{{workflow.name}}-work"
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        source: |
+          set -e
+          PAYLOAD='{{inputs.parameters.bigpanda-payload}}'
+
+          # Extract incident-level fields
+          echo "$PAYLOAD" | jq -r '.incident_id // "unknown"' > /work/incident-id.txt
+          echo "$PAYLOAD" | jq -r '.incident_url // ""'       > /work/incident-url.txt
+
+          INCIDENT_URL=$(cat /work/incident-url.txt)
+          INCIDENT_ID=$(cat /work/incident-id.txt)
+
+          # Normalise alerts[] into the internal shape.
+          # ⚠️  SPIKE: run against a real payload and verify all field paths.
+          echo "$PAYLOAD" | jq --arg incident_url "$INCIDENT_URL" '
+            .alerts[]
+            | . as $alert
+            | {
+                alertname: (.tags.alertname // .check // "unknown"),
+                namespace: (.tags.namespace // ""),
+                pod:       (.tags.pod // .tags.instance // ""),
+                cluster:   (.tags.cluster // .host // "unknown"),
+                environment: (.tags.environment // "unknown"),
+                severity:  (.tags.severity_original // .severity // "warning"),
+                status: (
+                  if .status == "active" then "firing"
+                  elif .status == "inactive" then "resolved"
+                  else .status end
+                ),
+                summary:     (.tags.summary // .description // ""),
+                description: (.description // .tags.description // ""),
+                runbook_url: (.tags.runbook_url // ""),
+                source_url:  (.tags.generator_url // .tags.external_url // ""),
+                incident_url: $incident_url,
+                started_at_epoch: (.started_at | if type == "number" then . else 0 end),
+                age_minutes: (
+                  (.started_at | if type == "number" then . else 0 end)
+                  | (now - .) / 60 | floor
+                )
+              }
+          ' | jq -s '.' > /work/alerts.json
+
+          echo "Parsed $(jq length /work/alerts.json) alerts from incident $INCIDENT_ID"
+          cat /work/alerts.json
+
+    # ── 2. Triage a single normalised alert via kagent A2A ───────────────────
+    - name: triage-single-alert
+      inputs:
+        parameters:
+          - name: alert           # normalised alert JSON object (string)
+          - name: incident-url
+          - name: incident-id
+      volumes:
+        - name: work
+          persistentVolumeClaim:
+            claimName: "{{workflow.name}}-work"
+      dag:
+        tasks:
+          - name: skip-if-resolved
+            template: check-not-resolved
+            arguments:
+              parameters:
+                - name: status
+                  value: "{{=jsonpath(inputs.parameters['alert'], '$.status')}}"
+
+          - name: find-agent
+            template: find-namespace-agent
+            dependencies: [skip-if-resolved]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{=jsonpath(inputs.parameters['alert'], '$.namespace')}}"
+
+          - name: call-agent
+            template: call-kagent-a2a
+            dependencies: [find-agent]
+            arguments:
+              parameters:
+                - name: agent-name
+                  value: "{{tasks.find-agent.outputs.parameters.agent-name}}"
+                - name: alert
+                  value: "{{inputs.parameters.alert}}"
+                - name: incident-url
+                  value: "{{inputs.parameters.incident-url}}"
+
+          - name: create-gitlab-issue
+            template: gitlab-issue
+            dependencies: [call-agent]
+            arguments:
+              parameters:
+                - name: alert
+                  value: "{{inputs.parameters.alert}}"
+                - name: analysis
+                  value: "{{tasks.call-agent.outputs.parameters.analysis}}"
+                - name: incident-url
+                  value: "{{inputs.parameters.incident-url}}"
+                - name: incident-id
+                  value: "{{inputs.parameters.incident-id}}"
+
+    # ── 2a. Guard: skip resolved alerts (no triage needed) ───────────────────
+    - name: check-not-resolved
+      inputs:
+        parameters:
+          - name: status
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          if [ "{{inputs.parameters.status}}" = "resolved" ]; then
+            echo "Alert is resolved — skipping triage"
+            exit 0
+          fi
+          echo "Alert is firing — proceeding"
+          exit 0
+
+    # ── 2b. Find the right kagent specialist for this namespace ───────────────
+    - name: find-namespace-agent
+      inputs:
+        parameters:
+          - name: namespace
+      outputs:
+        parameters:
+          - name: agent-name
+            valueFrom:
+              path: /tmp/agent-name.txt
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        env:
+          - name: KAGENT_URL
+            value: "{{workflow.parameters.kagent-url}}"
+          - name: FALLBACK_AGENT
+            value: "{{workflow.parameters.fallback-agent}}"
+        source: |
+          set -e
+          NS="{{inputs.parameters.namespace}}"
+
+          if [ -z "$NS" ]; then
+            echo "WARNING: namespace is empty — BigPanda may not be forwarding namespace label."
+            echo "Check BIGPANDA-OPTION.md and ensure platform team has configured label passthrough."
+            echo "$FALLBACK_AGENT" > /tmp/agent-name.txt
+            exit 0
+          fi
+
+          # Query kagent controller for an agent scoped to this namespace
+          AGENT=$(curl -sf "$KAGENT_URL/agents" \
+            | jq -r --arg ns "$NS" \
+              '.[] | select(.spec.model.namespace == $ns or (.metadata.name | test($ns + "-agent"))) | .metadata.name' \
+            | head -1)
+
+          if [ -z "$AGENT" ]; then
+            echo "No specialist agent for namespace '$NS' — falling back to $FALLBACK_AGENT"
+            echo "$FALLBACK_AGENT" > /tmp/agent-name.txt
+          else
+            echo "Found agent: $AGENT"
+            echo "$AGENT" > /tmp/agent-name.txt
+          fi
+
+    # ── 2c. Call kagent via A2A protocol ─────────────────────────────────────
+    - name: call-kagent-a2a
+      inputs:
+        parameters:
+          - name: agent-name
+          - name: alert           # normalised alert JSON
+          - name: incident-url
+      outputs:
+        parameters:
+          - name: analysis
+            valueFrom:
+              path: /tmp/analysis.txt
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        env:
+          - name: KAGENT_URL
+            value: "{{workflow.parameters.kagent-url}}"
+        source: |
+          set -e
+          AGENT="{{inputs.parameters.agent-name}}"
+          ALERT='{{inputs.parameters.alert}}'
+          INCIDENT_URL="{{inputs.parameters.incident-url}}"
+
+          ALERTNAME=$(echo "$ALERT" | jq -r '.alertname')
+          NAMESPACE=$(echo "$ALERT" | jq -r '.namespace')
+          SEVERITY=$(echo "$ALERT"  | jq -r '.severity')
+          SUMMARY=$(echo "$ALERT"   | jq -r '.summary')
+          DESCRIPTION=$(echo "$ALERT" | jq -r '.description')
+          RUNBOOK=$(echo "$ALERT"   | jq -r '.runbook_url')
+          AGE=$(echo "$ALERT"       | jq -r '.age_minutes')
+
+          # Build the triage prompt
+          PROMPT="ALERT TRIAGE REQUEST (via BigPanda)
+
+          Alert: $ALERTNAME
+          CRITICAL: use exact namespace \"$NAMESPACE\"
+          Severity: $SEVERITY
+          Age: ${AGE} minutes
+          Summary: $SUMMARY
+          Description: $DESCRIPTION
+          Runbook: $RUNBOOK
+          BigPanda incident: $INCIDENT_URL
+
+          Please triage this alert:
+          1. Describe pods and recent events in namespace $NAMESPACE
+          2. Check logs for error patterns related to $ALERTNAME
+          3. Assess severity and urgency
+          4. Recommend immediate remediation steps
+          5. Note whether this should proceed to HITL remediation gate"
+
+          # A2A call — trailing slash required, kind:text required
+          PAYLOAD=$(jq -n \
+            --arg text "$PROMPT" \
+            '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":$text}]}}}')
+
+          RESPONSE=$(curl -sf -X POST \
+            "${KAGENT_URL}/api/a2a/kagent/${AGENT}/" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          # Extract analysis text from A2A response
+          echo "$RESPONSE" | jq -r \
+            '.result.artifacts[0].parts[0].text // .result.artifacts[0].parts[].text // "No analysis returned"' \
+            > /tmp/analysis.txt
+
+          echo "=== Agent analysis ==="
+          cat /tmp/analysis.txt
+
+    # ── 2d. Create GitLab issue ───────────────────────────────────────────────
+    - name: gitlab-issue
+      inputs:
+        parameters:
+          - name: alert
+          - name: analysis
+          - name: incident-url
+          - name: incident-id
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        env:
+          - name: GITLAB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: gitlab-token
+                key: GITLAB_TOKEN
+          - name: GITLAB_PROJECT_ID
+            value: "{{workflow.parameters.gitlab-project-id}}"
+        source: |
+          set -e
+          ALERT='{{inputs.parameters.alert}}'
+          ANALYSIS='{{inputs.parameters.analysis}}'
+          INCIDENT_URL="{{inputs.parameters.incident-url}}"
+          INCIDENT_ID="{{inputs.parameters.incident-id}}"
+
+          ALERTNAME=$(echo "$ALERT" | jq -r '.alertname')
+          NAMESPACE=$(echo "$ALERT" | jq -r '.namespace')
+          SEVERITY=$(echo "$ALERT"  | jq -r '.severity')
+          CLUSTER=$(echo "$ALERT"   | jq -r '.cluster')
+          RUNBOOK=$(echo "$ALERT"   | jq -r '.runbook_url')
+          SOURCE_URL=$(echo "$ALERT"| jq -r '.source_url')
+
+          TITLE="[${SEVERITY^^}] $ALERTNAME in $NAMESPACE ($CLUSTER)"
+
+          BODY="## Alert triage — BigPanda incident $INCIDENT_ID
+
+          | Field | Value |
+          |---|---|
+          | Alert | \`$ALERTNAME\` |
+          | Namespace | \`$NAMESPACE\` |
+          | Cluster | \`$CLUSTER\` |
+          | Severity | $SEVERITY |
+          | BigPanda | [$INCIDENT_ID]($INCIDENT_URL) |
+          | Source | [Alert link]($SOURCE_URL) |
+          | Runbook | $RUNBOOK |
+
+          ## Agent analysis
+
+          $ANALYSIS
+
+          ---
+          *Triage by kagent · workflow \`${WORKFLOW_NAME:-unknown}\`*"
+
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg description "$BODY" \
+            --arg labels "triage,bigpanda,$SEVERITY" \
+            '{"title": $title, "description": $description, "labels": $labels}')
+
+          RESPONSE=$(curl -sf -X POST \
+            "https://gitlab.com/api/v4/projects/${GITLAB_PROJECT_ID}/issues" \
+            -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          ISSUE_URL=$(echo "$RESPONSE" | jq -r '.web_url')
+          ISSUE_IID=$(echo "$RESPONSE" | jq -r '.iid')
+          echo "GitLab issue created: $ISSUE_URL (IID: $ISSUE_IID)"

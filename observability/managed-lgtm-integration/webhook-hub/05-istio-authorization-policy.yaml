@@ -1,0 +1,57 @@
+# Istio AuthorizationPolicy — restrict who can POST to the Hub
+#
+# Two layers + default DENY:
+#   Layer 1: source IP allow-list (managed Grafana / AlertManager egress)
+#   Layer 2: require Authorization: Bearer * header
+#   Default: DENY everything else (zero-trust posture for the EventSource pod)
+#
+# The EXACT token value is verified by Argo Events EventSource (03-...)
+# via authSecret — Istio only checks for *presence* of the bearer header
+# so we don't have to keep secrets in YAML.
+
+# ─── Layer 1+2: source IP + bearer header presence ─────────────────────────
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: webhook-hub-allow
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+spec:
+  selector:
+    matchLabels:
+      eventsource-name: webhook-hub
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+              - "REPLACE_WITH_GRAFANA_EGRESS_CIDR"      # e.g. 20.1.2.3/32
+              # - "REPLACE_WITH_OTHER_SENDER_CIDR"      # e.g. additional approved sources
+      to:
+        - operation:
+            methods: ["POST"]
+            paths:
+              - "/inbound"
+              - "/inbound/"
+      when:
+        - key: request.headers[authorization]
+          values: ["Bearer *"]
+---
+# ─── Default DENY — anything not matching the ALLOW above is rejected ──────
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: webhook-hub-default-deny
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+spec:
+  selector:
+    matchLabels:
+      eventsource-name: webhook-hub
+  action: DENY
+  rules:
+    - to:
+        - operation:
+            paths: ["*"]
