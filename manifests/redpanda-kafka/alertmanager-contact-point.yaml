@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: kagent-redpanda-kafka
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: redpanda-kafka-contact-point
+spec:
+  route:
+    receiver: kagent-redpanda-kafka
+    groupBy:
+      - alertname
+      - namespace
+      - pod
+    groupWait: 0s
+    groupInterval: 30s
+    repeatInterval: 2m
+    matchers:
+      - name: kagent_path
+        matchType: =
+        value: redpanda-kafka
+  receivers:
+    - name: kagent-redpanda-kafka
+      webhookConfigs:
+        - url: http://alertmanager-kafka-bridge.kagent-poc.svc.cluster.local:8080/alertmanager
+          sendResolved: true
+          maxAlerts: 0
+          timeout: 10s

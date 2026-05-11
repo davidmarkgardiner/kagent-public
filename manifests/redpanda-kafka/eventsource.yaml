@@ -7,6 +7,9 @@ metadata:
     app.kubernetes.io/name: kagent-event-flow-poc
     app.kubernetes.io/component: kafka-eventsource
 spec:
+  template:
+    nodeSelector:
+      kubernetes.io/hostname: k8s-worker1
   kafka:
     alertmanager:
       url: redpanda.kagent-poc.svc.cluster.local:9092

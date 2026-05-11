@@ -13,6 +13,7 @@ manifests/
     redpanda-topic-job.yaml
     alertmanager-kafka-bridge.yaml
     alertmanager-configmap.yaml
+    alertmanager-contact-point.yaml
     eventsource.yaml
     sensor.yaml
   webhook/

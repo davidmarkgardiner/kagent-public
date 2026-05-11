@@ -39,17 +39,45 @@ kubectl -n kagent-poc logs job/redpanda-create-alertmanager-topic
 
 ## Wire Alertmanager
 
-The sample receiver in
-`manifests/redpanda-kafka/alertmanager-configmap.yaml` points Alertmanager at
-the bridge service:
+The overlay includes an `AlertmanagerConfig` contact point in
+`manifests/redpanda-kafka/alertmanager-contact-point.yaml`. It matches only
+alerts with:
+
+```text
+namespace="kagent-poc"
+kagent_path="redpanda-kafka"
+```
+
+The receiver points Alertmanager at the bridge service:
 
 ```text
 http://alertmanager-kafka-bridge.kagent-poc.svc.cluster.local:8080/alertmanager
 ```
 
-Adapt that receiver into the target Alertmanager deployment through the local
-configuration mechanism. Keep `repeat_interval` short during testing so repeat
-signals are not hidden by Alertmanager de-duplication.
+The legacy sample receiver ConfigMap is kept in
+`manifests/redpanda-kafka/alertmanager-configmap.yaml` for clusters that do not
+use the Prometheus Operator `AlertmanagerConfig` CRD. Keep `repeat_interval`
+short during testing so repeat signals are not hidden by Alertmanager
+de-duplication.
+
+## Smoke Test Through Alertmanager
+
+Port-forward the cluster Alertmanager:
+
+```bash
+kubectl -n monitoring port-forward svc/kube-prom-kube-prometheus-alertmanager 9093:9093
+```
+
+Post a synthetic alert that matches the MIL-28 contact point:
+
+```bash
+curl -sS -X POST http://127.0.0.1:9093/api/v2/alerts \
+  -H "Content-Type: application/json" \
+  --data-binary @samples/alertmanager-api-pod-alert.json
+```
+
+For repeated tests, change the `mil28_run` label value so Alertmanager does not
+deduplicate the alert before the `repeatInterval`.
 
 ## Smoke Test Without Alertmanager
 
@@ -97,7 +125,7 @@ kubectl -n kagent-poc logs -l app.kubernetes.io/component=alert-consumer,path=re
 Expected consumer log shape:
 
 ```json
-{"alert_count":1,"consumed_at":"<utc timestamp>","path":"redpanda-kafka","payload_keys":["alerts","commonAnnotations","commonLabels","externalURL","groupKey","groupLabels","receiver","status","truncatedAlerts","version"],"pod_name":"sample-api-7f9d6b8d9c-abcde"}
+{"alert_count":1,"alert_json":{"alerts":[{"labels":{"pod":"sample-api-7f9d6b8d9c-abcde"}}]},"consumed_at":"<utc timestamp>","path":"redpanda-kafka","payload_keys":["alerts","commonAnnotations","commonLabels","externalURL","groupKey","groupLabels","receiver","status","truncatedAlerts","version"],"pod_name":"sample-api-7f9d6b8d9c-abcde"}
 ```
 
 ## Evidence To Capture
@@ -130,5 +158,7 @@ the Redpanda-specific resources during partial rollback.
 - The bridge message preserves the full Alertmanager JSON under
   `alertmanager` and adds a top-level `pod_name` for clean Sensor
   parameterization.
+- The shared EventBus manifest pins NATS JetStream to `2.10.10` with a
+  single-replica stream because the POC EventBus runs one pod.
 - For long-lived staging, replace the ConfigMap-mounted bridge with a pinned
   image built through the normal release path.

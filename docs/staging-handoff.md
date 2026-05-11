@@ -2,14 +2,15 @@
 
 ## Status
 
-Ready for peer review and staging validation. Not production-ready until live
-evidence is captured and environment-specific Alertmanager integration is
-reviewed.
+Path A has live validation evidence from `proxmox-k8s` in
+`docs/mil-28-path-a-evidence.md`. The package is not production-ready until the
+direct webhook path is validated under the same conditions and the Argo Events
+version mismatch is resolved.
 
 ## Branch And Tag
 
-- Branch: `symphony/MIL-31-kagent-flow-docs`
-- Handoff tag: `mil-31-staging-ready`
+- Branch: `symphony/MIL-28-redpanda-kafka-path`
+- Handoff tag: not created
 
 ## Apply Order
 
@@ -47,7 +48,8 @@ namespace, EventBus, and Sensor RBAC.
    ```
 
 2. Apply one path at a time.
-3. Send `samples/alertmanager-pod-alert.json` through the path.
+3. For Path A, send `samples/alertmanager-api-pod-alert.json` through the
+   Alertmanager API after deploying the scoped `AlertmanagerConfig`.
 4. Capture EventSource logs, Sensor logs, and consumer pod logs.
 5. Fill the measurement table in `docs/comparison-results.md`.
 6. Decide default path for the next iteration.
@@ -68,8 +70,8 @@ active after deleting the other path.
 
 ## Promotion Criteria
 
-- Consumer logs show the expected `pod_name`, `alert_count`, `payload_keys`, and
-  `consumed_at` for both paths.
+- Consumer logs show the expected `pod_name`, `alert_count`, `alert_json`,
+  `payload_keys`, and `consumed_at` for both paths.
 - Staging owner accepts the latency and reliability comparison.
 - Redpanda bridge packaging decision is made: keep ConfigMap bridge for POC only
   or replace it with a pinned image.

@@ -1,0 +1,19 @@
+[
+  {
+    "labels": {
+      "alertname": "MIL28PodCrashLooping",
+      "namespace": "kagent-poc",
+      "pod": "sample-api-7f9d6b8d9c-abcde",
+      "severity": "warning",
+      "kagent_path": "redpanda-kafka",
+      "mil28_run": "manual"
+    },
+    "annotations": {
+      "summary": "MIL-28 sample pod alert",
+      "description": "Synthetic Alertmanager API payload for Path A validation."
+    },
+    "startsAt": "2026-05-11T12:00:00Z",
+    "endsAt": "0001-01-01T00:00:00Z",
+    "generatorURL": "https://prometheus.example.invalid/graph?g0.expr=mil28"
+  }
+]
