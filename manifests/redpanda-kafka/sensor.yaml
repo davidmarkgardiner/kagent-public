@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: alertmanager-kafka
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: kagent-event-flow-poc
+    app.kubernetes.io/component: kafka-sensor
+spec:
+  template:
+    serviceAccountName: kagent-poc-sensor
+  dependencies:
+    - name: alertmanager
+      eventSourceName: alertmanager-kafka
+      eventName: alertmanager
+  triggers:
+    - template:
+        name: alertmanager-kafka-consumer
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: v1
+              kind: Pod
+              metadata:
+                generateName: kafka-alert-consumer-
+                namespace: kagent-poc
+                labels:
+                  app.kubernetes.io/name: kagent-event-flow-poc
+                  app.kubernetes.io/component: alert-consumer
+                  path: redpanda-kafka
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: consumer
+                    image: python:3.12-alpine
+                    imagePullPolicy: IfNotPresent
+                    command:
+                      - python
+                      - -c
+                    args:
+                      - |
+                        import datetime
+                        import json
+                        import os
+
+                        payload = os.environ.get("ALERT_PAYLOAD", "{}")
+                        pod_name = os.environ.get("ALERT_POD_NAME", "unknown-pod")
+                        parsed = json.loads(payload)
+                        result = {
+                            "alert_count": len(parsed.get("alerts", [])),
+                            "consumed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                            "path": "redpanda-kafka",
+                            "payload_keys": sorted(parsed.keys()),
+                            "pod_name": pod_name,
+                        }
+                        print(json.dumps(result, sort_keys=True))
+                    env:
+                      - name: ALERT_POD_NAME
+                        value: unknown-pod
+                      - name: ALERT_PAYLOAD
+                        value: "{}"
+          parameters:
+            - src:
+                dependencyName: alertmanager
+                dataKey: body.pod_name
+                value: unknown-pod
+              dest: spec.containers.0.env.0.value
+            - src:
+                dependencyName: alertmanager
+                dataTemplate: "{{ .Input.body.alertmanager | toJson }}"
+                value: "{}"
+              dest: spec.containers.0.env.1.value

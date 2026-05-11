@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kagent-poc-sensor
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: kagent-event-flow-poc
+    app.kubernetes.io/component: sensor-rbac
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kagent-poc-sensor
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: kagent-event-flow-poc
+    app.kubernetes.io/component: sensor-rbac
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kagent-poc-sensor
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: kagent-event-flow-poc
+    app.kubernetes.io/component: sensor-rbac
+subjects:
+  - kind: ServiceAccount
+    name: kagent-poc-sensor
+    namespace: kagent-poc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kagent-poc-sensor

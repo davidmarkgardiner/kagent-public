@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-redpanda-kafka-receiver-example
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: receiver-example
+data:
+  alertmanager.yaml: |
+    route:
+      receiver: kagent-redpanda-kafka
+      group_wait: 0s
+      group_interval: 30s
+      repeat_interval: 2m
+
+    receivers:
+      - name: kagent-redpanda-kafka
+        webhook_configs:
+          - url: http://alertmanager-kafka-bridge.kagent-poc.svc.cluster.local:8080/alertmanager
+            send_resolved: true

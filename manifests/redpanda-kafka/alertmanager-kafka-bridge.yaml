@@ -1,0 +1,174 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-kafka-bridge
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: alertmanager-kafka-bridge
+    app.kubernetes.io/component: kafka-bridge
+data:
+  bridge.py: |
+    import datetime
+    import json
+    import os
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from kafka import KafkaProducer
+
+    BROKERS = os.environ.get("KAFKA_BROKERS", "redpanda.kagent-poc.svc.cluster.local:9092")
+    TOPIC = os.environ.get("KAFKA_TOPIC", "alertmanager-events")
+    PORT = int(os.environ.get("PORT", "8080"))
+
+    producer = KafkaProducer(
+        bootstrap_servers=[broker.strip() for broker in BROKERS.split(",") if broker.strip()],
+        value_serializer=lambda value: json.dumps(value, separators=(",", ":")).encode("utf-8"),
+        acks="all",
+        retries=5,
+    )
+
+    def extract_pod_name(payload):
+        alerts = payload.get("alerts") or []
+        for alert in alerts:
+            labels = alert.get("labels") or {}
+            annotations = alert.get("annotations") or {}
+            for candidate in (
+                labels.get("pod"),
+                labels.get("pod_name"),
+                labels.get("kubernetes_pod_name"),
+                annotations.get("pod"),
+            ):
+                if candidate:
+                    return candidate
+        common = payload.get("commonLabels") or {}
+        return common.get("pod") or common.get("pod_name") or "unknown-pod"
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/healthz":
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+                return
+            self.send_response(404)
+            self.end_headers()
+
+        def do_POST(self):
+            if self.path != "/alertmanager":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            length = int(self.headers.get("content-length", "0"))
+            raw_body = self.rfile.read(length)
+            try:
+                alertmanager_payload = json.loads(raw_body.decode("utf-8"))
+            except json.JSONDecodeError as exc:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(f"invalid json: {exc}\n".encode("utf-8"))
+                return
+
+            message = {
+                "pod_name": extract_pod_name(alertmanager_payload),
+                "received_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "source": "alertmanager-kafka-bridge",
+                "alertmanager": alertmanager_payload,
+            }
+
+            metadata = producer.send(TOPIC, message).get(timeout=10)
+            producer.flush(timeout=10)
+
+            self.send_response(202)
+            self.end_headers()
+            response = {
+                "topic": metadata.topic,
+                "partition": metadata.partition,
+                "offset": metadata.offset,
+                "pod_name": message["pod_name"],
+            }
+            self.wfile.write(json.dumps(response, sort_keys=True).encode("utf-8"))
+            self.wfile.write(b"\n")
+
+        def log_message(self, fmt, *args):
+            print("%s - %s" % (self.address_string(), fmt % args), flush=True)
+
+    if __name__ == "__main__":
+        print(f"starting bridge on :{PORT}, brokers={BROKERS}, topic={TOPIC}", flush=True)
+        HTTPServer(("", PORT), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager-kafka-bridge
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: alertmanager-kafka-bridge
+    app.kubernetes.io/component: kafka-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager-kafka-bridge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alertmanager-kafka-bridge
+        app.kubernetes.io/component: kafka-bridge
+    spec:
+      containers:
+        - name: bridge
+          image: python:3.12-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ceu
+            - |
+              pip install --no-cache-dir kafka-python==2.3.1
+              python /app/bridge.py
+          env:
+            - name: KAFKA_BROKERS
+              value: redpanda.kagent-poc.svc.cluster.local:9092
+            - name: KAFKA_TOPIC
+              value: alertmanager-events
+            - name: PORT
+              value: "8080"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: bridge
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: bridge
+          configMap:
+            name: alertmanager-kafka-bridge
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-kafka-bridge
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: alertmanager-kafka-bridge
+    app.kubernetes.io/component: kafka-bridge
+spec:
+  selector:
+    app.kubernetes.io/name: alertmanager-kafka-bridge
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

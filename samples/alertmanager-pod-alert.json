@@ -1,0 +1,39 @@
+{
+  "receiver": "kagent-poc",
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "KubePodCrashLooping",
+        "namespace": "sample-app",
+        "pod": "sample-api-7f9d6b8d9c-abcde",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "Pod is crash looping",
+        "description": "Sample pod has restarted repeatedly during POC testing."
+      },
+      "startsAt": "2026-05-11T10:00:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "https://prometheus.example.invalid/graph?g0.expr=sample",
+      "fingerprint": "0000000000000000"
+    }
+  ],
+  "groupLabels": {
+    "alertname": "KubePodCrashLooping"
+  },
+  "commonLabels": {
+    "alertname": "KubePodCrashLooping",
+    "namespace": "sample-app",
+    "pod": "sample-api-7f9d6b8d9c-abcde",
+    "severity": "warning"
+  },
+  "commonAnnotations": {
+    "summary": "Pod is crash looping"
+  },
+  "externalURL": "https://alertmanager.example.invalid",
+  "version": "4",
+  "groupKey": "{}:{alertname=\"KubePodCrashLooping\"}",
+  "truncatedAlerts": 0
+}
