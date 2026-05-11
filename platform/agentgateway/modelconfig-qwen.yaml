@@ -1,0 +1,47 @@
+# kagent ModelConfig — agentgateway → vLLM-hosted Qwen
+#
+# DEPLOY ON: worker cluster (where kagent runs)
+#
+# Points kagent at the /qwen/v1 path on agentgateway. agentgateway strips
+# /qwen and forwards /v1/... to vLLM, which serves the Qwen model.
+#
+# The `model` field must match:
+#   - The model name in backend-vllm-qwen.yaml (spec.ai.provider.openai.model)
+#   - The vLLM --served-model-name flag on the vLLM deployment
+#
+# Verify before deploying:
+#   # On management cluster:
+#   kubectl port-forward -n agentgateway-system svc/ai-gateway 8080:80 &
+#   curl -s http://localhost:8080/qwen/v1/models | jq '.data[].id'
+#   # Should list the Qwen model — this is what you put in `model` below.
+#
+# Apply:
+#   kubectl apply -f modelconfig-qwen.yaml
+#
+# Switch one agent to it:
+#   kubectl patch agent k8s-agent -n kagent --type merge \
+#     -p '{"spec":{"declarative":{"modelConfig":"agentgateway-qwen"}}}'
+# ---
+
+# Reuse the dummy litellm-key secret already in kagent namespace (created
+# during initial deploy). No real credentials needed — agentgateway handles
+# auth (or lack thereof) to vLLM on the management cluster side.
+#
+# If litellm-key doesn't exist yet:
+#   kubectl create secret generic litellm-key -n kagent \
+#     --from-literal=api-key="not-required"
+
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: agentgateway-qwen
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: REPLACE_WITH_VLLM_SERVED_MODEL_NAME   # must match backend-vllm-qwen.yaml
+  apiKeySecret: litellm-key
+  apiKeySecretKey: api-key
+  openAI:
+    # /qwen/v1 routes to vLLM backend via agentgateway.
+    # HTTPS to the external hostname set in istio-virtualservice.yaml.
+    baseUrl: "https://REPLACE_AGENTGATEWAY_HOSTNAME/qwen/v1"

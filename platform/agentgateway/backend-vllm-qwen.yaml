@@ -1,0 +1,97 @@
+# AgentgatewayBackend — Qwen model served by vLLM
+#
+# DEPLOY ON: management cluster
+#
+# vLLM serves an OpenAI-compatible API at /v1/chat/completions, /v1/completions,
+# /v1/models etc. agentgateway's provider.openai treats it identically to OpenAI.
+#
+# The `model` field inside openai:
+#   - Must match vLLM's --served-model-name flag value
+#   - kagent sends this in the request body's "model" field
+#   - If the names don't match, vLLM returns 404 "model not found"
+#
+# Find the actual model name vLLM is serving:
+#   kubectl port-forward -n <vllm-ns> svc/vllm 8000:8000
+#   curl -s http://localhost:8000/v1/models | jq '.data[].id'
+#
+# Apply:
+#   kubectl apply -f backend-vllm-qwen.yaml
+#
+# Verify:
+#   kubectl get agentgatewaybackend vllm-qwen-backend -n agentgateway-system
+# ---
+
+# Dummy secret — vLLM typically doesn't require auth for in-cluster traffic,
+# but AgentgatewayBackend secretRef is required by the schema.
+# If vLLM IS configured with --api-key, replace "not-required" with the real key.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vllm-dummy-key
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  Authorization: "Bearer not-required"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: vllm-qwen-backend
+  namespace: agentgateway-system
+spec:
+  ai:
+    provider:
+      openai:
+        model: REPLACE_WITH_VLLM_SERVED_MODEL_NAME   # e.g. Qwen/Qwen2.5-14B-Instruct
+      # host/port are siblings of openai — point at the vLLM Service
+      host: vllm.vllm.svc.cluster.local              # REPLACE: svc-name.namespace.svc.cluster.local
+      port: 8000                                     # vLLM default; some charts use 80
+  policies:
+    auth:
+      secretRef:
+        name: vllm-dummy-key
+---
+# HTTPRoute — route /qwen/v1/* on the shared ai-gateway to this backend
+# (Keeps /openai/v1 and /azure/v1 free for KubeAI and Azure OpenAI.)
+# If this is your ONLY local model you can reuse /openai/v1 instead.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vllm-qwen-route
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /qwen/v1
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /v1   # vLLM expects /v1/*, not /qwen/v1/*
+      backendRefs:
+        - name: vllm-qwen-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+---
+# ReferenceGrant — allow agentgateway-system HTTPRoutes to reach the vLLM service
+# Only needed if vLLM is in a different namespace from agentgateway-system.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-agentgateway-to-vllm
+  namespace: vllm           # REPLACE with the namespace vLLM lives in
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: agentgateway-system
+  to:
+    - group: ""
+      kind: Service
