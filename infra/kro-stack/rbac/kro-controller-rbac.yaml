@@ -1,0 +1,226 @@
+---
+# RBAC Configuration for KRO Controller
+# This provides the necessary permissions for KRO to manage UK8S cluster resources
+
+# ServiceAccount for KRO Controller
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kro-controller-uk8s
+  namespace: kro-system
+  labels:
+    app.kubernetes.io/name: kro
+    app.kubernetes.io/component: controller
+    kro.run/resource-type: uk8s-clusters
+---
+# ClusterRole for managing UK8S cluster resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro-uk8s-cluster-manager
+  labels:
+    app.kubernetes.io/name: kro
+    app.kubernetes.io/component: rbac
+rules:
+  # ========================================
+  # Azure Resources (via Azure Service Operator)
+  # ========================================
+  - apiGroups:
+      - resources.azure.com
+    resources:
+      - resourcegroups
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  - apiGroups:
+      - containerservice.azure.com
+    resources:
+      - managedclusters
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  - apiGroups:
+      - managedidentity.azure.com
+    resources:
+      - userassignedidentities
+      - federatedidentitycredentials
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  - apiGroups:
+      - kubernetesconfiguration.azure.com
+    resources:
+      - extensions
+      - fluxconfigurations
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # ========================================
+  # Kubernetes Core Resources
+  # ========================================
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+      - serviceaccounts
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # ========================================
+  # Batch Resources (for jobs and cronjobs)
+  # ========================================
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # ========================================
+  # KRO Resources
+  # ========================================
+  - apiGroups:
+      - kro.run
+    resources:
+      - resourcegraphdefinitions
+      - uk8sclusters
+      - uk8sfluxgitops
+      - uk8sjobs
+      - uk8scronjobs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  - apiGroups:
+      - kro.run
+    resources:
+      - resourcegraphdefinitions/status
+      - uk8sclusters/status
+      - uk8sfluxgitops/status
+      - uk8sjobs/status
+      - uk8scronjobs/status
+    verbs:
+      - get
+      - patch
+      - update
+
+---
+# ClusterRoleBinding for KRO Controller
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kro-uk8s-cluster-manager-binding
+  labels:
+    app.kubernetes.io/name: kro
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kro-uk8s-cluster-manager
+subjects:
+  - kind: ServiceAccount
+    name: kro-controller-uk8s
+    namespace: kro-system
+
+---
+# Role for namespace-scoped operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kro-uk8s-namespace-manager
+  namespace: uk8s-nextgen
+  labels:
+    app.kubernetes.io/name: kro
+    app.kubernetes.io/component: rbac
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  - apiGroups:
+      - kro.run
+    resources:
+      - uk8sclusters
+      - uk8sfluxgitops
+      - uk8sjobs
+      - uk8scronjobs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+---
+# RoleBinding for namespace operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kro-uk8s-namespace-manager-binding
+  namespace: uk8s-nextgen
+  labels:
+    app.kubernetes.io/name: kro
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kro-uk8s-namespace-manager
+subjects:
+  - kind: ServiceAccount
+    name: kro-controller-uk8s
+    namespace: kro-system

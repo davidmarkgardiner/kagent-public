@@ -1,0 +1,982 @@
+---
+# ResourceGraphDefinition for Application Certification — v1
+#
+# Structural clone of uk8s-certification-v2.yaml, re-scoped from cluster
+# certification to application certification. The reusable bones are:
+#   1. Per-workflow ConfigMap with ownerRef to the Workflow (auto-GC).
+#   2. aggregate-results task that reads the ConfigMap and emits a
+#      structured JSON output parameter.
+#   3. agent-triage task that hands the structured report to a kagent
+#      via A2A and parses a strict-schema verdict back into outputs.
+#   4. Optional gate-on-critical task wired to failOnCritical flag.
+#   5. CronWorkflow for periodic re-certification.
+#
+# What's intentionally DIFFERENT from cert v2:
+#   - No AKS credential acquisition. All checks are against the
+#     management/runtime cluster the workflow runs on (the same
+#     cluster the app lives in).
+#   - No cluster-wide checks (no `kubectl get nodes`, no `kube-system`
+#     traversal, no flux-system controller checks). Validation is
+#     scoped to the target namespace + ASO resources owned by the app.
+#   - Auto-trigger Job is OFF by default. Apps cert on demand from
+#     Phase 5 of the golden path, not on a fixed timer at create.
+#
+# What's NEW vs cert v2:
+#   - validate-image-policy: rejects :latest / floating tags, requires
+#     digest pin in PROD.
+#   - validate-resources-set: every container has requests AND limits.
+#   - validate-probes: liveness + readiness present.
+#   - validate-mtls: PeerAuthentication STRICT when istio is enabled
+#     for the namespace.
+#   - validate-azure-resources: when payload.azure.enabled, checks
+#     UAI + FedCred + RoleAssignments are Ready (ASO conditions).
+#
+# DO NOT APPLY this manifest until certification-rbac for the
+# target namespace has been reviewed. The workflow needs read access
+# to: namespaces, deployments, pods, services, networkpolicies,
+# resourcequotas, serviceaccounts, rolebindings, peerauthentications,
+# horizontalpodautoscalers, and ASO {userassignedidentity,
+# federatedidentitycredential, roleassignment} in azure-system.
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: appcertificationv1.kro.run
+  labels:
+    kro.run/type: certification
+    kro.run/category: application
+    kro.run/version: v1
+  annotations:
+    kro.run/description: "Application certification workflow with KAgent triage handover"
+    kro.run/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AppCertificationV1
+    spec:
+      # ========================================
+      # App Identity
+      # ========================================
+      appName: string | required=true description="The application Deployment name to certify"
+      namespace: string | required=true description="The namespace the application runs in"
+      ownerTeam: string | required=true description="The team that owns the app — surfaced into the verdict and any follow-up ticket"
+      swc: string | required=true description="Service/charge-back code"
+      environment: string | required=true enum="DEV,STAGING,PROD" description="Environment classification"
+
+      # Optional flags that align validation depth with declared payload features
+      hasIstio: boolean | default=false description="When true, run mTLS + VirtualService validations"
+      hasAzure: boolean | default=false description="When true, run ASO managed-identity / fed-cred / role-assignment validations"
+      requireDigestPinInProd: boolean | default=true description="Reject ':latest' and floating tags in PROD"
+
+      # ========================================
+      # Certification Configuration
+      # ========================================
+      certification:
+        timeout: integer | default=900 description="Certification timeout in seconds"
+        schedule: 'string | default="0 4 1 * *" description="Cron schedule for re-certification (default: 04:00 UTC on the 1st of each month)"'
+        suspended: boolean | default=true description="Whether to start the CronWorkflow suspended"
+        autoTrigger: boolean | default=false description="Automatically run an initial certification immediately after this RGD instance is applied. OFF by default — apps cert on demand, not on creation."
+
+      # ========================================
+      # Agent Analysis Configuration
+      # ========================================
+      agentAnalysis:
+        enabled: boolean | default=true description="Whether to invoke KAgent triage on certification results"
+        kagentService: string | default="kagent.kagent.svc.cluster.local" description="DNS name of the KAgent service"
+        kagentPort: integer | default=80 description="Port for the KAgent service"
+        agentName: string | default="sre-triage-agent" description="A2A agent name to invoke"
+        timeoutSeconds: integer | default=120 description="HTTP timeout for the A2A call"
+        failOnCritical: boolean | default=false description="Fail the workflow if the agent returns severity=CRITICAL"
+
+  # ========================================
+  # Resources Created by this RGD
+  # ========================================
+  resources:
+    # ----------------------------------------
+    # Certification WorkflowTemplate
+    # ----------------------------------------
+    - id: certificationWorkflow
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: WorkflowTemplate
+        metadata:
+          name: certify-app-${schema.spec.appName}
+          namespace: argo
+          labels:
+            kro.run/app: ${schema.spec.appName}
+            kro.run/component: app-certification
+            kro.run/version: v1
+            environment: ${schema.spec.environment}
+          annotations:
+            kro.run/description: "Application certification workflow (v1) for ${schema.spec.appName} in namespace ${schema.spec.namespace}"
+            kro.run/version: "1.0.0"
+        spec:
+          entrypoint: certify-app
+          serviceAccountName: argo-workflow-executor
+
+          archiveLogs: false
+          artifactGC:
+            strategy: Never
+          podGC:
+            strategy: OnWorkflowSuccess
+
+          activeDeadlineSeconds: ${schema.spec.certification.timeout}
+
+          arguments:
+            parameters:
+              - name: appName
+                value: ${schema.spec.appName}
+              - name: namespace
+                value: ${schema.spec.namespace}
+              - name: ownerTeam
+                value: ${schema.spec.ownerTeam}
+              - name: swc
+                value: ${schema.spec.swc}
+              - name: environment
+                value: ${schema.spec.environment}
+              - name: hasIstio
+                value: "${schema.spec.hasIstio ? 'true' : 'false'}"
+              - name: hasAzure
+                value: "${schema.spec.hasAzure ? 'true' : 'false'}"
+              - name: requireDigestPinInProd
+                value: "${schema.spec.requireDigestPinInProd ? 'true' : 'false'}"
+              - name: agentEnabled
+                value: "${schema.spec.agentAnalysis.enabled ? 'true' : 'false'}"
+              - name: kagentService
+                value: ${schema.spec.agentAnalysis.kagentService}
+              - name: kagentPort
+                value: "${schema.spec.agentAnalysis.kagentPort}"
+              - name: agentName
+                value: ${schema.spec.agentAnalysis.agentName}
+              - name: agentTimeoutSeconds
+                value: "${schema.spec.agentAnalysis.timeoutSeconds}"
+              - name: failOnCritical
+                value: "${schema.spec.agentAnalysis.failOnCritical ? 'true' : 'false'}"
+
+          onExit: generate-final-report
+
+          templates:
+            # =============================================================
+            # Main DAG
+            # =============================================================
+            - name: certify-app
+              dag:
+                tasks:
+                  - name: init-results-store
+                    template: init-results-configmap
+
+                  - name: validate-namespace
+                    template: validate-namespace-foundations
+                    dependencies: [init-results-store]
+
+                  - name: validate-rbac
+                    template: validate-rbac-bindings
+                    dependencies: [validate-namespace]
+
+                  - name: validate-deployment
+                    template: validate-deployment-health
+                    dependencies: [validate-namespace]
+
+                  - name: validate-probes
+                    template: validate-probes-set
+                    dependencies: [validate-deployment]
+
+                  - name: validate-resources-set
+                    template: validate-resources-requests-limits
+                    dependencies: [validate-deployment]
+
+                  - name: validate-image-policy
+                    template: validate-image-tag-policy
+                    dependencies: [validate-deployment]
+
+                  - name: validate-network-policy
+                    template: validate-network-policy-coverage
+                    dependencies: [validate-namespace]
+
+                  - name: validate-mtls
+                    template: validate-istio-mtls
+                    dependencies: [validate-namespace]
+                    when: "{{workflow.parameters.hasIstio}} == true"
+
+                  - name: validate-azure-resources
+                    template: validate-azure-resources
+                    dependencies: [validate-namespace]
+                    when: "{{workflow.parameters.hasAzure}} == true"
+
+                  - name: aggregate-results
+                    template: aggregate-certification
+                    # Use depends: with .Skipped handling so the optional
+                    # validations don't break the dependency graph when off.
+                    depends: >-
+                      validate-rbac.Succeeded &&
+                      validate-deployment.Succeeded &&
+                      validate-probes.Succeeded &&
+                      validate-resources-set.Succeeded &&
+                      validate-image-policy.Succeeded &&
+                      validate-network-policy.Succeeded &&
+                      (validate-mtls.Succeeded || validate-mtls.Skipped) &&
+                      (validate-azure-resources.Succeeded || validate-azure-resources.Skipped)
+
+                  - name: agent-triage
+                    template: agent-triage
+                    dependencies: [aggregate-results]
+                    when: "{{workflow.parameters.agentEnabled}} == true"
+                    arguments:
+                      parameters:
+                        - name: cert-report
+                          value: "{{tasks.aggregate-results.outputs.parameters.report}}"
+
+                  - name: gate-on-critical
+                    template: gate-critical
+                    dependencies: [agent-triage]
+                    when: "{{workflow.parameters.failOnCritical}} == true && {{tasks.agent-triage.outputs.parameters.severity}} == CRITICAL"
+
+            # =============================================================
+            # Init per-workflow ConfigMap with ownerRef -> Workflow.
+            # Identical pattern to cert v2.
+            # =============================================================
+            - name: init-results-configmap
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Initializing app-cert results ConfigMap ==="
+
+                  WF_NAME="{{workflow.name}}"
+                  WF_UID=$(kubectl get workflow "$WF_NAME" -n argo -o jsonpath='{.metadata.uid}')
+
+                  if [ -z "$WF_UID" ]; then
+                    echo "Could not resolve workflow UID — ConfigMap will not be GC'd by ownerRef"
+                    OWNER_BLOCK=""
+                  else
+                    OWNER_BLOCK=$(cat <<EOF
+                    ownerReferences:
+                    - apiVersion: argoproj.io/v1alpha1
+                      kind: Workflow
+                      name: $WF_NAME
+                      uid: $WF_UID
+                      controller: true
+                      blockOwnerDeletion: false
+                  EOF
+                  )
+                  fi
+
+                  cat <<YAML | kubectl apply -f -
+                  apiVersion: v1
+                  kind: ConfigMap
+                  metadata:
+                    name: app-cert-results-$WF_NAME
+                    namespace: argo
+                    labels:
+                      kro.run/component: app-certification-results
+                      kro.run/app: "{{workflow.parameters.appName}}"
+                      kro.run/namespace: "{{workflow.parameters.namespace}}"
+                  $OWNER_BLOCK
+                  data:
+                    app: "{{workflow.parameters.appName}}"
+                    namespace: "{{workflow.parameters.namespace}}"
+                    environment: "{{workflow.parameters.environment}}"
+                    swc: "{{workflow.parameters.swc}}"
+                    ownerTeam: "{{workflow.parameters.ownerTeam}}"
+                    workflow: "$WF_NAME"
+                  YAML
+
+                  echo "ConfigMap app-cert-results-$WF_NAME created"
+
+            # =============================================================
+            # Validate namespace foundations: namespace exists, has
+            # platform-managed labels, has ResourceQuota.
+            # =============================================================
+            - name: validate-namespace-foundations
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Namespace Foundations ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  PASSED=0
+                  FAILED=0
+
+                  if kubectl get namespace "$NS" &>/dev/null; then
+                    echo "Namespace $NS exists"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "Namespace $NS not found"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  MANAGED_BY=$(kubectl get namespace "$NS" -o jsonpath='{.metadata.labels.managed-by}' 2>/dev/null || echo "")
+                  if [ "$MANAGED_BY" = "argo-workflows" ]; then
+                    echo "managed-by label correct"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "managed-by label missing or wrong: '$MANAGED_BY'"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  if kubectl get resourcequota -n "$NS" --no-headers 2>/dev/null | grep -q .; then
+                    echo "ResourceQuota present"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "No ResourceQuota in namespace"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  echo "Summary: $PASSED passed, $FAILED failed"
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-namespace\":\"passed=$PASSED failed=$FAILED warnings=0\"}}"
+
+            # =============================================================
+            # Validate RBAC: ServiceAccount exists, RoleBinding for the
+            # team AD group exists in the namespace.
+            # =============================================================
+            - name: validate-rbac-bindings
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== RBAC ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  PASSED=0
+                  FAILED=0
+                  WARNINGS=0
+
+                  SA_COUNT=$(kubectl get sa -n "$NS" --no-headers 2>/dev/null | grep -v '^default ' | wc -l)
+                  if [ "$SA_COUNT" -ge 1 ]; then
+                    echo "$SA_COUNT non-default ServiceAccount(s) present"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "No non-default ServiceAccount in $NS"
+                    WARNINGS=$((WARNINGS+1))
+                  fi
+
+                  RB_COUNT=$(kubectl get rolebinding -n "$NS" --no-headers 2>/dev/null | wc -l)
+                  if [ "$RB_COUNT" -ge 1 ]; then
+                    echo "$RB_COUNT RoleBinding(s) present"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "No RoleBinding in namespace"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  echo "Summary: $PASSED passed, $FAILED failed, $WARNINGS warnings"
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-rbac\":\"passed=$PASSED failed=$FAILED warnings=$WARNINGS\"}}"
+
+            # =============================================================
+            # Validate Deployment health: rollout succeeded, ready
+            # replicas match desired, no CrashLoopBackOff in pods.
+            # =============================================================
+            - name: validate-deployment-health
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Deployment Health ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  APP="{{workflow.parameters.appName}}"
+                  PASSED=0
+                  FAILED=0
+
+                  if ! kubectl get deployment "$APP" -n "$NS" &>/dev/null; then
+                    echo "Deployment $APP/$NS not found"
+                    kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                      -p "{\"data\":{\"validate-deployment\":\"passed=0 failed=1 warnings=0 reason=missing\"}}"
+                    exit 0
+                  fi
+
+                  DESIRED=$(kubectl get deployment "$APP" -n "$NS" -o jsonpath='{.spec.replicas}')
+                  READY=$(kubectl get deployment "$APP" -n "$NS" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)
+                  READY=${READY:-0}
+
+                  echo "Replicas: $READY/$DESIRED ready"
+                  if [ "$READY" = "$DESIRED" ] && [ "$DESIRED" -ge 1 ]; then
+                    PASSED=$((PASSED+1))
+                  else
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  CRASH=$(kubectl get pods -n "$NS" -l app="$APP" -o json 2>/dev/null \
+                    | jq '[.items[] | select(.status.containerStatuses[]?.state.waiting?.reason == "CrashLoopBackOff")] | length')
+                  if [ "$CRASH" = "0" ]; then
+                    echo "No pods in CrashLoopBackOff"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "$CRASH pod(s) in CrashLoopBackOff"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  echo "Summary: $PASSED passed, $FAILED failed"
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-deployment\":\"passed=$PASSED failed=$FAILED ready=$READY/$DESIRED crashloop=$CRASH\"}}"
+
+            # =============================================================
+            # Validate every container has liveness + readiness probes.
+            # =============================================================
+            - name: validate-probes-set
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Probes ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  APP="{{workflow.parameters.appName}}"
+                  PASSED=0
+                  FAILED=0
+
+                  if ! kubectl get deployment "$APP" -n "$NS" &>/dev/null; then
+                    kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                      -p "{\"data\":{\"validate-probes\":\"passed=0 failed=0 warnings=1 reason=deployment-missing\"}}"
+                    exit 0
+                  fi
+
+                  MISSING=$(kubectl get deployment "$APP" -n "$NS" -o json \
+                    | jq '[.spec.template.spec.containers[] | select(.livenessProbe == null or .readinessProbe == null)] | length')
+
+                  if [ "$MISSING" = "0" ]; then
+                    echo "All containers have liveness + readiness probes"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "$MISSING container(s) missing probes"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-probes\":\"passed=$PASSED failed=$FAILED missing=$MISSING\"}}"
+
+            # =============================================================
+            # Validate every container has BOTH requests AND limits set.
+            # =============================================================
+            - name: validate-resources-requests-limits
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Resources Set ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  APP="{{workflow.parameters.appName}}"
+                  PASSED=0
+                  FAILED=0
+
+                  if ! kubectl get deployment "$APP" -n "$NS" &>/dev/null; then
+                    kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                      -p "{\"data\":{\"validate-resources-set\":\"passed=0 failed=0 warnings=1 reason=deployment-missing\"}}"
+                    exit 0
+                  fi
+
+                  UNSET=$(kubectl get deployment "$APP" -n "$NS" -o json \
+                    | jq '[.spec.template.spec.containers[]
+                        | select((.resources.requests.cpu == null) or
+                                 (.resources.requests.memory == null) or
+                                 (.resources.limits.cpu == null) or
+                                 (.resources.limits.memory == null))] | length')
+
+                  if [ "$UNSET" = "0" ]; then
+                    echo "All containers have requests + limits"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "$UNSET container(s) missing requests or limits"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-resources-set\":\"passed=$PASSED failed=$FAILED unset=$UNSET\"}}"
+
+            # =============================================================
+            # Validate image tag policy: reject :latest, reject any tag
+            # equal to ''. In PROD with requireDigestPinInProd=true, also
+            # require the image reference to contain '@sha256:'.
+            # =============================================================
+            - name: validate-image-tag-policy
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Image Tag Policy ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  APP="{{workflow.parameters.appName}}"
+                  ENV="{{workflow.parameters.environment}}"
+                  REQUIRE_PIN="{{workflow.parameters.requireDigestPinInProd}}"
+                  PASSED=0
+                  FAILED=0
+
+                  if ! kubectl get deployment "$APP" -n "$NS" &>/dev/null; then
+                    kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                      -p "{\"data\":{\"validate-image-policy\":\"passed=0 failed=0 warnings=1 reason=deployment-missing\"}}"
+                    exit 0
+                  fi
+
+                  IMAGES=$(kubectl get deployment "$APP" -n "$NS" -o json \
+                    | jq -r '.spec.template.spec.containers[].image')
+                  echo "Images: $IMAGES"
+
+                  BAD=0
+                  while IFS= read -r img; do
+                    [ -z "$img" ] && continue
+                    if [[ "$img" == *:latest ]] || [[ "$img" != *:* && "$img" != *@sha256:* ]]; then
+                      echo "Bad image: $img (latest or untagged)"
+                      BAD=$((BAD+1))
+                    fi
+                    if [ "$ENV" = "PROD" ] && [ "$REQUIRE_PIN" = "true" ] && [[ "$img" != *@sha256:* ]]; then
+                      echo "PROD image not digest-pinned: $img"
+                      BAD=$((BAD+1))
+                    fi
+                  done <<< "$IMAGES"
+
+                  if [ "$BAD" = "0" ]; then
+                    PASSED=$((PASSED+1))
+                  else
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-image-policy\":\"passed=$PASSED failed=$FAILED bad=$BAD\"}}"
+
+            # =============================================================
+            # Validate NetworkPolicy coverage: default-deny present.
+            # =============================================================
+            - name: validate-network-policy-coverage
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== NetworkPolicy ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  PASSED=0
+                  FAILED=0
+
+                  TOTAL=$(kubectl get networkpolicy -n "$NS" --no-headers 2>/dev/null | wc -l)
+                  DEFAULT_DENY=$(kubectl get networkpolicy -n "$NS" -o json 2>/dev/null \
+                    | jq '[.items[] | select(.spec.podSelector == {} and (.spec.policyTypes | index("Ingress")))] | length')
+
+                  if [ "$DEFAULT_DENY" -ge 1 ]; then
+                    echo "default-deny ingress policy present"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "No default-deny ingress policy"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  if [ "$TOTAL" -ge 2 ]; then
+                    echo "$TOTAL NetworkPolicies — at least one allow rule beyond default-deny"
+                    PASSED=$((PASSED+1))
+                  fi
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-network-policy\":\"passed=$PASSED failed=$FAILED total=$TOTAL default_deny=$DEFAULT_DENY\"}}"
+
+            # =============================================================
+            # Validate Istio mTLS — STRICT PeerAuthentication present.
+            # Skipped via DAG `when:` if hasIstio=false.
+            # =============================================================
+            - name: validate-istio-mtls
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Istio mTLS ==="
+                  NS="{{workflow.parameters.namespace}}"
+                  PASSED=0
+                  FAILED=0
+
+                  if ! kubectl api-resources --api-group=security.istio.io 2>/dev/null | grep -q peerauthentications; then
+                    echo "PeerAuthentication CRD not present on cluster — skipping"
+                    kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                      -p "{\"data\":{\"validate-mtls\":\"passed=0 failed=0 warnings=1 reason=istio-crd-missing\"}}"
+                    exit 0
+                  fi
+
+                  STRICT=$(kubectl get peerauthentication -n "$NS" -o json 2>/dev/null \
+                    | jq '[.items[] | select(.spec.mtls.mode == "STRICT")] | length')
+
+                  if [ "$STRICT" -ge 1 ]; then
+                    echo "STRICT mTLS PeerAuthentication present"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "No STRICT mTLS PeerAuthentication in $NS"
+                    FAILED=$((FAILED+1))
+                  fi
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-mtls\":\"passed=$PASSED failed=$FAILED strict=$STRICT\"}}"
+
+            # =============================================================
+            # Validate ASO Azure resources owned by this app.
+            # Skipped via DAG `when:` if hasAzure=false.
+            # Reads UserAssignedIdentity / FederatedIdentityCredential /
+            # RoleAssignment in azure-system, filtered by managed-by label.
+            # =============================================================
+            - name: validate-azure-resources
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== ASO Azure Resources ==="
+                  APP="{{workflow.parameters.appName}}"
+                  PASSED=0
+                  FAILED=0
+                  WARNINGS=0
+
+                  for kind in userassignedidentity federatedidentitycredential roleassignment; do
+                    if ! kubectl api-resources --api-group=managedidentity.azure.com 2>/dev/null | grep -qi "$kind" \
+                       && ! kubectl api-resources --api-group=authorization.azure.com 2>/dev/null | grep -qi "$kind"; then
+                      echo "$kind CRD not present — skipping"
+                      WARNINGS=$((WARNINGS+1))
+                      continue
+                    fi
+                  done
+
+                  ALL_READY=true
+                  for kind in userassignedidentity federatedidentitycredential roleassignment; do
+                    NOT_READY=$(kubectl get "$kind" -n azure-system -o json 2>/dev/null \
+                      | jq --arg app "$APP" '[.items[]
+                          | select(.metadata.labels."managed-by" == "argo-workflows")
+                          | select(.metadata.name | contains($app))
+                          | select(.status.conditions == null or
+                                   ([.status.conditions[]? | select(.type=="Ready" and .status=="True")] | length) == 0)] | length' 2>/dev/null || echo 0)
+                    if [ "$NOT_READY" = "0" ]; then
+                      echo "$kind: all Ready"
+                      PASSED=$((PASSED+1))
+                    else
+                      echo "$kind: $NOT_READY not Ready"
+                      FAILED=$((FAILED+1))
+                      ALL_READY=false
+                    fi
+                  done
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "{\"data\":{\"validate-azure-resources\":\"passed=$PASSED failed=$FAILED warnings=$WARNINGS all_ready=$ALL_READY\"}}"
+
+            # =============================================================
+            # Aggregate per-task ConfigMap data into a structured report.
+            # Identical pattern to cert v2; output param `report` consumed
+            # by the agent-triage step.
+            # =============================================================
+            - name: aggregate-certification
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set -e
+                  echo "=== Aggregating App Certification Results ==="
+
+                  kubectl get configmap app-cert-results-{{workflow.name}} -n argo \
+                    -o json | jq '.data' > /tmp/results.json
+
+                  TOTAL_FAILED=$(jq -r 'to_entries
+                    | map(.value | capture("failed=(?<n>[0-9]+)").n // "0" | tonumber)
+                    | add // 0' /tmp/results.json)
+
+                  TOTAL_PASSED=$(jq -r 'to_entries
+                    | map(.value | capture("passed=(?<n>[0-9]+)").n // "0" | tonumber)
+                    | add // 0' /tmp/results.json)
+
+                  if [ "$TOTAL_FAILED" -eq 0 ]; then
+                    STATUS="CERTIFIED"
+                  else
+                    STATUS="FAILED"
+                  fi
+
+                  TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+                  jq -n \
+                    --arg app "{{workflow.parameters.appName}}" \
+                    --arg ns "{{workflow.parameters.namespace}}" \
+                    --arg env "{{workflow.parameters.environment}}" \
+                    --arg team "{{workflow.parameters.ownerTeam}}" \
+                    --arg swc "{{workflow.parameters.swc}}" \
+                    --arg ts "$TIMESTAMP" \
+                    --arg wf "{{workflow.name}}" \
+                    --arg status "$STATUS" \
+                    --argjson passed "$TOTAL_PASSED" \
+                    --argjson failed "$TOTAL_FAILED" \
+                    --slurpfile checks /tmp/results.json \
+                    '{
+                       app: $app,
+                       namespace: $ns,
+                       environment: $env,
+                       owner_team: $team,
+                       swc: $swc,
+                       timestamp: $ts,
+                       workflow: $wf,
+                       certification: {
+                         status: $status,
+                         total_passed: $passed,
+                         total_failed: $failed,
+                         per_check: $checks[0]
+                       }
+                     }' > /tmp/cert-report.json
+
+                  echo "=========================================================="
+                  echo "APPLICATION CERTIFICATION REPORT (v1)"
+                  echo "=========================================================="
+                  cat /tmp/cert-report.json | jq .
+                  echo "=========================================================="
+
+                  REPORT_PAYLOAD=$(jq -c '.' /tmp/cert-report.json)
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "$(jq -n --arg r "$REPORT_PAYLOAD" '{data:{"_aggregated":$r}}')"
+              outputs:
+                parameters:
+                  - name: report
+                    valueFrom:
+                      path: /tmp/cert-report.json
+
+            # =============================================================
+            # Hand the structured report to KAgent via A2A. Same prompt
+            # shape as cert v2's agent-triage so the consuming agent can
+            # be the same sre-triage-agent without extra training.
+            # =============================================================
+            - name: agent-triage
+              inputs:
+                parameters:
+                  - name: cert-report
+              script:
+                image: bitnami/kubectl:latest
+                command: [bash]
+                source: |
+                  set +e   # never let a flaky agent take down the workflow
+                  echo "=== Agent Triage (KAgent A2A) ==="
+
+                  CERT_REPORT='{{inputs.parameters.cert-report}}'
+                  KAGENT_URL="http://{{workflow.parameters.kagentService}}:{{workflow.parameters.kagentPort}}"
+                  AGENT_NAME="{{workflow.parameters.agentName}}"
+                  TIMEOUT="{{workflow.parameters.agentTimeoutSeconds}}"
+                  APP="{{workflow.parameters.appName}}"
+                  NS="{{workflow.parameters.namespace}}"
+                  ENV="{{workflow.parameters.environment}}"
+
+                  echo "$CERT_REPORT" > /tmp/cert-report.json
+
+                  jq -n \
+                    --rawfile report /tmp/cert-report.json \
+                    --arg app "$APP" \
+                    --arg ns  "$NS" \
+                    --arg env "$ENV" \
+                    '{
+                       jsonrpc: "2.0",
+                       id: ("app-cert-triage-" + $app + "-" + (now|tostring)),
+                       method: "message/send",
+                       params: {
+                         message: {
+                           role: "user",
+                           parts: [{
+                             kind: "text",
+                             text: ("CRITICAL: app name is exactly \"" + $app + "\" in namespace \"" + $ns + "\" environment \"" + $env + "\". " +
+                                    "Analyze the application certification report below and respond with ONLY a single JSON object matching this schema, no markdown, no prose:\n" +
+                                    "{\"severity\":\"CRITICAL|WARNING|INFO\",\"blast_radius\":\"<single subsystem name>\",\"failed_checks\":[\"<check-name>\"],\"first_remediation\":\"<one short sentence>\"}\n\n" +
+                                    "Severity rules:\n" +
+                                    "- CRITICAL: app unusable (no ready replicas, all pods CrashLoopBackOff, image policy fails in PROD)\n" +
+                                    "- WARNING: degraded but functional (probes/resources missing on some containers, mTLS not STRICT, NetworkPolicy partial)\n" +
+                                    "- INFO: all green or only transient warnings\n\n" +
+                                    "Certification report:\n" + $report)
+                           }]
+                         }
+                       }
+                     }' > /tmp/payload.json
+
+                  echo "POSTing to $KAGENT_URL/api/a2a/kagent/$AGENT_NAME/"
+
+                  HTTP_CODE=$(curl -sS -o /tmp/agent-response.json -w "%{http_code}" \
+                    --max-time "$TIMEOUT" \
+                    -X POST \
+                    -H "Content-Type: application/json" \
+                    -d @/tmp/payload.json \
+                    "$KAGENT_URL/api/a2a/kagent/$AGENT_NAME/" || echo "000")
+
+                  echo "HTTP $HTTP_CODE"
+
+                  if [ "$HTTP_CODE" != "200" ]; then
+                    echo "Agent call failed (HTTP $HTTP_CODE) — emitting AGENT_UNAVAILABLE verdict"
+                    cat /tmp/agent-response.json 2>/dev/null || true
+                    echo '{"severity":"AGENT_UNAVAILABLE","blast_radius":"agent","failed_checks":[],"first_remediation":"Check kagent service health"}' > /tmp/verdict.json
+                    echo "AGENT_UNAVAILABLE" > /tmp/severity
+                    exit 0
+                  fi
+
+                  RAW=$(jq -r '.result.artifacts[0].parts[0].text // empty' /tmp/agent-response.json)
+                  if [ -z "$RAW" ]; then
+                    echo "Agent returned no text artifact — emitting PARSE_ERROR verdict"
+                    cat /tmp/agent-response.json | jq . || cat /tmp/agent-response.json
+                    echo '{"severity":"PARSE_ERROR","blast_radius":"agent","failed_checks":[],"first_remediation":"Inspect agent response shape"}' > /tmp/verdict.json
+                    echo "PARSE_ERROR" > /tmp/severity
+                    exit 0
+                  fi
+
+                  echo "--- Agent raw response ---"
+                  echo "$RAW"
+                  echo "--------------------------"
+
+                  CLEANED=$(echo "$RAW" \
+                    | sed -E 's/^[[:space:]]*```(json)?//; s/```[[:space:]]*$//')
+
+                  if VERDICT=$(echo "$CLEANED" | jq -c '.' 2>/dev/null) && [ -n "$VERDICT" ]; then
+                    :
+                  else
+                    VERDICT=$(echo "$CLEANED" \
+                      | tr -d '\n' \
+                      | grep -oE '\{[^{}]*"severity"[^{}]*\}' \
+                      | head -1 || echo "")
+                  fi
+
+                  if [ -z "$VERDICT" ]; then
+                    SEVERITY=$(echo "$RAW" | grep -oiE 'CRITICAL|WARNING|INFO' | head -1 | tr a-z A-Z)
+                    if [ -z "$SEVERITY" ]; then SEVERITY=PARSE_ERROR; fi
+                    VERDICT=$(jq -n --arg s "$SEVERITY" '{severity:$s,blast_radius:"unknown",failed_checks:[],first_remediation:"Agent response did not match schema; review logs"}')
+                  fi
+
+                  SEVERITY=$(echo "$VERDICT" | jq -r '.severity // "UNKNOWN"')
+
+                  echo "$VERDICT" > /tmp/verdict.json
+                  echo "$SEVERITY" > /tmp/severity
+
+                  echo ""
+                  echo "=== Agent Verdict ==="
+                  echo "$VERDICT" | jq .
+                  echo "Severity: $SEVERITY"
+
+                  kubectl patch configmap app-cert-results-{{workflow.name}} -n argo --type=merge \
+                    -p "$(jq -n --arg v "$VERDICT" '{data:{"_agent_verdict":$v}}')" || true
+              outputs:
+                parameters:
+                  - name: verdict
+                    valueFrom:
+                      path: /tmp/verdict.json
+                  - name: severity
+                    valueFrom:
+                      path: /tmp/severity
+
+            # =============================================================
+            # Optional gate. Off by default (failOnCritical=false).
+            # =============================================================
+            - name: gate-critical
+              container:
+                image: alpine:latest
+                command: [sh, -c]
+                args:
+                  - |
+                    echo "Agent reported CRITICAL severity and failOnCritical=true"
+                    echo "Failing workflow to surface in upstream alerting."
+                    exit 1
+
+            # =============================================================
+            # Exit handler — short summary in workflow logs.
+            # =============================================================
+            - name: generate-final-report
+              container:
+                image: alpine:latest
+                command: [sh, -c]
+                args:
+                  - |
+                    echo "=========================================="
+                    echo "App Certification Complete (v1)"
+                    echo "=========================================="
+                    echo "App:         {{workflow.parameters.appName}}"
+                    echo "Namespace:   {{workflow.parameters.namespace}}"
+                    echo "Environment: {{workflow.parameters.environment}}"
+                    echo "Owner team:  {{workflow.parameters.ownerTeam}}"
+                    echo "SWC:         {{workflow.parameters.swc}}"
+                    echo "Status:      {{workflow.status}}"
+                    echo "Agent:       {{workflow.parameters.agentEnabled}}"
+                    echo "Results CM:  app-cert-results-{{workflow.name}} (auto-GC'd)"
+                    echo "=========================================="
+
+    # ----------------------------------------
+    # Monthly Re-Certification Schedule
+    # ----------------------------------------
+    - id: certificationSchedule
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: CronWorkflow
+        metadata:
+          name: monthly-app-cert-${schema.spec.appName}
+          namespace: argo
+          labels:
+            kro.run/app: ${schema.spec.appName}
+            kro.run/component: app-certification-schedule
+            kro.run/version: v1
+            environment: ${schema.spec.environment}
+          annotations:
+            kro.run/description: "Monthly application certification (v1) for ${schema.spec.appName} in ${schema.spec.namespace}"
+        spec:
+          schedule: ${schema.spec.certification.schedule}
+          timezone: "UTC"
+          suspend: ${schema.spec.certification.suspended}
+          workflowSpec:
+            workflowTemplateRef:
+              name: certify-app-${schema.spec.appName}
+
+    # ----------------------------------------
+    # Optional initial certification trigger.
+    # autoTrigger defaults to false — apps cert on demand from Phase 5
+    # of the golden path, not on RGD instance creation. Surfaced here
+    # for parity with cert v2 in case a team opts in.
+    # ----------------------------------------
+    - id: certificationTrigger
+      template:
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: trigger-app-cert-${schema.spec.appName}
+          namespace: argo
+          labels:
+            kro.run/app: ${schema.spec.appName}
+            kro.run/component: app-certification-trigger
+            kro.run/version: v1
+            environment: ${schema.spec.environment}
+          annotations:
+            kro.run/description: "Triggers initial app certification for ${schema.spec.appName} when autoTrigger=true"
+        spec:
+          ttlSecondsAfterFinished: 300
+          backoffLimit: 1
+          template:
+            spec:
+              serviceAccountName: argo-workflow-executor
+              restartPolicy: OnFailure
+              containers:
+                - name: trigger-app-certification
+                  image: bitnami/kubectl:latest
+                  command: [bash, -c]
+                  env:
+                    - name: AUTO_TRIGGER
+                      value: "${schema.spec.certification.autoTrigger ? 'true' : 'false'}"
+                  args:
+                    - |
+                      set -e
+                      if [ "$AUTO_TRIGGER" != "true" ]; then
+                        echo "autoTrigger disabled — initial certification not submitted"
+                        exit 0
+                      fi
+                      for i in $(seq 1 30); do
+                        if kubectl get workflowtemplate certify-app-${schema.spec.appName} -n argo &>/dev/null; then
+                          break
+                        fi
+                        sleep 5
+                      done
+                      cat <<EOF | kubectl create -f -
+                      apiVersion: argoproj.io/v1alpha1
+                      kind: Workflow
+                      metadata:
+                        generateName: certify-app-${schema.spec.appName}-auto-
+                        namespace: argo
+                        labels:
+                          kro.run/app: ${schema.spec.appName}
+                          kro.run/trigger: automatic
+                          kro.run/version: v1
+                      spec:
+                        workflowTemplateRef:
+                          name: certify-app-${schema.spec.appName}
+                      EOF
+                      echo "Initial app certification submitted"

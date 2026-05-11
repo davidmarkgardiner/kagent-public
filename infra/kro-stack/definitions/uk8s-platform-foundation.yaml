@@ -1,0 +1,244 @@
+---
+# Layer 1: Platform Foundation
+# Creates shared resources ONCE across all clusters:
+# - User-Assigned Managed Identities (UAMIs)
+# - Azure Key Vault
+# - DNS zones
+# - Other shared Azure resources
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8s-platform-foundation.kro.run
+  labels:
+    kro.run/type: platform-foundation
+    kro.run/category: infrastructure
+    kro.run/layer: "1"
+  annotations:
+    kro.run/description: "Platform foundation with shared identities and Azure resources"
+    kro.run/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8SPlatformFoundation
+    spec:
+      # ========================================
+      # Platform Identity
+      # ========================================
+      platformName: string | required=true description="Platform name (used as prefix for all resources)" pattern="^[a-z0-9]([a-z0-9-]{0,20}[a-z0-9])?$"
+      targetNamespace: string | default="uk8s-platform" description="Namespace for platform resources"
+
+      # ========================================
+      # Azure Configuration
+      # ========================================
+      subscriptionId: string | required=true description="Azure subscription ID" pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      location: string | required=true description="Azure region" default="uksouth" enum="uksouth,ukwest,westeurope,northeurope"
+      resourceGroupName: string | required=true description="Resource group for platform resources"
+
+      # ========================================
+      # Tags
+      # ========================================
+      tags: 'map[string]string | required=true description="Resource tags"'
+
+  # ========================================
+  # Shared Resources (Created ONCE)
+  # ========================================
+  resources:
+    # ----------------------------------------
+    # Platform Resource Group
+    # ----------------------------------------
+    - id: platformResourceGroup
+      template:
+        apiVersion: resources.azure.com/v1api20200601
+        kind: ResourceGroup
+        metadata:
+          name: ${schema.spec.resourceGroupName}
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/platform: ${schema.spec.platformName}
+            kro.run/layer: foundation
+        spec:
+          azureName: ${schema.spec.resourceGroupName}
+          location: ${schema.spec.location}
+          tags: ${schema.spec.tags}
+
+    # ----------------------------------------
+    # Shared UAMI: External Secrets Operator
+    # ----------------------------------------
+    - id: externalSecretsIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.platformName}-externalsecrets
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/platform: ${schema.spec.platformName}
+            kro.run/component: external-secrets-identity
+        spec:
+          azureName: uami-${schema.spec.platformName}-externalsecrets
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroupName}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: platform-eso-identity-cm
+                key: clientId
+              principalId:
+                name: platform-eso-identity-cm
+                key: principalId
+              tenantId:
+                name: platform-eso-identity-cm
+                key: tenantId
+
+    # ----------------------------------------
+    # Shared UAMI: External DNS
+    # ----------------------------------------
+    - id: externalDnsIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.platformName}-externaldns
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/platform: ${schema.spec.platformName}
+            kro.run/component: external-dns-identity
+        spec:
+          azureName: uami-${schema.spec.platformName}-externaldns
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroupName}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: platform-external-dns-identity-cm
+                key: clientId
+              principalId:
+                name: platform-external-dns-identity-cm
+                key: principalId
+              tenantId:
+                name: platform-external-dns-identity-cm
+                key: tenantId
+
+    # ----------------------------------------
+    # Shared UAMI: cert-manager
+    # ----------------------------------------
+    - id: certManagerIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.platformName}-certmanager
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/platform: ${schema.spec.platformName}
+            kro.run/component: cert-manager-identity
+        spec:
+          azureName: uami-${schema.spec.platformName}-certmanager
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroupName}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: platform-cert-manager-identity-cm
+                key: clientId
+              principalId:
+                name: platform-cert-manager-identity-cm
+                key: principalId
+              tenantId:
+                name: platform-cert-manager-identity-cm
+                key: tenantId
+
+    # ----------------------------------------
+    # Shared UAMI: Grafana
+    # ----------------------------------------
+    - id: grafanaIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.platformName}-grafana
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/platform: ${schema.spec.platformName}
+            kro.run/component: grafana-identity
+        spec:
+          azureName: uami-${schema.spec.platformName}-grafana
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroupName}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: platform-grafana-identity-cm
+                key: clientId
+              principalId:
+                name: platform-grafana-identity-cm
+                key: principalId
+              tenantId:
+                name: platform-grafana-identity-cm
+                key: tenantId
+
+    # ----------------------------------------
+    # Shared UAMI: Flux
+    # ----------------------------------------
+    - id: fluxIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.platformName}-flux
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/platform: ${schema.spec.platformName}
+            kro.run/component: flux-identity
+        spec:
+          azureName: uami-${schema.spec.platformName}-flux
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroupName}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: platform-flux-identity-cm
+                key: clientId
+              principalId:
+                name: platform-flux-identity-cm
+                key: principalId
+              tenantId:
+                name: platform-flux-identity-cm
+                key: tenantId
+
+  # ----------------------------------------
+  # Status Outputs (For Reference by Clusters)
+  # ----------------------------------------
+  status:
+    platformReady: true
+    resourceGroupName: ${platformResourceGroup.metadata.name}
+
+    # External Secrets Identity
+    externalSecretsClientId: ${externalSecretsIdentity.status.clientId}
+    externalSecretsPrincipalId: ${externalSecretsIdentity.status.principalId}
+    externalSecretsResourceId: ${externalSecretsIdentity.status.resourceId}
+
+    # External DNS Identity
+    externalDnsClientId: ${externalDnsIdentity.status.clientId}
+    externalDnsPrincipalId: ${externalDnsIdentity.status.principalId}
+    externalDnsResourceId: ${externalDnsIdentity.status.resourceId}
+
+    # cert-manager Identity
+    certManagerClientId: ${certManagerIdentity.status.clientId}
+    certManagerPrincipalId: ${certManagerIdentity.status.principalId}
+    certManagerResourceId: ${certManagerIdentity.status.resourceId}
+
+    # Grafana Identity
+    grafanaClientId: ${grafanaIdentity.status.clientId}
+    grafanaPrincipalId: ${grafanaIdentity.status.principalId}
+    grafanaResourceId: ${grafanaIdentity.status.resourceId}
+
+    # Flux Identity
+    fluxClientId: ${fluxIdentity.status.clientId}
+    fluxPrincipalId: ${fluxIdentity.status.principalId}
+    fluxResourceId: ${fluxIdentity.status.resourceId}

@@ -1,0 +1,253 @@
+---
+# ResourceGraphDefinition for UK8S Flux GitOps Configuration
+# This handles the deployment and configuration of Flux CD for continuous delivery:
+# - Flux Extension installation on AKS cluster
+# - Core cluster configuration (NAP, system components)
+# - Application configuration per environment
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8sfluxgitops.kro.run
+  labels:
+    kro.run/type: gitops
+    kro.run/category: platform
+  annotations:
+    kro.run/description: "Flux CD GitOps configuration for cluster and application management"
+    kro.run/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8SFluxGitOps
+    spec:
+      # ========================================
+      # Cluster Reference
+      # ========================================
+      clusterName: string | required=true description="The name of the AKS cluster" pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+      targetNamespace: string | required=true description="The namespace where the cluster resource is created"
+      resourceGroup: string | required=true description="The resource group that owns this cluster"
+
+      # ========================================
+      # Environment Classification
+      # ========================================
+      environment: string | required=true enum="dev,staging,production" description="Environment for path resolution and configuration selection"
+
+      # ========================================
+      # Flux Configuration
+      # ========================================
+      flux:
+        core:
+          url: string | required=true description="Git repository URL for core cluster configuration (NAP, base components)"
+          branch: string | default="main" description="Git branch for core configuration"
+        config:
+          url: string | required=true description="Git repository URL for application configuration"
+          branch: string | default="main" description="Git branch for application configuration"
+
+  # ========================================
+  # Resources Created by this RGD
+  # ========================================
+  resources:
+    # ----------------------------------------
+    # Flux Extension
+    # ----------------------------------------
+    - id: fluxExtension
+      template:
+        apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+        kind: Extension
+        metadata:
+          name: flux-${schema.spec.clusterName}
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: flux-extension
+            environment: ${schema.spec.environment}
+        spec:
+          azureName: flux-${schema.spec.clusterName}
+          autoUpgradeMinorVersion: true
+          extensionType: microsoft.flux
+          identity:
+            type: SystemAssigned
+          owner:
+            group: containerservice.azure.com
+            kind: ManagedCluster
+            name: ${schema.spec.clusterName}
+          scope:
+            cluster:
+              releaseNamespace: flux-system
+          configurationSettings:
+            multiTenancy.enforce: "false"
+            image-automation-controller.enabled: "true"
+            image-reflector-controller.enabled: "true"
+            # Note: workloadIdentity configuration requires fluxClientId from cluster identity
+            # This should be set via cluster configuration
+
+    # ----------------------------------------
+    # Flux Core Configuration
+    # Manages cluster-level components and NAP
+    # ----------------------------------------
+    - id: fluxConfigurationCore
+      template:
+        apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+        kind: FluxConfiguration
+        metadata:
+          name: uk8s-core-${schema.spec.clusterName}
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: flux-core-config
+            environment: ${schema.spec.environment}
+        spec:
+          azureName: uk8s-core
+          namespace: uk8s-core
+          owner:
+            group: containerservice.azure.com
+            kind: ManagedCluster
+            name: ${schema.spec.clusterName}
+          sourceKind: GitRepository
+          scope: cluster
+          suspend: false
+          gitRepository:
+            provider: Azure
+            repositoryRef:
+              branch: ${schema.spec.flux.core.branch}
+            url: ${schema.spec.flux.core.url}
+            timeoutInSeconds: 60
+            syncIntervalInSeconds: 120
+          kustomizations:
+            # NAP (Node Auto-Provisioning) Configuration
+            napconfiguration:
+              path: environments/${schema.spec.environment}/napconfiguration/base
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 120
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.environment}
+                    optional: false
+
+            # Core cluster components
+            core:
+              path: environments/${schema.spec.environment}/${schema.spec.clusterName}
+              dependsOn: ["napconfiguration"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.clusterName}
+                    optional: false
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.environment}
+                    optional: false
+
+            # Tier 2 components (secondary system components)
+            tier2:
+              path: environments/${schema.spec.environment}/${schema.spec.clusterName}/tier2
+              dependsOn: ["core"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.environment}
+                    optional: false
+
+    # ----------------------------------------
+    # Flux Application Configuration
+    # Manages application deployments per environment
+    # ----------------------------------------
+    - id: fluxConfigurationConfig
+      template:
+        apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+        kind: FluxConfiguration
+        metadata:
+          name: uk8s-config-${schema.spec.clusterName}
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: flux-app-config
+            environment: ${schema.spec.environment}
+        spec:
+          azureName: uk8s-config
+          namespace: uk8s-config
+          owner:
+            group: containerservice.azure.com
+            kind: ManagedCluster
+            name: ${schema.spec.clusterName}
+          sourceKind: GitRepository
+          scope: cluster
+          suspend: false
+          gitRepository:
+            provider: Azure
+            repositoryRef:
+              branch: ${schema.spec.flux.config.branch}
+            url: ${schema.spec.flux.config.url}
+            timeoutInSeconds: 60
+            syncIntervalInSeconds: 120
+          kustomizations:
+            # Base configuration for all environments
+            baseconfiguration:
+              path: baseconfiguration/${schema.spec.environment}/
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 120
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.environment}
+                    optional: false
+
+            # Resource group definitions (KRO RGDs)
+            resourcegroupdefinition:
+              path: baseconfiguration/base/resourcegroupdefinitions
+              dependsOn: ["baseconfiguration"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.environment}
+                    optional: false
+
+            # Resource group instances (KRO instances)
+            resourcegroupinstance:
+              path: baseconfiguration/base/resourcegroupinstance
+              dependsOn: ["resourcegroupdefinition"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.environment}
+                    optional: false
+
+            # Application deployments per cluster
+            app:
+              path: environment/${schema.spec.environment}/westeurope/${schema.spec.clusterName}
+              dependsOn: ["baseconfiguration"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                  - kind: ConfigMap
+                    name: cluster-vars-${schema.spec.environment}
+                    optional: false

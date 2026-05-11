@@ -1,0 +1,236 @@
+---
+# ResourceGraphDefinition for UK8S Post-Deployment Jobs
+# This handles post-deployment configuration tasks that require the cluster to be running:
+# - Grafana integration with Azure Monitor
+# - Azure Monitor metrics configuration
+# - Other post-deployment validation and setup tasks
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8sjobs.kro.run
+  labels:
+    kro.run/type: post-deployment
+    kro.run/category: operations
+  annotations:
+    kro.run/description: "Post-deployment jobs for cluster configuration and integration"
+    kro.run/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8Sjobs
+    spec:
+      # ========================================
+      # Cluster Reference
+      # ========================================
+      clusterName: string | required=true description="The name of the AKS cluster" pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+      resourceGroup: string | required=true description="The resource group that owns this cluster"
+
+      # ========================================
+      # Azure Configuration
+      # ========================================
+      subscriptionId: string | required=true description="Azure subscription ID" pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      azureTenantId: string | default="" description="Azure AD tenant ID (optional - only needed for Grafana integration)" pattern="^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$"
+
+      # ========================================
+      # Monitoring Configuration
+      # ========================================
+      azureMonitorWorkspaceResourceId: string | default="" description="ARM resource ID of Azure Monitor workspace for managed Prometheus (optional)"
+      grafanaResourceId: string | default="" description="ARM resource ID of Azure Managed Grafana instance (optional)"
+
+      # ========================================
+      # Identity Configuration
+      # ========================================
+      asoClientId: string | default="" description="Client ID of ASO workload identity for Azure CLI operations (optional)" pattern="^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$"
+
+      # ========================================
+      # Namespace Configuration
+      # ========================================
+      targetNamespace: string | default="flux-system" description="Target namespace for job resources"
+
+  # ========================================
+  # Resources Created by this RGD
+  # ========================================
+  resources:
+    # ----------------------------------------
+    # Service Account for Grafana Integration
+    # Uses workload identity to authenticate to Azure
+    # ----------------------------------------
+    - id: grafanaIntegrationServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: grafana-integration-reconcile-sa
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: grafana-integration-sa
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.asoClientId}
+
+    # ----------------------------------------
+    # Grafana Integration Job
+    # Configures Azure Monitor and Grafana integration for the cluster
+    # ----------------------------------------
+    - id: grafanaIntegrationJob
+      template:
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: grafana-integration-job-${schema.spec.clusterName}
+          namespace: ${schema.spec.targetNamespace}
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: grafana-integration-job
+          annotations:
+            kro.run/description: "Configures Azure Monitor metrics and Grafana integration"
+        spec:
+          backoffLimit: 2
+          ttlSecondsAfterFinished: 86400  # Clean up after 24 hours
+          template:
+            metadata:
+              labels:
+                azure.workload.identity/use: "true"
+                kro.run/cluster: ${schema.spec.clusterName}
+                kro.run/job-type: grafana-integration
+            spec:
+              serviceAccountName: grafana-integration-reconcile-sa
+              restartPolicy: Never
+              containers:
+                - name: azure-cli
+                  image: mcr.microsoft.com/azure-cli:latest
+                  command:
+                    - /bin/bash
+                    - -c
+                    - |
+                      set -e
+
+                      echo "========================================="
+                      echo "Grafana Integration Configuration"
+                      echo "========================================="
+                      echo "Cluster: $CLUSTER_NAME"
+                      echo "Resource Group: $RESOURCE_GROUP"
+                      echo "Subscription: $SUBSCRIPTION"
+                      echo "Azure Monitor Workspace: $AZURE_MONITOR_WORKSPACE_ID"
+                      echo "Grafana Resource: $GRAFANA_RESOURCE_ID"
+                      echo "========================================="
+
+                      # Login using workload identity
+                      echo "Authenticating with workload identity..."
+                      az login --federated-token "$(cat $AZURE_FEDERATED_TOKEN_FILE)" \
+                                --service-principal \
+                                -u "$AZURE_CLIENT_ID" \
+                                -t "$AZURE_TENANT_ID"
+
+                      az account set -s "$SUBSCRIPTION"
+                      az account show
+
+                      # Wait for AKS cluster to be ready
+                      echo "Waiting for AKS cluster to be ready..."
+                      max_attempts=20
+                      attempt=0
+
+                      while [ $attempt -lt $max_attempts ]; do
+                        provisioning_state=$(az aks show \
+                          --name "$CLUSTER_NAME" \
+                          --resource-group "$RESOURCE_GROUP" \
+                          --query "provisioningState" \
+                          --output tsv 2>/dev/null || echo "NotFound")
+
+                        echo "Cluster provisioning state: $provisioning_state (attempt $((attempt+1))/$max_attempts)"
+
+                        if [ "$provisioning_state" = "Succeeded" ]; then
+                          echo "✅ AKS cluster is ready!"
+                          break
+                        elif [ "$provisioning_state" = "Failed" ]; then
+                          echo "❌ AKS cluster provisioning failed!"
+                          exit 1
+                        else
+                          echo "⏳ Waiting for cluster... (attempt $((attempt+1))/$max_attempts)"
+                          sleep 30
+                          attempt=$((attempt+1))
+                        fi
+                      done
+
+                      if [ $attempt -eq $max_attempts ]; then
+                        echo "❌ Timeout waiting for cluster to be ready"
+                        exit 1
+                      fi
+
+                      # Check if Azure Monitor metrics are already enabled
+                      echo "Checking current Azure Monitor configuration..."
+                      current_config=$(az aks show \
+                        --name "$CLUSTER_NAME" \
+                        --resource-group "$RESOURCE_GROUP" \
+                        --query "azureMonitorProfile.metrics.enabled" \
+                        --output tsv 2>/dev/null || echo "false")
+
+                      if [ "$current_config" = "true" ]; then
+                        echo "ℹ️  Azure Monitor metrics already enabled"
+                        echo "Verifying Grafana integration..."
+                      else
+                        echo "🔧 Enabling Azure Monitor metrics and Grafana integration..."
+
+                        az aks update \
+                          --name "$CLUSTER_NAME" \
+                          --resource-group "$RESOURCE_GROUP" \
+                          --enable-azure-monitor-metrics \
+                          --azure-monitor-workspace-resource-id "$AZURE_MONITOR_WORKSPACE_ID" \
+                          --grafana-resource-id "$GRAFANA_RESOURCE_ID" \
+                          --ksm-metric-annotations-allow-list "namespaces=[owner,swcID]" \
+                          --no-wait
+
+                        echo "✅ Azure Monitor and Grafana integration configured"
+                      fi
+
+                      # Verify final configuration
+                      echo "Verifying configuration..."
+                      az aks show \
+                        --name "$CLUSTER_NAME" \
+                        --resource-group "$RESOURCE_GROUP" \
+                        --query "{cluster: name, state: provisioningState, metricsEnabled: azureMonitorProfile.metrics.enabled}" \
+                        --output table
+
+                      echo "========================================="
+                      echo "Grafana Integration Complete"
+                      echo "========================================="
+
+                  env:
+                    - name: CLUSTER_NAME
+                      value: ${schema.spec.clusterName}
+                    - name: RESOURCE_GROUP
+                      value: ${schema.spec.resourceGroup}
+                    - name: SUBSCRIPTION
+                      value: ${schema.spec.subscriptionId}
+                    - name: AZURE_MONITOR_WORKSPACE_ID
+                      value: ${schema.spec.azureMonitorWorkspaceResourceId}
+                    - name: GRAFANA_RESOURCE_ID
+                      value: ${schema.spec.grafanaResourceId}
+                    - name: AZURE_TENANT_ID
+                      value: ${schema.spec.azureTenantId}
+                    - name: AZURE_CLIENT_ID
+                      value: ${schema.spec.asoClientId}
+                    - name: AZURE_FEDERATED_TOKEN_FILE
+                      value: /var/run/secrets/azure/tokens/azure-identity-token
+
+                  resources:
+                    requests:
+                      memory: "128Mi"
+                      cpu: "100m"
+                    limits:
+                      memory: "256Mi"
+                      cpu: "200m"
+
+                  volumeMounts:
+                    - name: azure-identity-token
+                      mountPath: /var/run/secrets/azure/tokens
+                      readOnly: true
+
+              volumes:
+                - name: azure-identity-token
+                  projected:
+                    sources:
+                      - serviceAccountToken:
+                          path: azure-identity-token
+                          expirationSeconds: 3600
+                          audience: api://AzureADTokenExchange

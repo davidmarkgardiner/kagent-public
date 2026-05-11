@@ -1,0 +1,1102 @@
+apiVersion: kro.run/v1alpha1
+kind: UK8SCluster
+metadata:
+  name: uk8s-tsshared-weu-gt025-int-d08
+  namespace: uk8s-nextgen
+spec:
+  clusterName: "uk8s-tsshared-weu-gt025-int-d08"
+  location: "westeurope"
+  resourceGroup: ""
+  flux:
+    core:
+      branch: "jf/feat/kroAsoBuild"  
+  tags:
+    environment: dev
+
+---
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8scluster.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8SCluster
+    spec:
+      # Cluster Identity
+      clusterName: string | required=true description="The name of the AKS cluster"
+      namespace: string | default="uk8s-nextgen" required=true description="The namespace where the cluster resource will be created"
+      location: string | required=true description="Azure region for the cluster" default="uksouth"
+      subscriptionId: string | default="" description="Subscription ID for the management identity"
+
+      # Owner Resource Group
+      resourceGroup: string | required=true description="The resource group that owns this cluster"
+
+      # Kubernetes Version
+      kubernetesVersion: string | default="1.33" description="Kubernetes version"
+
+      # SSH Configuration
+      sshPublicKey: string | default="" required=true description="SSH public key for Linux nodes"
+
+      # Network Configuration
+      network:
+        vnetSubscriptionId: string | required=true description="Subscription ID for the VNET"
+        vnetResourceGroup: string | required=true description="Resource group containing the VNET"
+        vnetName: string | required=true description="Virtual network name"
+        subnetName: string | required=true description="Subnet name for nodes"
+        serviceCidr: string | default="10.251.0.0/17" description="Service CIDR block"
+        dnsServiceIP: string | default="10.251.0.10" description="DNS service IP"
+        podCidr: string | default="10.251.128.0/17" description="Pod CIDR block"
+
+      # Identity Configuration
+      identity:
+        controlPlaneIdentityResourceId: string | required=true description="ARM ID of the control plane managed identity"
+        kubeletIdentityClientId: string | required=true description="Client ID of the kubelet identity"
+        kubeletIdentityObjectId: string | required=true description="Object ID of the kubelet identity"
+        kubeletIdentityResourceId: string | required=true description="ARM ID of the kubelet identity"
+        fluxClientId: string | required=true description="Client ID of the flux identity for image and source controller to use for workload identity"     
+
+      # AAD Configuration
+      aad:
+        enableAzureRBAC: boolean | default=true description="Enable Azure RBAC for Kubernetes authorization"
+        adminGroupObjectIds: '[]string | required=true description="List of Azure AD group object IDs for cluster admin access"'
+
+      # Node Pool Configuration
+      nodePool:
+        name: string | default="sysnpl" description="Name of the system node pool"
+        vmSize: string | default="Standard_B8ms" description="VM size for nodes"
+        count: integer | default=1 minimum=1 maximum=100 description="Number of nodes"
+        enableAutoScaling: boolean | default=false description="Enable autoscaling"
+        availabilityZones: '[]string | default=["1"] description="Availability zones"'
+        osDiskType: string | default="Managed" description="OS disk type"
+        osDiskSizeGB: integer | default=128 minimum=30 maximum=2048 description="OS disk size in GB"
+        osSKU: string | default="AzureLinux" enum="AzureLinux,Ubuntu,Windows2019,Windows2022" description="OS SKU"
+        maxPods: integer | default=110 minimum=10 maximum=250 description="Maximum pods per node"
+
+      # Security Configuration
+      security:
+        enableSecureBoot: boolean | default=true description="Enable secure boot"
+        enableVTPM: boolean | default=true description="Enable vTPM"
+        disableLocalAccounts: boolean | default=true description="Disable local accounts"
+        disableRunCommand: boolean | default=true description="Disable run command"
+        enableDefender: boolean | default=true description="Enable Microsoft Defender"
+        defenderWorkspaceResourceId: string | required=true description="Log Analytics workspace for Defender"
+
+      # Workload Identity
+      workloadIdentity:
+        enabled: boolean | default=true description="Enable workload identity"
+
+      # OIDC Issuer
+      oidcIssuer:
+        enabled: boolean | default=true description="Enable OIDC issuer"
+        configMapKey: string | default="issuer-url" description="ConfigMap key for OIDC issuer URL"
+
+      # Auto Upgrade
+      autoUpgrade:
+        upgradeChannel: string | default="stable" enum="none,patch,stable,rapid,node-image" description="Auto upgrade channel"
+        nodeOSUpgradeChannel: string | default="NodeImage" enum="None,Unmanaged,SecurityPatch,NodeImage" description="Node OS upgrade channel"
+
+      # Storage Profile
+      storage:
+        diskCSIDriverEnabled: boolean | default=true description="Enable disk CSI driver"
+        fileCSIDriverEnabled: boolean | default=true description="Enable file CSI driver"
+        snapshotControllerEnabled: boolean | default=true description="Enable snapshot controller"
+
+      # Addons
+      addons:
+        azureKeyvaultSecretsProvider:
+          enabled: boolean | default=true description="Enable Key Vault secrets provider"
+          enableSecretRotation: string | default="true" description="Enable secret rotation - must be string true or false"
+          rotationPollInterval: string | default="30m" description="Rotation poll interval"
+        azurePolicy:
+          enabled: boolean | default=true description="Enable Azure Policy"
+          version: string | default="v2" description="Azure Policy version"
+
+      # Workload Auto Scaler
+      workloadAutoScaler:
+        keda:
+          enabled: boolean | default=true description="Enable KEDA"
+        verticalPodAutoscaler:
+          enabled: boolean | default=true description="Enable VPA"
+
+      # Service Mesh (Istio)
+      serviceMesh:
+        enabled: boolean | default=true description="Enable Istio service mesh"
+        istioRevisions: '[]string | default=["asm-1-27"] description="Istio revisions"'
+        internalIngressEnabled: boolean | default=true description="Enable internal ingress gateway"
+        externalIngressEnabled: boolean | default=true description="Enable external ingress gateway"
+
+      # Monitoring and Metrics
+      azureMonitorProfile:
+        metrics:
+          enabled: boolean | default=true description="Enable Azure Monitor metrics"
+
+      # SKU and Support
+      sku:
+        name: string | default="Base" enum="Base,Premium" description="SKU name"
+        tier: string | default="Standard" enum="Free,Standard,Premium" description="SKU tier"
+      supportPlan: string | default="KubernetesOfficial" enum="KubernetesOfficial,AKSLongTermSupport" description="Support plan"
+
+      # Tags
+      tags: 'map[string]string | required=true description="Resource tags"'
+
+      # Private Link Resources (Optional)
+      privateLinkResources: string | description="Private link resources for private cluster connectivity"
+
+      flux:
+        core:
+          url: string | default="" description="Git repository URL for core configuration"
+          branch: string | default="main" description="Git branch for core configuration"
+        config:
+          url: string | default="" description="Git repository URL for cluster configuration"
+          branch: string | default="main" description="Git branch for cluster configuration"
+
+
+    # status:
+    #   # Status fields populated from the ManagedCluster
+    #   # provisioningState: ${managedCluster.status.provisioningState}
+    #   # powerState: ${managedCluster.status.powerState.code}
+    #   # fqdn: ${managedCluster.status.fqdn}
+    #   currentKubernetesVersion: ${managedCluster.status.currentKubernetesVersion}
+    #   oidcIssuerUrl: ${managedCluster.status.oidcIssuerProfile.issuerURL}
+
+  resources:
+
+    - id: Jobs
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: UK8Sjobs
+        metadata:
+          name: jobs-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          clusterName: "${schema.spec.clusterName}"
+          resourceGroup: "${schema.spec.resourceGroup}"
+
+    - id: cronJobs
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: UK8Scronjobs
+        metadata:
+          name: cronjobs-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          clusterName: "${schema.spec.clusterName}"
+          resourceGroup: "${schema.spec.resourceGroup}"
+
+    - id: fluxGitOps
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: UK8SFluxGitOps
+        metadata:
+          name: flux-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          clusterName: "${schema.spec.clusterName}"
+          resourceGroup: "${schema.spec.resourceGroup}"
+          namespace: ${schema.spec.namespace}
+          flux:
+            core:
+              url: ${schema.spec.flux.core.url}
+              branch: ${schema.spec.flux.core.branch}
+            config:
+              url: ${schema.spec.flux.config.url}
+              branch: ${schema.spec.flux.config.branch}
+
+
+    # - id: fluxExtension
+    #   template:
+    #     apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+    #     kind: Extension
+    #     metadata:
+    #       name: flux-${schema.spec.clusterName}
+    #       namespace: ${schema.spec.namespace}
+    #     spec:
+    #       azureName: flux-${schema.spec.clusterName}
+    #       autoUpgradeMinorVersion: true
+    #       extensionType: microsoft.flux
+    #       identity:
+    #         type: SystemAssigned
+    #       owner:
+    #         group: containerservice.azure.com
+    #         kind: ManagedCluster
+    #         name: ${schema.spec.clusterName}
+    #       scope:
+    #         cluster:
+    #           releaseNamespace: flux-system
+    #       configurationSettings:
+    #         multiTenancy.enforce: "false"
+    #         image-automation-controller.enabled: "true"
+    #         image-reflector-controller.enabled: "true"
+    #         workloadIdentity.enable: "true"
+    #         workloadIdentity.azureClientId: ${schema.spec.identity.fluxClientId}
+
+    # - id: fluxConfigurationCore
+    #   template:
+    #     apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+    #     kind: FluxConfiguration
+    #     metadata:
+    #       name: uk8s-core-${schema.spec.clusterName}
+    #       namespace: uk8s-nextgen
+    #     spec:
+    #       azureName: uk8s-core
+    #       namespace: uk8s-core
+    #       owner:
+    #         group: containerservice.azure.com
+    #         kind: ManagedCluster
+    #         name: ${schema.spec.clusterName}
+    #       sourceKind: GitRepository
+    #       scope: cluster
+    #       suspend: false
+    #       gitRepository:
+    #         provider: Azure
+    #         repositoryRef:
+    #           branch: ${schema.spec.flux.core.branch}
+    #         url: ${schema.spec.flux.core.url}
+    #         timeoutInSeconds: 60
+    #         syncIntervalInSeconds: 120
+    #       kustomizations:
+    #         napconfiguration:
+    #           # TODO: eng folder to go to a variable
+    #           path: environments/eng/napconfiguration/base
+    #           timeoutInSeconds: 60
+    #           syncIntervalInSeconds: 120
+    #           retryIntervalInSeconds: 60
+    #           prune: true
+    #           force: true
+    #         core:
+    #           # TODO: eng folder to go to a variable
+    #           path: ./environments/eng/${schema.spec.clusterName}
+    #           dependsOn: ["napconfiguration"]
+    #           timeoutInSeconds: 60
+    #           syncIntervalInSeconds: 120
+    #           retryIntervalInSeconds: 60
+    #           prune: true
+    #           force: true
+    #           # postBuild:
+    #           #   substituteFrom:
+    #           #   - kind: ConfigMap
+    #           #     name: cluster-vars-eng
+    #           #     optional: false
+    #         tier2:
+    #           # TODO: eng folder to go to a variable
+    #           path: ./environments/eng/${schema.spec.clusterName}/tier2
+    #           dependsOn: ["core"]
+    #           timeoutInSeconds: 60
+    #           syncIntervalInSeconds: 120
+    #           retryIntervalInSeconds: 60
+    #           prune: true
+    #           force: true
+    #           # postBuild:
+    #           #   substituteFrom:
+    #           #   - kind: ConfigMap
+    #           #     name: cluster-vars-eng
+    #           #     optional: false
+
+    # - id: fluxConfigurationConfig
+    #   template:
+    #     apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+    #     kind: FluxConfiguration
+    #     metadata:
+    #       name: uk8s-config-${schema.spec.clusterName}
+    #       namespace: uk8s-nextgen
+    #     spec:
+    #       azureName: uk8s-config
+    #       namespace: uk8s-config
+    #       owner:
+    #         group: containerservice.azure.com
+    #         kind: ManagedCluster
+    #         name: ${schema.spec.clusterName}
+    #       sourceKind: GitRepository
+    #       scope: cluster
+    #       suspend: false
+    #       gitRepository:
+    #         provider: Azure
+    #         repositoryRef:
+    #           branch: ${schema.spec.flux.config.branch}
+    #         url: ${schema.spec.flux.config.url}
+    #         timeoutInSeconds: 60
+    #         syncIntervalInSeconds: 120
+    #       kustomizations:
+    #         baseconfiguration:
+    #           path: baseconfiguration/eng/
+    #           timeoutInSeconds: 600
+    #           syncIntervalInSeconds: 120
+    #           retryIntervalInSeconds: 60
+    #           prune: true
+    #           force: true
+    #           # postBuild:
+    #           #   substituteFrom:
+    #           #   - kind: ConfigMap
+    #           #     name: cluster-vars-eng
+    #           #     optional: false
+    #         resourcegroupdefinition:
+    #           path: baseconfiguration/base/resourcegroupdefinitions
+    #           dependsOn: ["baseconfiguration"]
+    #           timeoutInSeconds: 600
+    #           syncIntervalInSeconds: 60
+    #           retryIntervalInSeconds: 60
+    #           prune: true
+    #           force: true
+    #           # postBuild:
+    #           #   substituteFrom:
+    #           #   - kind: ConfigMap
+    #           #     name: cluster-vars-eng
+    #           #     optional: false
+    #         resourcegroupinstance:
+    #           path: baseconfiguration/base/resourcegroupinstance
+    #           dependsOn: ["resourcegroupdefinition"]
+    #           timeoutInSeconds: 600
+    #           syncIntervalInSeconds: 60
+    #           retryIntervalInSeconds: 60
+    #           prune: true
+    #           force: true
+    #           # postBuild:
+    #           #   substituteFrom:
+    #           #   - kind: ConfigMap
+    #           #     name: cluster-vars-eng
+    #           #     optional: false
+    #         app:
+    #           path: environment/dev/westeurope/${schema.spec.clusterName}
+    #           dependsOn: ["baseconfiguration"]
+    #           timeoutInSeconds: 600
+    #           syncIntervalInSeconds: 60
+    #           retryIntervalInSeconds: 60
+    #           prune: true
+    #           force: true
+    #           # postBuild:
+    #           #   substituteFrom:
+    #           #   - kind: ConfigMap
+    #           #     name: cluster-vars-eng
+    #           #     optional: false
+
+    - id: resourceGroup
+      template:
+        apiVersion: resources.azure.com/v1api20200601
+        kind: ResourceGroup
+        metadata:
+          name: ${schema.spec.resourceGroup}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName:  ${schema.spec.resourceGroup}
+          location: ${schema.spec.location}
+
+    - id: managedCluster
+      # TODO: check configuration against latest/currently running
+      template:
+        apiVersion: containerservice.azure.com/v1api20240402preview
+        kind: ManagedCluster
+        metadata:
+          name: ${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: ${schema.spec.clusterName}
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroup}
+          operatorSpec:
+            configMaps:
+              oidcIssuerProfile:
+                name: oidc-${schema.spec.clusterName}
+                key: ${schema.spec.oidcIssuer.configMapKey}
+          dnsPrefix: ${schema.spec.clusterName}k8s
+          kubernetesVersion: ${schema.spec.kubernetesVersion}
+          linuxProfile:
+            adminUsername: localadmin
+            ssh:
+              publicKeys:
+                - keyData: ${schema.spec.sshPublicKey}
+          # Node provisioning with auto mode (NAP)
+          nodeProvisioningProfile:
+            mode: Auto
+          # Identity Configuration
+          identity:
+            type: UserAssigned
+            userAssignedIdentities:
+              - reference:
+                  armId: ${schema.spec.identity.controlPlaneIdentityResourceId}
+          # AAD and RBAC Configuration
+          aadProfile:
+            enableAzureRBAC: ${schema.spec.aad.enableAzureRBAC}
+            managed: true
+            adminGroupObjectIDs: ${schema.spec.aad.adminGroupObjectIds}
+          enableRBAC: true
+          disableLocalAccounts: ${schema.spec.security.disableLocalAccounts}
+          # Network Profile
+          networkProfile:
+            networkPlugin: azure
+            networkPluginMode: overlay
+            networkPolicy: cilium
+            networkDataplane: cilium
+            serviceCidr: ${schema.spec.network.serviceCidr}
+            dnsServiceIP: ${schema.spec.network.dnsServiceIP}
+            podCidr: ${schema.spec.network.podCidr}
+            ipFamilies: ["IPv4"]
+            loadBalancerSku: standard
+            outboundType: userDefinedRouting
+          # API Server Access
+          apiServerAccessProfile:
+            enablePrivateCluster: true
+            enablePrivateClusterPublicFQDN: true
+            privateDNSZone: none
+            disableRunCommand: ${schema.spec.security.disableRunCommand}
+          agentPoolProfiles:
+            - name: ${schema.spec.nodePool.name}
+              vnetSubnetReference:
+                armId: /subscriptions/${schema.spec.network.vnetSubscriptionId}/resourceGroups/${schema.spec.network.vnetResourceGroup}/providers/Microsoft.Network/virtualNetworks/${schema.spec.network.vnetName}/subnets/${schema.spec.network.subnetName}
+              mode: System
+              count: ${schema.spec.nodePool.count}
+              enableAutoScaling: ${schema.spec.nodePool.enableAutoScaling}
+              vmSize: ${schema.spec.nodePool.vmSize}
+              availabilityZones: ${schema.spec.nodePool.availabilityZones}
+              osDiskType: ${schema.spec.nodePool.osDiskType}
+              osDiskSizeGB: ${schema.spec.nodePool.osDiskSizeGB}
+              osType: Linux
+              osSKU: ${schema.spec.nodePool.osSKU}
+              maxPods: ${schema.spec.nodePool.maxPods}
+              enableNodePublicIP: false
+              enableEncryptionAtHost: true
+              securityProfile:
+                enableSecureBoot: ${schema.spec.security.enableSecureBoot}
+                enableVTPM: ${schema.spec.security.enableVTPM}
+                sshAccess: Disabled
+          identityProfile:
+            kubeletidentity:
+              clientId: ${schema.spec.identity.kubeletIdentityClientId}
+              objectId: ${schema.spec.identity.kubeletIdentityObjectId}
+              resourceReference:
+                armId: ${schema.spec.identity.kubeletIdentityResourceId}
+          # Auto Upgrade Configuration
+          autoUpgradeProfile:
+            upgradeChannel: ${schema.spec.autoUpgrade.upgradeChannel}
+            nodeOSUpgradeChannel: ${schema.spec.autoUpgrade.nodeOSUpgradeChannel}
+          # Security Profile
+          securityProfile:
+            defender:
+              logAnalyticsWorkspaceResourceReference:
+                armId: ${schema.spec.security.defenderWorkspaceResourceId}
+              securityMonitoring:
+                enabled: ${schema.spec.security.enableDefender}
+            workloadIdentity:
+              enabled: ${schema.spec.workloadIdentity.enabled}
+            imageCleaner:
+              enabled: false
+              intervalHours: 48
+          # Storage Profile
+          storageProfile:
+            diskCSIDriver:
+              enabled: ${schema.spec.storage.diskCSIDriverEnabled}
+            fileCSIDriver:
+              enabled: ${schema.spec.storage.fileCSIDriverEnabled}
+            snapshotController:
+              enabled: ${schema.spec.storage.snapshotControllerEnabled}
+          # Addon Profiles
+          addonProfiles:
+            azureKeyvaultSecretsProvider:
+              enabled: ${schema.spec.addons.azureKeyvaultSecretsProvider.enabled}
+              config:
+                enableSecretRotation: ${schema.spec.addons.azureKeyvaultSecretsProvider.enableSecretRotation}
+                rotationPollInterval: ${schema.spec.addons.azureKeyvaultSecretsProvider.rotationPollInterval}
+            azurepolicy:
+              enabled: ${schema.spec.addons.azurePolicy.enabled}
+              config:
+                version: ${schema.spec.addons.azurePolicy.version}
+          # Cluster SKU and Support
+          sku:
+            name: ${schema.spec.sku.name}
+            tier: ${schema.spec.sku.tier}
+          supportPlan: ${schema.spec.supportPlan}
+          # Workload Auto Scaler with KEDA and VPA
+          # workloadAutoScalerProfile:
+          #   keda:
+          #     enabled: ${schema.spec.workloadAutoScaler.kedaEnabled}
+          #   verticalPodAutoscaler:
+          #     enabled: ${schema.spec.workloadAutoScaler.vpaEnabled}
+          # OIDC Issuer - Required for workload identity
+          oidcIssuerProfile:
+            enabled: ${schema.spec.oidcIssuer.enabled}
+          # Service Mesh Profile (Conditional)
+          serviceMeshProfile:
+            mode: Istio
+            istio:
+              components:
+                ingressGateways:
+                  - enabled: ${schema.spec.serviceMesh.internalIngressEnabled}
+                    mode: Internal
+                  - enabled: ${schema.spec.serviceMesh.externalIngressEnabled}
+                    mode: External
+              revisions: ${schema.spec.serviceMesh.istioRevisions}
+          podIdentityProfile:
+            enabled: false
+            userAssignedIdentityExceptions:
+              - name: k8s-control-plane-exception
+                namespace: kube-system
+                podLabels:
+                  kubernetes.azure.com/managedby: aks
+              - name: ubs-control-plane-exception
+                namespace: ubs-system
+                podLabels:
+                  kubernetes.azure.com/managedby: aks
+          # Resource group for node resources
+          nodeResourceGroup: MC_${schema.spec.resourceGroup}_${schema.spec.clusterName}_${schema.spec.location}
+          # Service Principal Profile
+          servicePrincipalProfile:
+            clientId: msi
+          # Tags
+          tags: ${schema.spec.tags}
+          # Private Link Resources 
+          privateLinkResources:
+            - reference:
+                armId: ${schema.spec.privateLinkResources}
+          azureMonitorProfile:
+            metrics:
+              enabled: ${schema.spec.azureMonitorProfile.metrics.enabled}
+              kubeStateMetrics:
+                metricLabelsAllowlist: "namespaces=[owner, swID]"
+    
+    - id: externalSecretsIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.clusterName}-externalsecrets
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: uami-${schema.spec.clusterName}-externalsecrets
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroup}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: eso-identity-cm-${schema.spec.clusterName}
+                key: clientId
+              principalId:
+                name: eso-identity-cm-${schema.spec.clusterName}
+                key: principalId
+              tenantId:
+                name: eso-identity-cm-${schema.spec.clusterName}
+                key: tenantId
+
+    - id: externalDnsIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.clusterName}-externaldns
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: uami-${schema.spec.clusterName}-externaldns
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroup}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: external-dns-identity-cm-${schema.spec.clusterName}
+                key: clientId
+              principalId:
+                name: external-dns-identity-cm-${schema.spec.clusterName}
+                key: principalId
+              tenantId:
+                name: external-dns-identity-cm-${schema.spec.clusterName}
+                key: tenantId
+
+    - id: certManagerIdentity
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: UserAssignedIdentity
+        metadata:
+          name: uami-${schema.spec.clusterName}-certmanager
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: uami-${schema.spec.clusterName}-certmanager
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroup}
+          operatorSpec:
+            configMaps:
+              clientId:
+                name: cert-manager-identity-cm-${schema.spec.clusterName}
+                key: clientId
+              principalId:
+                name: cert-manager-identity-cm-${schema.spec.clusterName}
+                key: principalId
+              tenantId:
+                name: cert-manager-identity-cm-${schema.spec.clusterName}
+                key: tenantId
+
+    - id: externalSecretsFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: externalsecrets-fic-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: federated_workload_identity${schema.spec.clusterName}
+          owner:
+            name: uami-${schema.spec.clusterName}-externalsecrets
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: ${schema.spec.oidcIssuer.configMapKey}
+          subject: system:serviceaccount:external-secrets:external-secrets
+
+    - id: externalDnsFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: externaldns-fic-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: federated_workload_identity${schema.spec.clusterName}
+          owner:
+            name: uami-${schema.spec.clusterName}-externaldns
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: ${schema.spec.oidcIssuer.configMapKey}
+          subject: system:serviceaccount:external-dns:extdns-workload-identity-sa
+
+    - id: externalDnsBcmFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: externaldnsbcm-fic-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: federated_workload_identity_external_dns_bcm${schema.spec.clusterName}
+          owner:
+            name: uami-${schema.spec.clusterName}-externaldns
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: ${schema.spec.oidcIssuer.configMapKey}
+          subject: system:serviceaccount:external-dns-bcm:extdns-workload-identity-sa
+
+    - id: certManagerFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: certmanager-fic-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: federated_workload_identity${schema.spec.clusterName}
+          owner:
+            name: uami-${schema.spec.clusterName}-certmanager
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: ${schema.spec.oidcIssuer.configMapKey}
+          subject: system:serviceaccount:ubs-issuer-system:cert-manager
+
+    - id: fluxSourceFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: fluxsource-fic-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: federated_workload_identity${schema.spec.clusterName}
+          owner:
+            #name: uami-${schema.spec.clusterName}-certmanager
+            # TODO: move this to kro variable
+            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-at39473-flux-mi4-dev
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: ${schema.spec.oidcIssuer.configMapKey}
+          subject: system:serviceaccount:flux-system:source-controller
+
+    - id: fluxImageFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: fluximage-fic-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: federated_workload_identity${schema.spec.clusterName}
+          owner:
+            #name: uami-${schema.spec.clusterName}-certmanager
+            # TODO: move this to kro variable
+            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-at39473-flux-mi4-dev
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: ${schema.spec.oidcIssuer.configMapKey}
+          subject: system:serviceaccount:flux-system:image-automation-controller
+
+---
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8sfluxgitops.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8SFluxGitOps
+    spec:
+      clusterName: string | required=true description="The name of the AKS cluster"
+      namespace: string | required=true description="The namespace where the cluster resource will be created"
+      flux:
+        core:
+          url: string | default="" description="Git repository URL for core configuration"
+          branch: string | default="main" description="Git branch for core configuration"
+        config:
+          url: string | default="" description="Git repository URL for cluster configuration"
+          branch: string | default="main" description="Git branch for cluster configuration"
+
+  resources:
+    - id: fluxExtension
+      template:
+        apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+        kind: Extension
+        metadata:
+          name: flux-${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+        spec:
+          azureName: flux-${schema.spec.clusterName}
+          autoUpgradeMinorVersion: true
+          extensionType: microsoft.flux
+          identity:
+            type: SystemAssigned
+          owner:
+            group: containerservice.azure.com
+            kind: ManagedCluster
+            name: ${schema.spec.clusterName}
+          scope:
+            cluster:
+              releaseNamespace: flux-system
+          configurationSettings:
+            multiTenancy.enforce: "false"
+            image-automation-controller.enabled: "true"
+            image-reflector-controller.enabled: "true"
+            workloadIdentity.enable: "true"
+            workloadIdentity.azureClientId: ${schema.spec.identity.fluxClientId}
+
+    - id: fluxConfigurationCore
+      template:
+        apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+        kind: FluxConfiguration
+        metadata:
+          name: uk8s-core-${schema.spec.clusterName}
+          namespace: uk8s-nextgen
+        spec:
+          azureName: uk8s-core
+          namespace: uk8s-core
+          owner:
+            group: containerservice.azure.com
+            kind: ManagedCluster
+            name: ${schema.spec.clusterName}
+          sourceKind: GitRepository
+          scope: cluster
+          suspend: false
+          gitRepository:
+            provider: Azure
+            repositoryRef:
+              branch: ${schema.spec.flux.core.branch}
+            url: ${schema.spec.flux.core.url}
+            timeoutInSeconds: 60
+            syncIntervalInSeconds: 120
+          kustomizations:
+            napconfiguration:
+              path: environments/${env}/napconfiguration/base
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 120
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                - kind: ConfigMap
+                  name: cluster-vars-${name_suffix}
+                  optional: false
+            core:
+              path: ./environments/${env}/${schema.spec.clusterName}
+              dependsOn: ["napconfiguration"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                - kind: ConfigMap
+                  name: cluster-vars-${name_suffix}
+                  optional: false
+                - kind: ConfigMap
+                  name: cluster-vars-${env}
+                  optional: false
+            tier2:
+              path: ./environments/${env}/${schema.spec.clusterName}/tier2
+              dependsOn: ["core"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                - kind: ConfigMap
+                  name: cluster-vars-${env}
+                  optional: false
+
+    - id: fluxConfigurationConfig
+      template:
+        apiVersion: kubernetesconfiguration.azure.com/v1api20241101
+        kind: FluxConfiguration
+        metadata:
+          name: uk8s-config-${schema.spec.clusterName}
+          namespace: uk8s-nextgen
+        spec:
+          azureName: uk8s-config
+          namespace: uk8s-config
+          owner:
+            group: containerservice.azure.com
+            kind: ManagedCluster
+            name: ${schema.spec.clusterName}
+          sourceKind: GitRepository
+          scope: cluster
+          suspend: false
+          gitRepository:
+            provider: Azure
+            repositoryRef:
+              branch: ${schema.spec.flux.config.branch}
+            url: ${schema.spec.flux.config.url}
+            timeoutInSeconds: 60
+            syncIntervalInSeconds: 120
+          kustomizations:
+            baseconfiguration:
+              path: baseconfiguration/${env}/
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 120
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                - kind: ConfigMap
+                  name: cluster-vars-${env}
+                  optional: false
+            resourcegroupdefinition:
+              path: baseconfiguration/base/resourcegroupdefinitions
+              dependsOn: ["baseconfiguration"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                - kind: ConfigMap
+                  name: cluster-vars-${env}
+                  optional: false
+            resourcegroupinstance:
+              path: baseconfiguration/base/resourcegroupinstance
+              dependsOn: ["resourcegroupdefinition"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                - kind: ConfigMap
+                  name: cluster-vars-${env}
+                  optional: false
+            app:
+              path: environment/dev/westeurope/${schema.spec.clusterName}
+              dependsOn: ["baseconfiguration"]
+              timeoutInSeconds: 600
+              syncIntervalInSeconds: 60
+              retryIntervalInSeconds: 60
+              prune: true
+              force: true
+              postBuild:
+                substituteFrom:
+                - kind: ConfigMap
+                  name: cluster-vars-${env}
+                  optional: false
+
+
+---
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8sjobs.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8Sjobs
+    spec:
+      # clusterName: string | required=true description="The name of the AKS cluster"
+      # namespace: string | default="uk8s-nextgen" required=true description="The namespace where the cluster resource will be created"
+      # resourceGroup: string | required=true description="The resource group that owns this cluster"
+      subscriptionId: string | default="" description="Subscription ID for the management identity"
+      azureTenantId: string | default="" description="Azure AD tenant ID"
+      azureMonitorWorkspaceResourceId: string | default="" description="Resource ID of Azure Monitor workspace"
+      grafanaResourceId: string | default="" description="Resource ID of Azure Managed Grafana instance"
+      asoClientId: string | default="" description="ASO workload identity client ID"
+
+  resources:  
+    - id: grafanaIntegrationServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: grafana-integration-reconcile-sa
+          namespace: flux-system
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.asoClientId}
+
+    - id: grafanaIntegrationJob
+      template:
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: grafana-integration-job-${schema.spec.clusterName}
+          namespace: flux-system
+        spec:
+          backoffLimit: 2
+          template:
+            metadata:
+              labels:
+                azure.workload.identity/use: "true"
+            spec:
+              serviceAccountName: grafana-integration-reconcile-sa
+              restartPolicy: Never
+              containers:
+              - name: azure-cli
+                image: release-container-registry.ubs.net/ubs/ise/azp-agent-ubuntu:1.21.1
+                command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  echo "=== DEBUG: ENVIRONMENT VARIABLES ==="
+                  echo "CLUSTER_NAME: $CLUSTER_NAME"
+                  echo "RESOURCE_GROUP: $RESOURCE_GROUP"
+                  echo "AZURE_MONITOR_WORKSPACE_ID: $AZURE_MONITOR_WORKSPACE_ID"
+                  echo "GRAFANA_RESOURCE_ID: $GRAFANA_RESOURCE_ID"
+                  echo "AZURE_TENANT_ID: $AZURE_TENANT_ID"
+                  echo "AZURE_CLIENT_ID: $AZURE_CLIENT_ID"
+                  echo "=== Starting Grafana Integration Configuration ==="
+                  echo "Logging in with workload identity..."
+                  az login --federated-token "$(cat $AZURE_FEDERATED_TOKEN_FILE)" \
+                            --service-principal \
+                            -u "${AZURE_CLIENT_ID}" \
+                            -t "${AZURE_TENANT_ID}"
+                  az account set -s "$SUBSCRIPTION"
+                  az account show
+                  az aks list -o table
+                  echo "Cluster: $CLUSTER_NAME"
+                  echo "Resource Group: $RESOURCE_GROUP"
+                  echo "Grafana Resource ID: $GRAFANA_RESOURCE_ID"
+                  echo "Waiting for AKS cluster to be ready..."
+                  max_attempts=20
+                  attempt=0
+                  while [ $attempt -lt $max_attempts ]; do
+                    provisioning_state=$(az aks show \
+                      --name "$CLUSTER_NAME" \
+                      --resource-group "$RESOURCE_GROUP" \
+                      --query "provisioningState" \
+                      --output tsv 2>/dev/null || echo "NotFound")
+                    echo "DEBUG: provisioning_state=$provisioning_state (attempt $((attempt+1))/$max_attempts)"
+                    if [ "$provisioning_state" = "Succeeded" ]; then
+                      echo "✅ AKS cluster is ready!"
+                      break
+                    elif [ "$provisioning_state" = "Failed" ]; then
+                      echo "❌ AKS cluster provisioning failed!"
+                      exit 1
+                    else
+                      echo "⏳ Cluster state: $provisioning_state (attempt $((attempt+1))/$max_attempts)"
+                      sleep 30
+                      attempt=$((attempt+1))
+                    fi
+                  done
+                  if [ $attempt -eq $max_attempts ]; then
+                    echo "❌ Timeout waiting for cluster to be ready"
+                    exit 1
+                  fi
+                  echo "Checking current Azure Monitor configuration..."
+                  current_config=$(az aks show \
+                    --name "$CLUSTER_NAME" \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --query "azureMonitorProfile.metrics.enabled" \
+                    --output tsv 2>/dev/null || echo "false")
+                  echo "DEBUG: current_config=$current_config"
+
+                  if [ "$current_config" = "true" ]; then
+                    echo "ℹ️  Azure Monitor metrics already enabled, skipping update...."
+                  else
+                    echo "🔧 Enabling Azure Monitor metrics and configuring Grafana integration..."
+
+                    az aks update \
+                      --name "$CLUSTER_NAME" \
+                      --resource-group "$RESOURCE_GROUP" \
+                      --enable-azure-monitor-metrics \
+                      --azure-monitor-workspace-resource-id "$AZURE_MONITOR_WORKSPACE_ID" \
+                      --grafana-resource-id "$GRAFANA_RESOURCE_ID" \
+                      --ksm-metric-annotations-allow-list "namespaces=[owner,swcID]" \
+                      --no-wait
+                    echo "✅ Grafana integration configuration completed!"
+
+                  fi
+                  
+                  echo "Verifying configuration..."
+                  az aks show \
+                    --name "$CLUSTER_NAME" \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --query "{metrics: azureMonitorProfile.metrics.enabled, cluster: name, state: provisioningState}" \
+                    --output table
+                  echo "=== Configuration Complete ==="
+                env:
+                  - name: CLUSTER_NAME
+                    value: ${schema.spec.clusterName}
+                  - name: RESOURCE_GROUP
+                    value: ${schema.spec.resourceGroup}
+                  - name: AZURE_MONITOR_WORKSPACE_ID
+                    value: ${schema.spec.azureMonitorWorkspaceResourceId}
+                  - name: GRAFANA_RESOURCE_ID
+                    value: ${schema.spec.grafanaResourceId}
+                  - name: SUBSCRIPTION
+                    value: ${schema.spec.subscriptionId}
+                  - name: AZURE_TENANT_ID
+                    value: ${schema.spec.azureTenantId}
+                  - name: AZURE_CLIENT_ID
+                    value: ${schema.spec.asoClientId}
+                  - name: AZURE_FEDERATED_TOKEN_FILE
+                    value: /var/run/secrets/azure/tokens/azure-identity-token
+                resources:
+                  requests:
+                    memory: "128Mi"
+                    cpu: "100m"
+                  limits:
+                    memory: "256Mi"
+                    cpu: "200m"
+                volumeMounts:
+                - name: azure-identity-token
+                  mountPath: /var/run/secrets/azure/tokens
+                  readOnly: true
+              volumes:
+              - name: azure-identity-token
+                projected:
+                  sources:
+                  - serviceAccountToken:
+                      path: azure-identity-token
+                      expirationSeconds: 3600
+                      audience: api://AzureADTokenExchange
