@@ -1,0 +1,600 @@
+# Incident Commander workflow — fan-out → synthesise → HITL → remediate
+#
+# Pipeline:
+#   1. fan-out triage  — parallelism: 3, A2A to each specialist in target_agents
+#   2. synthesise      — A2A to incident-commander with all evidence + mock ctx
+#   3. pre-file GitLab — title prefixed [PENDING APPROVAL], full plan in body
+#   4. HITL gate       — mock-bot approval, body carries plan_url + plan_summary
+#   5a. on approve     — A2A to sre-remediation-agent, GitLab title -> [APPROVED]
+#   5b. on reject      — GitLab title -> [REJECTED] (TODO: needs sensor extension
+#                        to deliver decision metadata; current sensor only
+#                        resumes on approval — rejection causes timeout today)
+#   6. notify          — Mattermost with final GitLab link
+#
+# Mock data: every `*_mock` parameter is prefixed [DEMO MOCK] so the synthesis
+# agent's HARD rule preserves the label in comms.
+#
+# Submit:
+#   argo submit -n argo --from workflowtemplate/incident-commander \
+#     --parameter alert_summary="Pod CrashLoopBackOff in gitea" \
+#     --parameter target_agents="kube-system-agent,flux-system-agent" \
+#     --watch &
+#
+#   # While suspended, approve via mock-bot (see test-approval-workflow.yaml docs)
+#
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: incident-commander
+  namespace: argo
+  labels:
+    app: kagent
+    type: incident-orchestration
+  annotations:
+    description: "Fan-out triage to specialists, synthesise via incident-commander, HITL-gate, then remediate"
+    version: "1.0"
+spec:
+  serviceAccountName: argo
+  entrypoint: orchestrate
+  activeDeadlineSeconds: 1800
+  parallelism: 3   # caps concurrent A2A calls during fan-out
+
+  ttlStrategy:
+    secondsAfterCompletion: 1800
+    secondsAfterSuccess: 600
+    secondsAfterFailure: 3600
+  podGC:
+    strategy: OnWorkflowCompletion
+
+  volumeClaimTemplates:
+    - metadata:
+        name: work
+      spec:
+        storageClassName: local-path
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 128Mi
+
+  arguments:
+    parameters:
+      # ── Alert context
+      - name: alert_summary
+        value: "Pod CrashLoopBackOff in namespace gitea"
+      - name: severity
+        value: "high"
+      - name: cluster
+        value: "{{CLUSTER_NAME}}"
+
+      # ── Fan-out targets (verified agent metadata.name values).
+      # See kagent-triage/aks/*.yaml. NOTE: istio agents are aks-prefixed.
+      - name: target_agents
+        value: "kube-system-agent,flux-system-agent"
+      # Available: cert-manager-agent, kyverno-agent, kro-agent,
+      # external-secrets-agent, flux-system-agent, gatekeeper-system-agent,
+      # aks-istio-ingress-agent, aks-istio-system-agent, kube-system-agent,
+      # reloader-agent, sre-triage-agent
+
+      # ── Mock context (every value [DEMO MOCK]-tagged — synthesis prompt
+      # preserves the tag in comms)
+      - name: recent_deploys_mock
+        value: "[DEMO MOCK] gitea-server@v1.21.0 deployed 2026-05-07T08:42Z by alice@platform"
+      - name: on_call_mock
+        value: "[DEMO MOCK] bob@platform (primary), carol@platform (secondary)"
+      - name: similar_past_incidents_mock
+        value: "[DEMO MOCK] INC-2034 (2026-04-22) same pod, fix=increase memory limit to 512Mi"
+      - name: comms_channel_mock
+        value: "[DEMO MOCK] #incidents-prod"
+
+      # ── Integrations
+      - name: kagent_controller_url
+        value: "http://kagent-controller.kagent.svc.cluster.local:8083"
+      - name: gitlab_project_id
+        value: "68265584"
+      - name: gitlab_url
+        value: "https://gitlab.com"
+      - name: bot_endpoint
+        value: "http://mock-bot.argo:8080/approvals"
+      - name: callback_url
+        value: "http://teams-hitl-callback-eventsource-svc.argo-events:12000/approval-callback"
+      - name: mattermost_webhook_url
+        value: ""
+
+  templates:
+    # ── Top-level DAG
+    - name: orchestrate
+      dag:
+        tasks:
+          - name: fan-out
+            template: fan-out-triage
+
+          - name: synthesise
+            template: call-commander
+            dependencies: [fan-out]
+
+          - name: prefile-gitlab
+            template: prefile-gitlab-issue
+            dependencies: [synthesise]
+
+          - name: request-approval
+            template: request-approval
+            dependencies: [prefile-gitlab]
+
+          - name: wait-for-approval
+            template: wait-for-approval
+            dependencies: [request-approval]
+
+          - name: remediate
+            template: call-remediation
+            dependencies: [wait-for-approval]
+            continueOn:
+              failed: true
+
+          - name: finalise-gitlab
+            template: finalise-gitlab-issue
+            dependencies: [remediate]
+
+          - name: notify
+            template: mattermost-notify
+            dependencies: [finalise-gitlab]
+            when: "{{workflow.parameters.mattermost_webhook_url}} != \"\""
+
+    # ── Step 1: Fan out to specialist agents in parallel.
+    # withParam splits the comma-separated target_agents list into one task
+    # per agent. parallelism cap on the workflow throttles concurrent calls.
+    - name: fan-out-triage
+      steps:
+        - - name: split
+            template: split-targets
+        - - name: triage
+            template: call-specialist
+            arguments:
+              parameters:
+                - name: agent_name
+                  value: "{{item}}"
+            withParam: "{{steps.split.outputs.parameters.agents-json}}"
+
+    - name: split-targets
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        resources:
+          requests: { memory: "32Mi", cpu: "50m" }
+          limits:   { memory: "64Mi", cpu: "100m" }
+        source: |
+          # Convert "a,b,c" → ["a","b","c"]
+          echo '{{workflow.parameters.target_agents}}' \
+            | tr ',' '\n' \
+            | sed '/^$/d' \
+            | jq -R . | jq -cs . > /tmp/agents.json
+          cat /tmp/agents.json
+      outputs:
+        parameters:
+          - name: agents-json
+            valueFrom:
+              path: /tmp/agents.json
+
+    # Per-specialist A2A call — adapted from kagent-sre-workflow.yaml:151-304.
+    # Drops the remediate branch, uses the alert summary as the prompt.
+    - name: call-specialist
+      inputs:
+        parameters:
+          - name: agent_name
+      retryStrategy:
+        limit: 1
+        retryPolicy: "OnFailure"
+        backoff:
+          duration: "10s"
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        resources:
+          requests: { memory: "64Mi",  cpu: "100m" }
+          limits:   { memory: "128Mi", cpu: "200m" }
+        source: |
+          set -e
+          AGENT='{{inputs.parameters.agent_name}}'
+
+          PROMPT="Investigate the following alert from your area of responsibility.
+
+          Alert: {{workflow.parameters.alert_summary}}
+          Cluster: {{workflow.parameters.cluster}}
+          Severity: {{workflow.parameters.severity}}
+
+          Use your tools to gather evidence. Return your standard format
+          (Issue / Evidence / Root Cause / Recommended Fix). Stay within
+          your namespace scope — do not investigate other namespaces."
+
+          TASK_ID="argo-$(echo {{workflow.name}} | tr -cd 'a-z0-9-')-${AGENT}-$(date +%s)"
+
+          jq -n \
+            --arg task_id "$TASK_ID" \
+            --arg prompt "$PROMPT" \
+            '{
+              jsonrpc: "2.0",
+              id: $task_id,
+              method: "message/send",
+              params: {
+                message: {
+                  role: "user",
+                  parts: [{kind: "text", text: $prompt}]
+                }
+              }
+            }' > /tmp/req.json
+
+          echo "[$AGENT] calling…"
+          START=$(date +%s)
+          HTTP_CODE=$(curl -s -o /work/triage-${AGENT}.json -w "%{http_code}" \
+            --connect-timeout 10 --max-time 300 \
+            -X POST "{{workflow.parameters.kagent_controller_url}}/api/a2a/kagent/${AGENT}/" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/req.json)
+          DURATION=$(( $(date +%s) - START ))
+          echo "[$AGENT] HTTP $HTTP_CODE in ${DURATION}s"
+
+          # On failure, write a placeholder so the synthesis step still has
+          # an entry for this agent. Do not abort the whole fan-out.
+          if [ "${HTTP_CODE}" != "200" ]; then
+            jq -n --arg agent "$AGENT" --arg code "$HTTP_CODE" \
+              '{result: {artifacts: [{parts: [{kind:"text", text:("ERROR: " + $agent + " returned HTTP " + $code)}]}]}}' \
+              > /work/triage-${AGENT}.json
+          fi
+
+    # ── Step 2: Synthesise all triage outputs via incident-commander agent
+    - name: call-commander
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        resources:
+          requests: { memory: "64Mi",  cpu: "100m" }
+          limits:   { memory: "128Mi", cpu: "200m" }
+        source: |
+          set -e
+
+          # Build evidence block: one section per triage-*.json
+          : > /work/evidence.md
+          for f in /work/triage-*.json; do
+            [ -e "$f" ] || continue
+            agent=$(basename "$f" .json | sed 's/^triage-//')
+            text=$(jq -r '
+              [.result.artifacts[]?.parts[]? | select(.kind=="text") | .text] | join("\n\n")
+            ' "$f" 2>/dev/null)
+            if [ -z "$text" ] || [ "$text" = "null" ]; then
+              text=$(jq -r '
+                [.result.history[]? | select(.role=="agent") | .parts[]? | select(.kind=="text") | .text] | last // "_(no output)_"
+              ' "$f" 2>/dev/null)
+            fi
+            text=$(printf '%s' "$text" | sed 's/<think>.*<\/think>//g')
+            {
+              echo "## EVIDENCE FROM ${agent}"
+              echo
+              printf '%s\n\n' "$text"
+              echo "---"
+              echo
+            } >> /work/evidence.md
+          done
+
+          PROMPT="ALERT:
+          {{workflow.parameters.alert_summary}}
+
+          Cluster: {{workflow.parameters.cluster}}
+          Severity: {{workflow.parameters.severity}}
+
+          ## CONTEXT (some fields are [DEMO MOCK] — preserve the tag in comms)
+          - Recent deploys: {{workflow.parameters.recent_deploys_mock}}
+          - On-call: {{workflow.parameters.on_call_mock}}
+          - Similar past incidents: {{workflow.parameters.similar_past_incidents_mock}}
+          - Comms channel: {{workflow.parameters.comms_channel_mock}}
+
+          ## SPECIALIST EVIDENCE
+          $(cat /work/evidence.md)
+
+          Synthesise per your required response format (TL;DR / Evidence /
+          Mock Context / Recommended Remediation / Comms Draft / Risk)."
+
+          TASK_ID="argo-$(echo {{workflow.name}} | tr -cd 'a-z0-9-')-cmdr-$(date +%s)"
+          jq -n --arg task_id "$TASK_ID" --arg prompt "$PROMPT" \
+            '{
+              jsonrpc: "2.0", id: $task_id, method: "message/send",
+              params: { message: { role: "user", parts: [{kind:"text", text:$prompt}] } }
+            }' > /tmp/req.json
+
+          echo "Calling incident-commander…"
+          START=$(date +%s)
+          HTTP_CODE=$(curl -s -o /work/commander-response.json -w "%{http_code}" \
+            --connect-timeout 10 --max-time 300 \
+            -X POST "{{workflow.parameters.kagent_controller_url}}/api/a2a/kagent/incident-commander/" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/req.json)
+          DURATION=$(( $(date +%s) - START ))
+          echo "Synthesis HTTP $HTTP_CODE in ${DURATION}s"
+          if [ "${HTTP_CODE}" != "200" ]; then
+            cat /work/commander-response.json
+            exit 1
+          fi
+
+          PLAN=$(jq -r '
+            [.result.artifacts[]?.parts[]? | select(.kind=="text") | .text] | join("\n\n")
+          ' /work/commander-response.json)
+          [ -z "$PLAN" ] && PLAN=$(jq -r '
+            [.result.history[]? | select(.role=="agent") | .parts[]? | select(.kind=="text") | .text] | last // "_No plan returned_"
+          ' /work/commander-response.json)
+          PLAN=$(printf '%s' "$PLAN" | sed 's/<think>.*<\/think>//g')
+          printf '%s' "$PLAN" > /work/plan.md
+          echo "Plan: $(wc -c < /work/plan.md) bytes"
+
+    # ── Step 3: Pre-file GitLab issue with full plan, status [PENDING APPROVAL]
+    - name: prefile-gitlab-issue
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        env:
+          - name: GITLAB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: gitlab-token
+                key: GITLAB_TOKEN
+        resources:
+          requests: { memory: "64Mi",  cpu: "100m" }
+          limits:   { memory: "128Mi", cpu: "200m" }
+        source: |
+          set -e
+          PLAN=$(cat /work/plan.md)
+          TITLE="[PENDING APPROVAL][{{workflow.parameters.cluster}}] {{workflow.parameters.alert_summary}}"
+
+          BODY=$(jq -n --rawfile plan /work/plan.md \
+            --rawfile evidence /work/evidence.md \
+            --arg alert "{{workflow.parameters.alert_summary}}" \
+            --arg severity "{{workflow.parameters.severity}}" \
+            --arg cluster "{{workflow.parameters.cluster}}" \
+            --arg agents "{{workflow.parameters.target_agents}}" \
+            --arg wf "{{workflow.name}}" \
+            -r '
+            "# :hourglass_flowing_sand: PENDING HUMAN APPROVAL\n\n" +
+            "| Field | Value |\n|---|---|\n" +
+            "| **Alert** | " + $alert + " |\n" +
+            "| **Severity** | " + $severity + " |\n" +
+            "| **Cluster** | " + $cluster + " |\n" +
+            "| **Specialists consulted** | `" + $agents + "` |\n" +
+            "| **Workflow** | `" + $wf + "` |\n\n" +
+            "---\n\n# Synthesised Plan (Incident Commander)\n\n" + $plan +
+            "\n\n---\n\n<details><summary>Specialist evidence</summary>\n\n" + $evidence + "\n</details>\n"
+          ')
+
+          jq -n --arg title "$TITLE" --arg desc "$BODY" \
+            --arg labels "kagent,incident,pending-approval,{{workflow.parameters.severity}}" \
+            '{title: $title, description: $desc, labels: $labels}' > /tmp/payload.json
+
+          echo "Pre-filing GitLab issue…"
+          HTTP_CODE=$(curl -s -o /work/gitlab-create.json -w "%{http_code}" \
+            -X POST "{{workflow.parameters.gitlab_url}}/api/v4/projects/{{workflow.parameters.gitlab_project_id}}/issues" \
+            -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/payload.json)
+
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "GitLab create failed: $HTTP_CODE"
+            cat /work/gitlab-create.json
+            exit 1
+          fi
+
+          jq -r '.web_url' /work/gitlab-create.json > /work/gitlab-url.txt
+          jq -r '.iid'     /work/gitlab-create.json > /work/gitlab-iid.txt
+          echo "Filed: $(cat /work/gitlab-url.txt) (#$(cat /work/gitlab-iid.txt))"
+
+    # ── Step 4a: POST approval request to mock-bot.
+    # Body extends the existing test-approval-workflow shape with plan_url +
+    # plan_summary so the bot/Logic App can link out to the full plan instead
+    # of trying to push a 5KB plan through an Adaptive Card.
+    - name: request-approval
+      outputs:
+        parameters:
+          - name: approval_id
+            valueFrom:
+              path: /tmp/approval_id
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        resources:
+          requests: { memory: "32Mi", cpu: "50m" }
+          limits:   { memory: "64Mi", cpu: "100m" }
+        source: |
+          set -e
+          PLAN_URL=$(cat /work/gitlab-url.txt)
+          PLAN_SUMMARY=$(head -c 800 /work/plan.md)
+
+          jq -n \
+            --arg wf '{{workflow.name}}' \
+            --arg ns '{{workflow.namespace}}' \
+            --arg cb '{{workflow.parameters.callback_url}}' \
+            --arg alert '{{workflow.parameters.alert_summary}}' \
+            --arg cluster '{{workflow.parameters.cluster}}' \
+            --arg plan_url "$PLAN_URL" \
+            --arg plan_summary "$PLAN_SUMMARY" \
+            '{
+              workflow_name: $wf,
+              workflow_namespace: $ns,
+              callback_url: $cb,
+              tier: "T2",
+              action: "incident-commander remediation plan",
+              target: ($cluster + "/" + $alert),
+              rationale: "Synthesised by incident-commander; full plan at plan_url",
+              plan_url: $plan_url,
+              plan_summary: $plan_summary,
+              expiry_seconds: 600
+            }' > /tmp/req.json
+
+          curl -sS -X POST "{{workflow.parameters.bot_endpoint}}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/req.json \
+            -o /tmp/resp.json -w "HTTP %{http_code}\n"
+          cat /tmp/resp.json
+          jq -r '.approval_id' /tmp/resp.json > /tmp/approval_id
+          echo "approval_id=$(cat /tmp/approval_id)"
+
+    # ── Step 4b: Suspend until Sensor resumes (or 10min timeout).
+    # TODO: existing sensor only resumes on approval. Rejection causes timeout
+    # and the workflow fails. To support a true rejection branch, extend the
+    # sensor to call `argo workflow resume --parameter decision=rejected` and
+    # add a `decision` output param here. See plan file for context.
+    - name: wait-for-approval
+      suspend:
+        duration: "10m"
+
+    # ── Step 5: Remediate (only reached on approval; on rejection the
+    # workflow times out before this step runs)
+    - name: call-remediation
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        resources:
+          requests: { memory: "64Mi",  cpu: "100m" }
+          limits:   { memory: "128Mi", cpu: "200m" }
+        source: |
+          set -e
+          PLAN=$(cat /work/plan.md)
+          ISSUE_URL=$(cat /work/gitlab-url.txt)
+
+          PROMPT="The following remediation plan was approved by a human on-call.
+          Apply it. Do not deviate — if a step looks wrong, stop and report
+          back rather than improvising.
+
+          Approved plan:
+          ${PLAN}
+
+          Tracking issue: ${ISSUE_URL}
+
+          Report what you did in your standard format
+          (Action / Before / After / Status / Rollback)."
+
+          TASK_ID="argo-$(echo {{workflow.name}} | tr -cd 'a-z0-9-')-rem-$(date +%s)"
+          jq -n --arg task_id "$TASK_ID" --arg prompt "$PROMPT" \
+            '{
+              jsonrpc: "2.0", id: $task_id, method: "message/send",
+              params: { message: { role: "user", parts: [{kind:"text", text:$prompt}] } }
+            }' > /tmp/req.json
+
+          HTTP_CODE=$(curl -s -o /work/remediation-response.json -w "%{http_code}" \
+            --connect-timeout 10 --max-time 600 \
+            -X POST "{{workflow.parameters.kagent_controller_url}}/api/a2a/kagent/sre-remediation-agent/" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/req.json)
+          echo "Remediation HTTP $HTTP_CODE"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            REPORT=$(jq -r '
+              [.result.artifacts[]?.parts[]? | select(.kind=="text") | .text] | join("\n\n")
+            ' /work/remediation-response.json)
+            [ -z "$REPORT" ] && REPORT="_No report returned_"
+            REPORT=$(printf '%s' "$REPORT" | sed 's/<think>.*<\/think>//g')
+            printf '%s' "$REPORT" > /work/remediation.md
+          else
+            printf 'Remediation call failed: HTTP %s' "$HTTP_CODE" > /work/remediation.md
+          fi
+          cat /work/remediation.md
+
+    # ── Step 6a: Update GitLab issue with [APPROVED] + remediation result
+    - name: finalise-gitlab-issue
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        env:
+          - name: GITLAB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: gitlab-token
+                key: GITLAB_TOKEN
+        resources:
+          requests: { memory: "32Mi", cpu: "50m" }
+          limits:   { memory: "64Mi", cpu: "100m" }
+        source: |
+          set -e
+          IID=$(cat /work/gitlab-iid.txt)
+          NEW_TITLE="[APPROVED][{{workflow.parameters.cluster}}] {{workflow.parameters.alert_summary}}"
+
+          # Append remediation result as a comment
+          BODY=$(jq -n --rawfile rem /work/remediation.md \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -r '"## :white_check_mark: Approved + remediation applied\n\nApplied at " + $ts + "\n\n" + $rem')
+
+          jq -n --arg b "$BODY" '{body: $b}' > /tmp/comment.json
+          curl -sS -X POST "{{workflow.parameters.gitlab_url}}/api/v4/projects/{{workflow.parameters.gitlab_project_id}}/issues/${IID}/notes" \
+            -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/comment.json -o /dev/null -w "Comment HTTP %{http_code}\n"
+
+          # Rename + relabel
+          jq -n --arg t "$NEW_TITLE" \
+            '{title: $t, add_labels: "approved,remediated", remove_labels: "pending-approval"}' > /tmp/update.json
+          curl -sS -X PUT "{{workflow.parameters.gitlab_url}}/api/v4/projects/{{workflow.parameters.gitlab_project_id}}/issues/${IID}" \
+            -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/update.json -o /dev/null -w "Update HTTP %{http_code}\n"
+
+    # ── Step 7: Mattermost notify with link to finalised issue
+    - name: mattermost-notify
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        volumeMounts:
+          - name: work
+            mountPath: /work
+        env:
+          - name: MATTERMOST_WEBHOOK_URL
+            valueFrom:
+              secretKeyRef:
+                name: mattermost-webhook
+                key: url
+                optional: true
+        resources:
+          requests: { memory: "32Mi", cpu: "50m" }
+          limits:   { memory: "64Mi", cpu: "100m" }
+        source: |
+          WEBHOOK_URL="${MATTERMOST_WEBHOOK_URL:-{{workflow.parameters.mattermost_webhook_url}}}"
+          [ -z "$WEBHOOK_URL" ] && { echo "No webhook, skip"; exit 0; }
+
+          ISSUE_URL=$(cat /work/gitlab-url.txt)
+          IID=$(cat /work/gitlab-iid.txt)
+          PLAN_HEAD=$(head -c 1500 /work/plan.md)
+
+          jq -n \
+            --arg alert '{{workflow.parameters.alert_summary}}' \
+            --arg cluster '{{workflow.parameters.cluster}}' \
+            --arg agents '{{workflow.parameters.target_agents}}' \
+            --arg url "$ISSUE_URL" \
+            --arg iid "$IID" \
+            --arg head "$PLAN_HEAD" \
+            --arg wf '{{workflow.name}}' \
+            '{
+              username: "Incident Commander",
+              icon_url: "https://avatars.githubusercontent.com/u/193178627",
+              text: (
+                ":dart: **Incident handled — " + $cluster + "**\n" +
+                "Alert: " + $alert + "\n" +
+                "Specialists: `" + $agents + "`\n" +
+                "GitLab: [#" + $iid + "](" + $url + ")\n\n" +
+                "**Plan (head):**\n" + $head + "\n\n" +
+                "_workflow: `" + $wf + "`_"
+              )
+            }' > /tmp/mm.json
+          curl -sS -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/mm.json -o /dev/null -w "MM HTTP %{http_code}\n"
