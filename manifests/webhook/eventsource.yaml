@@ -7,6 +7,9 @@ metadata:
     app.kubernetes.io/name: kagent-event-flow-poc
     app.kubernetes.io/component: webhook-eventsource
 spec:
+  template:
+    nodeSelector:
+      kubernetes.io/hostname: k8s-worker1
   service:
     ports:
       - port: 12000

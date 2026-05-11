@@ -16,6 +16,8 @@ scope of this mirror.
 - `docs/PLAN.md` - implementation plan and acceptance surface.
 - `docs/mil-28-path-a-plan.md` - MIL-28 live validation plan for Path A.
 - `docs/mil-28-path-a-evidence.md` - MIL-28 live Path A evidence.
+- `docs/mil-30-comparison-plan.md` - MIL-30 comparison test plan.
+- `docs/mil-30-comparison-evidence.md` - MIL-30 live comparison evidence.
 - `docs/runbooks/redpanda-kafka-path.md` - runbook for the Redpanda/Kafka path.
 - `docs/runbooks/webhook-path.md` - runbook for the direct webhook path.
 - `docs/comparison-results.md` - comparison framework and current findings.

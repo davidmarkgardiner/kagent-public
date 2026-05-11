@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: kagent-direct-webhook
+  namespace: kagent-poc
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: direct-webhook-contact-point
+spec:
+  route:
+    receiver: kagent-direct-webhook
+    groupBy:
+      - alertname
+      - namespace
+      - pod
+    groupWait: 0s
+    groupInterval: 30s
+    repeatInterval: 2m
+    matchers:
+      - name: kagent_path
+        matchType: =
+        value: webhook
+  receivers:
+    - name: kagent-direct-webhook
+      webhookConfigs:
+        - url: http://alertmanager-webhook-eventsource-svc.kagent-poc.svc.cluster.local:12000/alertmanager
+          sendResolved: true
+          maxAlerts: 0
+          timeout: 10s

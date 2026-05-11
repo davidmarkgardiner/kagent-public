@@ -2,87 +2,58 @@
 
 ## Current Status
 
-The repository contains manifests and runbooks for both paths. MIL-28 captured
-live end-to-end evidence for the Redpanda Kafka path on `proxmox-k8s`; direct
-webhook path measurements remain pending in this workspace.
+MIL-30 validated both event-flow paths on `proxmox-k8s` with three synthetic
+Alertmanager API alerts per path. Both paths delivered all test alerts to
+consumer pods and preserved the full Alertmanager envelope.
 
-Do not treat this document as proof of production behavior until both paths are
-validated under the same alert load and Alertmanager timing settings.
+Detailed evidence: `docs/mil-30-comparison-evidence.md`.
 
 ## Summary
 
 | Dimension | Redpanda Kafka path | Direct webhook path |
 |---|---|---|
-| Latency | MIL-28 observed Alertmanager API POST at `12:22:54Z`, bridge delivery/EventSource/Sensor/consumer at `12:23:16Z`. This includes Alertmanager grouping behavior, not just Kafka transit. | Pending measurement. Expected to be lower because Alertmanager posts straight to the EventSource. |
-| Reliability | Confirmed Kafka consumer group `kagent-alertmanager-poc` reached `TOTAL-LAG 0` after three test records. Redpanda can absorb short Sensor/EventSource outages after the bridge accepts the alert. | Simpler but depends on Alertmanager retry behavior and EventSource availability at delivery time. |
-| Payload fidelity | Confirmed. Consumer pod `kafka-alert-consumer-7ppgf` logged `pod_name` and full parsed Alertmanager JSON under `alert_json`. | Native Alertmanager body is passed directly to Argo Events with no bridge envelope. |
-| Operations overhead | Higher: Redpanda, topic bootstrap, bridge deployment, Kafka EventSource, and broker health checks. | Lower: one webhook EventSource, explicit Service, Sensor, and consumer pod trigger. |
-| Best fit | Staging where broker parity, replay, or later Event Hub replacement matters. | Fast POC, lower maintenance, and environments where transient loss can be handled by Alertmanager retry. |
+| Latency | 3/3 delivered; average sender-to-consumer latency was 751.307 ms. EventSource/Sensor processing happened within tens of milliseconds; pod startup dominated total time. | 3/3 delivered; average sender-to-consumer latency was 667.616 ms. This was about 84 ms faster than the Kafka path in the small MIL-30 sample. |
+| Reliability | 3/3 success, no misses or duplicates observed. Redpanda consumer group `kagent-alertmanager-poc` ended `Stable` with `TOTAL-LAG 0`. | 3/3 success, no misses or duplicates observed. Reliability depends on EventSource availability and Alertmanager retry behavior because there is no broker buffer. |
+| Payload fidelity | Confirmed. Consumer logs included `pod_name`, `alert_count: 1`, standard Alertmanager envelope keys, and full parsed JSON under `alert_json`. | Confirmed. Consumer logs included `pod_name`, `alert_count: 1`, standard Alertmanager envelope keys, and full parsed JSON under `alert_json`. |
+| Operations overhead | Higher: Redpanda StatefulSet, topic bootstrap Job, Alertmanager-to-Kafka bridge, bridge Service, Kafka EventSource, Sensor, AlertmanagerConfig, and lag checks. | Lower: webhook EventSource, explicit Service, Sensor, AlertmanagerConfig, and shared EventBus/RBAC. |
+| Ops burden | Requires broker lifecycle, topic management, lag monitoring, and packaging the bridge as a real image for durable staging or production use. | Fewer moving parts and easier to reason about, but no broker-level replay or durable inspection point. |
+| Best fit | Use when Kafka-compatible Event Hub parity, replay, or decoupling is required. | Use as the default POC/staging path when the goal is the lowest operational burden and Alertmanager retry is acceptable. |
+
+## Measurement Table
+
+| Run | Path | POST time | EventSource time | Sensor time | Consumer time | Latency | Outcome |
+|---|---|---|---|---|---:|---:|---|
+| 1 | Redpanda Kafka | 2026-05-11T13:12:41.586417149Z | 2026-05-11T13:12:41.611407682Z | 2026-05-11T13:12:41.686574469Z | 2026-05-11T13:12:42.394743Z | 808.326 ms | Success |
+| 2 | Redpanda Kafka | 2026-05-11T13:12:43.763762634Z | 2026-05-11T13:12:43.771655769Z | 2026-05-11T13:12:43.784179638Z | 2026-05-11T13:12:44.446971Z | 683.209 ms | Success |
+| 3 | Redpanda Kafka | 2026-05-11T13:12:45.918564852Z | 2026-05-11T13:12:45.926489354Z | 2026-05-11T13:12:45.932886132Z | 2026-05-11T13:12:46.680950Z | 762.386 ms | Success |
+| 1 | Direct webhook | 2026-05-11T13:12:48.086996211Z | 2026-05-11T13:12:48.103060514Z | 2026-05-11T13:12:48.113872348Z | 2026-05-11T13:12:48.764059Z | 677.063 ms | Success |
+| 2 | Direct webhook | 2026-05-11T13:12:50.201933436Z | 2026-05-11T13:12:50.207838833Z | 2026-05-11T13:12:50.218205157Z | 2026-05-11T13:12:50.869470Z | 667.537 ms | Success |
+| 3 | Direct webhook | 2026-05-11T13:12:52.366434529Z | 2026-05-11T13:12:52.372433336Z | 2026-05-11T13:12:52.381550297Z | 2026-05-11T13:12:53.024681Z | 658.247 ms | Success |
 
 ## Decision Frame
 
-Start staging with both paths enabled long enough to capture comparable
-evidence. If staging only needs proof that Alertmanager payloads can trigger a
-consumer pod, the direct webhook path should be the default. Keep the Redpanda
-path when the follow-on architecture needs broker semantics or Kafka-compatible
-Event Hub parity.
+Use the direct webhook path as the default staging path when the immediate goal
+is proving that Alertmanager payloads can trigger a K-Agent-ready consumer pod
+with the least operational burden.
 
-## Measurement Plan
+Keep the Redpanda Kafka path when the architecture needs Kafka-compatible Event
+Hub parity, replay, buffering across downstream outages, or an inspectable
+broker boundary.
 
-For each path, send the same sanitized Alertmanager payload three times and
-record:
+## Caveats
 
-- POST timestamp from the sender.
-- EventSource dispatch timestamp from EventSource logs.
-- Sensor trigger timestamp from Sensor logs.
-- Consumer `consumed_at` timestamp from pod logs.
-- Consumer `pod_name`, `alert_count`, and `payload_keys`.
-- Delivery outcome: success, retry, duplicate, malformed, or missed.
-
-Use this table during staging:
-
-| Run | Path | POST time | EventSource time | Sensor time | Consumer time | Outcome | Notes |
-|---|---|---|---|---|---|---|---|
-| 1 | Redpanda Kafka | Pending | Pending | Pending | Pending | Pending |  |
-| 2 | Redpanda Kafka | 2026-05-11T12:22:54Z | 2026-05-11T12:23:16Z | 2026-05-11T12:23:16Z | 2026-05-11T12:23:16.687680Z | Success | Alertmanager grouped two active synthetic alerts. Evidence: `docs/mil-28-path-a-evidence.md`. |
-| 3 | Redpanda Kafka | Pending | Pending | Pending | Pending | Pending |  |
-| 1 | Direct webhook | Pending | Pending | Pending | Pending | Pending |  |
-| 2 | Direct webhook | Pending | Pending | Pending | Pending | Pending |  |
-| 3 | Direct webhook | Pending | Pending | Pending | Pending | Pending |  |
-
-## Payload Fidelity Checks
-
-The consumer log must prove:
-
-- `pod_name` is populated from the alert payload or bridge envelope.
-- `alert_count` matches the Alertmanager payload.
-- `payload_keys` includes the standard Alertmanager envelope keys.
-- The full Alertmanager JSON remains parseable by the consumer.
-
-## Reliability Checks
-
-Redpanda Kafka path:
-
-- Stop the Sensor briefly, send a payload, restart the Sensor, and confirm the
-  event is still consumed from the topic.
-- Restart the bridge and confirm Alertmanager or curl receives clear failures
-  during downtime.
-- Confirm duplicate behavior after retry.
-
-Direct webhook path:
-
-- Stop the EventSource briefly and confirm Alertmanager retry behavior in the
-  target Alertmanager configuration.
-- Restart the Sensor and confirm new events trigger consumer pods.
-- Confirm duplicate behavior after retry.
+- MIL-30 was a small three-run comparison, not a load test.
+- Failure/retry drills were not executed in this ticket.
+- The live cluster ran Argo Events `v1.9.6`; the intake requested `v1.9.10`.
+  Re-run after upgrade if strict version parity is required.
+- The webhook EventSource and Sensor initially failed on one worker with
+  `failed to create watcher: too many open files`. The manifests now pin those
+  pods to the same worker already used by the Kafka Argo pods, but the long-term
+  fix is correcting node file watcher limits.
 
 ## References
 
-- Argo Events webhook EventSource documentation:
-  https://argoproj.github.io/argo-events/eventsources/setup/webhook/
-- Argo Events trigger parameterization documentation:
-  https://argoproj.github.io/argo-events/tutorials/02-parameterization/
-- Argo Events Kubernetes object trigger documentation:
-  https://argoproj.github.io/argo-events/sensors/triggers/k8s-object-trigger/
-- Argo Events Kafka EventSource examples:
-  https://raw.githubusercontent.com/argoproj/argo-events/stable/examples/event-sources/kafka.yaml
+- `docs/mil-30-comparison-plan.md`
+- `docs/mil-30-comparison-evidence.md`
+- `docs/runbooks/redpanda-kafka-path.md`
+- `docs/runbooks/webhook-path.md`

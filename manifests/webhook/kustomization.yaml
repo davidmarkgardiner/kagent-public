@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ../common
   - alertmanager-configmap.yaml
+  - alertmanager-contact-point.yaml
   - eventsource.yaml
   - eventsource-service.yaml
   - sensor.yaml
