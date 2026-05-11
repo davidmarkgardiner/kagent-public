@@ -1,0 +1,29 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolCatalogEntry
+metadata:
+  name: aks-mcp-v0-0-12
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+    platform.kagent.dev/bootstrap: "true"
+  annotations:
+    platform.kagent.dev/bootstrap-note: >-
+      Status hand-authored by platform team during initial bootstrap.
+      This is the only permitted instance of hand-written status.verifiedTools.
+      Future versions must go through the mcp-onboarding-template workflow.
+spec:
+  name: aks-mcp
+  version: v0.0.12
+  description: "AKS MCP server — Azure-aware Kubernetes tools including CNI diagnostics, workload identity, and cluster operations"
+  source:
+    url: http://aks-mcp.aks-mcp.svc.cluster.local:8000/mcp
+    protocol: STREAMABLE_HTTP
+  maintainer: "platform-team"
+  tags:
+    - kubernetes
+    - azure
+    - aks
+    - networking
+    - read-only
+# Bootstrap: status written by platform team (documented one-time exception)
+# Run: kubectl patch toolcatalogentry aks-mcp-v0-0-12 --type=merge --subresource=status -p '...'
+# See infra-stack/byo-kagent/bootstrap-catalog/BOOTSTRAP-STATUS.md for patch commands

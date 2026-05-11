@@ -1,0 +1,113 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: toolgrants.platform.kagent.dev
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+    app.kubernetes.io/managed-by: platform-team
+  annotations:
+    kro.run/description: "Namespaced per-agent authorization grant linking an Agent to specific tools from a verified ToolCatalogEntry"
+spec:
+  group: platform.kagent.dev
+  names:
+    kind: ToolGrant
+    listKind: ToolGrantList
+    plural: toolgrants
+    singular: toolgrant
+    shortNames:
+      - tg
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Agent
+          type: string
+          jsonPath: .spec.agentRef.name
+        - name: CatalogRef
+          type: string
+          jsonPath: .spec.toolCatalogRef
+        - name: Tools
+          type: integer
+          jsonPath: .status.grantedToolCount
+        - name: Expires
+          type: string
+          jsonPath: .spec.expiresAt
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            spec:
+              type: object
+              required:
+                - agentRef
+                - toolCatalogRef
+                - allowedToolNames
+              properties:
+                agentRef:
+                  type: object
+                  required:
+                    - name
+                  description: "The kagent Agent this grant applies to. Must be in the same namespace as the ToolGrant."
+                  properties:
+                    name:
+                      type: string
+                      description: "Name of the Agent CR."
+                    namespace:
+                      type: string
+                      description: "Namespace of the Agent CR. Defaults to the ToolGrant's own namespace."
+                toolCatalogRef:
+                  type: string
+                  description: "Reference to a ToolCatalogEntry in format 'name@version' (e.g. 'aks-mcp@v1.2'). Must resolve to an existing ToolCatalogEntry with status.verifiedAt set."
+                  pattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]@v[0-9]+\.[0-9]+(\.[0-9]+)?$'
+                allowedToolNames:
+                  type: array
+                  minItems: 1
+                  description: "Explicit list of tool names from the referenced ToolCatalogEntry that this agent may use. Each name must appear in ToolCatalogEntry.status.verifiedTools[].name."
+                  items:
+                    type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+                  description: "Optional expiry. Kyverno admission will deny Agent updates if now > expiresAt. Omit for non-expiring grants."
+                reason:
+                  type: string
+                  description: "Business justification for granting these tools (recorded in audit trail)."
+            status:
+              type: object
+              properties:
+                grantedToolCount:
+                  type: integer
+                  description: "Number of tools in allowedToolNames that were validated against the catalog."
+                resolvedCatalogEntry:
+                  type: string
+                  description: "Name of the ToolCatalogEntry CR this grant resolved to."
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                        enum: [Resolved, Valid, Expired]
+                      status:
+                        type: string
+                        enum: ["True", "False", "Unknown"]
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time

@@ -1,0 +1,22 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolCatalogEntry
+metadata:
+  name: kyverno-cli-mcp-v1
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+    platform.kagent.dev/bootstrap: "true"
+  annotations:
+    platform.kagent.dev/bootstrap-note: "Bootstrap catalog entry — orchestrator-internal tool, not available to tenants."
+    platform.kagent.dev/orchestrator-only: "true"
+spec:
+  name: kyverno-cli-mcp
+  version: v1.0
+  description: "Wraps 'kyverno apply' in dry-run mode — validates generated manifests against ClusterPolicies before the orchestrator opens a PR."
+  source:
+    url: http://kyverno-cli-mcp.kagent-platform.svc.cluster.local:8000/mcp
+    protocol: STREAMABLE_HTTP
+  maintainer: "platform-team"
+  tags:
+    - kyverno
+    - validation
+    - orchestrator-internal

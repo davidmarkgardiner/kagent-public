@@ -1,0 +1,99 @@
+apiVersion: kyverno.io/v2
+kind: ClusterPolicy
+metadata:
+  name: validate-agent-cluster-target
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+  annotations:
+    policies.kyverno.io/title: "Validate Agent Cluster Targeting"
+    policies.kyverno.io/category: "BYO-KAgent Security"
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Tenant agents may only be deployed to clusters their team is authorized for,
+      as defined in the TeamCharter ConfigMap in kagent-platform namespace.
+      Namespace label 'team' is used to look up the team's allowed clusters.
+      Exempt: kagent-platform (orchestrator), kagent (platform agents).
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-team-label-on-agent
+      match:
+        any:
+          - resources:
+              kinds:
+                - Agent
+              apiGroups:
+                - kagent.dev
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kagent-platform
+                - kagent
+      validate:
+        message: >-
+          Agent '{{ request.object.metadata.name }}' must carry label 'team'
+          matching its owning team. This is used for cluster targeting authorization
+          and cost attribution.
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+
+    - name: require-cost-center-label-on-agent
+      match:
+        any:
+          - resources:
+              kinds:
+                - Agent
+              apiGroups:
+                - kagent.dev
+              operations:
+                - CREATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kagent-platform
+                - kagent
+      validate:
+        message: >-
+          Agent '{{ request.object.metadata.name }}' must carry labels
+          'team' and 'cost-center' for spend attribution.
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+              cost-center: "?*"
+
+    - name: block-resource-quota-exceeding-budget
+      match:
+        any:
+          - resources:
+              kinds:
+                - Agent
+              apiGroups:
+                - kagent.dev
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kagent-platform
+      validate:
+        message: >-
+          Agent '{{ request.object.metadata.name }}' must declare resource limits.
+          Set spec.deployment.resources.limits.cpu and spec.deployment.resources.limits.memory.
+        pattern:
+          spec:
+            deployment:
+              resources:
+                limits:
+                  cpu: "?*"
+                  memory: "?*"
