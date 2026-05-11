@@ -38,6 +38,21 @@ and route.
 
 ## Wire Alertmanager
 
+The overlay includes an `AlertmanagerConfig` contact point in
+`manifests/webhook/alertmanager-contact-point.yaml`. It matches only alerts
+with:
+
+```text
+namespace="kagent-poc"
+kagent_path="webhook"
+```
+
+The receiver points Alertmanager at the EventSource service:
+
+```text
+http://alertmanager-webhook-eventsource-svc.kagent-poc.svc.cluster.local:12000/alertmanager
+```
+
 The sample receiver in `manifests/webhook/alertmanager-configmap.yaml` points
 Alertmanager at:
 
@@ -45,9 +60,28 @@ Alertmanager at:
 http://alertmanager-webhook-eventsource-svc.kagent-poc.svc.cluster.local:12000/alertmanager
 ```
 
-Adapt that receiver into the target Alertmanager deployment through the local
-configuration mechanism. Keep `repeat_interval` short during testing so repeat
-signals are not hidden by Alertmanager de-duplication.
+The legacy sample receiver ConfigMap is kept for clusters that do not use the
+Prometheus Operator `AlertmanagerConfig` CRD. Keep `repeat_interval` short
+during testing so repeat signals are not hidden by Alertmanager de-duplication.
+
+## Smoke Test Through Alertmanager
+
+Port-forward the cluster Alertmanager:
+
+```bash
+kubectl -n monitoring port-forward svc/kube-prom-kube-prometheus-alertmanager 9093:9093
+```
+
+Post a synthetic alert that matches the direct webhook contact point:
+
+```bash
+curl -sS -X POST http://127.0.0.1:9093/api/v2/alerts \
+  -H "Content-Type: application/json" \
+  --data-binary @samples/alertmanager-api-pod-alert.json
+```
+
+Set `kagent_path` to `webhook` and use a distinct run label for repeated tests
+so Alertmanager does not deduplicate the alert before the `repeatInterval`.
 
 ## Smoke Test Without Alertmanager
 
@@ -89,7 +123,7 @@ kubectl -n kagent-poc logs -l app.kubernetes.io/component=alert-consumer,path=we
 Expected consumer log shape:
 
 ```json
-{"alert_count":1,"consumed_at":"<utc timestamp>","path":"webhook","payload_keys":["alerts","commonAnnotations","commonLabels","externalURL","groupKey","groupLabels","receiver","status","truncatedAlerts","version"],"pod_name":"sample-api-7f9d6b8d9c-abcde"}
+{"alert_count":1,"alert_json":{"alerts":[{"labels":{"pod":"sample-api-7f9d6b8d9c-abcde"}}]},"consumed_at":"<utc timestamp>","path":"webhook","payload_keys":["alerts","commonAnnotations","commonLabels","externalURL","groupKey","groupLabels","receiver","status","truncatedAlerts","version"],"pod_name":"sample-api-7f9d6b8d9c-abcde"}
 ```
 
 ## Evidence To Capture
