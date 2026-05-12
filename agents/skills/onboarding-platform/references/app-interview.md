@@ -1,93 +1,68 @@
-# App Onboarding — Interview Reference
+# App Onboarding Interview
 
-## Agent: `app-onboarding-agent`
-## Output: GitOps YAML for PR submission — nothing applied to the cluster
+Use this flow for application manifest generation.
 
----
+## Scope
 
-## Question → Output Mapping
+This pillar returns Kubernetes YAML only. It must not apply manifests, submit a Workflow, or include Azure resources.
 
-| # | Question | Used In | Default |
-|---|----------|---------|---------|
-| 1 | Application name | Deployment/Service name, request.yaml `agentName` | — |
-| 2 | Team | `platform.com/team` label, request.yaml `metadata.team` | — |
-| 3 | Namespace | ALL manifests (namespace-anchored) | — |
-| 4 | Container image + tag | Deployment `spec.containers[].image` | — |
-| 5 | Port | Deployment `containerPort`, Service `port`/`targetPort` | 8080 |
-| 6 | Protocol | VirtualService route type | HTTP |
-| 7 | Istio ingress? | VirtualService + host/path | no |
-| 8 | AuthorizationPolicy? | AuthorizationPolicy | no |
-| 9 | Resource requirements | Deployment `resources`, request.yaml `budget` | 100m/500m/128Mi/512Mi |
+## Fields
 
----
+Collect:
 
-## Generated Files
+| Field | Rule | Default |
+| --- | --- | --- |
+| `appName` | lowercase DNS label | none |
+| `namespace` | lowercase DNS label | none |
+| `image` | container image reference | none |
+| `replicas` | integer | `2` |
+| `containerPort` | integer | `8080` |
+| `servicePort` | integer | same as containerPort |
+| `cpuRequest` | Kubernetes quantity | `100m` |
+| `memoryRequest` | Kubernetes quantity | `128Mi` |
+| `cpuLimit` | Kubernetes quantity | `500m` |
+| `memoryLimit` | Kubernetes quantity | `512Mi` |
+| `environment` | `dev`, `test`, `stage`, `prod` | `dev` |
+| `exposeService` | yes or no | yes |
+| `defaultDenyNetworkPolicy` | yes or no | yes |
 
-| File | Always | Condition |
-|------|:------:|-----------|
-| `deployment.yaml` | ✓ | — |
-| `service.yaml` | ✓ | — |
-| `virtual-service.yaml` | | Q7 = yes |
-| `authorization-policy.yaml` | | Q8 = yes |
-| `request.yaml` | | User requests triage agent (ask after YAML output) |
+## Output
 
----
+Generate valid Kubernetes YAML in this order:
 
-## Istio Precedents
+1. Namespace
+2. ResourceQuota
+3. NetworkPolicy
+4. Deployment
+5. Service when requested
 
-Existing VirtualService and AuthorizationPolicy examples: `ai-platform/teams-hitl/istio/`
+## Required YAML Properties
 
-Use `spec.http` routing for HTTP/gRPC, `spec.tcp` for TCP.
+Deployment:
 
----
+- `apiVersion: apps/v1`
+- Matching selector and pod labels.
+- Resource requests and limits.
+- Liveness and readiness HTTP probes on `/healthz`.
+- Pod or container security context with `runAsNonRoot: true`.
+- Container security context with `allowPrivilegeEscalation: false` and `capabilities.drop: ["ALL"]`.
 
-## request.yaml Schema
+Labels:
 
-See `assets/request-template.yaml` for the full template.
+- `app.kubernetes.io/name`
+- `app.kubernetes.io/part-of: onboarding-platform`
+- `onboarding.platform.com/environment`
 
-```yaml
-metadata:
-  agentName: <app-name>-triage-agent
-  team: <team>
-  costCenter: <cost-centre>        # ask if not already collected
-target:
-  clusters: []                      # user fills in
-model:
-  ref: shared/gpt-4o
-tools:
-  - catalogRef: "<name>@<version>"  # MUST be verified ToolCatalogEntry
-    scopes: [...]
-budget:
-  cpu: <cpu-limit>
-  memory: <memory-limit>
+NetworkPolicy:
+
+- If default deny is requested, include `policyTypes: ["Ingress", "Egress"]` and no ingress or egress allowances.
+
+## Validation
+
+End with:
+
+```bash
+kubectl apply --dry-run=client -f app-onboarding.yaml
 ```
 
-### Tool Reference Rules ⚠️
-
-- Tool references **MUST** use verified `ToolCatalogEntry` values from the catalog
-- New MCP tools must pass through `mcp-onboarding-template` quarantine before appearing in the catalog
-- Do not invent tool names — reference only what exists in the catalog
-
----
-
-## BYO-KAgent Workflow
-
-`byo-kagent-onboarding-template` is a **PR-triggered review workflow**, not a deployment pipeline.
-
-Submission path:
-1. Save `request.yaml`
-2. Open a PR labelled `byo-kagent` → triggers the review workflow
-3. Platform team reviews and promotes
-
----
-
-## Confirmation Phrase
-
-User must type exactly: `yes, generate`
-
----
-
-## Namespace Anchoring
-
-CRITICAL: Use the exact namespace string from Q3 in every generated manifest.
-Copy character-for-character. Do not slugify, lowercase, or modify.
+Do not provide a mutating apply command.

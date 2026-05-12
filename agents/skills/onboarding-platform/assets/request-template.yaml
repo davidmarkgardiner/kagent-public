@@ -1,31 +1,144 @@
-# BYO-KAgent request.yaml Template
-#
-# Submit this file as a PR labelled `byo-kagent` to trigger the
-# byo-kagent-onboarding-template review workflow.
-#
-# Rules:
-# - toolRef values MUST be verified ToolCatalogEntry names (@version required)
-# - New MCP tools must pass mcp-onboarding-template quarantine first
-# - Do NOT apply this file directly — it goes through the PR review gate
-# - budget fields are copied from the app's Deployment resource limits
-
+---
+# Cluster onboarding Workflow request.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
 metadata:
-  agentName: APP_NAME-triage-agent       # convention: <app-name>-triage-agent
-  team: TEAM                              # matches platform.com/team label
-  costCenter: COST_CENTER                 # SWC / billing reference
-
-target:
-  clusters:
-    - CLUSTER_NAME                        # one entry per target cluster
-
-model:
-  ref: shared/gpt-4o                      # use platform default unless agreed otherwise
-
-tools:
-  - catalogRef: "TOOL_NAME@VERSION"       # e.g. k8s-reader@v1.2.0
-    scopes:
-      - SCOPE                             # e.g. namespace:APP_NAMESPACE
-
-budget:
-  cpu: CPU_LIMIT                          # copy from Deployment resources.limits.cpu
-  memory: MEMORY_LIMIT                    # copy from Deployment resources.limits.memory
+  generateName: provision-aks-CLUSTER_NAME-
+  namespace: argo
+  labels:
+    onboarding.platform.com/pillar: cluster
+    onboarding.platform.com/cluster: CLUSTER_NAME
+spec:
+  workflowTemplateRef:
+    name: provision-aks-cluster
+  arguments:
+    parameters:
+      - name: clusterName
+        value: "CLUSTER_NAME"
+      - name: region
+        value: "REGION"
+      - name: size
+        value: "SIZE"
+      - name: dryRun
+        value: "true"
+      - name: confirmedBy
+        value: "CONFIRMED_BY"
+---
+# Namespace onboarding Workflow request.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: namespace-onboarding-NAMESPACE_NAME-
+  namespace: argo
+  labels:
+    onboarding.platform.com/pillar: namespace
+    onboarding.platform.com/namespace: NAMESPACE_NAME
+spec:
+  workflowTemplateRef:
+    name: namespace-onboarding-template
+  arguments:
+    parameters:
+      - name: payload
+        value: '{"NamespaceName":"NAMESPACE_NAME","Swc":"SWC","Environment":"dev","ResourceQuotaCPU":2,"ResourceQuotaMemoryGB":4,"ResourceQuotaStorageGB":10,"AllowAccessFromNS":"","BillingReference":"BILLING_REFERENCE","ManagedAksClusterName":"TARGET_CLUSTER"}'
+      - name: targetCluster
+        value: "TARGET_CLUSTER"
+---
+# App onboarding YAML output skeleton. Return YAML like this; do not apply it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: APP_NAMESPACE
+  labels:
+    app.kubernetes.io/part-of: onboarding-platform
+    onboarding.platform.com/environment: dev
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: APP_NAME-quota
+  namespace: APP_NAMESPACE
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.cpu: "4"
+    limits.memory: 8Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: APP_NAME-default-deny
+  namespace: APP_NAMESPACE
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: APP_NAME
+  namespace: APP_NAMESPACE
+  labels:
+    app.kubernetes.io/name: APP_NAME
+    app.kubernetes.io/part-of: onboarding-platform
+    onboarding.platform.com/environment: dev
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: APP_NAME
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: APP_NAME
+        app.kubernetes.io/part-of: onboarding-platform
+        onboarding.platform.com/environment: dev
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: APP_NAME
+          image: IMAGE
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: APP_NAME
+  namespace: APP_NAMESPACE
+  labels:
+    app.kubernetes.io/name: APP_NAME
+    app.kubernetes.io/part-of: onboarding-platform
+    onboarding.platform.com/environment: dev
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: APP_NAME
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

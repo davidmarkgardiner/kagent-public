@@ -1,96 +1,72 @@
-# Namespace Onboarding — Interview Reference
+# Namespace Onboarding Interview
 
-## Agent: `namespace-onboarding-agent`
-## WorkflowTemplate: `namespace-onboarding-template` (namespace: `argo`)
+Use this flow for team namespace requests.
 
----
+## Fields
 
-## Question → Parameter Mapping
+Collect:
 
-| # | Question | Parameter | Default |
-|---|----------|-----------|---------|
-| 1 | Namespace name | `NamespaceName` | — |
-| 2 | Target cluster | `ManagedAksClusterName` + `targetCluster` | — |
-| 3 | Environment | `Environment` | — (dev / staging / prod) |
-| 4 | SWC / cost centre | `Swc` | — |
-| 5 | Billing reference | `BillingReference` | — |
-| 6 | CPU quota | `ResourceQuotaCPU` | 2 |
-| 7 | Memory quota (GiB) | `ResourceQuotaMemoryGB` | 2 |
-| 8 | Storage quota (GiB) | `ResourceQuotaStorageGB` | 0 |
-| 9 | Allow ingress from NS | `AllowAccessFromNS` | "" (blank = no rule) |
+| Field | Rule | Default |
+| --- | --- | --- |
+| `NamespaceName` | lowercase DNS label | none |
+| `Swc` | service, system, or cost-center code | none |
+| `Environment` | `dev`, `test`, `stage`, `prod` | `dev` |
+| `ResourceQuotaCPU` | integer CPU count | `2` |
+| `ResourceQuotaMemoryGB` | integer GiB | `4` |
+| `ResourceQuotaStorageGB` | integer GiB | `10` |
+| `AllowAccessFromNS` | comma-separated namespace list | empty string |
+| `BillingReference` | required for prod | none |
+| `ManagedAksClusterName` | target cluster | `minikube` |
 
----
+## Interview
 
-## Workflow Output
+Ask:
 
-The `namespace-onboarding-template` creates:
-- Namespace with labels: environment, swc, billing-reference, team
-- ResourceQuota
-- NetworkPolicy (only if `AllowAccessFromNS` is non-empty)
+1. Namespace name, environment, SWC, and target cluster.
+2. CPU, memory, and storage quota.
+3. Which namespaces may connect to it, if any.
+4. Billing reference, especially for production.
 
----
+Do not invent billing references.
 
-## NetworkPolicy Label Warning ⚠️
+## Payload
 
-The template selects the source namespace using its `name` label. **Not all namespaces
-carry this label.** Always surface this warning when `AllowAccessFromNS` is set:
+The existing `namespace-onboarding-template` parses this exact JSON shape:
 
-> "Note — the NetworkPolicy allow-from rule selects the source namespace by its `name` label.
-> If the rule doesn't work after creation, run:
-> `kubectl label ns <source-namespace> name=<source-namespace>`"
+```json
+{
+  "NamespaceName": "payments-dev",
+  "Swc": "payments",
+  "Environment": "dev",
+  "ResourceQuotaCPU": 2,
+  "ResourceQuotaMemoryGB": 4,
+  "ResourceQuotaStorageGB": 10,
+  "AllowAccessFromNS": "ingress-nginx,monitoring",
+  "BillingReference": "COST-1234",
+  "ManagedAksClusterName": "minikube"
+}
+```
 
----
+## Confirmation
 
-## Optional: Triage Agent Chain
+Before submitting the Workflow, show the compact JSON payload and require:
 
-After successful workflow submission, offer to invoke `byoa-builder-guided` via A2A
-to create a triage agent for the new namespace.
+```text
+yes, create namespace
+```
 
-- A2A endpoint: `POST /api/a2a/kagent/byoa-builder-guided/`
-- Pass the namespace name as context in the opening message
+## Workflow
 
----
-
-## Confirmation Phrase
-
-User must type exactly: `yes, create namespace`
-
----
-
-## Workflow Submission Template
+Submit a Workflow in namespace `argo` with:
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Workflow
-metadata:
-  generateName: ns-onboarding-<NamespaceName>-
-  namespace: argo
-  labels:
-    platform.com/onboarding: "true"
-    platform.com/namespace: <NamespaceName>
 spec:
   workflowTemplateRef:
     name: namespace-onboarding-template
   arguments:
     parameters:
-      - name: NamespaceName
-        value: "<NamespaceName>"
-      - name: ManagedAksClusterName
-        value: "<cluster>"
+      - name: payload
       - name: targetCluster
-        value: "<cluster>"
-      - name: Environment
-        value: "<dev|staging|prod>"
-      - name: Swc
-        value: "<Swc>"
-      - name: BillingReference
-        value: "<BillingReference>"
-      - name: ResourceQuotaCPU
-        value: "<cpu>"
-      - name: ResourceQuotaMemoryGB
-        value: "<memory>"
-      - name: ResourceQuotaStorageGB
-        value: "<storage>"
-      - name: AllowAccessFromNS
-        value: "<source-namespace or empty>"
 ```
+
+The workflow creates or updates Namespace, ResourceQuota, and NetworkPolicy resources.

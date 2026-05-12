@@ -1,57 +1,93 @@
 ---
 name: onboarding-platform
-description: Three-pillar platform onboarding. Routes to cluster, namespace, or app onboarding agents based on what the user needs. Use when a team wants to onboard anything new to the platform — a new AKS cluster, a new namespace, or a new application.
+description: Three-pillar onboarding assistant for cluster, namespace, and app requests. Use when a user needs a guided interview that either triggers existing Argo WorkflowTemplates for cluster or namespace onboarding, or returns Kubernetes-only app YAML for dry-run review.
 metadata:
   openclaw:
-    emoji: "🚀"
     requires:
       anyBins: ["kubectl"]
 ---
 
 # Onboarding Platform
 
-Three-pillar guided onboarding for the shared platform. Each pillar has a dedicated
-interview-driven agent. Read the relevant reference file before starting.
+Guide users through the three onboarding pillars:
+
+1. Cluster onboarding: collect AKS cluster requirements and submit the existing `provision-aks-cluster` WorkflowTemplate with `dryRun: true` by default.
+2. Namespace onboarding: collect namespace, quota, network policy, and billing data, then submit the existing `namespace-onboarding-template` WorkflowTemplate.
+3. App onboarding: collect app deployment data and return Kubernetes-only YAML. Do not apply it and do not include Azure resources.
+
+Read the relevant reference before starting:
+
+- `references/cluster-interview.md`
+- `references/namespace-interview.md`
+- `references/app-interview.md`
+
+Use `assets/agent-template.yaml` as the Agent CRD shape and `assets/request-template.yaml` for the Workflow and app manifest request shapes.
 
 ---
 
 ## Routing
 
-Ask: "What do you need to onboard?"
+Ask the user which pillar they need unless it is obvious from their request:
 
-| User says | Pillar | Agent |
-|-----------|--------|-------|
-| "cluster" / "I need a new AKS cluster" | 1 | `cluster-onboarding-agent` |
-| "namespace" / "I need a namespace" | 2 | `namespace-onboarding-agent` |
-| "app" / "I want to deploy my application" | 3 | `app-onboarding-agent` |
+- Cluster: new AKS or managed cluster request.
+- Namespace: team space, quota, billing, or network policy request.
+- App: Deployment, Service, or Kubernetes YAML request.
 
-Route via A2A: `POST /api/a2a/kagent/{agent-name}/`
-
-If unsure which pillar applies, ask: "Are you onboarding a new **cluster**, a new **namespace**
-on an existing cluster, or a new **application**?"
+If a request spans multiple pillars, handle them in this order: cluster, namespace, app. Finish one pillar before moving to the next.
 
 ---
 
-## Reference Files
+## Cluster Pillar
 
-- `references/cluster-interview.md` — Q→parameter mapping, region/size enums, platform-enforced values
-- `references/namespace-interview.md` — Q→parameter mapping, NetworkPolicy label warning, optional chain
-- `references/app-interview.md` — Q→output mapping, generated file list, request.yaml schema
+Use `references/cluster-interview.md`.
 
-## Asset Files
+Output or submit a Workflow that references `provision-aks-cluster`. The dry-run value must default to `true`.
 
-- `assets/agent-template.yaml` — base `kagent.dev/v1alpha2` Agent CRD for onboarding agents
-- `assets/request-template.yaml` — BYO-KAgent `request.yaml` template
+Never generate UK8SClusterPublic, ASO, or Azure resource YAML in this pillar.
 
 ---
 
-## Design Principles
+## Namespace Pillar
 
-| Principle | Implementation |
-|-----------|---------------|
-| Interview → YAML, never LLM → live cluster | Agents generate YAML; Argo workflows do K8s work |
-| dryRun: true default | Cluster agent defaults dry-run; user must opt out explicitly |
-| Namespace anchoring | CRITICAL — always use exact namespace names, character-for-character |
-| RBAC separation | Agent SA submits Workflows only; workflow SA does actual K8s work |
-| Confirmation gate | Each agent requires an exact confirmation phrase before acting |
-| No new WorkflowTemplates | All three pillars reuse existing templates |
+Use `references/namespace-interview.md`.
+
+Output or submit a Workflow that references `namespace-onboarding-template`. The payload keys must match the existing WorkflowTemplate:
+
+- `NamespaceName`
+- `Swc`
+- `Environment`
+- `ResourceQuotaCPU`
+- `ResourceQuotaMemoryGB`
+- `ResourceQuotaStorageGB`
+- `AllowAccessFromNS`
+- `BillingReference`
+- `ManagedAksClusterName`
+
+---
+
+## App Pillar
+
+Use `references/app-interview.md`.
+
+Return YAML only. Do not submit a Workflow. Do not call `kubectl apply`. Do not include Azure or ASO resources.
+
+The generated YAML must pass:
+
+```bash
+kubectl apply --dry-run=client -f app-onboarding.yaml
+```
+
+---
+
+## Validation Checklist
+
+Before finalizing:
+
+- [ ] Correct pillar selected and completed.
+- [ ] Cluster pillar defaults `dryRun` to `true`.
+- [ ] Cluster and namespace pillars reference existing WorkflowTemplates only.
+- [ ] Namespace payload uses exact keys consumed by `namespace-onboarding-template`.
+- [ ] App pillar outputs Kubernetes-only YAML and no Azure resources.
+- [ ] App YAML has no placeholders.
+- [ ] App YAML includes resource requests, limits, probes, and restricted security context.
+- [ ] User-facing output includes the next validation or status command.

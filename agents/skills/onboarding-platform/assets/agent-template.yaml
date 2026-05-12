@@ -1,62 +1,40 @@
-# Onboarding Platform — Base Agent CRD Template
-#
-# Use this as the starting point for all three onboarding pillar agents.
-# Replace all UPPER_CASE placeholders before applying.
-#
-# Pillar-specific notes:
-#   Pillar 1 (cluster):   tools = k8s_apply_manifest + k8s_get_resources + k8s_describe_resource
-#   Pillar 2 (namespace): tools = k8s_apply_manifest + k8s_get_resources + k8s_describe_resource
-#   Pillar 3 (app):       tools = k8s_get_resources + k8s_describe_resource + k8s_get_resource_yaml
-#                         (read-only — app agent never applies anything)
-
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
-  name: PILLAR-onboarding-agent          # cluster | namespace | app
+  name: AGENT_NAME
   namespace: kagent
   labels:
-    app.kubernetes.io/name: PILLAR-onboarding-agent
+    app.kubernetes.io/name: AGENT_NAME
     app.kubernetes.io/part-of: kagent
     platform.com/team: platform
     platform.com/type: onboarding
-  annotations:
-    platform.com/description: "PILLAR onboarding — QUESTION_COUNT-question interview"
+    onboarding.platform.com/pillar: PILLAR_NAME
 spec:
-  description: >
-    DESCRIPTION
+  description: AGENT_DESCRIPTION
   type: Declarative
   declarative:
-    modelConfig: default-model-config
     runtime: python
-
+    modelConfig: default-model-config
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - TOOL_NAME
     systemMessage: |
       SYSTEM_MESSAGE
-
-    tools:
-    - type: McpServer
-      mcpServer:
-        apiGroup: kagent.dev
-        kind: RemoteMCPServer
-        name: kagent-tool-server
-        toolNames:
-          - k8s_apply_manifest          # remove for app agent
-          - k8s_get_resources
-          - k8s_describe_resource
-          - k8s_get_resource_yaml       # app agent only
-
     a2aConfig:
       skills:
-      - id: PILLAR-onboarding
-        name: PILLAR_DISPLAY_NAME Onboarding
-        description: SKILL_DESCRIPTION
-        tags:
-          - onboarding
-          - PILLAR
-          - platform
-        examples:
-          - EXAMPLE_1
-          - EXAMPLE_2
-
+        - id: SKILL_ID
+          name: SKILL_NAME
+          description: SKILL_DESCRIPTION
+          tags:
+            - onboarding
+            - PILLAR_NAME
+          examples:
+            - EXAMPLE_PROMPT
     deployment:
       resources:
         requests:
@@ -65,3 +43,8 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
+    promptTemplate:
+      dataSources:
+        - alias: builtin
+          kind: ConfigMap
+          name: kagent-builtin-prompts

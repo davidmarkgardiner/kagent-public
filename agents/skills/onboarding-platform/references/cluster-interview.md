@@ -1,83 +1,61 @@
-# Cluster Onboarding — Interview Reference
+# Cluster Onboarding Interview
 
-## Agent: `cluster-onboarding-agent`
-## WorkflowTemplate: `provision-aks-cluster` (namespace: `argo`)
+Use this flow for AKS cluster requests.
 
----
+## Fields
 
-## Question → Parameter Mapping
+Collect:
 
-| # | Question | Parameter | Validation | Default |
-|---|----------|-----------|------------|---------|
-| 1 | Cluster name | `clusterName` | `^[a-z][a-z0-9-]{2,30}$` | — |
-| 2 | Region | `region` | enum: uksouth / westeurope / northeurope / ukwest | — |
-| 3 | Size | `size` | enum: small / medium / large | — |
-| 4 | Dry run? | `dryRun` | boolean | **true** |
-| 5 | "yes, provision" | `confirmedBy` | exact string match | — |
+| Field | Rule | Default |
+| --- | --- | --- |
+| `clusterName` | `^[a-z][a-z0-9-]{2,30}$` | none |
+| `region` | `uksouth`, `ukwest`, `westeurope`, `northeurope` | `westeurope` |
+| `size` | `small`, `medium`, `large` | `small` |
+| `dryRun` | `true` or `false` | `true` |
+| `confirmedBy` | requester name or email | `demo-user` |
 
----
+## Interview
 
-## Platform-Enforced Values (not asked — hardcoded in workflow)
+Ask:
 
-| Field | Value |
-|-------|-------|
-| environment | dev |
-| team | AKSEngineering |
-| Kubernetes version | 1.32 |
-| Defender | enabled |
-| Azure RBAC | enabled |
-| Local accounts | disabled |
+1. What should the cluster be called?
+2. Which Azure region should it use?
+3. What size should it be?
+4. Who should be recorded as the requester?
 
----
+Normalize the cluster name only when the intended value is obvious, then ask for confirmation.
 
-## Size → Infrastructure Mapping
+## Confirmation
 
-| Size | VM SKU | Node Count |
-|------|--------|------------|
-| small | Standard_B8ms | 1 |
-| medium | Standard_B8ms | 2 |
-| large | Standard_B8ms | 3 |
+For dry-run requests, require the exact phrase:
 
----
+```text
+yes, provision
+```
 
-## Existing Assets (do not rebuild)
+For real provisioning, require the exact phrase:
 
-| Asset | Location |
-|-------|----------|
-| WorkflowTemplate | `provision-aks-cluster` in `argo` ns |
-| KRO RGD | `infra-stack/kro-stack/definitions/uk8scluster-public.yaml` |
-| Predecessor agent | `agents/aso-cluster-agent/agent/aso-provisioner-agent.yaml` |
+```text
+yes, provision real cluster
+```
 
-The cluster-onboarding-agent is a thin wrapper over the existing `provision-aks-cluster`
-WorkflowTemplate, adding a structured five-question interview. The predecessor
-`aso-cluster-provisioner` was smoke-tested on home cluster (2026-05-09).
+Only allow real provisioning if the user explicitly states they are an authorized platform operator.
 
----
+## Workflow
 
-## Workflow Submission Template
+Submit a Workflow in namespace `argo` with:
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Workflow
-metadata:
-  generateName: cluster-onboarding-<clusterName>-
-  namespace: argo
-  labels:
-    platform.com/onboarding: "true"
-    platform.com/cluster: <clusterName>
 spec:
   workflowTemplateRef:
     name: provision-aks-cluster
   arguments:
     parameters:
       - name: clusterName
-        value: "<clusterName>"
       - name: region
-        value: "<region>"
       - name: size
-        value: "<size>"
       - name: dryRun
-        value: "<true|false>"
       - name: confirmedBy
-        value: "yes, provision"
 ```
+
+Do not create or change the WorkflowTemplate.
