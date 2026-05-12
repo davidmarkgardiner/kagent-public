@@ -1,0 +1,157 @@
+# BYO-KAgent Argo Events Sensor
+#
+# Listens for Git webhook events on PRs labelled byo-kagent or byo-mcp-tool.
+# Routes to the appropriate WorkflowTemplate based on label.
+#
+# Triggers:
+#   byo-kagent label    → byo-kagent-onboarding-template (event-type=pr-opened)
+#   byo-mcp-tool label  → mcp-onboarding-template
+#   PR merged + byo-kagent → byo-kagent-onboarding-template (event-type=pr-merged)
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: byo-kagent-sensor
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: byo-kagent-pr-webhook
+      eventSourceName: byo-kagent-eventsource
+      eventName: pr-events
+      filters:
+        data:
+          # Only process PRs with relevant labels
+          - path: body.labels
+            type: string
+            comparator: "="
+            value: "byo-kagent|byo-mcp-tool"
+  triggers:
+    # ── Agent onboarding PR opened/updated ──────────────────────────
+    - template:
+        name: trigger-agent-onboarding
+        conditions: "byo-kagent-pr-webhook"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: byo-kagent-onboarding-
+                namespace: argo
+                labels:
+                  app.kubernetes.io/part-of: byo-kagent
+              spec:
+                workflowTemplateRef:
+                  name: byo-kagent-onboarding-template
+                arguments:
+                  parameters:
+                    - name: pr-id
+                      value: ""
+                    - name: pr-branch
+                      value: ""
+                    - name: request-yaml-content
+                      value: ""
+                    - name: repo-url
+                      value: ""
+                    - name: event-type
+                      value: pr-opened
+          parameters:
+            - src:
+                dependencyName: byo-kagent-pr-webhook
+                dataKey: body.object_attributes.iid
+              dest: spec.arguments.parameters.0.value
+            - src:
+                dependencyName: byo-kagent-pr-webhook
+                dataKey: body.object_attributes.source_branch
+              dest: spec.arguments.parameters.1.value
+            - src:
+                dependencyName: byo-kagent-pr-webhook
+                dataKey: body.object_attributes.last_commit.message
+              dest: spec.arguments.parameters.2.value
+            - src:
+                dependencyName: byo-kagent-pr-webhook
+                dataKey: body.project.http_url
+              dest: spec.arguments.parameters.3.value
+      retryStrategy:
+        steps: 3
+        duration: 30s
+        factor: 2
+
+    # ── MCP tool onboarding PR ───────────────────────────────────────
+    - template:
+        name: trigger-mcp-onboarding
+        conditions: "byo-kagent-pr-webhook"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: mcp-onboarding-
+                namespace: argo
+                labels:
+                  app.kubernetes.io/part-of: byo-kagent
+              spec:
+                workflowTemplateRef:
+                  name: mcp-onboarding-template
+                arguments:
+                  parameters:
+                    - name: vendor
+                      value: ""
+                    - name: tool-name
+                      value: ""
+                    - name: tool-version
+                      value: "v1.0"
+                    - name: pr-id
+                      value: ""
+                    - name: mcp-url
+                      value: ""
+          parameters:
+            - src:
+                dependencyName: byo-kagent-pr-webhook
+                dataKey: body.object_attributes.source_branch
+              dest: spec.arguments.parameters.0.value
+            - src:
+                dependencyName: byo-kagent-pr-webhook
+                dataKey: body.object_attributes.title
+              dest: spec.arguments.parameters.1.value
+            - src:
+                dependencyName: byo-kagent-pr-webhook
+                dataKey: body.object_attributes.iid
+              dest: spec.arguments.parameters.3.value
+      retryStrategy:
+        steps: 3
+        duration: 30s
+        factor: 2
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: byo-kagent-eventsource
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+spec:
+  service:
+    ports:
+      - port: 12000
+        targetPort: 12000
+  webhook:
+    pr-events:
+      port: "12000"
+      endpoint: /byo-kagent-webhook
+      method: POST
+      # GitLab sends X-Gitlab-Token for HMAC validation
+      # Configure secret in Argo Events controller or via:
+      # kubectl create secret generic byo-kagent-webhook-secret -n argo-events \
+      #   --from-literal=secret=<your-gitlab-webhook-token>
+      secretHeaderName: X-Gitlab-Token
+      secretHeaderValue:
+        name: byo-kagent-webhook-secret
+        key: secret

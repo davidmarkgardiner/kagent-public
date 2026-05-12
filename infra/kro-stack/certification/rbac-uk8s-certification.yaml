@@ -1,0 +1,196 @@
+---
+# ClusterRole for UK8S Cluster Certification Workflows
+# This role grants permissions to read UK8SCluster custom resources and related K8s resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: uk8s-certification-role
+  labels:
+    app: argo-workflows
+    component: certification
+rules:
+  # UK8SCluster CRD permissions (KRO resources)
+  - apiGroups: ["kro.run"]
+    resources:
+      - uk8sclusters
+      - uk8sjobs
+      - uk8sfluxgitops
+      - resourcegraphdefinitions
+    verbs: ["get", "list", "watch"]
+
+  # Azure Service Operator (ASO) resources
+  - apiGroups: ["resources.azure.com"]
+    resources:
+      - resourcegroups
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["containerservice.azure.com"]
+    resources:
+      - managedclusters
+      - managedclustersagentpools
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["managedidentity.azure.com"]
+    resources:
+      - userassignedidentities
+      - federatedidentitycredentials
+    verbs: ["get", "list", "watch"]
+
+  # Core Kubernetes resources
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - configmaps
+      - secrets
+      - serviceaccounts
+      - pods
+      - services
+      - persistentvolumeclaims
+      - resourcequotas
+      - limitranges
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: [""]
+    resources:
+      - pods/log
+      - pods/status
+    verbs: ["get", "list"]
+
+  # Apps resources
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch"]
+
+  # Batch resources (for job validation)
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch"]
+
+  # RBAC resources
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs: ["get", "list", "watch"]
+
+  # Networking resources
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - networkpolicies
+      - ingresses
+    verbs: ["get", "list", "watch"]
+
+  # Flux GitOps resources
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources:
+      - gitrepositories
+      - helmrepositories
+      - buckets
+      - ocirepositories
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources:
+      - kustomizations
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources:
+      - helmreleases
+    verbs: ["get", "list", "watch"]
+
+  # Istio resources
+  - apiGroups: ["networking.istio.io"]
+    resources:
+      - virtualservices
+      - destinationrules
+      - gateways
+      - serviceentries
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["security.istio.io"]
+    resources:
+      - authorizationpolicies
+      - peerauthentications
+      - requestauthentications
+    verbs: ["get", "list", "watch"]
+
+  # Storage resources
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+      - csidrivers
+      - csinodes
+    verbs: ["get", "list", "watch"]
+
+  # Policy resources
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+      - podsecuritypolicies
+    verbs: ["get", "list", "watch"]
+
+  # Metrics and autoscaling
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["autoscaling.k8s.io"]
+    resources:
+      - verticalpodautoscalers
+    verbs: ["get", "list", "watch"]
+
+  # KEDA resources
+  - apiGroups: ["keda.sh"]
+    resources:
+      - scaledobjects
+      - scaledjobs
+      - triggerauthentications
+    verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding for argo-workflow-executor ServiceAccount
+# Binds the certification role to the workflow executor
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-workflow-executor-uk8s-cert
+  labels:
+    app: argo-workflows
+    component: certification
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: uk8s-certification-role
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow-executor
+    namespace: argo
+
+---
+# Also bind the existing argo-cluster-role to argo-workflow-executor
+# This ensures it has all standard Argo workflow execution permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-workflow-executor-binding
+  labels:
+    app: argo-workflows
+    component: workflow-executor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow-executor
+    namespace: argo

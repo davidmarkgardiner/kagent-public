@@ -1,0 +1,226 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: podinfo-canary-analysis-template
+  namespace: argo
+spec:
+  entrypoint: canary-analysis
+  serviceAccountName: argo-namespace-provisioner
+
+  arguments:
+    parameters:
+      - name: namespace
+        value: "podinfo"
+      - name: testDuration
+        value: "60s"
+      - name: errorThreshold
+        value: "1"
+
+  templates:
+    - name: canary-analysis
+      dag:
+        tasks:
+          - name: health-check-test
+            template: health-check
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          - name: load-test
+            template: simple-load-test
+            dependencies: [health-check-test]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+                - name: duration
+                  value: "{{workflow.parameters.testDuration}}"
+
+          - name: version-validation
+            template: version-check
+            dependencies: [health-check-test]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          - name: analysis-summary
+            template: generate-summary
+            dependencies: [health-check-test, load-test, version-validation]
+            arguments:
+              parameters:
+                - name: healthResult
+                  value: "{{tasks.health-check-test.outputs.parameters.result}}"
+                - name: loadResult
+                  value: "{{tasks.load-test.outputs.parameters.result}}"
+                - name: versionResult
+                  value: "{{tasks.version-validation.outputs.parameters.result}}"
+
+    - name: health-check
+      inputs:
+        parameters:
+          - name: namespace
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          echo "=== HEALTH CHECK TEST ==="
+
+          # Test stable service health
+          echo "Testing stable service health..."
+          stable_health=$(curl -s --connect-timeout 5 --max-time 10 \
+            http://podinfo-stable.{{inputs.parameters.namespace}}.svc.cluster.local/healthz || echo "ERROR")
+
+          # Test canary service health
+          echo "Testing canary service health..."
+          canary_health=$(curl -s --connect-timeout 5 --max-time 10 \
+            http://podinfo-canary.{{inputs.parameters.namespace}}.svc.cluster.local/healthz || echo "ERROR")
+
+          echo "Stable health: $stable_health"
+          echo "Canary health: $canary_health"
+
+          # Determine result
+          if echo "$stable_health" | grep -q "OK" && echo "$canary_health" | grep -q "OK"; then
+            echo "PASS" > /tmp/result
+            echo "Health checks passed"
+          else
+            echo "FAIL" > /tmp/result
+            echo "Health checks failed"
+          fi
+      outputs:
+        parameters:
+          - name: result
+            valueFrom:
+              path: /tmp/result
+
+    - name: simple-load-test
+      inputs:
+        parameters:
+          - name: namespace
+          - name: duration
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          echo "=== LOAD TEST ==="
+          echo "Duration: {{inputs.parameters.duration}}"
+
+          # Simple load test - send requests for specified duration
+          success_count=0
+          error_count=0
+          total_time=0
+
+          # Parse duration (assume seconds for simplicity)
+          duration_seconds=$(echo "{{inputs.parameters.duration}}" | sed 's/s//')
+          echo "Running load test for $duration_seconds seconds"
+
+          start_time=$(date +%s)
+          end_time=$((start_time + duration_seconds))
+
+          while [ $(date +%s) -lt $end_time ]; do
+            # Test canary endpoint
+            response_time=$(curl -s -o /dev/null -w "%{time_total}" --connect-timeout 2 --max-time 5 \
+              http://podinfo-canary.{{inputs.parameters.namespace}}.svc.cluster.local/ 2>/dev/null || echo "5.0")
+
+            if [ $(echo "$response_time < 2.0" | bc -l 2>/dev/null || echo "0") -eq 1 ]; then
+              success_count=$((success_count + 1))
+            else
+              error_count=$((error_count + 1))
+            fi
+
+            sleep 1
+          done
+
+          total_requests=$((success_count + error_count))
+          echo "Total requests: $total_requests"
+          echo "Successful requests: $success_count"
+          echo "Failed requests: $error_count"
+
+          # Determine result (less than 10% error rate)
+          error_rate=0
+          if [ $total_requests -gt 0 ]; then
+            error_rate=$((error_count * 100 / total_requests))
+          fi
+
+          echo "Error rate: ${error_rate}%"
+
+          if [ $error_rate -lt 10 ]; then
+            echo "PASS" > /tmp/result
+            echo "Load test passed"
+          else
+            echo "FAIL" > /tmp/result
+            echo "Load test failed - error rate too high"
+          fi
+      outputs:
+        parameters:
+          - name: result
+            valueFrom:
+              path: /tmp/result
+
+    - name: version-check
+      inputs:
+        parameters:
+          - name: namespace
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          echo "=== VERSION CHECK ==="
+
+          # Get version from canary service
+          canary_version=$(curl -s --connect-timeout 5 --max-time 10 \
+            http://podinfo-canary.{{inputs.parameters.namespace}}.svc.cluster.local/version | \
+            grep -o '"version":"[^"]*' | cut -d'"' -f4 || echo "unknown")
+
+          echo "Canary version: $canary_version"
+
+          # Simple validation - just check if we got a version
+          if [ "$canary_version" != "unknown" ] && [ -n "$canary_version" ]; then
+            echo "PASS" > /tmp/result
+            echo "Version check passed"
+          else
+            echo "FAIL" > /tmp/result
+            echo "Version check failed"
+          fi
+      outputs:
+        parameters:
+          - name: result
+            valueFrom:
+              path: /tmp/result
+
+    - name: generate-summary
+      inputs:
+        parameters:
+          - name: healthResult
+          - name: loadResult
+          - name: versionResult
+      script:
+        image: alpine:latest
+        command: [sh]
+        source: |
+          echo "=== CANARY ANALYSIS SUMMARY ==="
+          echo "Timestamp: $(date)"
+          echo "Health Check: {{inputs.parameters.healthResult}}"
+          echo "Load Test: {{inputs.parameters.loadResult}}"
+          echo "Version Check: {{inputs.parameters.versionResult}}"
+
+          # Determine overall result
+          if [ "{{inputs.parameters.healthResult}}" = "PASS" ] && \
+             [ "{{inputs.parameters.loadResult}}" = "PASS" ] && \
+             [ "{{inputs.parameters.versionResult}}" = "PASS" ]; then
+            echo "Overall Result: SUCCESS"
+            echo "SUCCESS" > /tmp/overall-result
+          else
+            echo "Overall Result: FAILED"
+            echo "FAILED" > /tmp/overall-result
+          fi
+          echo "================================"
+      outputs:
+        parameters:
+          - name: overallResult
+            valueFrom:
+              path: /tmp/overall-result

@@ -1,0 +1,73 @@
+apiVersion: kyverno.io/v2
+kind: ClusterPolicy
+metadata:
+  name: protect-catalog-status
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+  annotations:
+    policies.kyverno.io/title: "Protect ToolCatalogEntry Status"
+    policies.kyverno.io/category: "BYO-KAgent Security"
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Only the byo-kagent-orchestrator ServiceAccount may write to
+      ToolCatalogEntry /status subresource. All other principals are denied.
+      Also enforces that status.verifiedAt is immutable once set (version bumps
+      require a new ToolCatalogEntry, not an in-place edit).
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: only-orchestrator-writes-catalog-status
+      match:
+        any:
+          - resources:
+              kinds:
+                - ToolCatalogEntry/status
+              apiGroups:
+                - platform.kagent.dev
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - subjects:
+              - kind: ServiceAccount
+                name: byo-kagent-orchestrator
+                namespace: kagent-platform
+      validate:
+        message: >-
+          Only the byo-kagent-orchestrator ServiceAccount (namespace: kagent-platform)
+          may update ToolCatalogEntry status. Attempted write by
+          '{{ request.userInfo.username }}' is denied.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.userInfo.username }}"
+                operator: NotEquals
+                value: "system:serviceaccount:kagent-platform:byo-kagent-orchestrator"
+
+    - name: catalog-status-verified-at-immutable
+      match:
+        any:
+          - resources:
+              kinds:
+                - ToolCatalogEntry/status
+              apiGroups:
+                - platform.kagent.dev
+              operations:
+                - UPDATE
+      validate:
+        message: >-
+          ToolCatalogEntry status.verifiedAt is immutable once set. To update a
+          verified catalog entry, create a new entry with an incremented version
+          (e.g. aks-mcp@v1.3). Do not edit in-place.
+        deny:
+          conditions:
+            all:
+              # If the existing object already has verifiedAt set, deny any change to it
+              - key: "{{ request.oldObject.status.verifiedAt || '' }}"
+                operator: NotEquals
+                value: ""
+              - key: "{{ request.object.status.verifiedAt }}"
+                operator: NotEquals
+                value: "{{ request.oldObject.status.verifiedAt }}"

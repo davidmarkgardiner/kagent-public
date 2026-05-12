@@ -1,0 +1,41 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: blue-green-demo-vs
+  namespace: default
+spec:
+  hosts:
+  - blue-green-demo
+  http:
+  - match:
+    - headers:
+        canary:
+          exact: "true"
+    route:
+    - destination:
+        host: blue-green-preview
+      weight: 100
+  - route:
+    - destination:
+        host: blue-green-active
+      weight: 100
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: blue-green-demo-canary-vs
+  namespace: default
+spec:
+  hosts:
+  - blue-green-demo
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: blue-green-active
+      weight: 90
+    - destination:
+        host: blue-green-preview
+      weight: 10

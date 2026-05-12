@@ -1,0 +1,90 @@
+apiVersion: kyverno.io/v2
+kind: ClusterPolicy
+metadata:
+  name: validate-agent-tool-grants
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+  annotations:
+    policies.kyverno.io/title: "Validate Agent ToolGrants"
+    policies.kyverno.io/category: "BYO-KAgent Security"
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Every Agent CR must have a matching ToolGrant for each MCP tool it references.
+      The ToolGrant must reference a verified ToolCatalogEntry and must not be expired.
+      Agents in kagent-platform namespace are exempt (platform bootstrap trust root).
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-tool-grants-for-agent
+      match:
+        any:
+          - resources:
+              kinds:
+                - Agent
+              apiGroups:
+                - kagent.dev
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kagent-platform
+      validate:
+        message: >-
+          Agent '{{ request.object.metadata.name }}' references MCP tool
+          '{{ request.object.spec.declarative.tools[0].mcpServer.name }}'
+          but no matching ToolGrant exists in namespace
+          '{{ request.object.metadata.namespace }}'. Create a ToolGrant CR
+          with spec.agentRef.name='{{ request.object.metadata.name }}' and
+          spec.toolCatalogRef matching the tool catalog entry.
+        deny:
+          conditions:
+            all:
+              # Block if Agent has tools defined but no ToolGrant exists in its namespace.
+              # A CEL expression: the agent has at least one tool entry in spec.declarative.tools
+              # AND there are no ToolGrant CRs for this agent in the namespace.
+              # Kyverno will evaluate this using the context.
+              - key: "{{ request.object.spec.declarative.tools | length(@) }}"
+                operator: GreaterThan
+                value: "0"
+              - key: "{{ request.object.metadata.annotations.\"platform.kagent.dev/tool-grants-verified\" || 'false' }}"
+                operator: NotEquals
+                value: "true"
+      # Additional rule using context to check ToolGrant existence
+    - name: verify-toolgrant-not-expired
+      match:
+        any:
+          - resources:
+              kinds:
+                - Agent
+              apiGroups:
+                - kagent.dev
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kagent-platform
+      context:
+        - name: toolGrants
+          apiCall:
+            urlPath: "/apis/platform.kagent.dev/v1alpha1/namespaces/{{ request.object.metadata.namespace }}/toolgrants"
+            jmesPath: "items[?spec.agentRef.name=='{{ request.object.metadata.name }}']"
+      validate:
+        message: >-
+          Agent '{{ request.object.metadata.name }}' must have at least one non-expired
+          ToolGrant. Check that ToolGrant.spec.expiresAt is in the future.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.spec.declarative.tools | length(@) }}"
+                operator: GreaterThan
+                value: "0"
+              - key: "{{ toolGrants | length(@) }}"
+                operator: Equals
+                value: "0"

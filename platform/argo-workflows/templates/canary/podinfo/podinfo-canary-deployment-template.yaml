@@ -1,0 +1,320 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: podinfo-canary-deployment-template
+  namespace: argo
+spec:
+  entrypoint: canary-deployment
+  serviceAccountName: argo-namespace-provisioner
+
+  arguments:
+    parameters:
+      - name: newImageTag
+        value: "6.5.0"
+        description: "New image tag for canary deployment"
+      - name: applicationName
+        value: "podinfo"
+        description: "Application name"
+      - name: namespace
+        value: "podinfo"
+        description: "Target namespace"
+      - name: autoPromote
+        value: "false"
+        description: "Auto promote canary to stable"
+
+  templates:
+    - name: canary-deployment
+      dag:
+        tasks:
+          - name: validate-parameters
+            template: validate-params
+            arguments:
+              parameters:
+                - name: imageTag
+                  value: "{{workflow.parameters.newImageTag}}"
+                - name: appName
+                  value: "{{workflow.parameters.applicationName}}"
+
+          - name: deploy-initial-stable
+            template: deploy-stable-version
+            dependencies: [validate-parameters]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          - name: start-canary-deployment
+            template: update-rollout-image
+            dependencies: [deploy-initial-stable]
+            arguments:
+              parameters:
+                - name: imageTag
+                  value: "{{workflow.parameters.newImageTag}}"
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          - name: wait-for-canary-ready
+            template: wait-rollout-ready
+            dependencies: [start-canary-deployment]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          - name: run-canary-tests
+            template: canary-analysis
+            dependencies: [wait-for-canary-ready]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          - name: promote-or-rollback
+            template: promotion-decision
+            dependencies: [run-canary-tests]
+            arguments:
+              parameters:
+                - name: analysisResult
+                  value: "{{tasks.run-canary-tests.outputs.parameters.testResult}}"
+                - name: autoPromote
+                  value: "{{workflow.parameters.autoPromote}}"
+                - name: namespace
+                  value: "{{workflow.parameters.namespace}}"
+
+          - name: generate-report
+            template: deployment-report
+            dependencies: [promote-or-rollback]
+            arguments:
+              parameters:
+                - name: deploymentStatus
+                  value: "{{tasks.promote-or-rollback.outputs.parameters.deploymentStatus}}"
+                - name: imageTag
+                  value: "{{workflow.parameters.newImageTag}}"
+
+    # Validate deployment parameters
+    - name: validate-params
+      inputs:
+        parameters:
+          - name: imageTag
+          - name: appName
+      script:
+        image: alpine:latest
+        command: [sh]
+        source: |
+          set -e
+          echo "Validating deployment parameters..."
+          echo "Image tag: {{inputs.parameters.imageTag}}"
+          echo "Application: {{inputs.parameters.appName}}"
+
+          # Basic validation
+          if [ -z "{{inputs.parameters.imageTag}}" ]; then
+            echo "ERROR: Image tag cannot be empty"
+            exit 1
+          fi
+
+          if [ -z "{{inputs.parameters.appName}}" ]; then
+            echo "ERROR: Application name cannot be empty"
+            exit 1
+          fi
+
+          echo "Parameters validated successfully"
+
+    # Check if stable version exists and is ready
+    - name: deploy-stable-version
+      inputs:
+        parameters:
+          - name: namespace
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "Checking if podinfo rollout exists and is healthy..."
+
+          # Check if rollout exists
+          if kubectl get rollout podinfo -n {{inputs.parameters.namespace}} &>/dev/null; then
+            echo "Rollout exists, checking status..."
+            status=$(kubectl get rollout podinfo -n {{inputs.parameters.namespace}} -o jsonpath='{.status.phase}')
+            echo "Rollout status: $status"
+
+            if [ "$status" = "Healthy" ] || [ "$status" = "Progressing" ]; then
+              echo "Rollout is ready for canary deployment"
+            else
+              echo "Rollout is not in a healthy state, aborting"
+              exit 1
+            fi
+          else
+            echo "ERROR: Rollout does not exist. Please deploy base resources first:"
+            echo "kubectl apply -f k8s/argo-workflows/podinfo/podinfo-rollout.yaml"
+            echo "kubectl apply -f k8s/argo-workflows/podinfo/podinfo-services.yaml"
+            exit 1
+          fi
+
+          # Check if services exist
+          if ! kubectl get service podinfo-stable -n {{inputs.parameters.namespace}} &>/dev/null; then
+            echo "ERROR: podinfo-stable service does not exist"
+            exit 1
+          fi
+
+          if ! kubectl get service podinfo-canary -n {{inputs.parameters.namespace}} &>/dev/null; then
+            echo "ERROR: podinfo-canary service does not exist"
+            exit 1
+          fi
+
+          echo "All prerequisites validated successfully"
+
+    # Update rollout with new image
+    - name: update-rollout-image
+      inputs:
+        parameters:
+          - name: imageTag
+          - name: namespace
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "Starting canary deployment with image tag: {{inputs.parameters.imageTag}}"
+
+          # Update the rollout image using kubectl patch with JSON format
+          kubectl patch rollout podinfo -n {{inputs.parameters.namespace}} --type='json' -p='[
+            {
+              "op": "replace",
+              "path": "/spec/template/spec/containers/0/image",
+              "value": "stefanprodan/podinfo:{{inputs.parameters.imageTag}}"
+            }
+          ]'
+
+          echo "Canary deployment started successfully"
+
+    # Wait for rollout to be ready
+    - name: wait-rollout-ready
+      inputs:
+        parameters:
+          - name: namespace
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "Waiting for canary rollout to be ready..."
+
+          # Wait for rollout to have canary traffic
+          timeout=300
+          while [ $timeout -gt 0 ]; do
+            status=$(kubectl get rollout podinfo -n {{inputs.parameters.namespace}} -o jsonpath='{.status.phase}')
+            canary_weight=$(kubectl get rollout podinfo -n {{inputs.parameters.namespace}} -o jsonpath='{.status.canary.weights.canary}')
+
+            echo "Rollout status: $status, Canary weight: $canary_weight"
+
+            if [ "$status" = "Progressing" ] && [ "$canary_weight" = "10" ]; then
+              echo "Canary deployment is ready with 10% traffic"
+              break
+            fi
+
+            sleep 5
+            timeout=$((timeout - 5))
+          done
+
+          if [ $timeout -le 0 ]; then
+            echo "Timeout waiting for canary rollout"
+            exit 1
+          fi
+
+    # Canary analysis template
+    - name: canary-analysis
+      inputs:
+        parameters:
+          - name: namespace
+      script:
+        image: curlimages/curl:latest
+        command: [sh]
+        source: |
+          set -e
+          echo "Running canary analysis..."
+
+          # Test stable service
+          echo "Testing stable service..."
+          stable_response=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 http://podinfo-stable.{{inputs.parameters.namespace}}.svc.cluster.local/healthz || echo "000")
+          echo "Stable service health check: $stable_response"
+
+          # Test canary service
+          echo "Testing canary service..."
+          canary_response=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 http://podinfo-canary.{{inputs.parameters.namespace}}.svc.cluster.local/healthz || echo "000")
+          echo "Canary service health check: $canary_response"
+
+          # Simple performance test
+          echo "Running performance tests..."
+          stable_time=$(curl -s -o /dev/null -w "%{time_total}" --connect-timeout 5 --max-time 10 http://podinfo-stable.{{inputs.parameters.namespace}}.svc.cluster.local/ || echo "10.0")
+          canary_time=$(curl -s -o /dev/null -w "%{time_total}" --connect-timeout 5 --max-time 10 http://podinfo-canary.{{inputs.parameters.namespace}}.svc.cluster.local/ || echo "10.0")
+
+          echo "Stable response time: ${stable_time}s"
+          echo "Canary response time: ${canary_time}s"
+
+          # Determine test result
+          if [ "$stable_response" = "200" ] && [ "$canary_response" = "200" ]; then
+            echo "SUCCESS" > /tmp/test-result
+            echo "All health checks passed"
+          else
+            echo "FAILED" > /tmp/test-result
+            echo "Health checks failed - Stable: $stable_response, Canary: $canary_response"
+          fi
+      outputs:
+        parameters:
+          - name: testResult
+            valueFrom:
+              path: /tmp/test-result
+
+    # Promotion decision
+    - name: promotion-decision
+      inputs:
+        parameters:
+          - name: analysisResult
+          - name: autoPromote
+          - name: namespace
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "Making promotion decision..."
+          echo "Analysis result: {{inputs.parameters.analysisResult}}"
+          echo "Auto promote: {{inputs.parameters.autoPromote}}"
+
+          if [ "{{inputs.parameters.analysisResult}}" = "SUCCESS" ]; then
+            if [ "{{inputs.parameters.autoPromote}}" = "true" ]; then
+              echo "Auto-promoting canary to stable..."
+              kubectl patch rollout podinfo -n {{inputs.parameters.namespace}} -p '{"spec":{"paused":false}}'
+              kubectl argo rollouts promote podinfo -n {{inputs.parameters.namespace}} || true
+              echo "PROMOTED" > /tmp/deployment-status
+            else
+              echo "Manual promotion required - pausing deployment"
+              echo "PAUSED" > /tmp/deployment-status
+            fi
+          else
+            echo "Analysis failed - rolling back..."
+            kubectl argo rollouts abort podinfo -n {{inputs.parameters.namespace}} || true
+            echo "ROLLED_BACK" > /tmp/deployment-status
+          fi
+      outputs:
+        parameters:
+          - name: deploymentStatus
+            valueFrom:
+              path: /tmp/deployment-status
+
+    # Generate deployment report
+    - name: deployment-report
+      inputs:
+        parameters:
+          - name: deploymentStatus
+          - name: imageTag
+      script:
+        image: alpine:latest
+        command: [sh]
+        source: |
+          echo "=== CANARY DEPLOYMENT REPORT ==="
+          echo "Timestamp: $(date)"
+          echo "Image Tag: {{inputs.parameters.imageTag}}"
+          echo "Deployment Status: {{inputs.parameters.deploymentStatus}}"
+          echo "Workflow: {{workflow.name}}"
+          echo "================================"

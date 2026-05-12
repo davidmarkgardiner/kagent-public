@@ -1,0 +1,44 @@
+# Argo Workflows Monitoring Configuration
+# This file enables metrics collection for the Argo Workflows controller and server
+
+controller:
+  metricsConfig:
+    # Enables prometheus metrics server
+    enabled: true
+    # Path is the path where metrics are emitted. Must start with a "/".
+    path: /metrics
+    # Port is the port where metrics are emitted
+    port: 9090
+    # Service metrics port
+    servicePort: 8080
+    # Service metrics port name
+    servicePortName: metrics
+    # Enable a prometheus ServiceMonitor
+    serviceMonitor:
+      enabled: true
+      # Prometheus ServiceMonitor labels
+      additionalLabels:
+        release: prometheus-stack
+      # Prometheus ServiceMonitor namespace
+      namespace: monitoring
+
+  telemetryConfig:
+    # Enables prometheus telemetry server
+    enabled: true
+    # telemetry path
+    path: /telemetry
+    # telemetry container port
+    port: 8081
+    # telemetry service port
+    servicePort: 8081
+    # telemetry service port name
+    servicePortName: telemetry
+
+server:
+  # Enable metrics for the server
+  enabled: true
+  # Server service port
+  servicePort: 2746
+  # Extra arguments to provide to the Argo server binary
+  extraArgs:
+    - --metrics-port=9001

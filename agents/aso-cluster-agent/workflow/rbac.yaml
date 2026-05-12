@@ -1,0 +1,126 @@
+---
+# RBAC for the ASO Cluster Agent Demo
+#
+# Two distinct identities — narrow scope each:
+#
+#   kagent SA (in kagent ns):
+#     - create/get/list/watch Workflows in argo ns ONLY
+#     - get/list/watch provision-status ConfigMaps in argo ns
+#     - get/list/watch UK8SClusterPublic + UK8SCertificationV2 (read-only for status checks)
+#     - CANNOT create KRO instances directly — all provisioning goes via the Workflow
+#
+#   argo-workflow-executor SA (in argo ns, existing):
+#     - create/patch/get UK8SClusterPublic + UK8SCertificationV2 in uk8s-nextgen ns
+#     - create/patch/get ConfigMaps in argo ns (for provision-status CMs)
+#     - read platform-defaults Secret in argo ns
+
+# ─── kagent SA → Argo Workflows ──────────────────────────────────────────────
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kagent-workflow-submitter
+  namespace: argo
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows"]
+    verbs: ["create", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: []   # any configmap — narrowed by naming convention
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kagent-workflow-submitter
+  namespace: argo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kagent-workflow-submitter
+subjects:
+  - kind: ServiceAccount
+    name: kagent
+    namespace: kagent
+---
+# kagent SA → read-only KRO instance status (cluster-wide so it can check any cluster)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kagent-kro-reader
+rules:
+  - apiGroups: ["kro.run"]
+    resources: ["uk8sclusterpublics", "uk8scertificationv2s"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kagent-kro-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kagent-kro-reader
+subjects:
+  - kind: ServiceAccount
+    name: kagent
+    namespace: kagent
+
+# ─── argo-workflow-executor SA → KRO instance creation ───────────────────────
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workflow-executor-kro-provisioner
+  namespace: uk8s-nextgen
+rules:
+  - apiGroups: ["kro.run"]
+    resources: ["uk8sclusterpublics", "uk8scertificationv2s"]
+    verbs: ["create", "apply", "patch", "get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workflow-executor-kro-provisioner
+  namespace: uk8s-nextgen
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: workflow-executor-kro-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow-executor
+    namespace: argo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workflow-executor-status-writer
+  namespace: argo
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "patch", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["platform-defaults"]
+    verbs: ["get"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows", "workflowtaskresults"]
+    verbs: ["create", "get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workflow-executor-status-writer
+  namespace: argo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: workflow-executor-status-writer
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow-executor
+    namespace: argo

@@ -1,0 +1,97 @@
+apiVersion: kyverno.io/v2
+kind: ClusterPolicy
+metadata:
+  name: mcp-dangerous-verb-scan
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+  annotations:
+    policies.kyverno.io/title: "MCP Dangerous Verb Scanner"
+    policies.kyverno.io/category: "BYO-KAgent Security"
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Blocks RemoteMCPServer CRs from being promoted from the quarantine namespace
+      to a non-quarantine namespace if any discovered tool has been flagged as dangerous.
+      A tool is dangerous if its name or description matches delete/exec/apply/admin patterns.
+      Platform team can override by setting annotation platform.kagent.dev/danger-reviewed=true.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: block-dangerous-tools-outside-quarantine
+      match:
+        any:
+          - resources:
+              kinds:
+                - RemoteMCPServer
+              apiGroups:
+                - kagent.dev
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - mcp-quarantine
+                - kagent-platform
+          - resources:
+              annotations:
+                platform.kagent.dev/danger-reviewed: "true"
+      validate:
+        message: >-
+          RemoteMCPServer '{{ request.object.metadata.name }}' contains tools with
+          dangerous verbs (delete, exec, apply, drop, admin). These tools require
+          platform team review. Add annotation platform.kagent.dev/danger-reviewed=true
+          after manual review, or restrict the MCP server to mcp-quarantine namespace.
+        deny:
+          conditions:
+            any:
+              # Flag if any discovered tool name contains dangerous verbs
+              - key: "{{ request.object.status.discoveredTools[].name | join(',', @) | contains(@, 'delete') }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.status.discoveredTools[].name | join(',', @) | contains(@, 'exec') }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.status.discoveredTools[].name | join(',', @) | contains(@, 'apply') }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.status.discoveredTools[].name | join(',', @) | contains(@, 'drop') }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.status.discoveredTools[].name | join(',', @) | contains(@, 'admin') }}"
+                operator: Equals
+                value: true
+
+    - name: require-quarantine-for-new-mcp-prs
+      match:
+        any:
+          - resources:
+              kinds:
+                - RemoteMCPServer
+              apiGroups:
+                - kagent.dev
+              operations:
+                - CREATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - mcp-quarantine
+                - kagent-platform
+                - kagent
+          - resources:
+              annotations:
+                platform.kagent.dev/promoted-from-quarantine: "true"
+      validate:
+        message: >-
+          New RemoteMCPServer '{{ request.object.metadata.name }}' must first land in
+          the mcp-quarantine namespace for verification. Submit via
+          apps/04-applications/mcp-tools/_quarantine/ and run the mcp-onboarding workflow.
+          Promoted servers must carry annotation platform.kagent.dev/promoted-from-quarantine=true.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.metadata.namespace }}"
+                operator: NotEquals
+                value: mcp-quarantine

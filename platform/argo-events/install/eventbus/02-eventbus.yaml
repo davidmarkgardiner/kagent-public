@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+  namespace: argo-events
+spec:
+  nats:
+    native:
+      # For local minikube deployment - use single replica
+      # For production, use 3+ replicas
+      replicas: 1
+      auth: token
+      # Use minimal resources for local development
+      containerTemplate:
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+      metricsContainerTemplate:
+        resources:
+          requests:
+            cpu: "5m"
+            memory: "16Mi"
+          limits:
+            cpu: "25m"
+            memory: "32Mi"
+      antiAffinity: false

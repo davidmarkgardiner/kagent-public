@@ -1,0 +1,44 @@
+# Argo Events EventSource — the single inbound for the Webhook Hub
+#
+# Receives POSTs from Grafana / managed AlertManager (or any approved sender)
+# at /inbound, validates the bearer token via authSecret, publishes events
+# onto the NATS EventBus for fan-out by subscriber Sensors.
+#
+# Service auto-created by Argo Events:
+#   webhook-hub-eventsource-svc.argo-events.svc.cluster.local:12000
+#
+# That's the target for both the Istio VirtualService (04-...) and any
+# in-cluster smoke tests.
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: webhook-hub
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+    container:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+  service:
+    ports:
+      - port: 12000
+        targetPort: 12000
+  webhook:
+    inbound:
+      port: "12000"
+      endpoint: /inbound
+      method: POST
+      # Argo Events verifies Authorization: Bearer <value of secret key>
+      # against this Secret. Layer 2 of auth — Layer 1 is the Istio policy.
+      authSecret:
+        name: webhook-hub-token
+        key: token

@@ -1,0 +1,49 @@
+# Istio VirtualService — expose the Hub via the shared wildcard Gateway
+#
+# Mirror of ai-platform/teams-hitl/istio-virtualservice.yaml with three
+# substitutions: hostname, path, destination Service.
+#
+# Discover your Gateway:
+#   kubectl get gateway.networking.istio.io -A \
+#     -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\t"}{.spec.servers[*].hosts}{"\n"}{end}' \
+#     | grep '\*'
+#
+# Substitute before applying:
+#   REPLACE_WITH_HUB_HOST              e.g. webhook-hub.lab.{{INGRESS_DOMAIN}}
+#   REPLACE_WITH_SHARED_GATEWAY_NS     e.g. aks-istio-ingress
+#   REPLACE_WITH_SHARED_GATEWAY_NAME   the wildcard Gateway's name
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: webhook-hub-vs
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+spec:
+  hosts:
+    - "REPLACE_WITH_HUB_HOST"
+
+  # Attach ONLY to the shared ingress Gateway — not `mesh`. The managed
+  # Grafana / AlertManager is in a separate mesh (or no mesh at all).
+  gateways:
+    - REPLACE_WITH_SHARED_GATEWAY_NS/REPLACE_WITH_SHARED_GATEWAY_NAME
+
+  http:
+    - match:
+        - uri:
+            exact: /inbound
+        - uri:
+            exact: /inbound/
+        - method:
+            exact: POST
+      route:
+        - destination:
+            # EventSource Service name pattern: <eventsource-name>-eventsource-svc
+            host: webhook-hub-eventsource-svc.argo-events.svc.cluster.local
+            port:
+              number: 12000
+      timeout: 10s
+      retries:
+        attempts: 2
+        perTryTimeout: 5s
+        retryOn: 5xx,reset,connect-failure,refused-stream

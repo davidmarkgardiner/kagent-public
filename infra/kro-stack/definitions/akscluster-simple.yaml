@@ -1,0 +1,355 @@
+---
+# Simple AKS Cluster ResourceGraphDefinition
+# Based on tested working version from kro-aks-cluster
+# This is a simpler version that only creates the ManagedCluster
+# without child resources (Flux, Jobs, etc.)
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: akscluster.kro.run
+  labels:
+    kro.run/type: cluster-simple
+    kro.run/category: infrastructure
+  annotations:
+    kro.run/description: "Simple AKS cluster creation (cluster only, no Flux/Jobs)"
+    kro.run/version: "1.0.0"
+    kro.run/based-on: "Tested working version from kro-aks-cluster"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AKSCluster
+    spec:
+      # ========================================
+      # Cluster Identity
+      # ========================================
+      clusterName: string | required=true description="The name of the AKS cluster" pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+      namespace: string | required=true description="The namespace where the cluster resource will be created"
+      location: string | required=true description="Azure region for the cluster" default="uksouth" enum="uksouth,ukwest,westeurope,northeurope"
+
+      # ========================================
+      # Owner Resource Group (must pre-exist)
+      # ========================================
+      ownerResourceGroup: string | required=true description="Existing resource group that owns this cluster" pattern="^[a-zA-Z0-9_\-\.]+$"
+
+      # ========================================
+      # Kubernetes Version
+      # ========================================
+      kubernetesVersion: string | default="1.32" description="Kubernetes version"
+
+      # ========================================
+      # SSH Configuration
+      # ========================================
+      sshPublicKey: string | required=true description="SSH public key for Linux nodes (ssh-rsa format)"
+
+      # ========================================
+      # Network Configuration
+      # ========================================
+      network:
+        vnetSubscriptionId: string | required=true description="Subscription ID for the VNET" pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        vnetResourceGroup: string | required=true description="Resource group containing the VNET"
+        vnetName: string | required=true description="Virtual network name"
+        subnetName: string | required=true description="Subnet name for nodes"
+        serviceCidr: string | default="10.251.0.0/17" description="Service CIDR block" pattern="^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$"
+        dnsServiceIP: string | default="10.251.0.10" description="DNS service IP (must be within serviceCidr)" pattern="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+        podCidr: string | default="10.251.128.0/17" description="Pod CIDR block" pattern="^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$"
+
+      # ========================================
+      # Identity Configuration
+      # ========================================
+      identity:
+        controlPlaneIdentityResourceId: string | required=true description="ARM ID of the control plane managed identity"
+        kubeletIdentityClientId: string | required=true description="Client ID of the kubelet identity" pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        kubeletIdentityObjectId: string | required=true description="Object ID of the kubelet identity" pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        kubeletIdentityResourceId: string | required=true description="ARM ID of the kubelet identity"
+
+      # ========================================
+      # AAD Configuration
+      # ========================================
+      aad:
+        enableAzureRBAC: boolean | default=true description="Enable Azure RBAC for Kubernetes authorization"
+        adminGroupObjectIds: '[]string | required=true description="List of Azure AD group object IDs for cluster admin access"'
+
+      # ========================================
+      # Node Pool Configuration
+      # ========================================
+      nodePool:
+        name: string | default="systempool" description="Name of the system node pool" pattern="^[a-z][a-z0-9]{0,11}$"
+        vmSize: string | default="Standard_B8ms" description="VM size for nodes"
+        count: integer | default=1 minimum=1 maximum=100 description="Number of nodes"
+        enableAutoScaling: boolean | default=false description="Enable autoscaling"
+        availabilityZones: '[]string | default=["1"] description="Availability zones for node distribution"'
+        osDiskType: string | default="Managed" enum="Managed,Ephemeral" description="OS disk type"
+        osDiskSizeGB: integer | default=128 minimum=30 maximum=2048 description="OS disk size in GB"
+        osSKU: string | default="AzureLinux" enum="AzureLinux,Ubuntu,Windows2019,Windows2022" description="OS SKU"
+        maxPods: integer | default=110 minimum=10 maximum=250 description="Maximum pods per node"
+
+      # ========================================
+      # Security Configuration
+      # ========================================
+      security:
+        enableSecureBoot: boolean | default=true description="Enable secure boot for nodes"
+        enableVTPM: boolean | default=true description="Enable vTPM for nodes"
+        disableLocalAccounts: boolean | default=false description="Disable local Kubernetes accounts (AAD only)"
+        disableRunCommand: boolean | default=true description="Disable kubectl run command access"
+        enableDefender: boolean | default=true description="Enable Microsoft Defender for Containers"
+        defenderWorkspaceResourceId: string | required=true description="Log Analytics workspace ARM ID for Defender"
+
+      # ========================================
+      # Workload Identity
+      # ========================================
+      workloadIdentity:
+        enabled: boolean | default=true description="Enable workload identity federation"
+
+      # ========================================
+      # OIDC Issuer
+      # ========================================
+      oidcIssuer:
+        enabled: boolean | default=true description="Enable OIDC issuer for workload identity"
+        configMapName: string | default="aks-oidc-config-prod" description="ConfigMap name for OIDC issuer URL"
+        configMapKey: string | default="issuer-url" description="ConfigMap key for OIDC issuer URL"
+
+      # ========================================
+      # Auto Upgrade
+      # ========================================
+      autoUpgrade:
+        upgradeChannel: string | default="stable" enum="none,patch,stable,rapid,node-image" description="Auto upgrade channel"
+        nodeOSUpgradeChannel: string | default="NodeImage" enum="None,Unmanaged,SecurityPatch,NodeImage" description="Node OS upgrade channel"
+
+      # ========================================
+      # Storage Profile
+      # ========================================
+      storage:
+        diskCSIDriverEnabled: boolean | default=true description="Enable Azure Disk CSI driver"
+        fileCSIDriverEnabled: boolean | default=true description="Enable Azure File CSI driver"
+        snapshotControllerEnabled: boolean | default=true description="Enable volume snapshot controller"
+
+      # ========================================
+      # Addons
+      # ========================================
+      addons:
+        azureKeyvaultSecretsProvider:
+          enabled: boolean | default=true description="Enable Azure Key Vault secrets provider"
+          enableSecretRotation: string | default="true" enum="true,false" description="Enable secret rotation (string value)"
+          rotationPollInterval: string | default="30m" description="Rotation poll interval (e.g., 30m, 1h)"
+        azurePolicy:
+          enabled: boolean | default=true description="Enable Azure Policy add-on"
+          version: string | default="v2" enum="v1,v2" description="Azure Policy version"
+
+      # ========================================
+      # Workload Auto Scaler (Simplified)
+      # ========================================
+      workloadAutoScaler:
+        kedaEnabled: boolean | default=true description="Enable KEDA for event-driven autoscaling"
+        vpaEnabled: boolean | default=true description="Enable Vertical Pod Autoscaler"
+        vpaAddonAutoscaling: string | default="Enabled" enum="Enabled,Disabled" description="VPA addon autoscaling"
+
+      # ========================================
+      # Service Mesh (Istio)
+      # ========================================
+      serviceMesh:
+        enabled: boolean | default=true description="Enable Istio service mesh"
+        istioRevisions: '[]string | default=["asm-1-27"] description="Istio revisions to install"'
+        internalIngressEnabled: boolean | default=true description="Enable internal ingress gateway"
+        externalIngressEnabled: boolean | default=true description="Enable external ingress gateway"
+
+      # ========================================
+      # SKU and Support
+      # ========================================
+      sku:
+        name: string | default="Base" enum="Base,Premium" description="AKS SKU name"
+        tier: string | default="Standard" enum="Free,Standard,Premium" description="AKS SKU tier (Standard recommended for production)"
+      supportPlan: string | default="KubernetesOfficial" enum="KubernetesOfficial,AKSLongTermSupport" description="Support plan"
+
+      # ========================================
+      # Tags
+      # ========================================
+      tags: 'map[string]string | required=true description="Resource tags for cost tracking and organization"'
+
+      # ========================================
+      # Node Resource Group
+      # ========================================
+      nodeResourceGroup: string | required=true description="Resource group for node resources (MC_* format)"
+
+      # ========================================
+      # Private Link Resources (Optional)
+      # ========================================
+      privateLinkResources: '[]object | description="Private link resources for private cluster connectivity"'
+
+    # ========================================
+    # Status Section (Exposed from ManagedCluster)
+    # ========================================
+    status:
+      provisioningState: ${managedCluster.status.provisioningState}
+      powerState: ${managedCluster.status.powerState.code}
+      fqdn: ${managedCluster.status.fqdn}
+      currentKubernetesVersion: ${managedCluster.status.currentKubernetesVersion}
+      oidcIssuerUrl: ${managedCluster.status.oidcIssuerProfile.issuerURL}
+
+  # ========================================
+  # Resources Created by this RGD
+  # ========================================
+  resources:
+    - id: managedCluster
+      template:
+        apiVersion: containerservice.azure.com/v1api20240402preview
+        kind: ManagedCluster
+        metadata:
+          name: ${schema.spec.clusterName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+        spec:
+          azureName: ${schema.spec.clusterName}
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.ownerResourceGroup}
+          operatorSpec:
+            configMaps:
+              oidcIssuerProfile:
+                name: ${schema.spec.oidcIssuer.configMapName}
+                key: ${schema.spec.oidcIssuer.configMapKey}
+          dnsPrefix: ${schema.spec.clusterName}k8s
+          kubernetesVersion: ${schema.spec.kubernetesVersion}
+          linuxProfile:
+            adminUsername: localadmin
+            ssh:
+              publicKeys:
+                - keyData: ${schema.spec.sshPublicKey}
+          # Node provisioning with auto mode (NAP)
+          nodeProvisioningProfile:
+            mode: Auto
+          # Identity Configuration
+          identity:
+            type: UserAssigned
+            userAssignedIdentities:
+              - reference:
+                  armId: ${schema.spec.identity.controlPlaneIdentityResourceId}
+          # AAD and RBAC Configuration
+          aadProfile:
+            enableAzureRBAC: ${schema.spec.aad.enableAzureRBAC}
+            managed: true
+            adminGroupObjectIDs: ${schema.spec.aad.adminGroupObjectIds}
+          enableRBAC: true
+          disableLocalAccounts: ${schema.spec.security.disableLocalAccounts}
+          # Network Profile
+          networkProfile:
+            networkPlugin: azure
+            networkPluginMode: overlay
+            networkPolicy: cilium
+            networkDataplane: cilium
+            serviceCidr: ${schema.spec.network.serviceCidr}
+            dnsServiceIP: ${schema.spec.network.dnsServiceIP}
+            podCidr: ${schema.spec.network.podCidr}
+            ipFamilies: ["IPv4"]
+            loadBalancerSku: standard
+            outboundType: loadBalancer
+          # API Server Access
+          apiServerAccessProfile:
+            enablePrivateCluster: false
+            disableRunCommand: ${schema.spec.security.disableRunCommand}
+          agentPoolProfiles:
+            - name: ${schema.spec.nodePool.name}
+              vnetSubnetReference:
+                armId: /subscriptions/${schema.spec.network.vnetSubscriptionId}/resourceGroups/${schema.spec.network.vnetResourceGroup}/providers/Microsoft.Network/virtualNetworks/${schema.spec.network.vnetName}/subnets/${schema.spec.network.subnetName}
+              mode: System
+              count: ${schema.spec.nodePool.count}
+              enableAutoScaling: ${schema.spec.nodePool.enableAutoScaling}
+              vmSize: ${schema.spec.nodePool.vmSize}
+              availabilityZones: ${schema.spec.nodePool.availabilityZones}
+              osDiskType: ${schema.spec.nodePool.osDiskType}
+              osDiskSizeGB: ${schema.spec.nodePool.osDiskSizeGB}
+              osType: Linux
+              osSKU: ${schema.spec.nodePool.osSKU}
+              maxPods: ${schema.spec.nodePool.maxPods}
+              enableNodePublicIP: false
+              enableEncryptionAtHost: false
+              securityProfile:
+                enableSecureBoot: ${schema.spec.security.enableSecureBoot}
+                enableVTPM: ${schema.spec.security.enableVTPM}
+          identityProfile:
+            kubeletidentity:
+              clientId: ${schema.spec.identity.kubeletIdentityClientId}
+              objectId: ${schema.spec.identity.kubeletIdentityObjectId}
+              resourceReference:
+                armId: ${schema.spec.identity.kubeletIdentityResourceId}
+          # Auto Upgrade Configuration
+          autoUpgradeProfile:
+            upgradeChannel: ${schema.spec.autoUpgrade.upgradeChannel}
+            nodeOSUpgradeChannel: ${schema.spec.autoUpgrade.nodeOSUpgradeChannel}
+          # Security Profile
+          securityProfile:
+            defender:
+              logAnalyticsWorkspaceResourceReference:
+                armId: ${schema.spec.security.defenderWorkspaceResourceId}
+              securityMonitoring:
+                enabled: ${schema.spec.security.enableDefender}
+            workloadIdentity:
+              enabled: ${schema.spec.workloadIdentity.enabled}
+            imageCleaner:
+              enabled: false
+              intervalHours: 48
+          # Storage Profile
+          storageProfile:
+            diskCSIDriver:
+              enabled: ${schema.spec.storage.diskCSIDriverEnabled}
+            fileCSIDriver:
+              enabled: ${schema.spec.storage.fileCSIDriverEnabled}
+            snapshotController:
+              enabled: ${schema.spec.storage.snapshotControllerEnabled}
+          # Addon Profiles
+          addonProfiles:
+            azureKeyvaultSecretsProvider:
+              enabled: ${schema.spec.addons.azureKeyvaultSecretsProvider.enabled}
+              config:
+                enableSecretRotation: ${schema.spec.addons.azureKeyvaultSecretsProvider.enableSecretRotation}
+                rotationPollInterval: ${schema.spec.addons.azureKeyvaultSecretsProvider.rotationPollInterval}
+            azurepolicy:
+              enabled: ${schema.spec.addons.azurePolicy.enabled}
+              config:
+                version: ${schema.spec.addons.azurePolicy.version}
+          # Cluster SKU and Support
+          sku:
+            name: ${schema.spec.sku.name}
+            tier: ${schema.spec.sku.tier}
+          supportPlan: ${schema.spec.supportPlan}
+          # Workload Auto Scaler with KEDA and VPA
+          workloadAutoScalerProfile:
+            keda:
+              enabled: ${schema.spec.workloadAutoScaler.kedaEnabled}
+            verticalPodAutoscaler:
+              enabled: ${schema.spec.workloadAutoScaler.vpaEnabled}
+              addonAutoscaling: ${schema.spec.workloadAutoScaler.vpaAddonAutoscaling}
+          # OIDC Issuer - Required for workload identity
+          oidcIssuerProfile:
+            enabled: ${schema.spec.oidcIssuer.enabled}
+          # Service Mesh Profile
+          serviceMeshProfile:
+            mode: Istio
+            istio:
+              components:
+                ingressGateways:
+                  - enabled: ${schema.spec.serviceMesh.internalIngressEnabled}
+                    mode: Internal
+                  - enabled: ${schema.spec.serviceMesh.externalIngressEnabled}
+                    mode: External
+              revisions: ${schema.spec.serviceMesh.istioRevisions}
+          podIdentityProfile:
+            enabled: false
+            userAssignedIdentityExceptions:
+              - name: k8s-control-plane-exception
+                namespace: kube-system
+                podLabels:
+                  kubernetes.azure.com/managedby: aks
+              - name: platform-control-plane-exception
+                namespace: platform-system
+                podLabels:
+                  kubernetes.azure.com/managedby: aks
+          # Resource group for node resources
+          nodeResourceGroup: ${schema.spec.nodeResourceGroup}
+          # Service Principal Profile
+          servicePrincipalProfile:
+            clientId: msi
+          # Tags
+          tags: ${schema.spec.tags}
+          # Private Link Resources (Optional)
+          privateLinkResources: ${schema.spec.privateLinkResources}

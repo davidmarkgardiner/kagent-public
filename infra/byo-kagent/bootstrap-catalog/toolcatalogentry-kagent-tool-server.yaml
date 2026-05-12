@@ -1,0 +1,21 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolCatalogEntry
+metadata:
+  name: kagent-tool-server-v1
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+    platform.kagent.dev/bootstrap: "true"
+  annotations:
+    platform.kagent.dev/bootstrap-note: "Bootstrap catalog entry — status hand-authored by platform team."
+spec:
+  name: kagent-tool-server
+  version: v1.0
+  description: "Built-in kagent Kubernetes read-only tools: get resources, describe, logs, events"
+  source:
+    url: http://kagent-tool-server.kagent.svc.cluster.local:8000/mcp
+    protocol: STREAMABLE_HTTP
+  maintainer: "platform-team"
+  tags:
+    - kubernetes
+    - read-only
+    - built-in

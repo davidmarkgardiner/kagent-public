@@ -1,0 +1,131 @@
+{
+  "metadata": {
+    "name": "payment-api-prod",
+    "swc": "CC11111",
+    "environment": "PROD",
+    "owner": "payments-team",
+    "costCenter": "CC-9999",
+    "requestedBy": "bob.jones@company.com",
+    "requestedAt": "2026-03-24T14:00:00Z"
+  },
+  "namespace": {
+    "name": "payment-api-prod",
+    "createIfNotExists": true,
+    "labels": {
+      "team": "payments",
+      "project": "payment-api",
+      "compliance": "pci-dss"
+    }
+  },
+  "resourceQuota": {
+    "cpu": "8",
+    "memory": "16Gi",
+    "storage": "50Gi",
+    "pods": "100"
+  },
+  "networkPolicy": {
+    "defaultDeny": true,
+    "allowFrom": ["istio-system", "monitoring", "payment-gateway"],
+    "allowEgress": ["kube-dns", "istio-system"]
+  },
+  "serviceAccount": {
+    "name": "payment-api-sa",
+    "workloadIdentity": {
+      "enabled": true,
+      "clientId": "{{AZURE_SUBSCRIPTION_ID}}"
+    }
+  },
+  "rbac": {
+    "teamAdGroup": "sg-payments-sre",
+    "clusterRole": "edit"
+  },
+  "application": {
+    "name": "payment-api",
+    "image": "myregistry.azurecr.io/payment-api:v3.1.0",
+    "replicas": 3,
+    "resources": {
+      "requests": {
+        "cpu": "500m",
+        "memory": "1Gi"
+      },
+      "limits": {
+        "cpu": "1",
+        "memory": "2Gi"
+      }
+    },
+    "env": [
+      { "name": "ASPNETCORE_ENVIRONMENT", "value": "Production" },
+      { "name": "LOG_LEVEL", "value": "warning" }
+    ],
+    "ports": [
+      { "name": "http", "containerPort": 8080 },
+      { "name": "metrics", "containerPort": 9090 }
+    ],
+    "healthCheck": {
+      "path": "/health",
+      "port": 8080,
+      "initialDelaySeconds": 15,
+      "periodSeconds": 10
+    },
+    "configMap": {
+      "name": "payment-api-config",
+      "data": {
+        "PAYMENT_GATEWAY_URL": "https://gateway.payments.com/v2",
+        "MAX_RETRY_COUNT": "3",
+        "CIRCUIT_BREAKER_THRESHOLD": "5"
+      }
+    }
+  },
+  "networking": {
+    "service": {
+      "type": "ClusterIP",
+      "port": 80,
+      "targetPort": 8080
+    },
+    "istio": {
+      "enabled": true,
+      "gateway": "istio-system/main-gateway",
+      "host": "payments.company.com",
+      "paths": [
+        { "prefix": "/api/v2/payments", "rewrite": "/" }
+      ],
+      "cors": {
+        "allowOrigins": ["https://app.company.com"],
+        "allowMethods": ["GET", "POST", "PUT"],
+        "allowHeaders": ["Authorization", "Content-Type"],
+        "maxAge": "86400s"
+      },
+      "timeout": "30s",
+      "retries": {
+        "attempts": 3,
+        "perTryTimeout": "10s"
+      }
+    }
+  },
+  "azure": {
+    "enabled": true,
+    "subscriptionId": "{{AZURE_SUBSCRIPTION_ID}}",
+    "resourceGroup": "rg-payments-prod",
+    "location": "uksouth",
+    "managedIdentity": {
+      "name": "id-payment-api-prod",
+      "federatedCredential": {
+        "name": "fc-payment-api-prod",
+        "issuer": "https://oidc.prod.uksouth.azmk8s.io/tenant-id/",
+        "subject": "system:serviceaccount:payment-api-prod:payment-api-sa"
+      }
+    },
+    "roleAssignments": [
+      {
+        "roleDefinitionId": "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}",
+        "scope": "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/rg-payments-prod",
+        "description": "Storage Blob Data Contributor"
+      },
+      {
+        "roleDefinitionId": "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}",
+        "scope": "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/rg-payments-prod",
+        "description": "Key Vault Secrets User"
+      }
+    ]
+  }
+}

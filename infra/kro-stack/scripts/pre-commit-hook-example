@@ -1,0 +1,49 @@
+#!/bin/bash
+# Git pre-commit hook to validate certification coverage
+#
+# Installation:
+#   cp kro-stack/scripts/pre-commit-hook-example .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# To bypass this hook temporarily:
+#   git commit --no-verify
+
+set -e
+
+echo ""
+echo "🔍 Running certification coverage validation..."
+echo ""
+
+# Get the root directory of the git repository
+GIT_ROOT=$(git rev-parse --show-toplevel)
+
+# Check if uk8scluster.yaml has been modified
+if git diff --cached --name-only | grep -q "kro-stack/definitions/uk8scluster.yaml"; then
+    echo "✓ Detected changes to uk8scluster.yaml"
+    echo ""
+
+    # Run validation script
+    if "$GIT_ROOT/kro-stack/scripts/validate-certification-coverage.sh" "$GIT_ROOT/kro-stack/definitions/uk8scluster.yaml"; then
+        echo ""
+        echo "✅ Pre-commit validation passed"
+        echo ""
+        exit 0
+    else
+        echo ""
+        echo "❌ Pre-commit validation failed"
+        echo ""
+        echo "Your commit has been blocked because certification coverage is incomplete."
+        echo ""
+        echo "Options:"
+        echo "  1. Add missing validation steps to the certification workflow"
+        echo "  2. Add resource to INFRASTRUCTURE_RESOURCES if it doesn't need validation"
+        echo "  3. Define validation mapping in VALIDATION_MAPPING"
+        echo "  4. Bypass this check with: git commit --no-verify (not recommended)"
+        echo ""
+        exit 1
+    fi
+else
+    echo "ℹ️  No changes to uk8scluster.yaml detected, skipping validation"
+    echo ""
+    exit 0
+fi

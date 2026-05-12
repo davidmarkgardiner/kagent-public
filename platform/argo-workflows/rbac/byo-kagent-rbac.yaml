@@ -1,0 +1,74 @@
+# RBAC for byo-kagent Argo Workflow executions.
+# The byo-kagent-workflow-sa ServiceAccount is used by both WorkflowTemplates.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: byo-kagent-workflow-sa
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+---
+# Permissions needed by workflow pods:
+# - Create RemoteMCPServer in mcp-quarantine (deploy-to-quarantine step)
+# - Read/delete RemoteMCPServer in mcp-quarantine (cleanup step)
+# - Read ToolCatalogEntry (catalog resolution step)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: byo-kagent-workflow
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+rules:
+  - apiGroups: [kagent.dev]
+    resources: [remotemcpservers]
+    verbs: [get, list, create, delete]
+    # Scoped to mcp-quarantine via RoleBinding below
+  - apiGroups: [platform.kagent.dev]
+    resources: [toolcatalogentries]
+    verbs: [get, list]
+---
+# Bind ClusterRole to SA but scope RemoteMCPServer access to mcp-quarantine only
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: byo-kagent-workflow-quarantine
+  namespace: mcp-quarantine
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: byo-kagent-workflow
+subjects:
+  - kind: ServiceAccount
+    name: byo-kagent-workflow-sa
+    namespace: argo
+---
+# ClusterRoleBinding for read-only ToolCatalogEntry access (cluster-scoped CRD)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: byo-kagent-workflow-catalog-reader
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: byo-kagent-workflow
+subjects:
+  - kind: ServiceAccount
+    name: byo-kagent-workflow-sa
+    namespace: argo
+---
+# Namespace for mcp-quarantine
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-quarantine
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+    platform.kagent.dev/quarantine: "true"
+    pod-security.kubernetes.io/enforce: restricted
+  annotations:
+    platform.kagent.dev/description: "Sandboxed namespace for MCP tool verification. No production RBAC, no real secrets."

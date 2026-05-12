@@ -1,0 +1,330 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: namespace-onboarding-template
+  namespace: argo
+spec:
+  entrypoint: main
+  serviceAccountName: argo-namespace-provisioner
+
+  arguments:
+    parameters:
+      - name: payload
+        description: JSON payload from onboarding form
+      - name: targetCluster
+        description: Target cluster name (for minikube, this is just "minikube")
+        default: "minikube"
+
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: parse-payload
+            template: parse-json-payload
+            arguments:
+              parameters:
+                - name: payload
+                  value: "{{workflow.parameters.payload}}"
+
+          - name: create-namespace
+            template: create-namespace
+            dependencies: [parse-payload]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: cluster
+                  value: "{{workflow.parameters.targetCluster}}"
+                - name: swc
+                  value: "{{tasks.parse-payload.outputs.parameters.swc}}"
+                - name: environment
+                  value: "{{tasks.parse-payload.outputs.parameters.environment}}"
+                - name: billingReference
+                  value: "{{tasks.parse-payload.outputs.parameters.billingReference}}"
+                - name: timestamp
+                  value: "{{tasks.parse-payload.outputs.parameters.timestamp}}"
+
+          - name: create-resource-quota
+            template: create-resource-quota
+            dependencies: [create-namespace]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: cpu
+                  value: "{{tasks.parse-payload.outputs.parameters.cpu}}"
+                - name: memory
+                  value: "{{tasks.parse-payload.outputs.parameters.memory}}"
+                - name: storage
+                  value: "{{tasks.parse-payload.outputs.parameters.storage}}"
+
+          - name: create-network-policy
+            template: create-network-policy
+            dependencies: [create-namespace]
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+                - name: allowFrom
+                  value: "{{tasks.parse-payload.outputs.parameters.allowFrom}}"
+
+          - name: store-configuration
+            template: store-config-local
+            dependencies: [create-namespace, create-resource-quota, create-network-policy]
+            arguments:
+              parameters:
+                - name: payload
+                  value: "{{workflow.parameters.payload}}"
+                - name: namespace
+                  value: "{{tasks.parse-payload.outputs.parameters.namespace}}"
+
+    # Parse JSON payload
+    - name: parse-json-payload
+      inputs:
+        parameters:
+          - name: payload
+      script:
+        image: python:3.9-slim
+        command: [python]
+        source: |
+          import json
+          import sys
+          import datetime
+
+          payload = json.loads('''{{inputs.parameters.payload}}''')
+
+          # Extract and output parameters
+          namespace = payload.get('NamespaceName', '')
+          swc = payload.get('Swc', '')
+          environment = payload.get('Environment', '')
+          cpu = str(payload.get('ResourceQuotaCPU', 2))
+          memory = str(payload.get('ResourceQuotaMemoryGB', 2))
+          storage = str(payload.get('ResourceQuotaStorageGB', 0))
+          allow_from = payload.get('AllowAccessFromNS', '')
+          billing_reference = payload.get('BillingReference', '')
+          cluster_name = payload.get('ManagedAksClusterName', '')
+
+          # Write outputs
+          with open('/tmp/namespace', 'w') as f:
+              f.write(namespace)
+          with open('/tmp/swc', 'w') as f:
+              f.write(swc)
+          with open('/tmp/environment', 'w') as f:
+              f.write(environment)
+          with open('/tmp/cpu', 'w') as f:
+              f.write(cpu)
+          with open('/tmp/memory', 'w') as f:
+              f.write(f"{memory}Gi")
+          with open('/tmp/storage', 'w') as f:
+              f.write(f"{storage}Gi")
+          with open('/tmp/allowFrom', 'w') as f:
+              f.write(allow_from)
+          with open('/tmp/billingReference', 'w') as f:
+              f.write(billing_reference)
+          with open('/tmp/clusterName', 'w') as f:
+              f.write(cluster_name)
+          
+          # Generate timestamp
+          timestamp = datetime.datetime.now().isoformat()
+          with open('/tmp/timestamp', 'w') as f:
+              f.write(timestamp)
+      outputs:
+        parameters:
+          - name: namespace
+            valueFrom:
+              path: /tmp/namespace
+          - name: swc
+            valueFrom:
+              path: /tmp/swc
+          - name: environment
+            valueFrom:
+              path: /tmp/environment
+          - name: cpu
+            valueFrom:
+              path: /tmp/cpu
+          - name: memory
+            valueFrom:
+              path: /tmp/memory
+          - name: storage
+            valueFrom:
+              path: /tmp/storage
+          - name: allowFrom
+            valueFrom:
+              path: /tmp/allowFrom
+          - name: billingReference
+            valueFrom:
+              path: /tmp/billingReference
+          - name: clusterName
+            valueFrom:
+              path: /tmp/clusterName
+          - name: timestamp
+            valueFrom:
+              path: /tmp/timestamp
+
+    # Create Namespace
+    - name: create-namespace
+      inputs:
+        parameters:
+          - name: namespace
+          - name: cluster
+          - name: swc
+          - name: environment
+          - name: billingReference
+          - name: timestamp
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          
+          NAMESPACE="{{inputs.parameters.namespace}}"
+          CLUSTER="{{inputs.parameters.cluster}}"
+          SWC="{{inputs.parameters.swc}}"
+          ENVIRONMENT="{{inputs.parameters.environment}}"
+          BILLING_REF="{{inputs.parameters.billingReference}}"
+          TIMESTAMP="{{inputs.parameters.timestamp}}"
+          
+          # Check if namespace already exists
+          if kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
+            echo "Namespace $NAMESPACE already exists, updating labels and annotations..."
+            kubectl label namespace "$NAMESPACE" \
+              onboarding="true" \
+              managed-by="argo-workflows" \
+              cluster="$CLUSTER" \
+              swc="$SWC" \
+              environment="$ENVIRONMENT" \
+              --overwrite
+              
+            kubectl annotate namespace "$NAMESPACE" \
+              billing-reference="$BILLING_REF" \
+              creation-timestamp="$TIMESTAMP" \
+              --overwrite
+          else
+            echo "Creating new namespace $NAMESPACE..."
+            cat <<EOF | kubectl create -f -
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: $NAMESPACE
+            labels:
+              onboarding: "true"
+              managed-by: "argo-workflows"
+              cluster: $CLUSTER
+              swc: $SWC
+              environment: $ENVIRONMENT
+            annotations:
+              billing-reference: $BILLING_REF
+              creation-timestamp: "$TIMESTAMP"
+          EOF
+          fi
+          
+          echo "Namespace operation completed successfully"
+
+    # Create ResourceQuota
+    - name: create-resource-quota
+      inputs:
+        parameters:
+          - name: namespace
+          - name: cpu
+          - name: memory
+          - name: storage
+      resource:
+        action: create
+        manifest: |
+          apiVersion: v1
+          kind: ResourceQuota
+          metadata:
+            name: namespace-quota
+            namespace: {{inputs.parameters.namespace}}
+          spec:
+            hard:
+              requests.cpu: "{{inputs.parameters.cpu}}"
+              requests.memory: {{inputs.parameters.memory}}
+              requests.storage: {{inputs.parameters.storage}}
+              limits.cpu: "{{inputs.parameters.cpu}}"
+              limits.memory: {{inputs.parameters.memory}}
+              persistentvolumeclaims: "10"
+
+    # Create NetworkPolicy
+    - name: create-network-policy
+      inputs:
+        parameters:
+          - name: namespace
+          - name: allowFrom
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+
+          NAMESPACE="{{inputs.parameters.namespace}}"
+          ALLOW_FROM="{{inputs.parameters.allowFrom}}"
+
+          # Create default deny-all network policy
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: default-deny-all
+            namespace: ${NAMESPACE}
+          spec:
+            podSelector: {}
+            policyTypes:
+            - Ingress
+            - Egress
+          EOF
+
+          # If AllowAccessFromNS is specified, create allow policy
+          if [ -n "$ALLOW_FROM" ]; then
+            cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: allow-from-namespace
+            namespace: ${NAMESPACE}
+          spec:
+            podSelector: {}
+            policyTypes:
+            - Ingress
+            ingress:
+            - from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: ${ALLOW_FROM}
+          EOF
+          fi
+
+    # Store configuration locally (for minikube testing)
+    - name: store-config-local
+      inputs:
+        parameters:
+          - name: payload
+          - name: namespace
+      container:
+        image: bitnami/kubectl:latest
+        command: [sh]
+        args:
+          - -c
+          - |
+            echo "Storing configuration locally for minikube..."
+            echo '{{inputs.parameters.payload}}' > /tmp/{{inputs.parameters.namespace}}-config.json
+            echo "Configuration stored successfully"
+            cat /tmp/{{inputs.parameters.namespace}}-config.json
+            
+            # Also store in a ConfigMap for demonstration
+            # This would be replaced with GitOps in production
+            echo "Creating ConfigMap with configuration..."
+            cat <<EOF | kubectl apply -f - || echo "Warning: Could not create ConfigMap, continuing..."
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{inputs.parameters.namespace}}-onboarding-config
+              namespace: {{inputs.parameters.namespace}}
+              labels:
+                onboarding: "true"
+                managed-by: "argo-workflows"
+            data:
+              config.json: |
+                {{inputs.parameters.payload}}
+            EOF
+            echo "ConfigMap creation attempt completed"

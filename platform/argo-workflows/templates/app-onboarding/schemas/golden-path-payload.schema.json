@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform.example.com/schemas/golden-path-payload-v1.json",
+  "title": "Golden Path Onboarding Payload",
+  "description": "The single payload object that flows through all five golden-path phases. Each phase MAY append a phase-tracking block (phase1_intake … phase5_certification) but MUST NOT overwrite earlier blocks or the user-supplied request body. This append-only discipline is what allows a partial run to be diagnosed and resumed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "namespace"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "swc", "environment", "owner", "requestedBy", "requestedAt"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 63, "pattern": "^[a-z][a-z0-9-]{0,61}[a-z0-9]$" },
+        "swc": { "type": "string", "description": "Service / charge-back code resolved by Phase 1 against the billing system" },
+        "environment": { "type": "string", "enum": ["DEV", "STAGING", "PROD"] },
+        "owner": { "type": "string" },
+        "costCenter": { "type": "string" },
+        "requestedBy": { "type": "string", "format": "email" },
+        "requestedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "namespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,61}[a-z0-9]$", "maxLength": 63 },
+        "createIfNotExists": { "type": "boolean", "default": true },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+
+    "resourceQuota": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu": { "type": "string" },
+        "memory": { "type": "string" },
+        "storage": { "type": "string" },
+        "pods": { "type": "string" }
+      }
+    },
+
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultDeny": { "type": "boolean", "default": true },
+        "allowFrom": { "type": "array", "items": { "type": "string" } },
+        "allowEgress": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "workloadIdentity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "clientId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+          }
+        }
+      }
+    },
+
+    "rbac": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "teamAdGroup": { "type": "string" },
+        "clusterRole": { "type": "string", "enum": ["view", "edit", "admin"] }
+      }
+    },
+
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "image": {
+          "type": "string",
+          "description": "Container image reference. Phase 3 hardening rejects ':latest' and floating tags; PROD requires a digest pin."
+        },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requests": { "type": "object", "additionalProperties": { "type": "string" } },
+            "limits":   { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name":  { "type": "string" },
+              "value": { "type": "string" },
+              "valueFrom": { "type": "object" }
+            }
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["containerPort"],
+            "properties": {
+              "name":          { "type": "string" },
+              "containerPort": { "type": "integer", "minimum": 1, "maximum": 65535 }
+            }
+          }
+        },
+        "healthCheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path":                { "type": "string", "default": "/healthz" },
+            "port":                { "type": "integer" },
+            "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+            "periodSeconds":       { "type": "integer", "minimum": 1 }
+          }
+        },
+        "configMap": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "data": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        }
+      }
+    },
+
+    "networking": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type":       { "type": "string", "enum": ["ClusterIP", "LoadBalancer", "NodePort"] },
+            "port":       { "type": "integer" },
+            "targetPort": { "type": "integer" }
+          }
+        },
+        "istio": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "gateway": { "type": "string" },
+            "host":    { "type": "string" },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["prefix"],
+                "properties": {
+                  "prefix":  { "type": "string" },
+                  "rewrite": { "type": "string" }
+                }
+              }
+            },
+            "cors": { "type": "object" },
+            "timeout": { "type": "string" },
+            "retries": {
+              "type": "object",
+              "properties": {
+                "attempts":       { "type": "integer", "minimum": 0 },
+                "perTryTimeout":  { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "azure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":        { "type": "boolean", "default": false },
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+        "resourceGroup":  { "type": "string" },
+        "location":       { "type": "string" },
+        "managedIdentity": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string" },
+            "federatedCredential": {
+              "type": "object",
+              "required": ["name", "issuer", "subject"],
+              "properties": {
+                "name":    { "type": "string" },
+                "issuer":  { "type": "string", "format": "uri" },
+                "subject": { "type": "string" }
+              }
+            }
+          }
+        },
+        "roleAssignments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["roleDefinitionId", "scope"],
+            "properties": {
+              "roleDefinitionId": { "type": "string" },
+              "scope":            { "type": "string" },
+              "description":      { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "_phase1_intake": {
+      "type": "object",
+      "description": "Written by app-intake-agent. Append-only; never overwrite once present.",
+      "additionalProperties": false,
+      "required": ["fitVerdict", "tier", "evaluatedAt"],
+      "properties": {
+        "fitVerdict": { "type": "string", "enum": ["FIT", "FIT_WITH_CONDITIONS", "UNFIT"] },
+        "fitReasons": { "type": "array", "items": { "type": "string" } },
+        "tier": {
+          "type": "string",
+          "enum": ["T0", "T1", "T2", "T3", "T4"],
+          "description": "Inherits the existing tier semantics from triage-with-approval: T0/T1 auto-execute, T2/T3 require Teams approval, T4 is ticket-only."
+        },
+        "billing": {
+          "type": "object",
+          "required": ["swcVerified", "costCenterVerified"],
+          "properties": {
+            "swcVerified":         { "type": "boolean" },
+            "costCenterVerified":  { "type": "boolean" },
+            "monthlyBudgetUsd":    { "type": "number", "minimum": 0 },
+            "billingSource":       { "type": "string", "description": "Identifier of the upstream FinOps/billing system that resolved swc + costCenter" }
+          }
+        },
+        "evaluatedAt": { "type": "string", "format": "date-time" },
+        "evaluatedBy": { "type": "string", "default": "app-intake-agent" }
+      }
+    },
+
+    "_phase2_infrastructure": {
+      "type": "object",
+      "description": "Written by the app-onboarding workflow at successful exit.",
+      "additionalProperties": false,
+      "required": ["workflowName", "completedAt"],
+      "properties": {
+        "workflowName":          { "type": "string" },
+        "completedAt":           { "type": "string", "format": "date-time" },
+        "namespaceCreated":      { "type": "boolean" },
+        "azureResourcesCreated": { "type": "array", "items": { "type": "string" } },
+        "approvedBy":            { "type": "string", "description": "Set when an HITL gate was crossed in this phase" },
+        "approvalId":            { "type": "string" }
+      }
+    },
+
+    "_phase3_hardening": {
+      "type": "object",
+      "description": "Written by app-hardening-agent. The agent never mutates the cluster — it produces a Git PR. This block records the PR + the agent's findings.",
+      "additionalProperties": false,
+      "required": ["evaluatedAt"],
+      "properties": {
+        "score":          { "type": "integer", "minimum": 0, "maximum": 100 },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "severity", "description"],
+            "properties": {
+              "id":           { "type": "string" },
+              "severity":     { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] },
+              "description":  { "type": "string" },
+              "manifestPath": { "type": "string" }
+            }
+          }
+        },
+        "appliedInPr": { "type": "array", "items": { "type": "string" }, "description": "Recommendation IDs included in the hardening PR" },
+        "deferred":    { "type": "array", "items": { "type": "string" }, "description": "Recommendation IDs deferred with reason captured in PR comment" },
+        "prUrl":       { "type": "string", "format": "uri" },
+        "evaluatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "_phase4_deployment": {
+      "type": "object",
+      "description": "Written by app-release-template. Records the GitOps sync that re-creates the workload from declared manifests, plus integration test outcomes.",
+      "additionalProperties": false,
+      "properties": {
+        "fluxKustomization":  { "type": "string" },
+        "kustomizationPath":  { "type": "string" },
+        "syncedAt":           { "type": "string", "format": "date-time" },
+        "kyvernoDryRunPassed": { "type": "boolean" },
+        "testResults": {
+          "type": "object",
+          "properties": {
+            "common":   { "type": "object", "properties": { "passed": { "type": "integer" }, "failed": { "type": "integer" } } },
+            "platform": { "type": "object", "properties": { "passed": { "type": "integer" }, "failed": { "type": "integer" } } },
+            "app":      { "type": "object", "properties": { "passed": { "type": "integer" }, "failed": { "type": "integer" } } }
+          }
+        }
+      }
+    },
+
+    "_phase5_certification": {
+      "type": "object",
+      "description": "Written by the app-certification workflow. Mirrors the verdict shape produced by uk8s-certification-v2's agent-triage step.",
+      "additionalProperties": false,
+      "required": ["verdict", "certifiedAt"],
+      "properties": {
+        "verdict": {
+          "type": "object",
+          "required": ["severity"],
+          "properties": {
+            "severity":          { "type": "string", "enum": ["CRITICAL", "WARNING", "INFO", "AGENT_UNAVAILABLE", "PARSE_ERROR"] },
+            "blast_radius":      { "type": "string" },
+            "failed_checks":     { "type": "array", "items": { "type": "string" } },
+            "first_remediation": { "type": "string" }
+          }
+        },
+        "certifiedAt":  { "type": "string", "format": "date-time" },
+        "expiresAt":    { "type": "string", "format": "date-time" },
+        "certifiedBy":  { "type": "string", "enum": ["agent", "human", "both"] },
+        "approvalId":   { "type": "string" }
+      }
+    }
+  }
+}

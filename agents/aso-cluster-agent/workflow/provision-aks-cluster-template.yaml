@@ -1,0 +1,560 @@
+---
+# Argo WorkflowTemplate: provision-aks-cluster
+#
+# Triggered by the aso-cluster-provisioner KAgent agent.
+# The agent only submits this template with 5 typed parameters —
+# all YAML rendering happens here, never in the LLM.
+#
+# Parameters:
+#   clusterName   - must match ^[a-z][a-z0-9-]{2,30}$
+#   region        - one of: uksouth, westeurope, northeurope, ukwest
+#   size          - one of: small, medium, large
+#   dryRun        - "true" (home / no Azure spend) or "false" (real provision)
+#   confirmedBy   - free-text, stored in tags + status CM
+#
+# DAG:
+#   validate-inputs
+#     → init-status-cm
+#       → render-and-apply-cluster
+#         → emit-deploying
+#           → wait-for-ready
+#             → apply-cert-instance
+#               → emit-ready
+# onExit: emit-workflow-exit
+
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: provision-aks-cluster
+  namespace: argo
+  labels:
+    kro.run/component: cluster-provisioner
+    kro.run/version: v1
+    kro.run/demo: "true"
+  annotations:
+    kro.run/description: "Provisions an AKS cluster via UK8SClusterPublic KRO instance"
+spec:
+  entrypoint: provision
+  serviceAccountName: argo-workflow-executor
+
+  arguments:
+    parameters:
+      - name: clusterName
+      - name: region
+        default: "westeurope"
+      - name: size
+        default: "small"
+      - name: dryRun
+        default: "true"
+      - name: confirmedBy
+        default: "unknown"
+
+  archiveLogs: false
+  artifactGC:
+    strategy: Never
+  podGC:
+    strategy: OnWorkflowSuccess
+
+  onExit: emit-workflow-exit
+
+  templates:
+
+    # ── Main DAG ─────────────────────────────────────────────────────────────
+    - name: provision
+      dag:
+        tasks:
+          - name: validate-inputs
+            template: validate-inputs
+
+          - name: init-status-cm
+            template: init-status-configmap
+            dependencies: [validate-inputs]
+
+          - name: render-and-apply
+            template: render-and-apply-cluster
+            dependencies: [init-status-cm]
+            arguments:
+              parameters:
+                - name: vmSize
+                  value: "{{tasks.validate-inputs.outputs.parameters.vmSize}}"
+                - name: nodeCount
+                  value: "{{tasks.validate-inputs.outputs.parameters.nodeCount}}"
+                - name: azs
+                  value: "{{tasks.validate-inputs.outputs.parameters.azs}}"
+
+          - name: emit-deploying
+            template: emit-status
+            dependencies: [render-and-apply]
+            arguments:
+              parameters:
+                - name: phase
+                  value: "deploying"
+                - name: message
+                  value: "UK8SClusterPublic applied — ASO is provisioning in Azure"
+
+          - name: wait-for-ready
+            template: wait-for-cluster-ready
+            dependencies: [emit-deploying]
+
+          - name: apply-cert
+            template: apply-certification-instance
+            dependencies: [wait-for-ready]
+
+          - name: emit-ready
+            template: emit-status
+            dependencies: [apply-cert]
+            arguments:
+              parameters:
+                - name: phase
+                  value: "ready"
+                - name: message
+                  value: "Cluster is healthy. UK8SCertificationV2 applied — cert workflow will auto-fire."
+
+    # ── validate-inputs ───────────────────────────────────────────────────────
+    - name: validate-inputs
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -e
+          CLUSTER_NAME="{{workflow.parameters.clusterName}}"
+          REGION="{{workflow.parameters.region}}"
+          SIZE="{{workflow.parameters.size}}"
+
+          echo "=== Validating inputs ==="
+
+          if ! echo "$CLUSTER_NAME" | grep -qE '^[a-z][a-z0-9-]{2,30}$'; then
+            echo "ERROR: clusterName '$CLUSTER_NAME' must match ^[a-z][a-z0-9-]{2,30}$"
+            exit 1
+          fi
+          echo "  clusterName : $CLUSTER_NAME"
+
+          case "$REGION" in
+            uksouth|westeurope|northeurope|ukwest)
+              echo "  region      : $REGION" ;;
+            *)
+              echo "ERROR: region '$REGION' must be: uksouth, westeurope, northeurope, ukwest"
+              exit 1 ;;
+          esac
+
+          case "$SIZE" in
+            small)
+              VM_SIZE="Standard_B8ms"
+              NODE_COUNT="1"
+              AZS='["1"]' ;;
+            medium)
+              VM_SIZE="Standard_B8ms"
+              NODE_COUNT="2"
+              AZS='["1"]' ;;
+            large)
+              VM_SIZE="Standard_B8ms"
+              NODE_COUNT="3"
+              AZS='["1"]' ;;
+            *)
+              echo "ERROR: size '$SIZE' must be: small, medium, large"
+              exit 1 ;;
+          esac
+          echo "  size        : $SIZE → vmSize=$VM_SIZE nodeCount=$NODE_COUNT azs=$AZS"
+
+          printf '%s' "$VM_SIZE" > /tmp/vmSize
+          printf '%s' "$NODE_COUNT" > /tmp/nodeCount
+          printf '%s' "$AZS" > /tmp/azs
+
+          echo "✅ Validation passed"
+      outputs:
+        parameters:
+          - name: vmSize
+            valueFrom:
+              path: /tmp/vmSize
+          - name: nodeCount
+            valueFrom:
+              path: /tmp/nodeCount
+          - name: azs
+            valueFrom:
+              path: /tmp/azs
+
+    # ── init-status-configmap ─────────────────────────────────────────────────
+    - name: init-status-configmap
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          WF_NAME="{{workflow.name}}"
+          WF_UID=$(kubectl get workflow "$WF_NAME" -n argo \
+            -o jsonpath='{.metadata.uid}' 2>/dev/null || echo "")
+
+          OWNER_REF=""
+          if [ -n "$WF_UID" ]; then
+            OWNER_REF="
+            ownerReferences:
+            - apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              name: $WF_NAME
+              uid: $WF_UID
+              controller: true
+              blockOwnerDeletion: false"
+          fi
+
+          kubectl apply -f - <<YAML
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: provision-status-$WF_NAME
+            namespace: argo$OWNER_REF
+            labels:
+              kro.run/component: provision-status
+              kro.run/cluster: "{{workflow.parameters.clusterName}}"
+              kro.run/demo: "true"
+          data:
+            cluster: "{{workflow.parameters.clusterName}}"
+            region: "{{workflow.parameters.region}}"
+            size: "{{workflow.parameters.size}}"
+            dry_run: "{{workflow.parameters.dryRun}}"
+            confirmed_by: "{{workflow.parameters.confirmedBy}}"
+            phase: "initializing"
+            workflow: "$WF_NAME"
+          YAML
+
+          echo "✅ Status ConfigMap initialized: provision-status-$WF_NAME"
+
+    # ── render-and-apply-cluster ──────────────────────────────────────────────
+    - name: render-and-apply-cluster
+      inputs:
+        parameters:
+          - name: vmSize
+          - name: nodeCount
+          - name: azs
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        envFrom:
+          - secretRef:
+              name: platform-defaults
+        source: |
+          set -e
+          CLUSTER_NAME="{{workflow.parameters.clusterName}}"
+          REGION="{{workflow.parameters.region}}"
+          VM_SIZE="{{inputs.parameters.vmSize}}"
+          NODE_COUNT="{{inputs.parameters.nodeCount}}"
+          AZS='{{inputs.parameters.azs}}'
+          DRY_RUN="{{workflow.parameters.dryRun}}"
+          CONFIRMED_BY="{{workflow.parameters.confirmedBy}}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          echo "=== Rendering UK8SClusterPublic instance ==="
+          echo "  clusterName : $CLUSTER_NAME"
+          echo "  region      : $REGION"
+          echo "  vmSize      : $VM_SIZE"
+          echo "  nodeCount   : $NODE_COUNT"
+          echo "  dryRun      : $DRY_RUN"
+
+          # Build instance YAML via printf (avoids heredoc indentation issues)
+          # All platform-default values come from the platform-defaults Secret (envFrom above)
+          printf '%s\n' "---" \
+            "apiVersion: kro.run/v1alpha1" \
+            "kind: UK8SClusterPublic" \
+            "metadata:" \
+            "  name: ${CLUSTER_NAME}" \
+            "  namespace: uk8s-nextgen" \
+            "  labels:" \
+            "    environment: dev" \
+            "    team: AKSEngineering" \
+            "    provisioned-by: aso-cluster-agent" \
+            "  annotations:" \
+            "    provisioned-at: \"${TIMESTAMP}\"" \
+            "    confirmed-by: \"${CONFIRMED_BY}\"" \
+            "spec:" \
+            "  clusterName: \"${CLUSTER_NAME}\"" \
+            "  location: \"${REGION}\"" \
+            "  subscriptionId: \"${SUBSCRIPTION_ID}\"" \
+            "  resourceGroup: \"${CLUSTER_NAME}-rg\"" \
+            "  kubernetesVersion: \"1.32\"" \
+            "  environment: \"dev\"" \
+            "  sshPublicKey: \"${SSH_PUBLIC_KEY}\"" \
+            "  network:" \
+            "    vnetSubscriptionId: \"${VNET_SUBSCRIPTION_ID}\"" \
+            "    vnetResourceGroup: \"${VNET_RESOURCE_GROUP}\"" \
+            "    vnetName: \"${VNET_NAME}\"" \
+            "    subnetName: \"${SUBNET_NAME}\"" \
+            "    serviceCidr: \"${SERVICE_CIDR}\"" \
+            "    dnsServiceIP: \"${DNS_SERVICE_IP}\"" \
+            "    podCidr: \"${POD_CIDR}\"" \
+            "  identity:" \
+            "    controlPlaneIdentityResourceId: \"${CONTROL_PLANE_IDENTITY_RESOURCE_ID}\"" \
+            "    kubeletIdentityClientId: \"${KUBELET_IDENTITY_CLIENT_ID}\"" \
+            "    kubeletIdentityObjectId: \"${KUBELET_IDENTITY_OBJECT_ID}\"" \
+            "    kubeletIdentityResourceId: \"${KUBELET_IDENTITY_RESOURCE_ID}\"" \
+            "    fluxClientId: \"${FLUX_CLIENT_ID}\"" \
+            "  aad:" \
+            "    enableAzureRBAC: true" \
+            "    adminGroupObjectIds:" \
+            "      - \"${AAD_ADMIN_GROUP_OBJECT_ID}\"" \
+            "  nodePool:" \
+            "    name: systempool" \
+            "    vmSize: \"${VM_SIZE}\"" \
+            "    count: ${NODE_COUNT}" \
+            "    enableAutoScaling: false" \
+            "    availabilityZones: ${AZS}" \
+            "    osDiskType: Managed" \
+            "    osDiskSizeGB: 128" \
+            "    osSKU: AzureLinux" \
+            "    maxPods: 110" \
+            "  security:" \
+            "    enableSecureBoot: true" \
+            "    enableVTPM: true" \
+            "    disableLocalAccounts: false" \
+            "    disableRunCommand: true" \
+            "    enableDefender: true" \
+            "    defenderWorkspaceResourceId: \"${DEFENDER_WORKSPACE_RESOURCE_ID}\"" \
+            "    authorizedIPRanges: []" \
+            "  workloadIdentity:" \
+            "    enabled: true" \
+            "  oidcIssuer:" \
+            "    enabled: true" \
+            "    configMapKey: issuer-url" \
+            "  autoUpgrade:" \
+            "    upgradeChannel: stable" \
+            "    nodeOSUpgradeChannel: NodeImage" \
+            "  storage:" \
+            "    diskCSIDriverEnabled: true" \
+            "    fileCSIDriverEnabled: true" \
+            "    snapshotControllerEnabled: true" \
+            "  addons:" \
+            "    azureKeyvaultSecretsProvider:" \
+            "      enabled: true" \
+            "      enableSecretRotation: \"true\"" \
+            "      rotationPollInterval: 30m" \
+            "    azurePolicy:" \
+            "      enabled: true" \
+            "      version: v2" \
+            "  workloadAutoScaler:" \
+            "    keda:" \
+            "      enabled: true" \
+            "    verticalPodAutoscaler:" \
+            "      enabled: true" \
+            "  serviceMesh:" \
+            "    enabled: true" \
+            "    istioRevisions: [\"asm-1-27\"]" \
+            "    internalIngressEnabled: true" \
+            "    externalIngressEnabled: true" \
+            "  azureMonitorProfile:" \
+            "    metrics:" \
+            "      enabled: true" \
+            "  sku:" \
+            "    name: Base" \
+            "    tier: Standard" \
+            "  supportPlan: KubernetesOfficial" \
+            "  tags:" \
+            "    environment: dev" \
+            "    project: uk8s" \
+            "    managedBy: aso-cluster-agent" \
+            "    Owner: \"${CONFIRMED_BY}\"" \
+            "    DeployedBy: ASOClusterAgent" \
+            "    clusterType: public" \
+            "    apiAccess: public" \
+            "  flux:" \
+            "    core:" \
+            "      url: \"${FLUX_CORE_URL}\"" \
+            "      branch: main" \
+            "    config:" \
+            "      url: \"${FLUX_CONFIG_URL}\"" \
+            "      branch: main" \
+            > /tmp/instance.yaml
+
+          echo ""
+          echo "=== Rendered UK8SClusterPublic YAML ==="
+          cat /tmp/instance.yaml
+          echo "=== End YAML ==="
+          echo ""
+
+          kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+            --type=merge -p '{"data":{"phase":"validating-yaml"}}' || true
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "=== DRY RUN: kubectl apply --dry-run=server ==="
+            kubectl apply --dry-run=server -f /tmp/instance.yaml
+            echo "✅ KRO admission validation passed — no Azure resources created"
+            kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+              --type=merge -p '{"data":{"phase":"dry-run-passed"}}' || true
+          else
+            echo "=== APPLYING UK8SClusterPublic instance ==="
+            kubectl apply -f /tmp/instance.yaml
+            echo "✅ Applied — ASO will begin provisioning in Azure"
+            kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+              --type=merge -p '{"data":{"phase":"provisioning"}}' || true
+          fi
+
+    # ── emit-status ───────────────────────────────────────────────────────────
+    - name: emit-status
+      inputs:
+        parameters:
+          - name: phase
+          - name: message
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          PHASE="{{inputs.parameters.phase}}"
+          MESSAGE="{{inputs.parameters.message}}"
+          DRY_RUN="{{workflow.parameters.dryRun}}"
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          [ "$DRY_RUN" = "true" ] && PHASE="${PHASE}-(simulated)"
+
+          kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+            --type=merge \
+            -p "{\"data\":{\"phase\":\"$PHASE\",\"updated_at\":\"$TS\",\"last_message\":\"$MESSAGE\"}}" || true
+
+          echo "[$TS] $PHASE — $MESSAGE"
+
+    # ── wait-for-cluster-ready ────────────────────────────────────────────────
+    - name: wait-for-cluster-ready
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          CLUSTER_NAME="{{workflow.parameters.clusterName}}"
+          DRY_RUN="{{workflow.parameters.dryRun}}"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "=== DRY RUN: Simulating provisioning phases ==="
+            PHASES=(
+              "validating-config"
+              "creating-resource-group"
+              "provisioning-control-plane"
+              "bootstrapping-node-pool"
+              "installing-addons"
+              "ready"
+            )
+            ELAPSED=0
+            for PHASE in "${PHASES[@]}"; do
+              echo "[$ELAPSED s] $PHASE"
+              kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+                --type=merge \
+                -p "{\"data\":{\"phase\":\"${PHASE}-(simulated)\",\"elapsed_seconds\":\"$ELAPSED\"}}" || true
+              sleep 5
+              ELAPSED=$((ELAPSED + 5))
+            done
+            echo "✅ Dry-run simulation complete"
+            exit 0
+          fi
+
+          echo "=== Waiting for UK8SClusterPublic ACTIVE + Ready (max 30 min) ==="
+          MAX_WAIT=1800
+          INTERVAL=30
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATE=$(kubectl get uk8sclusterpublic "$CLUSTER_NAME" -n uk8s-nextgen \
+              -o jsonpath='{.status.state}' 2>/dev/null || echo "NOT_FOUND")
+            READY=$(kubectl get uk8sclusterpublic "$CLUSTER_NAME" -n uk8s-nextgen \
+              -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
+
+            echo "[$ELAPSED/$MAX_WAIT s] state=$STATE ready=$READY"
+            kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+              --type=merge \
+              -p "{\"data\":{\"phase\":\"provisioning\",\"kro_state\":\"$STATE\",\"ready\":\"$READY\",\"elapsed_seconds\":\"$ELAPSED\"}}" || true
+
+            if [[ "$STATE" == "ACTIVE" ]] && [[ "$READY" == "True" ]]; then
+              echo "✓ UK8SClusterPublic ACTIVE and Ready"
+              break
+            fi
+
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "✗ Timeout: cluster not Ready after ${MAX_WAIT}s"
+            exit 1
+          fi
+
+          echo "Waiting 60s for cluster to stabilize..."
+          sleep 60
+          echo "✅ Cluster ready"
+
+    # ── apply-certification-instance ─────────────────────────────────────────
+    - name: apply-certification-instance
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        envFrom:
+          - secretRef:
+              name: platform-defaults
+        source: |
+          set -e
+          CLUSTER_NAME="{{workflow.parameters.clusterName}}"
+          DRY_RUN="{{workflow.parameters.dryRun}}"
+
+          echo "=== Applying UK8SCertificationV2 instance ==="
+
+          printf '%s\n' "---" \
+            "apiVersion: kro.run/v1alpha1" \
+            "kind: UK8SCertificationV2" \
+            "metadata:" \
+            "  name: cert-${CLUSTER_NAME}" \
+            "  namespace: uk8s-nextgen" \
+            "  labels:" \
+            "    kro.run/cluster: ${CLUSTER_NAME}" \
+            "    provisioned-by: aso-cluster-agent" \
+            "spec:" \
+            "  clusterName: \"${CLUSTER_NAME}\"" \
+            "  resourceGroup: \"${CLUSTER_NAME}-rg\"" \
+            "  targetNamespace: uk8s-nextgen" \
+            "  instanceName: \"${CLUSTER_NAME}\"" \
+            "  subscriptionId: \"${SUBSCRIPTION_ID}\"" \
+            "  environment: dev" \
+            "  clusterType: PUBLIC" \
+            "  certification:" \
+            "    timeout: 1800" \
+            "    suspended: false" \
+            "    autoTrigger: true" \
+            "  agentAnalysis:" \
+            "    enabled: true" \
+            "    kagentService: kagent.kagent.svc.cluster.local" \
+            "    kagentPort: 80" \
+            "    agentName: sre-triage-agent" \
+            "    timeoutSeconds: 120" \
+            "    failOnCritical: false" \
+            > /tmp/cert-instance.yaml
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "=== DRY RUN: kubectl apply --dry-run=server ==="
+            kubectl apply --dry-run=server -f /tmp/cert-instance.yaml
+            echo "✅ UK8SCertificationV2 dry-run passed"
+            kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+              --type=merge -p '{"data":{"cert_status":"dry-run-passed"}}' || true
+          else
+            kubectl apply -f /tmp/cert-instance.yaml
+            echo "✅ UK8SCertificationV2 applied — certificationTrigger Job will auto-fire cert workflow"
+            kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+              --type=merge \
+              -p "{\"data\":{\"cert_instance\":\"cert-${CLUSTER_NAME}\",\"cert_status\":\"applied\"}}" || true
+          fi
+
+    # ── emit-workflow-exit (onExit) ────────────────────────────────────────────
+    - name: emit-workflow-exit
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          STATUS="{{workflow.status}}"
+          FINAL_PHASE="completed"
+          [ "$STATUS" != "Succeeded" ] && FINAL_PHASE="failed"
+
+          kubectl patch configmap provision-status-{{workflow.name}} -n argo \
+            --type=merge \
+            -p "{\"data\":{\"final_phase\":\"$FINAL_PHASE\",\"workflow_status\":\"$STATUS\",\"completed_at\":\"$TS\"}}" || true
+
+          echo "================================================"
+          echo "Cluster Provisioning — $(echo $STATUS | tr a-z A-Z)"
+          echo "================================================"
+          echo "  cluster  : {{workflow.parameters.clusterName}}"
+          echo "  region   : {{workflow.parameters.region}}"
+          echo "  size     : {{workflow.parameters.size}}"
+          echo "  dryRun   : {{workflow.parameters.dryRun}}"
+          echo "  status   : $STATUS"
+          echo "  statusCM : provision-status-{{workflow.name}}"
+          echo "================================================"

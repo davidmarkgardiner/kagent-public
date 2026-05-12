@@ -1,0 +1,191 @@
+---
+# Example UK8S Cluster Instance - Production Environment
+# This creates a production-grade AKS cluster with HA and enhanced features
+apiVersion: kro.run/v1alpha1
+kind: UK8SCluster
+metadata:
+  name: uk8s-prod-example-001
+  namespace: uk8s-nextgen
+  labels:
+    environment: production
+    team: platform-engineering
+    cost-center: "12345"
+    criticality: "high"
+  annotations:
+    kro.run/description: "Production cluster with high availability"
+spec:
+  # ========================================
+  # Cluster Identity
+  # ========================================
+  clusterName: "uk8s-prod-example-001"
+  location: "uksouth"
+  subscriptionId: "{{AZURE_SUBSCRIPTION_ID}}"  # Replace with your subscription ID
+
+  # ========================================
+  # Resource Group
+  # ========================================
+  resourceGroup: "rg-uk8s-prod-example-001"
+
+  # ========================================
+  # Kubernetes Configuration
+  # ========================================
+  kubernetesVersion: "1.33"
+  environment: "production"
+
+  # ========================================
+  # SSH Configuration
+  # ========================================
+  sshPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAA..."  # Replace with your SSH public key
+
+  # ========================================
+  # Network Configuration
+  # ========================================
+  network:
+    vnetSubscriptionId: "{{AZURE_SUBSCRIPTION_ID}}"  # Replace
+    vnetResourceGroup: "rg-network-shared-prod"
+    vnetName: "vnet-shared-uksouth-prod"
+    subnetName: "snet-aks-prod"
+    serviceCidr: "10.250.0.0/17"
+    dnsServiceIP: "10.250.0.10"
+    podCidr: "10.250.128.0/17"
+
+  # ========================================
+  # Identity Configuration
+  # ========================================
+  identity:
+    controlPlaneIdentityResourceId: "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/rg-identities-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-aks-controlplane-prod"
+    kubeletIdentityClientId: "{{AZURE_SUBSCRIPTION_ID}}"
+    kubeletIdentityObjectId: "{{AZURE_SUBSCRIPTION_ID}}"
+    kubeletIdentityResourceId: "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/rg-identities-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-aks-kubelet-prod"
+    fluxClientId: "{{AZURE_SUBSCRIPTION_ID}}"
+
+  # ========================================
+  # AAD Configuration
+  # ========================================
+  aad:
+    enableAzureRBAC: true
+    adminGroupObjectIds:
+      - "{{AZURE_SUBSCRIPTION_ID}}"  # Replace with your AAD group ID for prod admins
+
+  # ========================================
+  # Node Pool Configuration (Production)
+  # ========================================
+  nodePool:
+    name: "sysnpl"
+    vmSize: "Standard_D8s_v3"  # Larger size for production
+    count: 3  # Start with 3 nodes for HA
+    enableAutoScaling: true
+    minCount: 3
+    maxCount: 10
+    availabilityZones: ["1", "2", "3"]  # Multi-AZ for HA
+    osDiskType: "Ephemeral"  # Better performance
+    osDiskSizeGB: 128
+    osSKU: "AzureLinux"
+    maxPods: 110
+
+  # ========================================
+  # Security Configuration
+  # ========================================
+  security:
+    enableSecureBoot: true
+    enableVTPM: true
+    disableLocalAccounts: true
+    disableRunCommand: true
+    enableDefender: true
+    defenderWorkspaceResourceId: "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/rg-monitoring-prod/providers/Microsoft.OperationalInsights/workspaces/law-security-prod"
+
+  # ========================================
+  # Workload Identity
+  # ========================================
+  workloadIdentity:
+    enabled: true
+
+  # ========================================
+  # OIDC Issuer
+  # ========================================
+  oidcIssuer:
+    enabled: true
+    configMapKey: "issuer-url"
+
+  # ========================================
+  # Auto Upgrade
+  # ========================================
+  autoUpgrade:
+    upgradeChannel: "stable"  # Stable for production
+    nodeOSUpgradeChannel: "NodeImage"
+
+  # ========================================
+  # Storage Profile
+  # ========================================
+  storage:
+    diskCSIDriverEnabled: true
+    fileCSIDriverEnabled: true
+    snapshotControllerEnabled: true
+
+  # ========================================
+  # Addons
+  # ========================================
+  addons:
+    azureKeyvaultSecretsProvider:
+      enabled: true
+      enableSecretRotation: "true"
+      rotationPollInterval: "30m"
+    azurePolicy:
+      enabled: true
+      version: "v2"
+
+  # ========================================
+  # Workload Auto Scaler
+  # ========================================
+  workloadAutoScaler:
+    keda:
+      enabled: true
+    verticalPodAutoscaler:
+      enabled: true
+
+  # ========================================
+  # Service Mesh
+  # ========================================
+  serviceMesh:
+    enabled: true
+    istioRevisions: ["asm-1-27"]
+    internalIngressEnabled: true
+    externalIngressEnabled: true  # External ingress for production
+
+  # ========================================
+  # Monitoring
+  # ========================================
+  azureMonitorProfile:
+    metrics:
+      enabled: true
+
+  # ========================================
+  # SKU and Support
+  # ========================================
+  sku:
+    name: "Base"
+    tier: "Standard"  # Standard tier for production SLA
+  supportPlan: "KubernetesOfficial"
+
+  # ========================================
+  # Tags
+  # ========================================
+  tags:
+    environment: "production"
+    managed-by: "kro"
+    cost-center: "12345"
+    team: "platform-engineering"
+    project: "uk8s-nextgen"
+    criticality: "high"
+    backup: "required"
+
+  # ========================================
+  # Flux GitOps Configuration
+  # ========================================
+  flux:
+    core:
+      url: "https://dev.azure.com/your-org/uk8s-core/_git/uk8s-core"
+      branch: "production"
+    config:
+      url: "https://dev.azure.com/your-org/uk8s-config/_git/uk8s-config"
+      branch: "production"

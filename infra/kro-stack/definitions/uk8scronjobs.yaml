@@ -1,0 +1,198 @@
+---
+# ResourceGraphDefinition for UK8S CronJobs
+# This handles scheduled maintenance and monitoring tasks for the cluster:
+# - Periodic health checks
+# - Compliance reporting
+# - Resource cleanup tasks
+# - Cost optimization jobs
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8scronjobs.kro.run
+  labels:
+    kro.run/type: scheduled-jobs
+    kro.run/category: operations
+  annotations:
+    kro.run/description: "Scheduled maintenance and monitoring jobs for cluster operations"
+    kro.run/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8Scronjobs
+    spec:
+      # ========================================
+      # Cluster Reference
+      # ========================================
+      clusterName: string | required=true description="The name of the AKS cluster" pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+      resourceGroup: string | required=true description="The resource group that owns this cluster"
+
+      # ========================================
+      # Monitoring Configuration
+      # ========================================
+      enableHealthChecks: boolean | default=true description="Enable periodic health check cronjobs"
+      healthCheckSchedule: string | default="0 */6 * * *" description="Cron schedule for health checks (default: every 6 hours)"
+
+      enableComplianceReporting: boolean | default=false description="Enable compliance reporting cronjobs"
+      complianceReportSchedule: string | default="0 2 * * 0" description="Cron schedule for compliance reports (default: weekly on Sunday at 2am)"
+
+  # ========================================
+  # Resources Created by this RGD
+  # ========================================
+  resources:
+    # ----------------------------------------
+    # Service Account for CronJobs
+    # ----------------------------------------
+    - id: cronJobServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: cluster-cronjob-sa
+          namespace: flux-system
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: cronjob-sa
+
+    # ----------------------------------------
+    # Health Check CronJob
+    # Periodic validation of cluster health
+    # ----------------------------------------
+    - id: healthCheckCronJob
+      template:
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          name: cluster-health-check-${schema.spec.clusterName}
+          namespace: flux-system
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: health-check-cronjob
+        spec:
+          schedule: ${schema.spec.healthCheckSchedule}
+          successfulJobsHistoryLimit: 3
+          failedJobsHistoryLimit: 3
+          concurrencyPolicy: Forbid
+          jobTemplate:
+            metadata:
+              labels:
+                kro.run/cluster: ${schema.spec.clusterName}
+                kro.run/job-type: health-check
+            spec:
+              backoffLimit: 2
+              ttlSecondsAfterFinished: 3600  # Clean up after 1 hour
+              template:
+                metadata:
+                  labels:
+                    kro.run/cluster: ${schema.spec.clusterName}
+                spec:
+                  serviceAccountName: cluster-cronjob-sa
+                  restartPolicy: OnFailure
+                  containers:
+                    - name: health-check
+                      image: bitnami/kubectl:latest
+                      command:
+                        - /bin/bash
+                        - -c
+                        - |
+                          set -e
+                          echo "========================================="
+                          echo "Cluster Health Check"
+                          echo "Cluster: ${schema.spec.clusterName}"
+                          echo "Time: $(date)"
+                          echo "========================================="
+
+                          # Check node status
+                          echo "Checking node health..."
+                          kubectl get nodes
+
+                          # Check system pods
+                          echo "Checking system pods..."
+                          kubectl get pods -n kube-system
+
+                          # Check for pending pods
+                          echo "Checking for pending pods..."
+                          pending_pods=$(kubectl get pods --all-namespaces --field-selector=status.phase=Pending --no-headers | wc -l)
+                          if [ "$pending_pods" -gt 0 ]; then
+                            echo "⚠️  Warning: $pending_pods pod(s) in Pending state"
+                            kubectl get pods --all-namespaces --field-selector=status.phase=Pending
+                          else
+                            echo "✅ No pending pods"
+                          fi
+
+                          echo "========================================="
+                          echo "Health check complete"
+                          echo "========================================="
+                      resources:
+                        requests:
+                          memory: "64Mi"
+                          cpu: "50m"
+                        limits:
+                          memory: "128Mi"
+                          cpu: "100m"
+
+    # ----------------------------------------
+    # Compliance Reporting CronJob (Optional)
+    # ----------------------------------------
+    - id: complianceReportCronJob
+      template:
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          name: compliance-report-${schema.spec.clusterName}
+          namespace: flux-system
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+            kro.run/component: compliance-cronjob
+        spec:
+          schedule: ${schema.spec.complianceReportSchedule}
+          successfulJobsHistoryLimit: 5
+          failedJobsHistoryLimit: 3
+          concurrencyPolicy: Forbid
+          suspend: ${ ! schema.spec.enableComplianceReporting }
+          jobTemplate:
+            metadata:
+              labels:
+                kro.run/cluster: ${schema.spec.clusterName}
+                kro.run/job-type: compliance-report
+            spec:
+              backoffLimit: 1
+              ttlSecondsAfterFinished: 7200  # Clean up after 2 hours
+              template:
+                metadata:
+                  labels:
+                    kro.run/cluster: ${schema.spec.clusterName}
+                spec:
+                  serviceAccountName: cluster-cronjob-sa
+                  restartPolicy: Never
+                  containers:
+                    - name: compliance-check
+                      image: bitnami/kubectl:latest
+                      command:
+                        - /bin/bash
+                        - -c
+                        - |
+                          set -e
+                          echo "========================================="
+                          echo "Compliance Report"
+                          echo "Cluster: ${schema.spec.clusterName}"
+                          echo "Time: $(date)"
+                          echo "========================================="
+
+                          # Check for resources without required labels
+                          echo "Checking for unlabeled namespaces..."
+                          kubectl get namespaces -o json | jq -r '.items[] | select(.metadata.labels.environment == null) | .metadata.name'
+
+                          # Check for deprecated API versions
+                          echo "Checking API versions..."
+                          # Add compliance checks here
+
+                          echo "========================================="
+                          echo "Compliance report complete"
+                          echo "========================================="
+                      resources:
+                        requests:
+                          memory: "64Mi"
+                          cpu: "50m"
+                        limits:
+                          memory: "128Mi"
+                          cpu: "100m"

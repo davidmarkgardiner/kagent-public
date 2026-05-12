@@ -1,0 +1,133 @@
+---
+# RBAC for App Certification v1 Workflows
+#
+# Grants argo-workflow-executor the cross-namespace read access that
+# app-certification-v1 tasks require. Kept separate from certification-rbac.yaml
+# (cluster cert) so each cert scope carries only what it needs.
+#
+# Resources accessed at runtime:
+#   - namespaces (label inspection)
+#   - resourcequotas, serviceaccounts, pods, services (per target namespace)
+#   - deployments, replicasets (workload health)
+#   - networkpolicies (coverage check)
+#   - rolebindings (RBAC check)
+#   - horizontalpodautoscalers (scaling state)
+#   - peerauthentications (Istio mTLS — skipped when hasIstio=false)
+#   - userassignedidentities, federatedidentitycredentials (ASO — skipped when hasAzure=false)
+#   - roleassignments (ASO authorization — skipped when hasAzure=false)
+#
+# Apply with:
+#   kubectl apply -f infra-stack/kro-stack/definitions/certification-rbac-app-v1.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argo-app-certification-validator
+  labels:
+    app: argo-workflows
+    component: app-certification
+rules:
+  # Namespace existence and label inspection
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+
+  # Core namespace-scoped resources — target namespace is a runtime parameter
+  # so these must be cluster-scoped grants
+  - apiGroups: [""]
+    resources:
+      - resourcequotas
+      - serviceaccounts
+      - pods
+      - services
+    verbs: ["get", "list"]
+
+  # Workload reads
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list"]
+
+  # Network policy coverage check
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list"]
+
+  # RBAC binding inspection in target namespace
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["get", "list"]
+
+  # HPA — scaling readiness
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list"]
+
+  # Istio mTLS check — skipped at runtime when hasIstio=false
+  - apiGroups: ["security.istio.io"]
+    resources: ["peerauthentications"]
+    verbs: ["get", "list"]
+
+  # ASO managed identity resources — skipped at runtime when hasAzure=false
+  - apiGroups: ["managedidentity.azure.com"]
+    resources:
+      - userassignedidentities
+      - federatedidentitycredentials
+    verbs: ["get", "list"]
+
+  - apiGroups: ["authorization.azure.com"]
+    resources: ["roleassignments"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-app-certification-validator-binding
+  labels:
+    app: argo-workflows
+    component: app-certification
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-app-certification-validator
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow-executor
+    namespace: argo
+
+---
+# ConfigMap write access in the argo namespace for per-workflow result capture.
+# The aggregate-certification task creates app-cert-results-<workflow-name>
+# with an ownerReference so it is GC'd when the Workflow is deleted.
+# Argo Workflows itself grants configmap read/list to its executor SA, but
+# explicit create/patch is safest to declare here.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-app-certification-configmap-writer
+  namespace: argo
+  labels:
+    app: argo-workflows
+    component: app-certification
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-app-certification-configmap-writer-binding
+  namespace: argo
+  labels:
+    app: argo-workflows
+    component: app-certification
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-app-certification-configmap-writer
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow-executor
+    namespace: argo

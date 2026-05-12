@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../_common
+  - redpanda.yaml
+  - redpanda-topic-job.yaml
+  - alertmanager-kafka-bridge.yaml
+  - alertmanager-configmap.yaml
+  - alertmanager-contact-point.yaml
+  - eventsource.yaml
+  - sensor.yaml

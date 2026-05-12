@@ -1,0 +1,550 @@
+apiVersion: v1
+data:
+  README.md: "# ASO-Stack: AKS Cluster Deployment with GitOps\n\nThis directory contains\
+    \ the Azure Service Operator (ASO) manifests and FluxCD configuration for deploying\
+    \ an AKS cluster from a Minikube control plane, then using GitOps to deploy applications\
+    \ onto the AKS cluster.\n\n## Architecture Overview\n\n```mermaid\ngraph TD\n\
+    \    A[Minikube] --> B[Azure Service Operator]\n    B --> C[Azure Resources]\n\
+    \    C --> D[AKS Cluster]\n    D --> E[Flux Extension]\n    E --> F[GitRepository]\n\
+    \    F --> G[Applications]\n\n    C --> H[Resource Group]\n    C --> I[Managed\
+    \ Identity]\n    C --> J[Role Assignment]\n\n    G --> K[cert-manager]\n    G\
+    \ --> L[external-dns]\n    G --> M[Istio Apps]\n```\n\n## Directory Structure\n\
+    \n```\naso-stack/\n\u251C\u2500\u2500 README.md                    # This file\n\
+    \u251C\u2500\u2500 kustomization.yaml          # Kustomize manifest ordering\n\
+    \u251C\u2500\u2500 resourcegroup.yaml          # Azure Resource Group\n\u251C\u2500\
+    \u2500 identity.yaml               # User Assigned Managed Identity\n\u251C\u2500\
+    \u2500 roleassignment.yaml         # RBAC for managed identity\n\u251C\u2500\u2500\
+    \ cluster.yaml                # AKS Cluster configuration\n\u251C\u2500\u2500\
+    \ federated.yaml              # Federated identity credential\n\u251C\u2500\u2500\
+    \ extension.yaml              # Flux extension for AKS\n\u251C\u2500\u2500 fluxconfiguration.yaml\
+    \      # GitOps configuration\n\u2514\u2500\u2500 flux-setup-instructions.md \
+    \ # Additional setup notes\n```\n\n## Deployment Flow\n\n### Phase 1: Infrastructure\
+    \ Provisioning (Minikube \u2192 Azure)\n\n1. **Minikube Control Plane Setup**\n\
+    \   - Azure Service Operator runs on Minikube\n   - ASO manages Azure resources\
+    \ via Azure ARM APIs\n   - All infrastructure defined as Kubernetes manifests\n\
+    \n2. **Azure Resource Creation Order**\n\n   ```yaml\n   # Applied in sequence\
+    \ via kustomization.yaml:\n   - resourcegroup.yaml # Creates Azure Resource Group\n\
+    \   - identity.yaml # Creates User Assigned Managed Identity\n   - roleassignment.yaml\
+    \ # Grants permissions to identity\n   - cluster.yaml # Provisions AKS cluster\
+    \ with Istio\n   - federated.yaml # Links AKS identity to workload identity\n\
+    \   - extension.yaml # Installs Flux extension on AKS\n   - fluxconfiguration.yaml\
+    \ # Configures GitOps source and sync\n   ```\n\n3. **Key Infrastructure Features**\n\
+    \   - **Private AKS cluster** with public FQDN for management\n   - **Istio service\
+    \ mesh** (asm-1-25 revision) with internal ingress\n   - **Cilium networking**\
+    \ (overlay mode with network policy)\n   - **Workload Identity** enabled for pod-to-Azure\
+    \ authentication\n   - **Auto-scaling** with Node Auto Provisioning (NAP)\n  \
+    \ - **Azure monitoring** and security features enabled\n\n### Phase 2: GitOps\
+    \ Application Deployment (AKS \u2192 Applications)\n\n1. **Flux Configuration**\n\
+    \   - Flux extension automatically installed on AKS cluster\n   - GitRepository\
+    \ source: `https://github.com/davidmarkgardiner/claude-aso`\n   - Branch: `infra`\n\
+    \   - Sync interval: 120 seconds\n\n2. **Application Kustomizations**\n\n   ```yaml\n\
+    \   # Two parallel sync paths:\n   app: # Path: ./apps\n     - cert-manager #\
+    \ TLS certificate management\n     - external-dns # DNS record automation\n\n\
+    \   istio-app: # Path: ./istio-apps\n     - namespaces # Application namespaces\n\
+    \     - gateways # Istio ingress configuration\n     - podinfo # Demo applications\n\
+    \     - traffic policies # Istio CRDs and routing\n   ```\n\n3. **Continuous Deployment**\n\
+    \   - Changes to `infra` branch trigger automatic sync\n   - Prune enabled: removes\
+    \ resources not in Git\n   - Force sync: overwrites manual cluster changes\n \
+    \  - Timeout: 600 seconds per sync operation\n\n## Key Configuration Details\n\
+    \n### AKS Cluster Specifications\n\n- **Location**: UK South\n- **Kubernetes Version**:\
+    \ 1.32\n- **Node Pool**: System pool with Standard_D4s_v3 (1 node, availability\
+    \ zone 1)\n- **Network**: Azure CNI Overlay with Cilium dataplane\n- **Service\
+    \ Mesh**: Istio with internal ingress gateway\n- **Identity**: Azure RBAC with\
+    \ AAD integration\n- **Security**: Private cluster, workload identity, defender\
+    \ enabled\n\n### GitOps Configuration\n\n- **Repository**: https://github.com/davidmarkgardiner/claude-aso\n\
+    - **Branch**: infra\n- **Applications Path**: `./apps` and `./istio-apps`\n- **Sync\
+    \ Mode**: Automatic every 2 minutes\n- **Reconciliation**: Force sync with pruning\
+    \ enabled\n\n## Prerequisites\n\n1. **Minikube** with sufficient resources (4GB+\
+    \ RAM recommended)\n2. **Azure Service Operator** installed on Minikube\n3. **Azure\
+    \ subscription** with appropriate permissions\n4. **GitHub repository** with application\
+    \ manifests\n5. **kubectl** configured for both Minikube and AKS contexts\n\n\
+    ## Deployment Steps\n\n1. **Apply ASO manifests to Minikube**\n\n   ```bash\n\
+    \   kubectl apply -k /path/to/aso-stack\n   ```\n\n2. **Monitor Azure resource\
+    \ creation**\n\n   ```bash\n   # Check ASO resource status\n   kubectl get resourcegroup,managedidentity,managedcluster\
+    \ -n azure-system\n\n   # Monitor cluster provisioning (15-20 minutes)\n   kubectl\
+    \ describe managedcluster uk8s-tsshared-weu-gt025-int-prod -n azure-system\n \
+    \  ```\n\n3. **Obtain AKS credentials**\n\n   ```bash\n   az aks get-credentials\
+    \ --resource-group dev01-weu-dev-prod --name uk8s-tsshared-weu-gt025-int-prod\n\
+    \   ```\n\n4. **Verify Flux deployment**\n\n   ```bash\n   # Check Flux extension\n\
+    \   kubectl get extension -n azure-system\n\n   # Check GitOps sync status\n \
+    \  kubectl get gitrepository,kustomization -n flux-system\n   ```\n\n5. **Verify\
+    \ application deployment**\n\n   ```bash\n   # Check cert-manager\n   kubectl\
+    \ get pods -n cert-manager\n\n   # Check external-dns\n   kubectl get pods -n\
+    \ external-dns\n\n   # Check Istio applications\n   kubectl get pods -n istio-system\n\
+    \   kubectl get gateway,virtualservice -A\n   ```\n\n## Monitoring and Troubleshooting\n\
+    \n### Infrastructure Status\n\n```bash\n# ASO operator status\nkubectl get pods\
+    \ -n azureserviceoperator-system\n\n# Azure resource provisioning status\nkubectl\
+    \ get managedcluster uk8s-tsshared-weu-gt025-int-prod -n azure-system -o yaml\n\
+    ```\n\n### GitOps Status\n\n```bash\n# Flux controllers\nkubectl get pods -n flux-system\n\
+    \n# Sync status and errors\nkubectl describe gitrepository -n flux-system\nkubectl\
+    \ describe kustomization -n flux-system\n\n# Flux logs\nkubectl logs -n flux-system\
+    \ -l app=source-controller\nkubectl logs -n flux-system -l app=kustomize-controller\n\
+    ```\n\n### Application Health\n\n```bash\n# All applications\nkubectl get helmrelease\
+    \ -A\nkubectl get pods -A | grep -E \"(cert-manager|external-dns|istio)\"\n\n\
+    # Istio gateway status\nkubectl get gateway -n istio-system\nkubectl get vs,dr\
+    \ -A\n```\n\n## Security Considerations\n\n- **Private cluster**: API server only\
+    \ accessible via private network\n- **Workload Identity**: Pods authenticate to\
+    \ Azure using managed identities\n- **RBAC**: Fine-grained permissions with Azure\
+    \ RBAC integration\n- **Network policies**: Cilium enforces pod-to-pod communication\
+    \ rules\n- **Image scanning**: Container image vulnerability scanning enabled\n\
+    - **Secret management**: Azure Key Vault integration for sensitive data\n\n##\
+    \ Cost Optimization\n\n- **Node Auto Provisioning**: Automatically scales nodes\
+    \ based on workload requirements\n- **Spot instances**: Can be configured for\
+    \ non-production workloads\n- **Resource quotas**: Prevent resource overconsumption\n\
+    - **Monitoring**: Azure Monitor tracks resource utilization and costs\n\n## Next\
+    \ Steps\n\n1. Configure DNS zones for external-dns automation\n2. Set up TLS certificates\
+    \ for ingress traffic\n3. Deploy monitoring stack (Prometheus/Grafana)\n4. Implement\
+    \ backup strategies for persistent workloads\n5. Configure alerting and incident\
+    \ response procedures\n"
+  cluster.yaml: "apiVersion: containerservice.azure.com/v1api20240402preview\nkind:\
+    \ ManagedCluster\nmetadata:\n  name: uk8s-tsshared-weu-gt025-int-prod\n  namespace:\
+    \ azure-system\nspec:\n  azureName: uk8s-tsshared-weu-gt025-int-prod\n  location:\
+    \ uksouth\n  owner:\n    name: dev01-weu-dev-prod\n  operatorSpec:\n    configMaps:\n\
+    \      oidcIssuerProfile:\n        name: aks-oidc-config-prod\n        key: issuer-url\n\
+    \  dnsPrefix: uk8s-tsshared-weu-gt025-int-prodk8s\n  kubernetesVersion: \"1.32\"\
+    \n  linuxProfile:\n    adminUsername: localadmin\n    ssh:\n      publicKeys:\n\
+    \        - keyData: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6ACnIVTQEBTEjbxDAUIQVp8mrxwjmTEOXPx2W7GAMK/r8N66r8qEv51IPauNizNDmX8+Bg+kjPVXZh0ZNvGCKLyD/v/Oa2OzG54uw5HMeMbqn3v+dLtygr6wOFYFZuha93/yodfQdOZi2j0JPCH7+O5pVMiy8fyZF1R23rNbPdHUBbCcdgm3fbZZxfjhODfPrUyP5YVURpHmy3GL0Mq1Jcye51fB2ESBpOH3tp3JV6SsMtPcpxu/5VJkjg14BqKiW0JBOZZE9ujfnQVAYQI4mQOweGB9EpkqQp/lDe4+FtEuktV9jjbyxt7pzu/pwp8J0DhBuR08Wjw/+S9yWHCtLJw2Bz/Y9QtYDigc7KNCuGQQSJUGeJy/fd2Zdr53LyXlLJP3PK+PDJlaoLJUtNP+hxv5EJATN785ywOBB7KnB4kvU/ZZzwxfkvUi7GJCy7KGnShpfnTO/79oV5UYOOcScLSnIQznIqah7Cs0UEX7SRSCcrqpbfIZr4euzNhRBBx4NVptHZPv2OuwCeMFMJNDrY47MKsg0mE3R6S8WO1OCRZdvZdRxg2HnIicU2aqDYgvGV0VZmKjOgYKSlD27rLpLNoifjbc/ppym9nMc9MMqAGZ7Wx84XcvampwEcxinBkZi7mZHEu8wv6nQdcf3Cg5H4ETwYVQfwgvS7FLP/364tQ==\n\
+    \  # Node provisioning with auto mode (NAP)\n  nodeProvisioningProfile:\n    mode:\
+    \ Auto\n  # Identity Configuration\n  identity:\n    type: UserAssigned\n    userAssignedIdentities:\n\
+    \      - reference:\n          armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/rg-my-aks-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-aks-cluster-control-plane-identity\n\
+    \  # AAD and RBAC Configuration\n  aadProfile:\n    enableAzureRBAC: true\n  \
+    \  managed: true\n    adminGroupObjectIDs:\n      - {{AZURE_SUBSCRIPTION_ID}}\n\
+    \  enableRBAC: true\n  disableLocalAccounts: false\n  # Network Profile\n  networkProfile:\n\
+    \    networkPlugin: azure\n    networkPluginMode: overlay\n    networkPolicy:\
+    \ cilium\n    networkDataplane: cilium\n    serviceCidr: 10.251.0.0/17\n    dnsServiceIP:\
+    \ 10.251.0.10\n    podCidr: 10.251.128.0/17\n    ipFamilies: [\"IPv4\"]\n    loadBalancerSku:\
+    \ standard\n    outboundType: loadBalancer\n  # API Server Access\n  apiServerAccessProfile:\n\
+    \    enablePrivateCluster: false\n    disableRunCommand: true\n  agentPoolProfiles:\n\
+    \    - name: systempool\n      vnetSubnetReference:\n        armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/aks-cluster/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet\n\
+    \      mode: System\n      count: 1\n      enableAutoScaling: false\n      # vmSize:\
+    \ Standard_D8s_v3 # Production\n      vmSize: Standard_B8ms # Dev/Test\n     \
+    \ availabilityZones: [\"1\"]\n      osDiskType: Managed\n      osDiskSizeGB: 128\n\
+    \      osType: Linux\n      osSKU: AzureLinux\n      maxPods: 110\n      enableNodePublicIP:\
+    \ false\n      enableEncryptionAtHost: false\n      securityProfile:\n       \
+    \ enableSecureBoot: true\n        enableVTPM: true\n        # sshAccess: Disabled\n\
+    \  identityProfile:\n    kubeletidentity:\n      clientId: {{AZURE_SUBSCRIPTION_ID}}\n\
+    \      objectId: {{AZURE_SUBSCRIPTION_ID}}\n      resourceReference:\n\
+    \        armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/rg-my-aks-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-aks-cluster-kubelet-identity\n\
+    \  # Auto Upgrade Configuration\n  autoUpgradeProfile:\n    upgradeChannel: stable\n\
+    \    nodeOSUpgradeChannel: NodeImage\n  # Security Profile\n  securityProfile:\n\
+    \    defender:\n      logAnalyticsWorkspaceResourceReference:\n        armId:\
+    \ /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/aks-cluster/providers/Microsoft.OperationalInsights/workspaces/test-workspace\n\
+    \      securityMonitoring:\n        enabled: true\n    workloadIdentity:\n   \
+    \   enabled: true\n    imageCleaner:\n      enabled: false\n      intervalHours:\
+    \ 48\n  # Storage Profile\n  storageProfile:\n    diskCSIDriver:\n      enabled:\
+    \ true\n    fileCSIDriver:\n      enabled: true\n    snapshotController:\n   \
+    \   enabled: true\n  # Addon Profiles\n  addonProfiles:\n    azureKeyvaultSecretsProvider:\n\
+    \      enabled: true\n      config:\n        enableSecretRotation: \"true\" #\
+    \ pragma: allowlist secret\n        rotationPollInterval: \"30m\"\n    azurepolicy:\n\
+    \      enabled: true\n      config:\n        version: \"v2\"\n  # Monitoring and\
+    \ Metrics\n  # azureMonitorProfile:\n  #   metrics:\n  #     enabled: true\n \
+    \ #     kubeStateMetrics:\n  #       metricLabelsAllowlist: \"namespaces=[owner,\
+    \ swID]\"\n  #       metricAnnotationsAllowList: \"pods=[k8s-annotation-1,k8s-annotation-n]\"\
+    \n  #   # Container Insights Configuration\n  #   containerInsights:\n  #    \
+    \ enabled: false\n  # Cluster SKU and Support\n  sku:\n    name: Base\n    tier:\
+    \ Standard\n  supportPlan: KubernetesOfficial\n  # Workload Auto Scaler with KEDA\n\
+    \  workloadAutoScalerProfile:\n    keda:\n      enabled: true\n  # OIDC Issuer\
+    \ - Required for workload identity\n  oidcIssuerProfile:\n    enabled: true\n\
+    \  serviceMeshProfile:\n    mode: Istio\n    istio:\n      components:\n     \
+    \   ingressGateways:\n          - enabled: true\n            mode: Internal\n\
+    \          - enabled: true\n            mode: External\n      revisions:\n   \
+    \     - asm-1-25\n  podIdentityProfile:\n    enabled: false\n    userAssignedIdentityExceptions:\n\
+    \      - name: k8s-control-plane-exception\n        namespace: kube-system\n \
+    \       podLabels:\n          kubernetes.azure.com/managedby: aks\n      - name:\
+    \ platform-control-plane-exception\n        namespace: platform-system\n        podLabels:\n\
+    \          kubernetes.azure.com/managedby: aks\n  # Resource group for node resources\n\
+    \  nodeResourceGroup: MC_dev01-weu-dev-prod_uk8s-tsshared-weu-gt025-int-prod_uksouth\n\
+    \  # Service Principal Profile\n  servicePrincipalProfile:\n    clientId: msi\n\
+    \  # Tags\n  tags:\n    environment: dev\n    project: uk8s\n    costCenter: BT-TS-INFRA-\n\
+    \    managedBy: flux-system\n    billingReference: BT-TS-INFRA-\n    opEnvironment:\
+    \ EV\n    cmdbReference: DEV01\n    Owner: DavidGardiner\n    Status: InUse\n\
+    \    Team: AKSEngineering\n    DeployedBy: AzureServiceOperator\n  privateLinkResources:\n\
+    \    - reference:\n        armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/DEV01-weu-dev-prod/providers/Microsoft.ContainerService/managedClusters/uk8s-tsshared-weu-gt025-int-prod/privateLinkResources/management\n"
+  dns.yaml: "# DNS Resources for External DNS and Certificate Manager\napiVersion:\
+    \ resources.azure.com/v1api20200601\nkind: ResourceGroup\nmetadata:\n  name: dns-rg\n\
+    \  namespace: azure-system\nspec:\n  azureName: dns\n  location: westeurope\n\
+    ---\napiVersion: network.azure.com/v1api20220701\nkind: DnsZone\nmetadata:\n \
+    \ name: davidmarkgardiner-co-uk\n  namespace: azure-system\nspec:\n  azureName:\
+    \ davidmarkgardiner.co.uk\n  owner:\n    name: dns-rg\n  zoneType: Public\n"
+  extension.yaml: "apiVersion: kubernetesconfiguration.azure.com/v1api20230501\nkind:\
+    \ Extension\nmetadata:\n  name: aso-flux-extension\n  namespace: azure-system\n\
+    spec:\n  azureName: aso-flux-extension\n  autoUpgradeMinorVersion: true\n  extensionType:\
+    \ microsoft.flux\n  identity:\n    type: SystemAssigned\n  owner:\n    group:\
+    \ containerservice.azure.com\n    kind: ManagedCluster\n    name: uk8s-tsshared-weu-gt025-int-prod\n\
+    \  scope:\n    cluster:\n      releaseNamespace: flux-system\n  configurationSettings:\n\
+    \    multiTenancy.enforce: \"false\"\n    image-automation-controller.enabled:\
+    \ \"true\"\n    image-reflector-controller.enabled: \"true\"\n    workload-identity.enabled:\
+    \ \"true\"\n    workload-identity.azureClientId: \"{{AZURE_SUBSCRIPTION_ID}}\"\
+    \n"
+  federated.yaml: "# apiVersion: managedidentity.azure.com/v1api20230131\n# kind:\
+    \ FederatedIdentityCredential\n# metadata:\n#   name: aso-fic-flux-source\n# \
+    \  namespace: azure-system\n# spec:\n#   azureName: flux-identity\n#   owner:\n\
+    #     name: flux-identity\n#   audiences:\n#     - api://AzureADTokenExchange\n\
+    #   issuerFromConfig:\n#     name: aks-oidc-config-prod\n#     key: issuer-url\n\
+    #   subject: system:serviceaccount:flux-system:source-controller\n# ---\n# apiVersion:\
+    \ managedidentity.azure.com/v1api20230131\n# kind: FederatedIdentityCredential\n\
+    # metadata:\n#   name: aso-fic-flux-image\n#   namespace: azure-system\n# spec:\n\
+    #   azureName: flux-identity\n#   owner:\n#     name: flux-identity\n#   audiences:\n\
+    #     - api://AzureADTokenExchange\n#   issuerFromConfig:\n#     name: aks-oidc-config-prod\n\
+    #     key: issuer-url\n#   subject: system:serviceaccount:flux-system:image-automation-controller\n\
+    ---\napiVersion: managedidentity.azure.com/v1api20230131\nkind: FederatedIdentityCredential\n\
+    metadata:\n  name: aso-fic-external-dns\n  namespace: azure-system\nspec:\n  azureName:\
+    \ external-dns-identity\n  owner:\n    name: external-dns-identity\n  audiences:\n\
+    \    - api://AzureADTokenExchange\n  issuerFromConfig:\n    name: aks-oidc-config-prod\n\
+    \    key: issuer-url\n  subject: system:serviceaccount:external-dns:external-dns\n\
+    ---\napiVersion: managedidentity.azure.com/v1api20230131\nkind: FederatedIdentityCredential\n\
+    metadata:\n  name: aso-fic-cert-manager\n  namespace: azure-system\nspec:\n  azureName:\
+    \ cert-manager-identity\n  owner:\n    name: cert-manager-identity\n  audiences:\n\
+    \    - api://AzureADTokenExchange\n  issuerFromConfig:\n    name: aks-oidc-config-prod\n\
+    \    key: issuer-url\n  subject: system:serviceaccount:cert-manager:cert-manager\n\
+    # ---\n# apiVersion: managedidentity.azure.com/v1api20230131\n# kind: FederatedIdentityCredential\n\
+    # metadata:\n#   name: aso-fic-workload-identity\n#   namespace: azure-system\n\
+    # spec:\n#   azureName: aso-workload-identity-fic\n#   owner:\n#     name: aso-workload-identity\n\
+    #   audiences:\n#     - api://AzureADTokenExchange\n#   issuerFromConfig:\n# \
+    \    name: aks-oidc-config-prod\n#     key: issuer-url\n#   subject: system:serviceaccount:azureserviceoperator-system:azureserviceoperator-default\n\
+    # ---\n# apiVersion: managedidentity.azure.com/v1api20230131\n# kind: FederatedIdentityCredential\n\
+    # metadata:\n#   name: aso-fic-platform-api\n#   namespace: azure-system\n# spec:\n\
+    #   azureName: platform-api-federated-credential\n#   owner:\n#     name: platform-api-identity\n\
+    #   audiences:\n#     - api://AzureADTokenExchange\n#   issuerFromConfig:\n# \
+    \    name: aks-oidc-config-prod\n#     key: issuer-url\n#   subject: system:serviceaccount:platform-system:platform-api\n\
+    ---\napiVersion: managedidentity.azure.com/v1api20230131\nkind: FederatedIdentityCredential\n\
+    metadata:\n  name: aso-fic-external-secrets\n  namespace: azure-system\nspec:\n\
+    \  azureName: aso-fic-external-secrets\n  owner:\n    name: external-secrets-uami\n\
+    \  audiences:\n    - api://AzureADTokenExchange\n  issuerFromConfig:\n    name:\
+    \ aks-oidc-config-prod\n    key: issuer-url\n  subject: system:serviceaccount:external-secrets:external-secrets"
+  flux-setup-instructions.md: '# Flux Setup Instructions
+
+
+    ## 1. Push Configuration to GitHub Repository
+
+
+    You''ll need to push the prepared configurations to your GitHub repository:
+
+
+    ```bash
+
+    # Navigate to the local configuration directory
+
+    cd /Users/davidgardiner/Desktop/repo/aso-flux
+
+
+    # Initialize Git if needed
+
+    git init
+
+    git remote add origin https://github.com/davidmarkgardiner/aso-flux.git
+
+
+    # Add all files
+
+    git add .
+
+
+    # Commit
+
+    git commit -m "Initial Flux configuration"
+
+
+    # Push to the main branch
+
+    git push -u origin main
+
+    ```
+
+
+    ## 2. Install Flux Extension on AKS
+
+
+    Run the following script to install and configure Flux on your AKS cluster:
+
+
+    ```bash
+
+    # Make script executable
+
+    chmod +x /Users/davidgardiner/Desktop/repo/aso-nap/working-claude/flux-config.sh
+
+
+    # Run the script
+
+    /Users/davidgardiner/Desktop/repo/aso-nap/working-claude/flux-config.sh
+
+    ```
+
+
+    ## 3. Apply Node Pools and Test Workloads
+
+
+    Since the cluster is private, you''ll need to use ASO to create the resources:
+
+
+    ```bash
+
+    # Apply the node pools
+
+    kubectl apply -f /Users/davidgardiner/Desktop/repo/aso-nap/working-claude/node-classes.yaml
+
+
+    # Apply the test workloads
+
+    kubectl apply -f /Users/davidgardiner/Desktop/repo/aso-nap/working-claude/nap-test.yaml
+
+    ```
+
+
+    ## 4. Verify Deployment
+
+
+    Check the Flux installation:
+
+
+    ```bash
+
+    # Check Flux extension
+
+    kubectl get extension aso-flux-extension -n default
+
+
+    # Check Flux configuration
+
+    kubectl get fluxconfiguration aso-flux-config -n default
+
+    ```
+
+
+    Check the deployed resources:
+
+
+    ```bash
+
+    # Check for deployments in demo-app namespace (deployed by Flux)
+
+    kubectl get all -n demo-app
+
+
+    # Check the NAP test pods
+
+    kubectl get pods -n nap-test
+
+    ```
+
+
+    ## 5. Monitoring and Troubleshooting
+
+
+    Monitor Flux status:
+
+
+    ```bash
+
+    # Check Flux controllers
+
+    kubectl get deployment -n flux-system
+
+
+    # Check GitRepository resource
+
+    kubectl get gitrepository -n flux-system
+
+
+    # Check Kustomization resource
+
+    kubectl get kustomization -n flux-system
+
+    ```
+
+
+    If you need to debug:
+
+
+    ```bash
+
+    # Check Flux logs
+
+    kubectl logs -n flux-system deployment/source-controller
+
+    kubectl logs -n flux-system deployment/kustomize-controller
+
+    ```
+
+    '
+  fluxconfiguration.yaml: "apiVersion: kubernetesconfiguration.azure.com/v1api20241101\n\
+    kind: FluxConfiguration\nmetadata:\n  name: aso-flux\n  namespace: azure-system\n\
+    spec:\n  azureName: aso-flux\n  gitRepository:\n    provider: Generic\n    repositoryRef:\n\
+    \      branch: feature/external-secrets\n    url: https://github.com/davidmarkgardiner/claude-aso\n\
+    \  kustomizations:\n    # Layer 0: Configuration (Identity ConfigMaps for workload\
+    \ identity)\n    configuration:\n      path: ./apps/00-configuration\n      timeoutInSeconds:\
+    \ 60\n      syncIntervalInSeconds: 60\n      prune: true\n      force: true\n\
+    \      wait: true\n      # healthChecks:\n      #   - apiVersion: v1\n      #\
+    \     kind: ConfigMap\n      #     name: external-dns-identity-cm\n      #   \
+    \  namespace: azure-system\n      #   - apiVersion: v1\n      #     kind: ConfigMap\n\
+    \      #     name: cert-manager-identity-cm\n      #     namespace: azure-system\n\
+    \      #   - apiVersion: v1\n      #     kind: ConfigMap\n      #     name: platform-api-identity-cm\n\
+    \      #     namespace: azure-system\n\n    # Layer 1: Infrastructure (Base operators\
+    \ and controllers)\n    infrastructure:\n      dependsOn: [\"configuration\"]\n\
+    \      path: ./apps/01-infrastructure\n      timeoutInSeconds: 300\n      syncIntervalInSeconds:\
+    \ 120\n      prune: true\n      force: true\n      wait: true\n      healthChecks:\n\
+    \        - apiVersion: apps/v1\n          kind: Deployment\n          name: external-secrets\n\
+    \          namespace: external-secrets-system\n        - apiVersion: apps/v1\n\
+    \          kind: Deployment\n          name: cert-manager\n          namespace:\
+    \ cert-manager\n        - apiVersion: apps/v1\n          kind: Deployment\n  \
+    \        name: external-dns\n          namespace: external-dns\n      # postBuild:\n\
+    \      #   substituteFrom:\n      #     - kind: ConfigMap\n      #       name:\
+    \ external-dns-identity-cm\n      #     - kind: ConfigMap\n      #       name:\
+    \ cert-manager-identity-cm\n\n    # Layer 2: Configuration (Infrastructure configuration)\n\
+    \    infrastructure-config:\n      dependsOn: [\"infrastructure\"]\n      path:\
+    \ ./apps/02-config\n      timeoutInSeconds: 180\n      syncIntervalInSeconds:\
+    \ 120\n      prune: true\n      force: true\n      wait: true\n      healthChecks:\n\
+    \        - apiVersion: cert-manager.io/v1\n          kind: ClusterIssuer\n   \
+    \       name: letsencrypt-prod-dns01\n        - apiVersion: external-secrets.io/v1beta1\n\
+    \          kind: ClusterSecretStore\n          name: azure-keyvault\n      # postBuild:\n\
+    \      #   substituteFrom:\n      #     - kind: ConfigMap\n      #       name:\
+    \ cert-manager-identity-cm\n\n    # Layer 3: Platform (Platform services)\n  \
+    \  platform-services:\n      dependsOn: [\"infrastructure-config\"]\n      path:\
+    \ ./apps/03-platform\n      timeoutInSeconds: 300\n      syncIntervalInSeconds:\
+    \ 120\n      prune: true\n      force: true\n      wait: true\n      healthChecks:\n\
+    \        - apiVersion: apps/v1\n          kind: Deployment\n          name: argo-server\n\
+    \          namespace: argo\n        - apiVersion: apps/v1\n          kind: Deployment\n\
+    \          name: platform-api\n          namespace: platform-system\n      postBuild:\n\
+    \        substituteFrom:\n          - kind: ConfigMap\n            name: platform-api-identity-cm\n\
+    \n    # Layer 4: Applications (User applications and test workloads)\n    applications:\n\
+    \      dependsOn: [\"platform-services\"]\n      path: ./apps/04-applications\n\
+    \      timeoutInSeconds: 180\n      syncIntervalInSeconds: 120\n      prune: true\n\
+    \      force: true\n      wait: true\n  namespace: flux-system\n  owner:\n   \
+    \ group: containerservice.azure.com\n    kind: ManagedCluster\n    name: uk8s-tsshared-weu-gt025-int-prod\n\
+    \  sourceKind: GitRepository\n"
+  identity.yaml: "# apiVersion: managedidentity.azure.com/v1api20230131\n# kind: UserAssignedIdentity\n\
+    # metadata:\n#   name: flux-identity\n#   namespace: azure-system\n# spec:\n#\
+    \   azureName: flux-identity\n#   location: uksouth\n#   owner:\n#     name: dev01-weu-dev-prod\n\
+    #   operatorSpec:\n#     configMaps:\n#       clientId:\n#         name: flux-identity-cm\n\
+    #         key: clientId\n#       principalId:\n#         name: flux-identity-cm\n\
+    #         key: principalId\n#       tenantId:\n#         name: flux-identity-cm\n\
+    #         key: tenantId\n# ---\n# /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/dns/providers/Microsoft.ManagedIdentity/userAssignedIdentities/external-dns-identity\n\
+    apiVersion: managedidentity.azure.com/v1api20230131\nkind: UserAssignedIdentity\n\
+    metadata:\n  name: external-dns-identity\n  namespace: azure-system\nspec:\n \
+    \ azureName: external-dns-identity # add this to eternal-dns.yaml\n  location:\
+    \ uksouth\n  owner:\n    name: dns\n  operatorSpec:\n    configMaps:\n      clientId:\n\
+    \        name: external-dns-identity-cm\n        key: clientId\n      principalId:\n\
+    \        name: external-dns-identity-cm\n        key: principalId\n      tenantId:\n\
+    \        name: external-dns-identity-cm\n        key: tenantId\n---\napiVersion:\
+    \ managedidentity.azure.com/v1api20230131\nkind: UserAssignedIdentity\nmetadata:\n\
+    \  name: cert-manager-identity\n  namespace: azure-system\nspec:\n  azureName:\
+    \ cert-manager-identity\n  location: uksouth\n  owner:\n    name: dev01-weu-dev-prod\n\
+    \  operatorSpec:\n    configMaps:\n      clientId:\n        name: cert-manager-identity-cm\n\
+    \        key: clientId\n      principalId:\n        name: cert-manager-identity-cm\n\
+    \        key: principalId\n      tenantId:\n        name: cert-manager-identity-cm\n\
+    \        key: tenantId\n---\napiVersion: managedidentity.azure.com/v1api20230131\n\
+    kind: UserAssignedIdentity\nmetadata:\n  name: aso-workload-identity\n  namespace:\
+    \ azure-system\nspec:\n  azureName: aso-workload-identity\n  location: uksouth\n\
+    \  owner:\n    name: aso\n  operatorSpec:\n    configMaps:\n      clientId:\n\
+    \        name: aso-identity-cm\n        key: clientId\n      principalId:\n  \
+    \      name: aso-identity-cm\n        key: principalId\n      tenantId:\n    \
+    \    name: aso-identity-cm\n        key: tenantId\n---\n# /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/kv/providers/Microsoft.ManagedIdentity/userAssignedIdentities/external-secrets-uami\n\
+    apiVersion: managedidentity.azure.com/v1api20230131\nkind: UserAssignedIdentity\n\
+    metadata:\n  name: external-secrets-uami\n  namespace: azure-system\nspec:\n \
+    \ azureName: external-secrets-uami\n  location: uksouth\n  owner:\n    name: kv\n\
+    \  operatorSpec:\n    configMaps:\n      clientId:\n        name: eso-identity-cm\n\
+    \        key: clientId\n      principalId:\n        name: eso-identity-cm\n  \
+    \      key: principalId\n      tenantId:\n        name: eso-identity-cm\n    \
+    \    key: tenantId\n---\napiVersion: managedidentity.azure.com/v1api20230131\n\
+    kind: UserAssignedIdentity\nmetadata:\n  name: platform-api-identity\n  namespace:\
+    \ azure-system\n  labels:\n    platform.io/managed: \"true\"\n    platform.io/component:\
+    \ \"platform-api\"\n    platform.io/environment: \"production\"\nspec:\n  azureName:\
+    \ platform-api-identity\n  location: uksouth\n  owner:\n    name: platform\n \
+    \ operatorSpec:\n    configMaps:\n      clientId:\n        name: platform-api-identity-cm\n\
+    \        key: clientId\n      principalId:\n        name: platform-api-identity-cm\n\
+    \        key: principalId\n      tenantId:\n        name: platform-api-identity-cm\n\
+    \        key: tenantId\n"
+  kustomization.yaml: "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\n\
+    resources:\n  - resourcegroup.yaml\n  - identity.yaml\n  - roleassignment.yaml\n\
+    \  - cluster.yaml\n  - federated.yaml\n  - extension.yaml\n  - fluxconfiguration.yaml\n"
+  resourcegroup.yaml: "apiVersion: resources.azure.com/v1api20200601\nkind: ResourceGroup\n\
+    metadata:\n  name: dev01-weu-dev-prod\n  namespace: azure-system\nspec:\n  azureName:\
+    \ dev01-weu-dev-prod\n  location: uksouth\n---\n# /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/dns/providers/Microsoft.ManagedIdentity/userAssignedIdentities/external-dns-identity\n\
+    \napiVersion: resources.azure.com/v1api20200601\nkind: ResourceGroup\nmetadata:\n\
+    \  name: dns\n  namespace: azure-system\nspec:\n  azureName: dns\n  location:\
+    \ westeurope\n---\n# /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/kv/providers/Microsoft.ManagedIdentity/userAssignedIdentities/external-secrets-uami\n\
+    \napiVersion: resources.azure.com/v1api20200601\nkind: ResourceGroup\nmetadata:\n\
+    \  name: kv\n  namespace: azure-system\nspec:\n  azureName: kv\n  location: uksouth\n\
+    ---\napiVersion: resources.azure.com/v1api20200601\nkind: ResourceGroup\nmetadata:\n\
+    \  name: aso\n  namespace: azure-system\nspec:\n  azureName: aso\n  location:\
+    \ uksouth\n---\napiVersion: resources.azure.com/v1api20200601\nkind: ResourceGroup\n\
+    metadata:\n  name: platform\n  namespace: azure-system\nspec:\n  azureName: platform\n\
+    \  location: uksouth"
+  roleassignment.yaml: "apiVersion: authorization.azure.com/v1api20200801preview\n\
+    kind: RoleAssignment\nmetadata:\n  name: dns-zone-contributor-dns\n  namespace:\
+    \ azure-system\nspec:\n  # This resource can be owner by any resource. In this\
+    \ example we've chosen a resource group for simplicity\n  owner:\n    name: dns\n\
+    \    group: resources.azure.com\n    kind: ResourceGroup\n  # This is the Principal\
+    \ ID of the AAD identity to which the role will be assigned\n  principalIdFromConfig:\n\
+    \    name: external-dns-identity-cm\n    key: principalId\n  roleDefinitionReference:\n\
+    \    # This ARM ID represents \"dns zone conrtibutor\" - you can read about other\
+    \ built in roles here: https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles\n\
+    \    armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}\n\
+    ---\n\n# cert-manager-identity\napiVersion: authorization.azure.com/v1api20200801preview\n\
+    kind: RoleAssignment\nmetadata:\n  name: dns-zone-contributor-cert-manager-dns\n\
+    \  namespace: azure-system\nspec:\n  # This resource can be owner by any resource.\
+    \ In this example we've chosen a resource group for simplicity\n  owner:\n   \
+    \ name: dns\n    group: resources.azure.com\n    kind: ResourceGroup\n  # This\
+    \ is the Principal ID of the AAD identity to which the role will be assigned\n\
+    \  principalIdFromConfig:\n    name: cert-manager-identity-cm\n    key: principalId\n\
+    \  roleDefinitionReference:\n    # This ARM ID represents \"dns zone conrtibutor\"\
+    \ - you can read about other built in roles here: https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles\n\
+    \    armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}\n\
+    # ---\n# apiVersion: subscription.azure.com/v1api20211001\n# kind: Alias\n# metadata:\n\
+    #   name: mysubscription\n#   namespace: default\n# spec:\n#   # Creating an Alias\
+    \ creates a subscription. Deleting an Alias cancels that subscription.\n#   #\
+    \ Be sure you're ready to cancel the subscription before you delete the Alias.\
+    \ If you don't want to\n#   # cancel the subscription but you want to delete the\
+    \ Alias through ASO, use\n#   # https://azure.github.io/azure-service-operator/guide/annotations/#serviceoperatorazurecomreconcile-policy\n\
+    #   # RoleAssignments and other extension resources can be assigned to the Alias\
+    \ and apply to the actual subscription.\n#   properties:\n#     displayName: \"\
+    ASO Demo Subscription\"\n#     workload: Production\n#     billingScope: /providers/Microsoft.Billing/billingAccounts/{{AZURE_SUBSCRIPTION_ID}}:00000000-0000-0000-0000-000000000000_2019-05-31/billingProfiles/0000-0000-000-000/invoiceSections/0000-0000-000-000\n\
+    #     # additionalProperties:\n#     #   subscriptionId can be set to adopt an\
+    \ existing subscription by creating a new Alias to it\n#     #   subscriptionId:\
+    \ {{AZURE_SUBSCRIPTION_ID}}\n# ---\n# # Add this before your RoleAssignment\n\
+    # apiVersion: subscription.azure.com/v1api20211001\n# kind: Alias\n# metadata:\n\
+    #   name: current-subscription\n#   namespace: azure-system\n# spec:\n#   subscriptionId:\
+    \ \"{{AZURE_SUBSCRIPTION_ID}}\"\n---\napiVersion: authorization.azure.com/v1api20200801preview\n\
+    kind: RoleAssignment\nmetadata:\n  name: aso-subscription-contributor\n  namespace:\
+    \ azure-system\nspec:\n  # # ASO needs permissions at subscription level to manage\
+    \ all Azure resources\n  # owner:\n  #   name: current-subscription\n  #   group:\
+    \ resources.azure.com\n  #   kind: Subscription\n  owner:\n    name: aso\n   \
+    \ group: resources.azure.com\n    kind: ResourceGroup\n  # This is the Principal\
+    \ ID of the ASO workload identity\n  principalIdFromConfig:\n    name: aso-identity-cm\n\
+    \    key: principalId\n  principalType: ServicePrincipal\n  roleDefinitionReference:\n\
+    \    # This ARM ID represents \"Contributor\" role - required for ASO to manage\
+    \ Azure resources\n    armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}\n\
+    ---\napiVersion: authorization.azure.com/v1api20200801preview\nkind: RoleAssignment\n\
+    metadata:\n  name: aso-user-access-administrator\n  namespace: azure-system\n\
+    spec:\n  # ASO needs User Access Administrator to manage role assignments\n  owner:\n\
+    \    name: dev01-weu-dev-prod\n    group: resources.azure.com\n    kind: ResourceGroup\n\
+    \  principalIdFromConfig:\n    name: aso-identity-cm\n    key: principalId\n \
+    \ principalType: ServicePrincipal\n  roleDefinitionReference:\n    # This ARM\
+    \ ID represents \"User Access Administrator\" - required for ASO to manage RBAC\n\
+    \    armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}\n\
+    ---\napiVersion: authorization.azure.com/v1api20200801preview\nkind: RoleAssignment\n\
+    metadata:\n  name: platform-api-cluster-admin\n  namespace: azure-system\nspec:\n\
+    \  # AKS cluster needs permissions to manage RBAC for Platform API\n  owner:\n\
+    \    name: dev01-weu-dev-prod\n    group: resources.azure.com\n    kind: ResourceGroup\n\
+    \  # This is the Principal ID of the Platform API managed identity\n  principalIdFromConfig:\n\
+    \    name: platform-api-identity-cm\n    key: principalId\n  principalType: ServicePrincipal\n\
+    \  roleDefinitionReference:\n    # This ARM ID represents \"Azure Kubernetes Service\
+    \ RBAC Cluster Admin\" role\n    armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}\n\
+    ---\napiVersion: authorization.azure.com/v1api20200801preview\nkind: RoleAssignment\n\
+    metadata:\n  name: eso-subscription-contributor\n  namespace: azure-system\nspec:\n\
+    \  # ASO needs permissions at subscription level to manage all Azure resources\n\
+    \  owner:\n    name: dev01-weu-dev-prod\n    group: resources.azure.com\n  \
+    \  kind: ResourceGroup\n  # This is the Principal ID of the ASO workload identity\n\
+    \  principalIdFromConfig:\n    name: eso-identity-cm\n    key: principalId\n \
+    \ principalType: ServicePrincipal\n  roleDefinitionReference:\n    # This ARM\
+    \ ID represents \"KV Contributor\" role - required for ASO to manage Azure resources\n\
+    \    armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/providers/Microsoft.Authorization/roleDefinitions/{{AZURE_SUBSCRIPTION_ID}}"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: aso-stack-manifests
+  namespace: argo
+  labels:
+    app.kubernetes.io/name: aso-stack-manifests
+    app.kubernetes.io/component: workflow-data

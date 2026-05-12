@@ -1,0 +1,94 @@
+# App Onboarding Sensor
+# Filters on required payload fields and triggers the app-onboarding-template WorkflowTemplate.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: app-onboarding-sensor
+  namespace: argo-events
+  labels:
+    app: app-onboarding
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+    container:
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+
+  dependencies:
+    - name: app-onboarding-dep
+      eventSourceName: namespace-onboarding-webhook
+      eventName: app-onboarding
+      filters:
+        data:
+          # Required: metadata fields
+          - path: body.metadata.name
+            type: string
+            value:
+              - "*"
+          - path: body.metadata.swc
+            type: string
+            value:
+              - "*"
+          - path: body.metadata.environment
+            type: string
+            value:
+              - "DEV"
+              - "STAGING"
+              - "PROD"
+          # Required: namespace
+          - path: body.namespace.name
+            type: string
+            value:
+              - "*"
+
+  triggers:
+    - template:
+        name: app-onboarding-trigger
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: app-onboarding-
+                namespace: argo
+                labels:
+                  app: app-onboarding
+                  onboarding-type: "application"
+                  environment: ""
+                  swc: ""
+              spec:
+                entrypoint: main
+                serviceAccountName: app-onboarding-sa
+                workflowTemplateRef:
+                  name: app-onboarding-template
+                arguments:
+                  parameters:
+                    - name: payload
+                      value: ""
+          parameters:
+            # Full payload → workflow parameter
+            - src:
+                dependencyName: app-onboarding-dep
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+            # Labels for filtering/querying
+            - src:
+                dependencyName: app-onboarding-dep
+                dataKey: body.metadata.environment
+              dest: metadata.labels.environment
+            - src:
+                dependencyName: app-onboarding-dep
+                dataKey: body.metadata.swc
+              dest: metadata.labels.swc
+
+  errorOnFailedRound: true
+  eventBusName: default
+  replicas: 1

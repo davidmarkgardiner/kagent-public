@@ -1,0 +1,79 @@
+# Subscriber 1 — AI triage (us)
+#
+# Listens on the Hub's NATS EventBus, filters for `status: firing` alerts of
+# severity critical/warning, rate-limits to 5/min (matches the existing
+# alertmanager-triage-sensor convention), and creates an instance of the
+# webhook-hub-ai-triage WorkflowTemplate (06-...).
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook-hub-ai-triage-sensor
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+    hub-subscriber: ai-triage
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+    container:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
+  dependencies:
+    - name: hub-alert
+      eventSourceName: webhook-hub
+      eventName: inbound
+      filters:
+        data:
+          # Only alerts that are actually firing (drops resolved/silenced)
+          - path: body.status
+            type: string
+            value:
+              - "firing"
+          # Severity must be one of the two we care about
+          - path: body.alerts.0.labels.severity
+            type: string
+            value:
+              - "critical"
+              - "warning"
+
+  triggers:
+    - template:
+        name: trigger-ai-triage
+        conditions: "hub-alert"
+        rateLimit:
+          requestsPerUnit: 5
+          unit: Minute
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: webhook-hub-ai-triage-
+                namespace: argo-events
+                labels:
+                  app.kubernetes.io/part-of: webhook-hub
+                  hub-subscriber: ai-triage
+                  event-type: hub-alert
+              spec:
+                workflowTemplateRef:
+                  name: webhook-hub-ai-triage
+                arguments:
+                  parameters:
+                    - name: alert-payload
+          parameters:
+            - src:
+                dependencyName: hub-alert
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      retryStrategy:
+        steps: 3
+        duration: 10s

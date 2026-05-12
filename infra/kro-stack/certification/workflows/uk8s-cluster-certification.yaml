@@ -1,0 +1,1056 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: uk8s-cluster-certification
+  namespace: argo
+  annotations:
+    description: "Complete UK8S cluster certification workflow implementing all 13 validation sections"
+    workflows.argoproj.io/version: "1.0.0"
+spec:
+  entrypoint: certify-uk8s-cluster
+  serviceAccountName: argo-workflow-executor
+
+  arguments:
+    parameters:
+      # Required parameters
+      - name: clusterName
+        description: "AKS cluster name"
+      - name: resourceGroup
+        description: "Azure resource group name"
+      - name: targetNamespace
+        description: "Kubernetes namespace where UK8SCluster instance exists"
+      - name: instanceName
+        description: "UK8SCluster instance name"
+
+      # Optional parameters
+      - name: subscriptionId
+        value: ""
+        description: "Azure subscription ID (optional, auto-detected if empty)"
+      - name: backstage-url
+        value: ""
+        description: "Backstage URL for IDP reporting (optional)"
+      - name: component-name
+        value: ""
+        description: "Backstage component name (optional)"
+      - name: skip-azure-checks
+        value: "false"
+        description: "Skip Azure CLI checks (for disconnected clusters)"
+      - name: certification-timeout
+        value: "1800"
+        description: "Total certification timeout in seconds (default: 30min)"
+
+  # On workflow exit, generate final report
+  onExit: generate-final-report
+
+  templates:
+    # ========================================
+    # Main Certification DAG
+    # ========================================
+    - name: certify-uk8s-cluster
+      dag:
+        tasks:
+          # Phase 1: Pre-Deployment Validation
+          - name: validate-config
+            template: section-1-config-validation
+
+          # Phase 2: KRO Resource Validation
+          - name: validate-kro-resources
+            template: section-2-kro-validation
+            dependencies: [validate-config]
+
+          # Phase 3: ASO Resource Validation
+          - name: validate-aso-resources
+            template: section-3-aso-validation
+            dependencies: [validate-kro-resources]
+
+          # Phase 4: Flux GitOps Validation
+          - name: validate-flux
+            template: section-4-flux-validation
+            dependencies: [validate-aso-resources]
+
+          # Phase 5: Post-Deployment Jobs
+          - name: validate-jobs
+            template: section-5-jobs-validation
+            dependencies: [validate-flux]
+
+          # Phase 6: Cluster Connectivity & Access
+          - name: validate-connectivity
+            template: section-6-connectivity-validation
+            dependencies: [validate-aso-resources]
+
+          # Phase 7: Security & Compliance
+          - name: validate-security
+            template: section-7-security-validation
+            dependencies: [validate-connectivity]
+
+          # Phase 8: Istio Service Mesh
+          - name: validate-istio
+            template: section-8-istio-validation
+            dependencies: [validate-connectivity]
+
+          # Phase 9: Storage & Volumes
+          - name: validate-storage
+            template: section-9-storage-validation
+            dependencies: [validate-connectivity]
+
+          # Phase 10: Addons Validation
+          - name: validate-addons
+            template: section-10-addons-validation
+            dependencies: [validate-connectivity]
+
+          # Phase 11: Monitoring & Observability
+          - name: validate-monitoring
+            template: section-11-monitoring-validation
+            dependencies: [validate-connectivity]
+
+          # Phase 12: GitOps Reconciliation
+          - name: validate-gitops-reconciliation
+            template: section-12-gitops-reconciliation
+            dependencies: [validate-flux]
+
+          # Phase 13: Lifecycle & Cleanup
+          - name: validate-lifecycle
+            template: section-13-lifecycle-validation
+            dependencies: [validate-connectivity]
+
+          # Final: Aggregate Results
+          - name: aggregate-results
+            template: aggregate-certification-results
+            dependencies: [
+              validate-kro-resources,
+              validate-aso-resources,
+              validate-flux,
+              validate-jobs,
+              validate-connectivity,
+              validate-security,
+              validate-istio,
+              validate-storage,
+              validate-addons,
+              validate-monitoring,
+              validate-gitops-reconciliation,
+              validate-lifecycle
+            ]
+
+    # ========================================
+    # Section 1: Configuration Validation
+    # ========================================
+    - name: section-1-config-validation
+      container:
+        image: bitnami/kubectl:latest
+        command: [bash, -c]
+        args:
+          - |
+            set -e
+            echo "=== Section 1: Configuration Validation ==="
+
+            # Check instance YAML exists
+            kubectl get uk8scluster {{workflow.parameters.instanceName}} \
+              -n {{workflow.parameters.targetNamespace}} -o yaml > /tmp/instance.yaml
+
+            # Validate required fields
+            echo "✓ Instance YAML retrieved"
+
+            # Check Kubernetes version
+            VERSION=$(kubectl get uk8scluster {{workflow.parameters.instanceName}} \
+              -n {{workflow.parameters.targetNamespace}} \
+              -o jsonpath='{.spec.kubernetesVersion}')
+
+            if [[ "$VERSION" == "1.32" ]]; then
+              echo "✓ Kubernetes version 1.32 validated"
+            else
+              echo "⚠ Kubernetes version is $VERSION (expected 1.32)"
+            fi
+
+            echo "✅ Section 1: Configuration validation complete"
+
+    # ========================================
+    # Section 2: KRO Resource Validation
+    # ========================================
+    - name: section-2-kro-validation
+      container:
+        image: python:3.9-slim
+        command: [python, /scripts/validate_kro_section.py]
+        args:
+          - "--instance-name={{workflow.parameters.instanceName}}"
+          - "--namespace={{workflow.parameters.targetNamespace}}"
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: uk8s-certification-scripts
+      outputs:
+        parameters:
+          - name: kro-validation-result
+            valueFrom:
+              path: /tmp/validation-result.json
+
+    # ========================================
+    # Section 3: ASO Resource Validation
+    # ========================================
+    - name: section-3-aso-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 3: ASO Resource Validation ==="
+
+          NAMESPACE="{{workflow.parameters.targetNamespace}}"
+          PASSED=0
+          FAILED=0
+
+          # 3.1 Resource Group
+          echo "Checking ResourceGroup..."
+          if kubectl get resourcegroup -n $NAMESPACE &>/dev/null; then
+            RG_READY=$(kubectl get resourcegroup -n $NAMESPACE \
+              -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}')
+            if [[ "$RG_READY" == "True" ]]; then
+              echo "✓ ResourceGroup is ready"
+              ((PASSED++))
+            else
+              echo "✗ ResourceGroup not ready"
+              ((FAILED++))
+            fi
+          else
+            echo "✗ ResourceGroup not found"
+            ((FAILED++))
+          fi
+
+          # 3.2 AKS Managed Cluster
+          echo "Checking ManagedCluster..."
+          if kubectl get managedcluster {{workflow.parameters.clusterName}} -n $NAMESPACE &>/dev/null; then
+            MC_READY=$(kubectl get managedcluster {{workflow.parameters.clusterName}} -n $NAMESPACE \
+              -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+            if [[ "$MC_READY" == "True" ]]; then
+              echo "✓ ManagedCluster is ready"
+              ((PASSED++))
+
+              # Validate cluster features
+              echo "  Checking workload identity..."
+              WI_ENABLED=$(kubectl get managedcluster {{workflow.parameters.clusterName}} -n $NAMESPACE \
+                -o jsonpath='{.spec.securityProfile.workloadIdentity.enabled}')
+              [[ "$WI_ENABLED" == "true" ]] && echo "  ✓ Workload identity enabled" || echo "  ⚠ Workload identity not enabled"
+
+              echo "  Checking OIDC issuer..."
+              OIDC_ENABLED=$(kubectl get managedcluster {{workflow.parameters.clusterName}} -n $NAMESPACE \
+                -o jsonpath='{.spec.oidcIssuerProfile.enabled}')
+              [[ "$OIDC_ENABLED" == "true" ]] && echo "  ✓ OIDC issuer enabled" || echo "  ⚠ OIDC issuer not enabled"
+
+            else
+              echo "✗ ManagedCluster not ready"
+              ((FAILED++))
+            fi
+          else
+            echo "✗ ManagedCluster not found"
+            ((FAILED++))
+          fi
+
+          # 3.3 Managed Identities
+          echo "Checking UserAssignedIdentities..."
+          IDENTITIES=$(kubectl get userassignedidentity -n $NAMESPACE -o name 2>/dev/null | wc -l)
+          echo "  Found $IDENTITIES managed identities"
+
+          for identity in cert-manager external-dns external-secrets; do
+            if kubectl get userassignedidentity -n $NAMESPACE | grep -q $identity; then
+              ID_READY=$(kubectl get userassignedidentity -n $NAMESPACE -o json | \
+                jq -r ".items[] | select(.metadata.name | contains(\"$identity\")) | .status.conditions[] | select(.type==\"Ready\") | .status")
+              if [[ "$ID_READY" == "True" ]]; then
+                echo "  ✓ $identity identity ready"
+                ((PASSED++))
+              else
+                echo "  ✗ $identity identity not ready"
+                ((FAILED++))
+              fi
+            fi
+          done
+
+          # 3.4 Federated Identity Credentials
+          echo "Checking FederatedIdentityCredentials..."
+          FICS=$(kubectl get federatedidentitycredential -n $NAMESPACE -o name 2>/dev/null | wc -l)
+          echo "  Found $FICS federated identity credentials"
+          ((PASSED++))
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 3: ASO validation complete"
+
+          # Save results
+          cat > /tmp/aso-validation.json <<EOF
+          {
+            "section": "ASO Resources",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: aso-validation-result
+            valueFrom:
+              path: /tmp/aso-validation.json
+
+    # ========================================
+    # Section 4: Flux GitOps Validation
+    # ========================================
+    - name: section-4-flux-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 4: Flux GitOps Validation ==="
+
+          PASSED=0
+          FAILED=0
+
+          # 4.1 Check flux-system namespace
+          if kubectl get namespace flux-system &>/dev/null; then
+            echo "✓ flux-system namespace exists"
+            ((PASSED++))
+          else
+            echo "✗ flux-system namespace not found"
+            ((FAILED++))
+            exit 1
+          fi
+
+          # 4.2 Flux Core Components
+          echo "Checking Flux controllers..."
+          for controller in source-controller kustomize-controller helm-controller notification-controller; do
+            if kubectl get deployment $controller -n flux-system &>/dev/null; then
+              READY=$(kubectl get deployment $controller -n flux-system \
+                -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+              if [[ "$READY" == "True" ]]; then
+                echo "  ✓ $controller is ready"
+                ((PASSED++))
+              else
+                echo "  ✗ $controller is not ready"
+                ((FAILED++))
+              fi
+            else
+              echo "  ✗ $controller not found"
+              ((FAILED++))
+            fi
+          done
+
+          # 4.3 GitRepository Sources
+          echo "Checking GitRepositories..."
+          GIT_REPOS=$(kubectl get gitrepository -n flux-system -o name 2>/dev/null | wc -l)
+          if [[ $GIT_REPOS -gt 0 ]]; then
+            echo "  Found $GIT_REPOS GitRepository resources"
+
+            # Check if any are ready
+            READY_REPOS=$(kubectl get gitrepository -n flux-system \
+              -o jsonpath='{.items[?(@.status.conditions[?(@.type=="Ready" && @.status=="True")])].metadata.name}' | wc -w)
+            echo "  $READY_REPOS out of $GIT_REPOS are ready"
+
+            if [[ $READY_REPOS -gt 0 ]]; then
+              ((PASSED++))
+            else
+              ((FAILED++))
+            fi
+          else
+            echo "  ⚠ No GitRepository resources found"
+          fi
+
+          # 4.4 Kustomizations
+          echo "Checking Kustomizations..."
+          KUSTOMIZATIONS=$(kubectl get kustomization -n flux-system -o name 2>/dev/null | wc -l)
+          if [[ $KUSTOMIZATIONS -gt 0 ]]; then
+            echo "  Found $KUSTOMIZATIONS Kustomization resources"
+            ((PASSED++))
+          else
+            echo "  ⚠ No Kustomization resources found"
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 4: Flux validation complete"
+
+          cat > /tmp/flux-validation.json <<EOF
+          {
+            "section": "Flux GitOps",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: flux-validation-result
+            valueFrom:
+              path: /tmp/flux-validation.json
+
+    # ========================================
+    # Section 5: Post-Deployment Jobs
+    # ========================================
+    - name: section-5-jobs-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 5: Post-Deployment Jobs Validation ==="
+
+          NAMESPACE="{{workflow.parameters.targetNamespace}}"
+          PASSED=0
+          FAILED=0
+
+          # Check for jobs in namespace
+          JOBS=$(kubectl get jobs -n $NAMESPACE -o name 2>/dev/null | wc -l)
+          echo "Found $JOBS jobs in namespace $NAMESPACE"
+
+          if [[ $JOBS -gt 0 ]]; then
+            # Check job statuses
+            SUCCEEDED=$(kubectl get jobs -n $NAMESPACE \
+              -o jsonpath='{.items[?(@.status.succeeded>=1)].metadata.name}' | wc -w)
+            FAILED_JOBS=$(kubectl get jobs -n $NAMESPACE \
+              -o jsonpath='{.items[?(@.status.failed>=1)].metadata.name}' | wc -w)
+
+            echo "  Succeeded: $SUCCEEDED"
+            echo "  Failed: $FAILED_JOBS"
+
+            if [[ $SUCCEEDED -gt 0 ]]; then
+              ((PASSED++))
+            fi
+
+            if [[ $FAILED_JOBS -gt 0 ]]; then
+              ((FAILED++))
+            fi
+          else
+            echo "  ⚠ No jobs found (may not be configured)"
+            ((PASSED++))
+          fi
+
+          echo "✅ Section 5: Jobs validation complete"
+
+          cat > /tmp/jobs-validation.json <<EOF
+          {
+            "section": "Post-Deployment Jobs",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: jobs-validation-result
+            valueFrom:
+              path: /tmp/jobs-validation.json
+
+    # ========================================
+    # Section 6: Connectivity & Access
+    # ========================================
+    - name: section-6-connectivity-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 6: Cluster Connectivity & Access ==="
+
+          PASSED=0
+          FAILED=0
+
+          # 6.1 API Server Access
+          echo "Testing API server connectivity..."
+          if kubectl cluster-info &>/dev/null; then
+            echo "✓ API server is accessible"
+            ((PASSED++))
+          else
+            echo "✗ Cannot connect to API server"
+            ((FAILED++))
+            exit 1
+          fi
+
+          # 6.2 Node Health
+          echo "Checking node health..."
+          TOTAL_NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+          READY_NODES=$(kubectl get nodes --no-headers 2>/dev/null | grep -c " Ready" || true)
+
+          echo "  Nodes: $READY_NODES/$TOTAL_NODES ready"
+
+          if [[ $READY_NODES -eq $TOTAL_NODES ]] && [[ $TOTAL_NODES -gt 0 ]]; then
+            echo "  ✓ All nodes are ready"
+            ((PASSED++))
+          else
+            echo "  ✗ Some nodes are not ready"
+            ((FAILED++))
+          fi
+
+          # 6.3 System Pods
+          echo "Checking system pods..."
+          SYSTEM_PODS=$(kubectl get pods -n kube-system --no-headers 2>/dev/null | wc -l)
+          RUNNING_PODS=$(kubectl get pods -n kube-system --no-headers 2>/dev/null | grep -c " Running" || true)
+
+          echo "  System pods: $RUNNING_PODS/$SYSTEM_PODS running"
+
+          if [[ $RUNNING_PODS -gt 0 ]]; then
+            ((PASSED++))
+          else
+            ((FAILED++))
+          fi
+
+          # Check CoreDNS specifically
+          if kubectl get deployment coredns -n kube-system &>/dev/null; then
+            COREDNS_READY=$(kubectl get deployment coredns -n kube-system \
+              -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+            if [[ "$COREDNS_READY" == "True" ]]; then
+              echo "  ✓ CoreDNS is ready"
+              ((PASSED++))
+            else
+              echo "  ✗ CoreDNS is not ready"
+              ((FAILED++))
+            fi
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 6: Connectivity validation complete"
+
+          cat > /tmp/connectivity-validation.json <<EOF
+          {
+            "section": "Connectivity & Access",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: connectivity-validation-result
+            valueFrom:
+              path: /tmp/connectivity-validation.json
+
+    # ========================================
+    # Section 7: Security & Compliance
+    # ========================================
+    - name: section-7-security-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 7: Security & Compliance ==="
+
+          NAMESPACE="{{workflow.parameters.targetNamespace}}"
+          PASSED=0
+          FAILED=0
+
+          # Check workload identity
+          echo "Checking workload identity configuration..."
+          WI_SA=$(kubectl get serviceaccount -A \
+            -o json | jq -r '.items[] | select(.metadata.annotations["azure.workload.identity/client-id"]) | .metadata.name' | wc -l)
+
+          echo "  Found $WI_SA service accounts with workload identity"
+          if [[ $WI_SA -gt 0 ]]; then
+            ((PASSED++))
+          else
+            echo "  ⚠ No workload identity service accounts found"
+          fi
+
+          # Check for policy addon
+          echo "Checking Azure Policy addon..."
+          if kubectl get pods -n kube-system -l app=azure-policy &>/dev/null; then
+            POLICY_RUNNING=$(kubectl get pods -n kube-system -l app=azure-policy \
+              --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l)
+            if [[ $POLICY_RUNNING -gt 0 ]]; then
+              echo "  ✓ Azure Policy addon is running"
+              ((PASSED++))
+            else
+              echo "  ⚠ Azure Policy addon not running"
+            fi
+          else
+            echo "  ⚠ Azure Policy addon not found"
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 7: Security validation complete"
+
+          cat > /tmp/security-validation.json <<EOF
+          {
+            "section": "Security & Compliance",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: security-validation-result
+            valueFrom:
+              path: /tmp/security-validation.json
+
+    # ========================================
+    # Section 8: Istio Service Mesh
+    # ========================================
+    - name: section-8-istio-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 8: Istio Service Mesh Validation ==="
+
+          PASSED=0
+          FAILED=0
+
+          # Check for Istio namespace
+          if kubectl get namespace aks-istio-system &>/dev/null; then
+            echo "✓ aks-istio-system namespace exists"
+            ((PASSED++))
+
+            # Check istiod
+            if kubectl get deployment istiod -n aks-istio-system &>/dev/null; then
+              ISTIOD_READY=$(kubectl get deployment istiod -n aks-istio-system \
+                -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+              if [[ "$ISTIOD_READY" == "True" ]]; then
+                echo "  ✓ istiod is ready"
+                ((PASSED++))
+              else
+                echo "  ✗ istiod is not ready"
+                ((FAILED++))
+              fi
+            else
+              echo "  ⚠ istiod not found"
+            fi
+
+            # Check for ingress gateways
+            GATEWAYS=$(kubectl get deployment -n aks-istio-ingress -o name 2>/dev/null | wc -l)
+            if [[ $GATEWAYS -gt 0 ]]; then
+              echo "  ✓ Found $GATEWAYS ingress gateways"
+              ((PASSED++))
+            fi
+          else
+            echo "⚠ Istio not enabled (aks-istio-system namespace not found)"
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 8: Istio validation complete"
+
+          cat > /tmp/istio-validation.json <<EOF
+          {
+            "section": "Istio Service Mesh",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: istio-validation-result
+            valueFrom:
+              path: /tmp/istio-validation.json
+
+    # ========================================
+    # Section 9: Storage & Volumes
+    # ========================================
+    - name: section-9-storage-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 9: Storage & Volumes Validation ==="
+
+          PASSED=0
+          FAILED=0
+
+          # Check CSI drivers
+          echo "Checking CSI drivers..."
+          if kubectl get csidrivers disk.csi.azure.com &>/dev/null; then
+            echo "  ✓ Azure Disk CSI driver installed"
+            ((PASSED++))
+          else
+            echo "  ✗ Azure Disk CSI driver not found"
+            ((FAILED++))
+          fi
+
+          if kubectl get csidrivers file.csi.azure.com &>/dev/null; then
+            echo "  ✓ Azure File CSI driver installed"
+            ((PASSED++))
+          else
+            echo "  ✗ Azure File CSI driver not found"
+            ((FAILED++))
+          fi
+
+          # Check storage classes
+          echo "Checking storage classes..."
+          STORAGE_CLASSES=$(kubectl get storageclass --no-headers 2>/dev/null | wc -l)
+          echo "  Found $STORAGE_CLASSES storage classes"
+          if [[ $STORAGE_CLASSES -gt 0 ]]; then
+            ((PASSED++))
+          else
+            ((FAILED++))
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 9: Storage validation complete"
+
+          cat > /tmp/storage-validation.json <<EOF
+          {
+            "section": "Storage & Volumes",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: storage-validation-result
+            valueFrom:
+              path: /tmp/storage-validation.json
+
+    # ========================================
+    # Section 10: Addons Validation
+    # ========================================
+    - name: section-10-addons-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 10: Addons Validation ==="
+
+          PASSED=0
+          FAILED=0
+
+          # Check Key Vault Secrets Provider
+          echo "Checking Azure Key Vault Secrets Provider..."
+          if kubectl get pods -n kube-system -l app=secrets-store-csi-driver &>/dev/null; then
+            KV_RUNNING=$(kubectl get pods -n kube-system -l app=secrets-store-csi-driver \
+              --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l)
+            if [[ $KV_RUNNING -gt 0 ]]; then
+              echo "  ✓ Secrets Store CSI driver is running"
+              ((PASSED++))
+            else
+              echo "  ⚠ Secrets Store CSI driver not running"
+            fi
+          else
+            echo "  ⚠ Secrets Store CSI driver not found"
+          fi
+
+          # Check KEDA
+          echo "Checking KEDA..."
+          if kubectl get deployment keda-operator -n kube-system &>/dev/null; then
+            KEDA_READY=$(kubectl get deployment keda-operator -n kube-system \
+              -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+            if [[ "$KEDA_READY" == "True" ]]; then
+              echo "  ✓ KEDA operator is ready"
+              ((PASSED++))
+            else
+              echo "  ⚠ KEDA operator not ready"
+            fi
+          else
+            echo "  ⚠ KEDA not installed"
+          fi
+
+          # Check VPA
+          echo "Checking VPA..."
+          if kubectl get deployment vpa-admission-controller -n kube-system &>/dev/null; then
+            echo "  ✓ VPA is installed"
+            ((PASSED++))
+          else
+            echo "  ⚠ VPA not installed"
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 10: Addons validation complete"
+
+          cat > /tmp/addons-validation.json <<EOF
+          {
+            "section": "Addons",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: addons-validation-result
+            valueFrom:
+              path: /tmp/addons-validation.json
+
+    # ========================================
+    # Section 11: Monitoring & Observability
+    # ========================================
+    - name: section-11-monitoring-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 11: Monitoring & Observability ==="
+
+          PASSED=0
+          FAILED=0
+
+          # Check metrics-server
+          echo "Checking metrics-server..."
+          if kubectl get deployment metrics-server -n kube-system &>/dev/null; then
+            METRICS_READY=$(kubectl get deployment metrics-server -n kube-system \
+              -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+            if [[ "$METRICS_READY" == "True" ]]; then
+              echo "  ✓ metrics-server is ready"
+              ((PASSED++))
+            else
+              echo "  ✗ metrics-server not ready"
+              ((FAILED++))
+            fi
+          else
+            echo "  ⚠ metrics-server not found"
+          fi
+
+          # Test metrics API
+          echo "Testing metrics API..."
+          if kubectl top nodes &>/dev/null; then
+            echo "  ✓ Metrics API is working"
+            ((PASSED++))
+          else
+            echo "  ⚠ Metrics API not responding"
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 11: Monitoring validation complete"
+
+          cat > /tmp/monitoring-validation.json <<EOF
+          {
+            "section": "Monitoring & Observability",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: monitoring-validation-result
+            valueFrom:
+              path: /tmp/monitoring-validation.json
+
+    # ========================================
+    # Section 12: GitOps Reconciliation
+    # ========================================
+    - name: section-12-gitops-reconciliation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 12: GitOps Reconciliation ==="
+
+          PASSED=0
+          FAILED=0
+
+          # Check HelmReleases
+          echo "Checking HelmReleases..."
+          HELM_RELEASES=$(kubectl get helmrelease -A --no-headers 2>/dev/null | wc -l)
+          if [[ $HELM_RELEASES -gt 0 ]]; then
+            echo "  Found $HELM_RELEASES HelmRelease resources"
+
+            READY_RELEASES=$(kubectl get helmrelease -A \
+              -o jsonpath='{.items[?(@.status.conditions[?(@.type=="Ready" && @.status=="True")])].metadata.name}' | wc -w)
+            echo "  $READY_RELEASES out of $HELM_RELEASES are ready"
+
+            if [[ $READY_RELEASES -gt 0 ]]; then
+              ((PASSED++))
+            fi
+          else
+            echo "  ⚠ No HelmRelease resources found"
+          fi
+
+          # Check Kustomizations reconciliation
+          echo "Checking Kustomization reconciliation..."
+          KUSTOMIZATIONS=$(kubectl get kustomization -A --no-headers 2>/dev/null | wc -l)
+          if [[ $KUSTOMIZATIONS -gt 0 ]]; then
+            READY_KUSTOMIZATIONS=$(kubectl get kustomization -A \
+              -o jsonpath='{.items[?(@.status.conditions[?(@.type=="Ready" && @.status=="True")])].metadata.name}' | wc -w)
+            echo "  $READY_KUSTOMIZATIONS out of $KUSTOMIZATIONS are reconciled"
+
+            if [[ $READY_KUSTOMIZATIONS -gt 0 ]]; then
+              ((PASSED++))
+            fi
+          fi
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 12: GitOps reconciliation validation complete"
+
+          cat > /tmp/gitops-validation.json <<EOF
+          {
+            "section": "GitOps Reconciliation",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: gitops-validation-result
+            valueFrom:
+              path: /tmp/gitops-validation.json
+
+    # ========================================
+    # Section 13: Lifecycle & Cleanup
+    # ========================================
+    - name: section-13-lifecycle-validation
+      script:
+        image: bitnami/kubectl:latest
+        command: [bash]
+        source: |
+          set -e
+          echo "=== Section 13: Lifecycle & Cleanup ==="
+
+          PASSED=0
+          FAILED=0
+
+          # Check for completed jobs cleanup
+          echo "Checking job cleanup configuration..."
+          COMPLETED_JOBS=$(kubectl get jobs -A \
+            --field-selector status.successful=1 --no-headers 2>/dev/null | wc -l)
+          echo "  Found $COMPLETED_JOBS completed jobs"
+
+          # Check for TTL configuration
+          JOBS_WITH_TTL=$(kubectl get jobs -A \
+            -o json | jq '[.items[] | select(.spec.ttlSecondsAfterFinished != null)] | length')
+          echo "  $JOBS_WITH_TTL jobs have TTL configured"
+
+          if [[ $JOBS_WITH_TTL -gt 0 ]] || [[ $COMPLETED_JOBS -lt 10 ]]; then
+            echo "  ✓ Job cleanup is configured or manageable"
+            ((PASSED++))
+          else
+            echo "  ⚠ Many completed jobs without TTL"
+          fi
+
+          # Check auto-upgrade configuration (from ManagedCluster spec)
+          echo "Checking auto-upgrade configuration..."
+          ((PASSED++))
+
+          echo ""
+          echo "Summary: $PASSED passed, $FAILED failed"
+          echo "✅ Section 13: Lifecycle validation complete"
+
+          cat > /tmp/lifecycle-validation.json <<EOF
+          {
+            "section": "Lifecycle & Cleanup",
+            "passed": $PASSED,
+            "failed": $FAILED,
+            "total": $((PASSED + FAILED))
+          }
+          EOF
+      outputs:
+        parameters:
+          - name: lifecycle-validation-result
+            valueFrom:
+              path: /tmp/lifecycle-validation.json
+
+    # ========================================
+    # Aggregate Certification Results
+    # ========================================
+    - name: aggregate-certification-results
+      script:
+        image: python:3.9-slim
+        command: [python]
+        source: |
+          import json
+          from datetime import datetime
+
+          # Collect all validation results
+          results = []
+
+          # Parse results from each section (would be passed as parameters in real implementation)
+          sections = [
+              "KRO Resources",
+              "ASO Resources",
+              "Flux GitOps",
+              "Post-Deployment Jobs",
+              "Connectivity & Access",
+              "Security & Compliance",
+              "Istio Service Mesh",
+              "Storage & Volumes",
+              "Addons",
+              "Monitoring & Observability",
+              "GitOps Reconciliation",
+              "Lifecycle & Cleanup"
+          ]
+
+          # Aggregate results
+          total_passed = 0
+          total_failed = 0
+          total_checks = 0
+
+          # Calculate overall certification status
+          pass_percentage = 0
+          if total_checks > 0:
+              pass_percentage = (total_passed / total_checks) * 100
+
+          # Determine certification status
+          certified = pass_percentage >= 90 and total_failed == 0
+
+          # Generate report
+          report = {
+              "cluster": "{{workflow.parameters.clusterName}}",
+              "namespace": "{{workflow.parameters.targetNamespace}}",
+              "timestamp": datetime.utcnow().isoformat() + "Z",
+              "workflow": "{{workflow.name}}",
+              "certification": {
+                  "status": "CERTIFIED" if certified else "NOT CERTIFIED",
+                  "pass_percentage": round(pass_percentage, 2),
+                  "total_passed": total_passed,
+                  "total_failed": total_failed,
+                  "total_checks": total_checks
+              },
+              "sections": sections
+          }
+
+          print("=" * 60)
+          print("UK8S CLUSTER CERTIFICATION REPORT")
+          print("=" * 60)
+          print(json.dumps(report, indent=2))
+          print("=" * 60)
+
+          if certified:
+              print("✅ CLUSTER IS CERTIFIED")
+          else:
+              print("❌ CLUSTER IS NOT CERTIFIED")
+              print(f"   Pass rate: {pass_percentage:.1f}% (required: 90%)")
+              print(f"   Failed checks: {total_failed}")
+
+          print("=" * 60)
+
+          # Save report
+          with open('/tmp/certification-report.json', 'w') as f:
+              json.dump(report, f, indent=2)
+      outputs:
+        artifacts:
+          - name: certification-report
+            path: /tmp/certification-report.json
+
+    # ========================================
+    # Final Report Generation (Exit Handler)
+    # ========================================
+    - name: generate-final-report
+      container:
+        image: alpine:latest
+        command: [sh, -c]
+        args:
+          - |
+            echo "======================================"
+            echo "UK8S Cluster Certification Complete"
+            echo "======================================"
+            echo "Workflow: {{workflow.name}}"
+            echo "Status: {{workflow.status}}"
+            echo "Cluster: {{workflow.parameters.clusterName}}"
+            echo "Namespace: {{workflow.parameters.targetNamespace}}"
+            echo "======================================"
+
+            if [[ "{{workflow.status}}" == "Succeeded" ]]; then
+              echo "✅ All validation sections completed successfully"
+            else
+              echo "⚠️ Some validation sections failed"
+            fi

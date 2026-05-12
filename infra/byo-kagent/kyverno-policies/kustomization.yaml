@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - validate-agent-tool-grants.yaml
+  - mcp-dangerous-verb.yaml
+  - agent-tenant-defaults.yaml
+  - protect-catalog-status.yaml
+  - validate-agent-cluster-target.yaml

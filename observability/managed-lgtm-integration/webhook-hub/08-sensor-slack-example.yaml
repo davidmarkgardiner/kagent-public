@@ -1,0 +1,117 @@
+# Subscriber 2 — example "team-x" subscriber routing only their alerts to Slack
+#
+# Demonstrates the fan-out story: same Hub ingress, different label filter,
+# different action. New tenant teams copy this file, change the team label
+# match and the trigger destination, apply.
+#
+# This example uses Argo Events' built-in `slack` trigger (no Workflow needed)
+# to show the lightweight path. For richer actions (kagent, GitLab issue, etc.)
+# use a Workflow trigger like 07-sensor-ai-triage.yaml.
+#
+# Prereq: ConfigMap `slack-webhook-config-team-x` in argo-events with key
+# `WEBHOOK_URL` containing the Slack incoming webhook URL.
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook-hub-team-x-slack-sensor
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: webhook-hub
+    hub-subscriber: team-x
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+
+  dependencies:
+    - name: hub-alert
+      eventSourceName: webhook-hub
+      eventName: inbound
+      filters:
+        data:
+          - path: body.status
+            type: string
+            value:
+              - "firing"
+          # Only team-x alerts — team-y / team-z drop here
+          - path: body.commonLabels.team
+            type: string
+            value:
+              - "team-x"
+
+  triggers:
+    - template:
+        name: trigger-slack
+        conditions: "hub-alert"
+        rateLimit:
+          requestsPerUnit: 10
+          unit: Minute
+        # Inline Workflow that posts to Slack — keeps this example consistent
+        # with the Mattermost path in 06-...; swap `WEBHOOK_URL` ConfigMap
+        # to your channel's incoming webhook.
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: webhook-hub-team-x-slack-
+                namespace: argo-events
+                labels:
+                  app.kubernetes.io/part-of: webhook-hub
+                  hub-subscriber: team-x
+                  event-type: hub-alert
+              spec:
+                serviceAccountName: argo-events-sa
+                entrypoint: post
+                arguments:
+                  parameters:
+                    - name: alert-payload
+                templates:
+                  - name: post
+                    inputs:
+                      parameters:
+                        - name: alert-payload
+                    script:
+                      image: badouralix/curl-jq:alpine
+                      command: [sh]
+                      source: |
+                        set -eu
+                        PAYLOAD='{{inputs.parameters.alert-payload}}'
+                        WEBHOOK=$(cat /etc/slack-config/WEBHOOK_URL)
+
+                        BODY=$(echo "$PAYLOAD" | jq '{
+                          text: ("*[team-x]* :fire: " + (.alerts[0].labels.alertname // "unknown")),
+                          attachments: [
+                            (.alerts[] | {
+                              color: (if (.labels.severity == "critical") then "#e74c3c"
+                                      elif (.labels.severity == "warning")  then "#e67e22"
+                                      else "#95a5a6" end),
+                              fields: [
+                                {short:true, title:"severity",  value:(.labels.severity // "info")},
+                                {short:true, title:"namespace", value:(.labels.namespace // "")},
+                                {short:false, title:"summary", value:(.annotations.summary // "")}
+                              ]
+                            })
+                          ]
+                        }')
+
+                        curl -sf -X POST "$WEBHOOK" \
+                          -H "Content-Type: application/json" \
+                          -d "$BODY"
+                      volumeMounts:
+                        - name: slack-config
+                          mountPath: /etc/slack-config
+                volumes:
+                  - name: slack-config
+                    configMap:
+                      name: slack-webhook-config-team-x
+          parameters:
+            - src:
+                dependencyName: hub-alert
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      retryStrategy:
+        steps: 2
+        duration: 5s

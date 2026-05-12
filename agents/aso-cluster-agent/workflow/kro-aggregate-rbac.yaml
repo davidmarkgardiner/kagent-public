@@ -1,0 +1,38 @@
+---
+# KRO aggregate ClusterRole for uk8s demo RGDs
+#
+# KRO v0.7.x uses ClusterRole aggregation — any ClusterRole with the label
+# rbac.kro.run/aggregate-to-controller: "true" is automatically merged into
+# the KRO controller's permissions. This lets us extend KRO access to new
+# CRDs without modifying the KRO installation.
+#
+# Resources: wildcards on kro.run (catches all generated CRDs) + Azure resource
+# providers + core K8s + Argo resources that KRO-managed RGDs need to create.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro:controller:uk8s-demo
+  labels:
+    rbac.kro.run/aggregate-to-controller: "true"
+rules:
+  - apiGroups: ["kro.run"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts", "configmaps", "secrets", "namespaces"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["containerservice.azure.com"]
+    resources: ["managedclusters", "managedclustersagentpools"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["resources.azure.com"]
+    resources: ["resourcegroups"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["managedidentity.azure.com"]
+    resources: ["userassignedidentities", "federatedidentitycredentials"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows", "workflowtemplates", "cronworkflows"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

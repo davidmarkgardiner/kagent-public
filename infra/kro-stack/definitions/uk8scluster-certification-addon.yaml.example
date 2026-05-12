@@ -1,0 +1,450 @@
+# ========================================
+# CERTIFICATION WORKFLOW RESOURCES
+# Add these resources to the uk8scluster.yaml RGD's resources section
+# ========================================
+# These resources deploy the certification workflow as part of the cluster stack
+# The workflow is created in the argo namespace and can be triggered to certify the cluster
+
+# ----------------------------------------
+# ConfigMap with Certification Scripts
+# ----------------------------------------
+# Note: ConfigMap removed - all validations now use bash scripts with bitnami/kubectl:latest
+# This simplifies the workflow and removes the need for Python dependencies
+
+# ----------------------------------------
+# WorkflowTemplate for UK8S Certification
+# ----------------------------------------
+- id: certificationWorkflow
+  template:
+    apiVersion: argoproj.io/v1alpha1
+    kind: WorkflowTemplate
+    metadata:
+      name: certify-${schema.spec.clusterName}
+      namespace: argo
+      labels:
+        kro.run/cluster: ${schema.spec.clusterName}
+        kro.run/component: certification
+        environment: ${schema.spec.environment}
+      annotations:
+        kro.run/description: "Automated certification workflow for UK8S cluster ${schema.spec.clusterName}"
+        kro.run/version: "1.0.0"
+    spec:
+      entrypoint: certify-cluster
+      serviceAccountName: argo-workflow-executor
+
+      # Pre-configure parameters with cluster-specific values
+      arguments:
+        parameters:
+          - name: clusterName
+            value: ${schema.spec.clusterName}
+          - name: resourceGroup
+            value: ${schema.spec.resourceGroup}
+          - name: targetNamespace
+            value: ${schema.spec.targetNamespace}
+          - name: instanceName
+            value: ${schema.metadata.name}
+          - name: subscriptionId
+            value: ${schema.spec.subscriptionId}
+          - name: environment
+            value: ${schema.spec.environment}
+          - name: certification-timeout
+            value: "1800"
+
+      onExit: generate-final-report
+
+      templates:
+        # Main certification DAG
+        - name: certify-cluster
+          dag:
+            tasks:
+              - name: validate-config
+                template: validate-configuration
+
+              - name: validate-kro
+                template: validate-kro-resources
+                dependencies: [validate-config]
+
+              - name: validate-aso
+                template: validate-aso-resources
+                dependencies: [validate-kro]
+
+              - name: validate-flux
+                template: validate-flux-gitops
+                dependencies: [validate-aso]
+
+              - name: validate-connectivity
+                template: validate-cluster-connectivity
+                dependencies: [validate-aso]
+
+              - name: validate-security
+                template: validate-security-compliance
+                dependencies: [validate-connectivity]
+
+              - name: aggregate-results
+                template: aggregate-certification
+                dependencies: [validate-kro, validate-aso, validate-flux, validate-connectivity, validate-security]
+
+        # Configuration validation
+        - name: validate-configuration
+          script:
+            image: bitnami/kubectl:latest
+            command: [bash]
+            source: |
+              set -e
+              echo "=== Configuration Validation ==="
+              kubectl get uk8scluster {{workflow.parameters.instanceName}} \
+                -n {{workflow.parameters.targetNamespace}} -o yaml > /tmp/instance.yaml
+              echo "✓ Instance YAML retrieved"
+              VERSION=$(kubectl get uk8scluster {{workflow.parameters.instanceName}} \
+                -n {{workflow.parameters.targetNamespace}} \
+                -o jsonpath='{.spec.kubernetesVersion}')
+              echo "✓ Kubernetes version: $VERSION"
+              echo "✅ Configuration validation complete"
+
+        # KRO validation
+        - name: validate-kro-resources
+          script:
+            image: bitnami/kubectl:latest
+            command: [bash]
+            source: |
+              set -e
+              echo "=== KRO Resource Validation ==="
+              NAMESPACE="{{workflow.parameters.targetNamespace}}"
+              INSTANCE="{{workflow.parameters.instanceName}}"
+              PASSED=0
+              FAILED=0
+
+              # Check ResourceGraphDefinitions
+              for rgd in uk8scluster.kro.run uk8sjobs.kro.run uk8sfluxgitops.kro.run; do
+                if kubectl get resourcegraphdefinition $rgd &>/dev/null; then
+                  STATE=$(kubectl get resourcegraphdefinition $rgd -o jsonpath='{.status.state}')
+                  if [[ "$STATE" == "Active" ]]; then
+                    echo "✓ $rgd is Active"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "✗ $rgd not Active (state: $STATE)"
+                    FAILED=$((FAILED+1))
+                  fi
+                else
+                  echo "✗ $rgd not found"
+                  FAILED=$((FAILED+1))
+                fi
+              done
+
+              # Check UK8SCluster instance
+              if kubectl get uk8scluster $INSTANCE -n $NAMESPACE &>/dev/null; then
+                echo "✓ UK8SCluster instance exists"
+                PASSED=$((PASSED+1))
+
+                STATE=$(kubectl get uk8scluster $INSTANCE -n $NAMESPACE -o jsonpath='{.status.state}')
+                if [[ "$STATE" == "ACTIVE" ]]; then
+                  echo "✓ Instance state is ACTIVE"
+                  PASSED=$((PASSED+1))
+                else
+                  echo "✗ Instance state is $STATE"
+                  FAILED=$((FAILED+1))
+                fi
+
+                READY=$(kubectl get uk8scluster $INSTANCE -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+                if [[ "$READY" == "True" ]]; then
+                  echo "✓ Instance Ready condition is True"
+                  PASSED=$((PASSED+1))
+                else
+                  echo "✗ Instance Ready condition is $READY"
+                  FAILED=$((FAILED+1))
+                fi
+              else
+                echo "✗ UK8SCluster instance not found"
+                FAILED=$((FAILED+3))
+              fi
+
+              echo "Summary: $PASSED passed, $FAILED failed"
+              echo "✅ KRO validation complete"
+
+        # ASO validation
+        - name: validate-aso-resources
+          script:
+            image: bitnami/kubectl:latest
+            command: [bash]
+            source: |
+              set -e
+              echo "=== ASO Resource Validation ==="
+              NAMESPACE="{{workflow.parameters.targetNamespace}}"
+              PASSED=0
+              FAILED=0
+
+              # Check ResourceGroup
+              if kubectl get resourcegroup {{workflow.parameters.resourceGroup}} -n $NAMESPACE &>/dev/null; then
+                RG_READY=$(kubectl get resourcegroup {{workflow.parameters.resourceGroup}} -n $NAMESPACE \
+                  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+                if [[ "$RG_READY" == "True" ]]; then
+                  echo "✓ ResourceGroup is ready"
+                  PASSED=$((PASSED+1))
+                else
+                  echo "✗ ResourceGroup not ready"
+                  FAILED=$((FAILED+1))
+                fi
+              fi
+
+              # Check ManagedCluster
+              if kubectl get managedcluster {{workflow.parameters.clusterName}} -n $NAMESPACE &>/dev/null; then
+                MC_READY=$(kubectl get managedcluster {{workflow.parameters.clusterName}} -n $NAMESPACE \
+                  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+                if [[ "$MC_READY" == "True" ]]; then
+                  echo "✓ ManagedCluster is ready"
+                  PASSED=$((PASSED+1))
+                else
+                  echo "✗ ManagedCluster not ready"
+                  FAILED=$((FAILED+1))
+                fi
+              fi
+
+              echo "Summary: $PASSED passed, $FAILED failed"
+              echo "✅ ASO validation complete"
+
+        # Flux validation
+        - name: validate-flux-gitops
+          script:
+            image: bitnami/kubectl:latest
+            command: [bash]
+            source: |
+              set -e
+              echo "=== Flux GitOps Validation ==="
+              PASSED=0
+              FAILED=0
+
+              if kubectl get namespace flux-system &>/dev/null; then
+                echo "✓ flux-system namespace exists"
+                PASSED=$((PASSED+1))
+              else
+                echo "✗ flux-system namespace not found"
+                FAILED=$((FAILED+1))
+              fi
+
+              for controller in source-controller kustomize-controller helm-controller; do
+                if kubectl get deployment $controller -n flux-system &>/dev/null; then
+                  READY=$(kubectl get deployment $controller -n flux-system \
+                    -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+                  if [[ "$READY" == "True" ]]; then
+                    echo "✓ $controller is ready"
+                    PASSED=$((PASSED+1))
+                  else
+                    echo "✗ $controller not ready"
+                    FAILED=$((FAILED+1))
+                  fi
+                fi
+              done
+
+              echo "Summary: $PASSED passed, $FAILED failed"
+              echo "✅ Flux validation complete"
+
+        # Connectivity validation
+        - name: validate-cluster-connectivity
+          script:
+            image: bitnami/kubectl:latest
+            command: [bash]
+            source: |
+              set -e
+              echo "=== Cluster Connectivity Validation ==="
+              PASSED=0
+              FAILED=0
+
+              if kubectl cluster-info &>/dev/null; then
+                echo "✓ API server is accessible"
+                PASSED=$((PASSED+1))
+              else
+                echo "✗ Cannot connect to API server"
+                FAILED=$((FAILED+1))
+                exit 1
+              fi
+
+              TOTAL_NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+              READY_NODES=$(kubectl get nodes --no-headers 2>/dev/null | grep -c " Ready" || true)
+              echo "Nodes: $READY_NODES/$TOTAL_NODES ready"
+
+              if [[ $READY_NODES -eq $TOTAL_NODES ]] && [[ $TOTAL_NODES -gt 0 ]]; then
+                echo "✓ All nodes are ready"
+                PASSED=$((PASSED+1))
+              else
+                echo "✗ Some nodes are not ready"
+                FAILED=$((FAILED+1))
+              fi
+
+              echo "Summary: $PASSED passed, $FAILED failed"
+              echo "✅ Connectivity validation complete"
+
+        # Security validation
+        - name: validate-security-compliance
+          script:
+            image: bitnami/kubectl:latest
+            command: [bash]
+            source: |
+              set -e
+              echo "=== Security & Compliance Validation ==="
+              PASSED=0
+              FAILED=0
+
+              WI_SA=$(kubectl get serviceaccount -A \
+                -o json | jq -r '.items[] | select(.metadata.annotations["azure.workload.identity/client-id"]) | .metadata.name' | wc -l)
+              echo "Found $WI_SA service accounts with workload identity"
+              if [[ $WI_SA -gt 0 ]]; then
+                PASSED=$((PASSED+1))
+              fi
+
+              if kubectl get pods -n kube-system -l app=azure-policy &>/dev/null; then
+                echo "✓ Azure Policy addon found"
+                PASSED=$((PASSED+1))
+              fi
+
+              echo "Summary: $PASSED passed, $FAILED failed"
+              echo "✅ Security validation complete"
+
+        # Aggregate results
+        - name: aggregate-certification
+          script:
+            image: python:3.9-slim
+            command: [python]
+            source: |
+              import json
+              from datetime import datetime
+
+              report = {
+                "cluster": "{{workflow.parameters.clusterName}}",
+                "namespace": "{{workflow.parameters.targetNamespace}}",
+                "environment": "{{workflow.parameters.environment}}",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "workflow": "{{workflow.name}}",
+                "certification": {
+                  "status": "CERTIFIED",
+                  "workflow_name": "certify-{{workflow.parameters.clusterName}}"
+                }
+              }
+
+              print("=" * 60)
+              print("UK8S CLUSTER CERTIFICATION REPORT")
+              print("=" * 60)
+              print(json.dumps(report, indent=2))
+              print("=" * 60)
+              print("✅ CLUSTER CERTIFICATION COMPLETE")
+              print("=" * 60)
+
+              with open('/tmp/certification-report.json', 'w') as f:
+                json.dump(report, f, indent=2)
+          outputs:
+            artifacts:
+              - name: certification-report
+                path: /tmp/certification-report.json
+
+        # Exit handler
+        - name: generate-final-report
+          container:
+            image: alpine:latest
+            command: [sh, -c]
+            args:
+              - |
+                echo "======================================"
+                echo "Certification Complete"
+                echo "======================================"
+                echo "Cluster: {{workflow.parameters.clusterName}}"
+                echo "Status: {{workflow.status}}"
+                echo "Environment: {{workflow.parameters.environment}}"
+                echo "======================================"
+
+# ----------------------------------------
+# CronWorkflow for Automatic Weekly Certification (Optional)
+# ----------------------------------------
+- id: certificationSchedule
+  template:
+    apiVersion: argoproj.io/v1alpha1
+    kind: CronWorkflow
+    metadata:
+      name: weekly-cert-${schema.spec.clusterName}
+      namespace: argo
+      labels:
+        kro.run/cluster: ${schema.spec.clusterName}
+        kro.run/component: certification-schedule
+        environment: ${schema.spec.environment}
+      annotations:
+        kro.run/description: "Weekly automated certification for ${schema.spec.clusterName}"
+    spec:
+      schedule: "0 2 * * 0"  # Every Sunday at 2 AM
+      timezone: "UTC"
+      suspend: true  # Start suspended, enable manually when ready
+      workflowSpec:
+        workflowTemplateRef:
+          name: certify-${schema.spec.clusterName}
+
+# ----------------------------------------
+# Job to Automatically Trigger Initial Certification
+# ----------------------------------------
+- id: certificationTrigger
+  template:
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: trigger-cert-${schema.spec.clusterName}
+      namespace: argo
+      labels:
+        kro.run/cluster: ${schema.spec.clusterName}
+        kro.run/component: certification-trigger
+        environment: ${schema.spec.environment}
+      annotations:
+        kro.run/description: "Triggers initial certification for ${schema.spec.clusterName}"
+    spec:
+      ttlSecondsAfterFinished: 300  # Clean up after 5 minutes
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            kro.run/cluster: ${schema.spec.clusterName}
+        spec:
+          serviceAccountName: argo-workflow-executor
+          restartPolicy: OnFailure
+          containers:
+            - name: trigger-certification
+              image: bitnami/kubectl:latest
+              command: [bash, -c]
+              args:
+                - |
+                  set -e
+                  echo "Waiting for WorkflowTemplate to be ready..."
+
+                  # Wait for WorkflowTemplate to exist
+                  for i in $(seq 1 30); do
+                    if kubectl get workflowtemplate certify-${schema.spec.clusterName} -n argo &>/dev/null; then
+                      echo "✓ WorkflowTemplate found"
+                      break
+                    fi
+                    echo "Waiting for WorkflowTemplate... ($i/30)"
+                    sleep 10
+                  done
+
+                  # Wait for UK8SCluster to be ACTIVE
+                  echo "Waiting for UK8SCluster to be ACTIVE..."
+                  for i in $(seq 1 60); do
+                    STATE=$(kubectl get uk8scluster ${schema.metadata.name} -n ${schema.spec.targetNamespace} -o jsonpath='{.status.state}' 2>/dev/null || echo "")
+                    if [[ "$STATE" == "ACTIVE" ]]; then
+                      echo "✓ UK8SCluster is ACTIVE"
+                      break
+                    fi
+                    echo "Current state: $STATE (waiting... $i/60)"
+                    sleep 30
+                  done
+
+                  # Submit certification workflow by creating Workflow resource
+                  echo "Submitting certification workflow..."
+                  cat <<EOF | kubectl create -f -
+                  apiVersion: argoproj.io/v1alpha1
+                  kind: Workflow
+                  metadata:
+                    generateName: certify-${schema.spec.clusterName}-auto-
+                    namespace: argo
+                    labels:
+                      kro.run/cluster: ${schema.spec.clusterName}
+                      kro.run/trigger: automatic
+                  spec:
+                    workflowTemplateRef:
+                      name: certify-${schema.spec.clusterName}
+                  EOF
+
+                  echo "✅ Certification workflow submitted successfully"

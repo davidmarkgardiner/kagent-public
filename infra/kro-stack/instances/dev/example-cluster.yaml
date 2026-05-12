@@ -1,0 +1,194 @@
+---
+# Example UK8S Cluster Instance - Development Environment
+# Based on tested working configuration from kro-aks-cluster
+# This creates a complete AKS cluster with all supporting infrastructure
+apiVersion: kro.run/v1alpha1
+kind: UK8SCluster
+metadata:
+  name: uk8s-tsshared-weu-gt025-int-prod
+  namespace: uk8s-nextgen
+  labels:
+    environment: dev
+    team: AKSEngineering
+    cost-center: BT-TS-INFRA
+    project: uk8s
+  annotations:
+    kro.run/description: "Development cluster based on tested working configuration"
+spec:
+  # ========================================
+  # Cluster Identity
+  # ========================================
+  clusterName: "uk8s-tsshared-weu-gt025-int-prod"
+  location: "uksouth"
+  subscriptionId: "{{AZURE_SUBSCRIPTION_ID}}"
+
+  # ========================================
+  # Resource Group
+  # ========================================
+  resourceGroup: "dev01-weu-dev-prod"
+
+  # ========================================
+  # Kubernetes Configuration
+  # ========================================
+  kubernetesVersion: "1.32"
+  environment: "dev"
+
+  # ========================================
+  # SSH Configuration
+  # ========================================
+  sshPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6ACnIVTQEBTEjbxDAUIQVp8mrxwjmTEOXPx2W7GAMK/r8N66r8qEv51IPauNizNDmX8+Bg+kjPVXZh0ZNvGCKLyD/v/Oa2OzG54uw5HMeMbqn3v+dLtygr6wOFYFZuha93/yodfQdOZi2j0JPCH7+O5pVMiy8fyZF1R23rNbPdHUBbCcdgm3fbZZxfjhODfPrUyP5YVURpHmy3GL0Mq1Jcye51fB2ESBpOH3tp3JV6SsMtPcpxu/5VJkjg14BqKiW0JBOZZE9ujfnQVAYQI4mQOweGB9EpkqQp/lDe4+FtEuktV9jjbyxt7pzu/pwp8J0DhBuR08Wjw/+S9yWHCtLJw2Bz/Y9QtYDigc7KNCuGQQSJUGeJy/fd2Zdr53LyXlLJP3PK+PDJlaoLJUtNP+hxv5EJATN785ywOBB7KnB4kvU/ZZzwxfkvUi7GJCy7KGnShpfnTO/79oV5UYOOcScLSnIQznIqah7Cs0UEX7SRSCcrqpbfIZr4euzNhRBBx4NVptHZPv2OuwCeMFMJNDrY47MKsg0mE3R6S8WO1OCRZdvZdRxg2HnIicU2aqDYgvGV0VZmKjOgYKSlD27rLpLNoifjbc/ppym9nMc9MMqAGZ7Wx84XcvampwEcxinBkZi7mZHEu8wv6nQdcf3Cg5H4ETwYVQfwgvS7FLP/364tQ=="
+
+  # ========================================
+  # Network Configuration
+  # ========================================
+  network:
+    vnetSubscriptionId: "{{AZURE_SUBSCRIPTION_ID}}"
+    vnetResourceGroup: "aks-cluster"
+    vnetName: "aks-vnet"
+    subnetName: "aks-subnet"
+    serviceCidr: "10.251.0.0/17"
+    dnsServiceIP: "10.251.0.10"
+    podCidr: "10.251.128.0/17"
+
+  # ========================================
+  # Identity Configuration
+  # ========================================
+  identity:
+    controlPlaneIdentityResourceId: "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/rg-my-aks-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-aks-cluster-control-plane-identity"
+    kubeletIdentityClientId: "{{AZURE_SUBSCRIPTION_ID}}"
+    kubeletIdentityObjectId: "{{AZURE_SUBSCRIPTION_ID}}"
+    kubeletIdentityResourceId: "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/rg-my-aks-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-aks-cluster-kubelet-identity"
+    fluxClientId: "{{AZURE_SUBSCRIPTION_ID}}"  # Using kubelet identity for flux
+
+  # ========================================
+  # AAD Configuration
+  # ========================================
+  aad:
+    enableAzureRBAC: true
+    adminGroupObjectIds:
+      - "{{AZURE_SUBSCRIPTION_ID}}"
+
+  # ========================================
+  # Node Pool Configuration (Development)
+  # ========================================
+  nodePool:
+    name: "systempool"  # Changed from sysnpl to match tested config
+    vmSize: "Standard_B8ms"  # Dev/Test size
+    count: 1
+    enableAutoScaling: false
+    availabilityZones: ["1"]
+    osDiskType: "Managed"
+    osDiskSizeGB: 128
+    osSKU: "AzureLinux"
+    maxPods: 110
+
+  # ========================================
+  # Security Configuration
+  # ========================================
+  security:
+    enableSecureBoot: true
+    enableVTPM: true
+    disableLocalAccounts: false  # Allow local accounts for dev (matches tested config)
+    disableRunCommand: true
+    enableDefender: true
+    defenderWorkspaceResourceId: "/subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourceGroups/aks-cluster/providers/Microsoft.OperationalInsights/workspaces/test-workspace"
+
+  # ========================================
+  # Workload Identity
+  # ========================================
+  workloadIdentity:
+    enabled: true
+
+  # ========================================
+  # OIDC Issuer
+  # ========================================
+  oidcIssuer:
+    enabled: true
+    configMapKey: "issuer-url"
+
+  # ========================================
+  # Auto Upgrade
+  # ========================================
+  autoUpgrade:
+    upgradeChannel: "stable"
+    nodeOSUpgradeChannel: "NodeImage"
+
+  # ========================================
+  # Storage Profile
+  # ========================================
+  storage:
+    diskCSIDriverEnabled: true
+    fileCSIDriverEnabled: true
+    snapshotControllerEnabled: true
+
+  # ========================================
+  # Addons
+  # ========================================
+  addons:
+    azureKeyvaultSecretsProvider:
+      enabled: true
+      enableSecretRotation: "true"
+      rotationPollInterval: "30m"
+    azurePolicy:
+      enabled: true
+      version: "v2"
+
+  # ========================================
+  # Workload Auto Scaler
+  # ========================================
+  workloadAutoScaler:
+    keda:
+      enabled: true
+    verticalPodAutoscaler:
+      enabled: true
+
+  # ========================================
+  # Service Mesh
+  # ========================================
+  serviceMesh:
+    enabled: true
+    istioRevisions: ["asm-1-27"]
+    internalIngressEnabled: true
+    externalIngressEnabled: true
+
+  # ========================================
+  # Monitoring
+  # ========================================
+  azureMonitorProfile:
+    metrics:
+      enabled: true
+
+  # ========================================
+  # SKU and Support
+  # ========================================
+  sku:
+    name: "Base"
+    tier: "Standard"
+  supportPlan: "KubernetesOfficial"
+
+  # ========================================
+  # Tags (from tested configuration)
+  # ========================================
+  tags:
+    environment: dev
+    project: uk8s
+    costCenter: BT-TS-INFRA
+    managedBy: flux-system
+    billingReference: BT-TS-INFRA
+    opEnvironment: EV
+    cmdbReference: DEV01
+    Owner: DavidGardiner
+    Status: InUse
+    Team: AKSEngineering
+    DeployedBy: AzureServiceOperator
+
+  # ========================================
+  # Flux GitOps Configuration
+  # ========================================
+  flux:
+    core:
+      url: "https://dev.azure.com/your-org/uk8s-core/_git/uk8s-core"
+      branch: "jf/feat/kroAsoBuild"  # Using tested branch
+    config:
+      url: "https://dev.azure.com/your-org/uk8s-config/_git/uk8s-config"
+      branch: "main"

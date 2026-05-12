@@ -1,0 +1,107 @@
+apiVersion: kyverno.io/v2
+kind: ClusterPolicy
+metadata:
+  name: agent-tenant-namespace-defaults
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+  annotations:
+    policies.kyverno.io/title: "Agent Tenant Namespace Defaults"
+    policies.kyverno.io/category: "BYO-KAgent Security"
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Ensures all namespaces labelled kagent-tenant=true have Pod Security Standards
+      restricted profile enforced and carry required team/cost-center labels.
+      Exempt: kagent-platform (trust root), mcp-quarantine, kube-system.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-pss-restricted-on-tenant-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              operations:
+                - CREATE
+                - UPDATE
+              selector:
+                matchLabels:
+                  kagent-tenant: "true"
+      exclude:
+        any:
+          - resources:
+              names:
+                - kagent-platform
+                - mcp-quarantine
+                - kube-system
+                - kube-public
+                - kube-node-lease
+      validate:
+        message: >-
+          Tenant namespace '{{ request.object.metadata.name }}' must enforce
+          Pod Security Standards 'restricted' profile. Add label
+          pod-security.kubernetes.io/enforce=restricted.
+        pattern:
+          metadata:
+            labels:
+              pod-security.kubernetes.io/enforce: restricted
+              pod-security.kubernetes.io/warn: restricted
+              kagent-tenant: "true"
+
+    - name: require-team-label-on-tenant-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              operations:
+                - CREATE
+              selector:
+                matchLabels:
+                  kagent-tenant: "true"
+      exclude:
+        any:
+          - resources:
+              names:
+                - kagent-platform
+                - mcp-quarantine
+      validate:
+        message: >-
+          Tenant namespace '{{ request.object.metadata.name }}' must have labels:
+          team (owning team name) and cost-center. These are required for cost attribution.
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+              cost-center: "?*"
+
+    - name: block-cluster-role-binding-in-tenant-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - ClusterRoleBinding
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kagent-platform
+      context:
+        - name: agentNamespace
+          apiCall:
+            urlPath: "/api/v1/namespaces/{{ request.object.subjects[0].namespace }}"
+            jmesPath: "metadata.labels.\"kagent-tenant\""
+      validate:
+        message: >-
+          Tenant agents must use namespaced Role + RoleBinding, not ClusterRoleBinding.
+          ClusterRoleBinding is not permitted for subjects in kagent-tenant namespaces.
+        deny:
+          conditions:
+            all:
+              - key: "{{ agentNamespace }}"
+                operator: Equals
+                value: "true"

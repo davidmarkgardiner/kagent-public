@@ -1,0 +1,354 @@
+---
+# Layer 2: Management Cluster
+# Creates management cluster with:
+# - AKS cluster for platform management
+# - Service Accounts (created ONCE in management cluster)
+# - Federated Credentials linking platform UAMIs to management cluster SAs
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: uk8s-management-cluster.kro.run
+  labels:
+    kro.run/type: management-cluster
+    kro.run/category: infrastructure
+    kro.run/layer: "2"
+  annotations:
+    kro.run/description: "Management cluster with platform controllers and service accounts"
+    kro.run/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: UK8SManagementCluster
+    spec:
+      # ========================================
+      # Cluster Identity
+      # ========================================
+      clusterName: string | required=true description="Management cluster name" pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+      targetNamespace: string | default="uk8s-platform" description="Namespace for cluster resources"
+      location: string | required=true description="Azure region" default="uksouth"
+      subscriptionId: string | required=true description="Azure subscription ID" pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      resourceGroup: string | required=true description="Resource group for management cluster"
+
+      # ========================================
+      # References to Platform Foundation
+      # ========================================
+      platformFoundation:
+        # External Secrets Identity
+        externalSecretsClientId: string | required=true
+        externalSecretsResourceId: string | required=true
+
+        # External DNS Identity
+        externalDnsClientId: string | required=true
+        externalDnsResourceId: string | required=true
+
+        # cert-manager Identity
+        certManagerClientId: string | required=true
+        certManagerResourceId: string | required=true
+
+        # Grafana Identity
+        grafanaClientId: string | required=true
+        grafanaResourceId: string | required=true
+
+        # Flux Identity
+        fluxClientId: string | required=true
+        fluxResourceId: string | required=true
+
+      # ========================================
+      # Cluster Configuration (same as uk8scluster)
+      # ========================================
+      kubernetesVersion: string | default="1.33"
+      sshPublicKey: string | required=true
+
+      network:
+        vnetSubscriptionId: string | required=true
+        vnetResourceGroup: string | required=true
+        vnetName: string | required=true
+        subnetName: string | required=true
+        serviceCidr: string | default="10.251.0.0/17"
+        dnsServiceIP: string | default="10.251.0.10"
+        podCidr: string | default="10.251.128.0/17"
+
+      identity:
+        controlPlaneIdentityResourceId: string | required=true
+        kubeletIdentityClientId: string | required=true
+        kubeletIdentityObjectId: string | required=true
+        kubeletIdentityResourceId: string | required=true
+
+      aad:
+        enableAzureRBAC: boolean | default=true
+        adminGroupObjectIds: '[]string | required=true'
+
+      nodePool:
+        name: string | default="sysnpl"
+        vmSize: string | default="Standard_D4s_v3"
+        count: integer | default=3
+        enableAutoScaling: boolean | default=true
+        minCount: integer | default=3
+        maxCount: integer | default=10
+
+      security:
+        enableSecureBoot: boolean | default=true
+        enableVTPM: boolean | default=true
+        disableLocalAccounts: boolean | default=true
+        disableRunCommand: boolean | default=true
+        enableDefender: boolean | default=true
+        defenderWorkspaceResourceId: string | required=true
+
+      tags: 'map[string]string | required=true'
+
+  resources:
+    # ----------------------------------------
+    # Management Cluster Resource Group
+    # ----------------------------------------
+    - id: resourceGroup
+      template:
+        apiVersion: resources.azure.com/v1api20200601
+        kind: ResourceGroup
+        metadata:
+          name: ${schema.spec.resourceGroup}
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: ${schema.spec.resourceGroup}
+          location: ${schema.spec.location}
+          tags: ${schema.spec.tags}
+
+    # ----------------------------------------
+    # Management AKS Cluster
+    # ----------------------------------------
+    - id: managedCluster
+      template:
+        apiVersion: containerservice.azure.com/v1api20240402preview
+        kind: ManagedCluster
+        metadata:
+          name: ${schema.spec.clusterName}
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: ${schema.spec.clusterName}
+          location: ${schema.spec.location}
+          owner:
+            name: ${schema.spec.resourceGroup}
+          operatorSpec:
+            configMaps:
+              oidcIssuerProfile:
+                name: oidc-${schema.spec.clusterName}
+                key: issuer-url
+          dnsPrefix: ${schema.spec.clusterName}k8s
+          kubernetesVersion: ${schema.spec.kubernetesVersion}
+          identity:
+            type: UserAssigned
+            userAssignedIdentities:
+              - reference:
+                  armId: ${schema.spec.identity.controlPlaneIdentityResourceId}
+          aadProfile:
+            enableAzureRBAC: ${schema.spec.aad.enableAzureRBAC}
+            managed: true
+            adminGroupObjectIDs: ${schema.spec.aad.adminGroupObjectIds}
+          enableRBAC: true
+          disableLocalAccounts: ${schema.spec.security.disableLocalAccounts}
+          networkProfile:
+            networkPlugin: azure
+            networkPluginMode: overlay
+            networkPolicy: cilium
+            networkDataplane: cilium
+            serviceCidr: ${schema.spec.network.serviceCidr}
+            dnsServiceIP: ${schema.spec.network.dnsServiceIP}
+            podCidr: ${schema.spec.network.podCidr}
+          apiServerAccessProfile:
+            enablePrivateCluster: true
+            enablePrivateClusterPublicFQDN: true
+            privateDNSZone: none
+            disableRunCommand: ${schema.spec.security.disableRunCommand}
+          agentPoolProfiles:
+            - name: ${schema.spec.nodePool.name}
+              vnetSubnetReference:
+                armId: /subscriptions/${schema.spec.network.vnetSubscriptionId}/resourceGroups/${schema.spec.network.vnetResourceGroup}/providers/Microsoft.Network/virtualNetworks/${schema.spec.network.vnetName}/subnets/${schema.spec.network.subnetName}
+              mode: System
+              count: ${schema.spec.nodePool.count}
+              enableAutoScaling: ${schema.spec.nodePool.enableAutoScaling}
+              minCount: ${schema.spec.nodePool.minCount}
+              maxCount: ${schema.spec.nodePool.maxCount}
+              vmSize: ${schema.spec.nodePool.vmSize}
+          securityProfile:
+            workloadIdentity:
+              enabled: true
+          oidcIssuerProfile:
+            enabled: true
+          sku:
+            name: Base
+            tier: Standard
+          tags: ${schema.spec.tags}
+
+    # ----------------------------------------
+    # Federated Credentials (Management Cluster)
+    # ----------------------------------------
+    - id: externalSecretsFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: externalsecrets-mgmt-fic
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: federated_workload_identity_eso_${schema.spec.clusterName}
+          owner:
+            armId: ${schema.spec.platformFoundation.externalSecretsResourceId}
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: issuer-url
+          subject: system:serviceaccount:external-secrets:external-secrets
+
+    - id: externalDnsFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: externaldns-mgmt-fic
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: federated_workload_identity_extdns_${schema.spec.clusterName}
+          owner:
+            armId: ${schema.spec.platformFoundation.externalDnsResourceId}
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: issuer-url
+          subject: system:serviceaccount:external-dns:extdns-workload-identity-sa
+
+    - id: certManagerFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: certmanager-mgmt-fic
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: federated_workload_identity_certmgr_${schema.spec.clusterName}
+          owner:
+            armId: ${schema.spec.platformFoundation.certManagerResourceId}
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: issuer-url
+          subject: system:serviceaccount:platform-issuer-system:cert-manager
+
+    - id: grafanaFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: grafana-mgmt-fic
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: federated_workload_identity_grafana_${schema.spec.clusterName}
+          owner:
+            armId: ${schema.spec.platformFoundation.grafanaResourceId}
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: issuer-url
+          subject: system:serviceaccount:monitoring:grafana
+
+    - id: fluxSourceFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: fluxsource-mgmt-fic
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: federated_workload_identity_flux_src_${schema.spec.clusterName}
+          owner:
+            armId: ${schema.spec.platformFoundation.fluxResourceId}
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: issuer-url
+          subject: system:serviceaccount:flux-system:source-controller
+
+    - id: fluxImageFederatedCredential
+      template:
+        apiVersion: managedidentity.azure.com/v1api20230131
+        kind: FederatedIdentityCredential
+        metadata:
+          name: fluximage-mgmt-fic
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          azureName: federated_workload_identity_flux_img_${schema.spec.clusterName}
+          owner:
+            armId: ${schema.spec.platformFoundation.fluxResourceId}
+          audiences:
+            - api://AzureADTokenExchange
+          issuerFromConfig:
+            name: oidc-${schema.spec.clusterName}
+            key: issuer-url
+          subject: system:serviceaccount:flux-system:image-automation-controller
+
+    # ----------------------------------------
+    # Service Accounts (Management Cluster)
+    # These SAs are referenced by the federated credentials above
+    # ----------------------------------------
+    - id: externalSecretsServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: external-secrets
+          namespace: external-secrets
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.platformFoundation.externalSecretsClientId}
+
+    - id: externalDnsServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: extdns-workload-identity-sa
+          namespace: external-dns
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.platformFoundation.externalDnsClientId}
+
+    - id: certManagerServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: cert-manager
+          namespace: platform-issuer-system
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.platformFoundation.certManagerClientId}
+
+    - id: grafanaServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: grafana
+          namespace: monitoring
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.platformFoundation.grafanaClientId}
+
+    - id: fluxSourceServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: source-controller
+          namespace: flux-system
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.platformFoundation.fluxClientId}
+
+    - id: fluxImageServiceAccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: image-automation-controller
+          namespace: flux-system
+          annotations:
+            azure.workload.identity/client-id: ${schema.spec.platformFoundation.fluxClientId}
