@@ -1,5 +1,92 @@
 # MIL-41 — Live Triage Output Evidence
 
+## Test 2 — CrashLoopBackOff pod (pod-specific enrichment path)
+
+Captured 2026-05-12. A `busybox` pod (`crash-demo`) was deployed with a command that
+writes two fatal log lines to stderr and exits 1, causing immediate CrashLoopBackOff.
+A simulated `Pod Restart Rate - Container crash-looping` alert was posted directly to
+the Argo EventSource webhook with labels `namespace=argo`, `pod=crash-demo`,
+`container=crash-demo`, `reason=Error`. This exercises the pod-specific enrichment
+branch (not the namespace health sweep).
+
+### What Cage receives
+
+**From the alert header** — extracted from payload labels by the enrichment script:
+```
+severity    : critical
+namespace   : argo
+pod         : crash-demo
+container   : crash-demo
+term_reason : Error          ← from kube_pod_container_status_last_terminated_reason
+source      : prometheus
+```
+
+**From `kubectl describe pod crash-demo -n argo`**:
+```
+State:       Waiting
+  Reason:    CrashLoopBackOff
+Last State:  Terminated
+  Reason:    Error
+  Exit Code: 1
+  Started:   Tue, 12 May 2026 16:46:41 +0000
+  Finished:  Tue, 12 May 2026 16:46:41 +0000
+Restart Count: 2
+Args:
+  sh
+  -c
+  echo "FATAL: payment service connection refused..." >&2; exit 1
+Events:
+  Warning  BackOff  2s (x4 over 30s)  kubelet  Back-off restarting failed container crash-demo
+  Normal   Started  13s (x3 over 31s) kubelet  Started container crash-demo
+  Normal   Pulled   13s (x3 over 34s) kubelet  Successfully pulled image "busybox"
+```
+
+**From `kubectl logs crash-demo -n argo -c crash-demo --previous --tail=150`**:
+```
+FATAL: payment service connection refused: dial tcp <db-host>:5432: connect: connection refused
+ERROR: failed to acquire DB lock after 30s
+```
+
+**From `kubectl logs crash-demo -n argo -c crash-demo --tail=50`** (current attempt):
+```
+FATAL: payment service connection refused: dial tcp <db-host>:5432: connect: connection refused
+ERROR: failed to acquire DB lock after 30s
+```
+
+**Pod list in namespace** (sibling context):
+```
+crash-demo   0/1   CrashLoopBackOff   2 (13s ago)   35s
+```
+
+**Workflow duration**: ~2 seconds (pod-specific path is faster than namespace sweep).
+
+### Verdict
+
+The crash reason is available to Cage from **three independent sources**:
+
+| Source | Data |
+|--------|------|
+| Alert label `reason` | `Error` (from `kube_pod_container_status_last_terminated_reason`) |
+| `kubectl describe` Last State | `Reason: Error`, `Exit Code: 1`, timestamps |
+| `kubectl logs --previous` | Exact fatal log lines written before the crash |
+
+For OOMKilled pods the `Last State Reason` would show `OOMKilled` and `Exit Code: 137`.
+The previous logs would show whatever the container wrote before the OOM kill (may be
+empty if the kernel killed the process before it could flush). The alert label `reason`
+would carry `OOMKilled` directly from kube-state-metrics.
+
+### Known gap
+
+The `rule` field in the triage header is blank. The enrichment script's `xf rulename`
+extractor looks for a `rulename` key in the flat JSON payload; Grafana's unified
+alerting format uses `alertname` instead. The `alertname` value is present in the full
+payload body (visible to Cage), but the header summary line stays empty until the
+extractor is updated to fall back to `alertname`.
+
+---
+
+## Test 1 — Namespace health sweep (no specific pod)
+
 Captured 2026-05-12 from two concurrent Argo workflows triggered by a single Grafana
 `Log Error Rate - Pod errors detected` alert (severity: warning, source: loki).
 Both workflows started at the same second, proving the fan-out notification policy
