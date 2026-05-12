@@ -1,0 +1,31 @@
+# BYO-KAgent request.yaml Template
+#
+# Submit this file as a PR labelled `byo-kagent` to trigger the
+# byo-kagent-onboarding-template review workflow.
+#
+# Rules:
+# - toolRef values MUST be verified ToolCatalogEntry names (@version required)
+# - New MCP tools must pass mcp-onboarding-template quarantine first
+# - Do NOT apply this file directly — it goes through the PR review gate
+# - budget fields are copied from the app's Deployment resource limits
+
+metadata:
+  agentName: APP_NAME-triage-agent       # convention: <app-name>-triage-agent
+  team: TEAM                              # matches platform.com/team label
+  costCenter: COST_CENTER                 # SWC / billing reference
+
+target:
+  clusters:
+    - CLUSTER_NAME                        # one entry per target cluster
+
+model:
+  ref: shared/gpt-4o                      # use platform default unless agreed otherwise
+
+tools:
+  - catalogRef: "TOOL_NAME@VERSION"       # e.g. k8s-reader@v1.2.0
+    scopes:
+      - SCOPE                             # e.g. namespace:APP_NAMESPACE
+
+budget:
+  cpu: CPU_LIMIT                          # copy from Deployment resources.limits.cpu
+  memory: MEMORY_LIMIT                    # copy from Deployment resources.limits.memory
