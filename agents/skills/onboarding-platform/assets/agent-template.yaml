@@ -1,0 +1,50 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: AGENT_NAME
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: AGENT_NAME
+    app.kubernetes.io/part-of: kagent
+    platform.com/team: platform
+    platform.com/type: onboarding
+    onboarding.platform.com/pillar: PILLAR_NAME
+spec:
+  description: AGENT_DESCRIPTION
+  type: Declarative
+  declarative:
+    runtime: python
+    modelConfig: default-model-config
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - TOOL_NAME
+    systemMessage: |
+      SYSTEM_MESSAGE
+    a2aConfig:
+      skills:
+        - id: SKILL_ID
+          name: SKILL_NAME
+          description: SKILL_DESCRIPTION
+          tags:
+            - onboarding
+            - PILLAR_NAME
+          examples:
+            - EXAMPLE_PROMPT
+    deployment:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    promptTemplate:
+      dataSources:
+        - alias: builtin
+          kind: ConfigMap
+          name: kagent-builtin-prompts
