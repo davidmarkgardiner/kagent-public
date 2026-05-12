@@ -1,0 +1,55 @@
+{
+  "receiver": "argo-direct-webhook",
+  "status": "firing",
+  "orgId": 1,
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "Kubernetes warning event observed",
+        "severity": "warning",
+        "namespace": "payments",
+        "pod": "checkout-api-7f9d9c4b6c-n7p2v",
+        "pipeline_path": "both",
+        "signal_type": "event",
+        "reason": "BackOff",
+        "involved_object_kind": "Pod",
+        "involved_object_name": "checkout-api-7f9d9c4b6c-n7p2v"
+      },
+      "annotations": {
+        "summary": "Kubernetes Warning event BackOff on Pod/checkout-api-7f9d9c4b6c-n7p2v.",
+        "description": "Kubernetes emitted 7 Warning events in 5m for Pod/checkout-api-7f9d9c4b6c-n7p2v in namespace payments. Reason=BackOff. Message=Back-off restarting failed container checkout-api.",
+        "event_reason": "BackOff",
+        "involved_object": "Pod/checkout-api-7f9d9c4b6c-n7p2v",
+        "message": "Back-off restarting failed container checkout-api",
+        "count": "7",
+        "first_timestamp": "2026-05-12T09:55:00Z",
+        "last_timestamp": "2026-05-12T10:00:00Z",
+        "grafana_panel_url": "https://grafana.example.com/d/kubernetes-events/kubernetes-events?orgId=1&var-namespace=payments&var-reason=BackOff",
+        "runbook_url": "https://runbooks.example.com/kubernetes/warning-events"
+      },
+      "startsAt": "2026-05-12T09:56:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "https://grafana.example.com/alerting/grafana/symphony-kubernetes-warning-event/view",
+      "fingerprint": "k8s-event-demo"
+    }
+  ],
+  "commonLabels": {
+    "alertname": "Kubernetes warning event observed",
+    "severity": "warning",
+    "namespace": "payments",
+    "pod": "checkout-api-7f9d9c4b6c-n7p2v",
+    "pipeline_path": "both",
+    "signal_type": "event"
+  },
+  "commonAnnotations": {
+    "summary": "Kubernetes Warning event BackOff on Pod/checkout-api-7f9d9c4b6c-n7p2v.",
+    "description": "Kubernetes emitted 7 Warning events in 5m for Pod/checkout-api-7f9d9c4b6c-n7p2v in namespace payments.",
+    "grafana_panel_url": "https://grafana.example.com/d/kubernetes-events/kubernetes-events?orgId=1&var-namespace=payments&var-reason=BackOff",
+    "runbook_url": "https://runbooks.example.com/kubernetes/warning-events"
+  },
+  "externalURL": "https://grafana.example.com",
+  "version": "1",
+  "groupKey": "{}:{alertname=\"Kubernetes warning event observed\"}",
+  "truncatedAlerts": 0
+}

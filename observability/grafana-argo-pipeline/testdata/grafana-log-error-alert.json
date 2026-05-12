@@ -1,0 +1,49 @@
+{
+  "receiver": "argo-direct-webhook",
+  "status": "firing",
+  "orgId": 1,
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "Kubernetes log error rate spike",
+        "severity": "warning",
+        "namespace": "payments",
+        "pod": "checkout-api-7f9d9c4b6c-n7p2v",
+        "pipeline_path": "both",
+        "signal_type": "log"
+      },
+      "annotations": {
+        "summary": "Error logs are above 0.1 lines/sec in payments/checkout-api-7f9d9c4b6c-n7p2v.",
+        "description": "Loki saw 0.420 error log lines/sec for 5m in pod payments/checkout-api-7f9d9c4b6c-n7p2v, above threshold 0.1 for at least 2m.",
+        "log_line_excerpt": "level=error msg=\"payment authorization failed\" order_id=ord_123 gateway=stripe",
+        "error_rate": "0.420 lines/sec",
+        "window": "5m",
+        "grafana_panel_url": "https://grafana.example.com/d/kubernetes-logs/kubernetes-logs?orgId=1&var-namespace=payments&var-pod=checkout-api-7f9d9c4b6c-n7p2v",
+        "runbook_url": "https://runbooks.example.com/kubernetes/log-error-rate"
+      },
+      "startsAt": "2026-05-12T10:00:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "https://grafana.example.com/alerting/grafana/symphony-log-error-rate/view",
+      "fingerprint": "log-error-demo"
+    }
+  ],
+  "commonLabels": {
+    "alertname": "Kubernetes log error rate spike",
+    "severity": "warning",
+    "namespace": "payments",
+    "pod": "checkout-api-7f9d9c4b6c-n7p2v",
+    "pipeline_path": "both",
+    "signal_type": "log"
+  },
+  "commonAnnotations": {
+    "summary": "Error logs are above 0.1 lines/sec in payments/checkout-api-7f9d9c4b6c-n7p2v.",
+    "description": "Loki saw 0.420 error log lines/sec for 5m in pod payments/checkout-api-7f9d9c4b6c-n7p2v, above threshold 0.1 for at least 2m.",
+    "grafana_panel_url": "https://grafana.example.com/d/kubernetes-logs/kubernetes-logs?orgId=1&var-namespace=payments&var-pod=checkout-api-7f9d9c4b6c-n7p2v",
+    "runbook_url": "https://runbooks.example.com/kubernetes/log-error-rate"
+  },
+  "externalURL": "https://grafana.example.com",
+  "version": "1",
+  "groupKey": "{}:{alertname=\"Kubernetes log error rate spike\"}",
+  "truncatedAlerts": 0
+}

@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: grafana-alert-redpanda
+  namespace: argo
+spec:
+  kafka:
+    grafana-alerts:
+      url: redpanda.redpanda.svc.cluster.local:9092
+      topic: grafana.alerts
+      jsonBody: true
+      version: 2.0.0
+      consumerGroup:
+        groupName: argo-grafana-alerts
+        oldest: true
