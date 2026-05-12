@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-redpanda-webhook-config
+  namespace: argo
+data:
+  config.yaml: |
+    http:
+      address: 0.0.0.0:4196
+      enabled: true
+
+    input:
+      label: grafana_alert_webhook
+      http_server:
+        address: 0.0.0.0:4195
+        path: /grafana/redpanda
+        allowed_verbs:
+          - POST
+        timeout: 5s
+
+    pipeline:
+      processors:
+        - mapping: |
+            root = this
+            root.delivery_path = "grafana-webhook-redpanda"
+            root.received_at = now()
+            root.symphony_schema = "grafana-alert-v1"
+
+    output:
+      kafka_franz:
+        seed_brokers:
+          - ${REDPANDA_BROKERS:redpanda.redpanda.svc.cluster.local:9092}
+        topic: ${REDPANDA_TOPIC:grafana.alerts}
+        key: '${! json("commonLabels.alertname").or(uuid_v4()) }'
+        client_id: grafana-alert-webhook
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-redpanda-webhook
+  namespace: argo
+  labels:
+    app.kubernetes.io/name: grafana-redpanda-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana-redpanda-webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: grafana-redpanda-webhook
+    spec:
+      containers:
+        - name: redpanda-connect
+          image: docker.redpanda.com/redpandadata/connect:4.42.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - run
+            - /etc/redpanda-connect/config.yaml
+          env:
+            - name: REDPANDA_BROKERS
+              value: redpanda.redpanda.svc.cluster.local:9092
+            - name: REDPANDA_TOPIC
+              value: grafana.alerts
+          ports:
+            - name: webhook
+              containerPort: 4195
+            - name: metrics
+              containerPort: 4196
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redpanda-connect
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: grafana-redpanda-webhook-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-redpanda-webhook
+  namespace: argo
+  labels:
+    app.kubernetes.io/name: grafana-redpanda-webhook
+spec:
+  selector:
+    app.kubernetes.io/name: grafana-redpanda-webhook
+  ports:
+    - name: webhook
+      port: 8080
+      targetPort: webhook
+    - name: metrics
+      port: 4196
+      targetPort: metrics
