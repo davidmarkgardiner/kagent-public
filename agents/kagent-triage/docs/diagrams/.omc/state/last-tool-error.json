@@ -1,7 +1,0 @@
-{
-  "tool_name": "mcp__chrome-devtools__resize_page",
-  "tool_input_preview": "{\"width\":1900,\"height\":1200}",
-  "error": "Protocol error (Browser.setContentsSize): Restore window to normal state before setting content size",
-  "timestamp": "2026-04-29T17:33:37.344Z",
-  "retry_count": 1
-}

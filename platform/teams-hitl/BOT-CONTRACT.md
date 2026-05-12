@@ -6,7 +6,7 @@ POST shape, callback shape, auth, and timeouts.
 
 ## Endpoint 1 — Bot Receives Approval Request
 
-**URL:** provided by bot platform (e.g. `https://teams-bot.internal.bank.com/approvals`)
+**URL:** provided by bot platform (e.g. `https://teams-bot.example.internal/approvals`)
 
 **Method:** `POST`
 
@@ -18,7 +18,7 @@ POST shape, callback shape, auth, and timeouts.
 {
   "workflow_name":       "net-triage-abc123",
   "workflow_namespace":  "argo",
-  "callback_url":        "https://hitl-callback.internal.bank.com/approval-callback",
+  "callback_url":        "https://hitl-callback.example.internal/approval-callback",
   "tier":                "T2",
   "action":              "kubectl apply -f networkpolicy-dns-fix.yaml -n payments-app",
   "target":              "payments-app/networkpolicy/dns-egress",
@@ -68,7 +68,7 @@ signatures. Alternative: mTLS from a known client certificate.
   "workflow_name":     "net-triage-abc123",
   "workflow_namespace":"argo",
   "decision":          "approved",
-  "approver":          "jane.smith@bank.com",
+  "approver":          "jane.smith@example.com",
   "decided_at":        "2026-04-24T14:32:18Z",
   "comment":           "Looks fine, approved on 1st glance"
 }
@@ -146,7 +146,7 @@ To test the bot's implementation before integrating with Argo:
 
 **Test request (Bot Endpoint 1):**
 ```bash
-curl -X POST https://teams-bot.internal.bank.com/approvals \
+curl -X POST https://teams-bot.example.internal/approvals \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -164,7 +164,7 @@ curl -X POST https://teams-bot.internal.bank.com/approvals \
 **Test callback (what the bot will send us):**
 ```bash
 # Should be equivalent to what Argo Events receives
-curl -X POST https://hitl-callback.internal.bank.com/approval-callback \
+curl -X POST https://hitl-callback.example.internal/approval-callback \
   -H "Content-Type: application/json" \
   -H "X-Bot-Signature: <hmac>" \
   -d '{
@@ -172,7 +172,7 @@ curl -X POST https://hitl-callback.internal.bank.com/approval-callback \
     "workflow_name": "test-approval-001",
     "workflow_namespace": "argo",
     "decision": "approved",
-    "approver": "test-user@bank.com",
+    "approver": "test-user@example.com",
     "decided_at": "2026-04-24T14:00:00Z"
   }'
 ```
@@ -192,7 +192,7 @@ curl -X POST https://hitl-callback.internal.bank.com/approval-callback \
 ## Open Items for the Bot Team
 
 1. **Token issuance + rotation** — how we obtain the Bearer token (Azure
-   Key Vault integration? Static secret?). Align with bank standard.
+   Key Vault integration? Static secret?). Align with org standard.
 2. **Approver group selection** — single group per tier, or routing based
    on affected namespace owner?
 3. **Bot queue durability** — if bot service restarts between receiving

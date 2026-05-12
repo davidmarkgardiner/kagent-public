@@ -260,7 +260,7 @@ metadata:
 **Before**: No resource limits or cleanup
 ```yaml
 - name: azure-cli
-  image: release-container-registry.ubs.net/ubs/ise/azp-agent-ubuntu:1.21.1
+  image: {{REGISTRY_HOST}}/{{REGISTRY_PROJECT}}/azp-agent-ubuntu:1.21.1
   command: [/bin/bash, -c, ...]
   # No resources, no TTL
 ```

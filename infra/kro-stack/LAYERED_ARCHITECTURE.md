@@ -73,7 +73,7 @@ Service Accounts are Kubernetes resources that live within each cluster.
 **Service Accounts Created:**
 - `external-secrets` (namespace: external-secrets)
 - `extdns-workload-identity-sa` (namespace: external-dns)
-- `cert-manager` (namespace: ubs-issuer-system)
+- `cert-manager` (namespace: platform-issuer-system)
 - `grafana` (namespace: monitoring)
 - `source-controller` and `image-automation-controller` (namespace: flux-system)
 

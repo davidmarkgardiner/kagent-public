@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # ─── Edit these ─────────────────────────────────────────────────────────────
-REGISTRY="gitea.internal.bank.com/platform"     # your registry + path prefix
+REGISTRY="gitea.example.internal/platform"     # your registry + path prefix
 SKILL_NAME="example-skill"                       # image name
 TAG="${TAG:-dev}"                                # override: TAG=v1 ./build-image.sh
 # ────────────────────────────────────────────────────────────────────────────

@@ -19,7 +19,7 @@ UK8SCluster: ACTIVE ✅
 
 Total: **11 Azure resources** created via KRO + ASO:
 
-1. ✅ **ResourceGroup**: `at39473-weu-dev-prod`
+1. ✅ **ResourceGroup**: `dev01-weu-dev-prod`
 2. ✅ **ManagedCluster**: `uk8s-tsshared-weu-gt025-int-prod` (Provisioning in Azure)
 3. ✅ **UserAssignedIdentity**: `uami-uk8s-tsshared-weu-gt025-int-prod-externalsecrets`
 4. ✅ **UserAssignedIdentity**: `uami-uk8s-tsshared-weu-gt025-int-prod-externaldns`
@@ -124,7 +124,7 @@ kubectl get configmap oidc-uk8s-tsshared-weu-gt025-int-prod -n uk8s-nextgen
 
 # Once cluster is ready, get kubeconfig
 az aks get-credentials \
-  --resource-group at39473-weu-dev-prod \
+  --resource-group dev01-weu-dev-prod \
   --name uk8s-tsshared-weu-gt025-int-prod
 ```
 

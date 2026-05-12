@@ -533,8 +533,8 @@ spec:
                 namespace: kube-system
                 podLabels:
                   kubernetes.azure.com/managedby: aks
-              - name: ubs-control-plane-exception
-                namespace: ubs-system
+              - name: platform-control-plane-exception
+                namespace: platform-system
                 podLabels:
                   kubernetes.azure.com/managedby: aks
           # Resource group for node resources
@@ -696,7 +696,7 @@ spec:
           issuerFromConfig:
             name: oidc-${schema.spec.clusterName}
             key: ${schema.spec.oidcIssuer.configMapKey}
-          subject: system:serviceaccount:ubs-issuer-system:cert-manager
+          subject: system:serviceaccount:platform-issuer-system:cert-manager
 
     - id: fluxSourceFederatedCredential
       template:
@@ -710,7 +710,7 @@ spec:
           owner:
             #name: uami-${schema.spec.clusterName}-certmanager
             # TODO: move this to kro variable
-            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-at39473-flux-mi4-dev
+            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-dev01-flux-mi4-dev
           audiences:
             - api://AzureADTokenExchange
           issuerFromConfig:
@@ -730,7 +730,7 @@ spec:
           owner:
             #name: uami-${schema.spec.clusterName}-certmanager
             # TODO: move this to kro variable
-            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-at39473-flux-mi4-dev
+            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-dev01-flux-mi4-dev
           audiences:
             - api://AzureADTokenExchange
           issuerFromConfig:
@@ -981,7 +981,7 @@ spec:
               restartPolicy: Never
               containers:
               - name: azure-cli
-                image: release-container-registry.ubs.net/ubs/ise/azp-agent-ubuntu:1.21.1
+                image: {{REGISTRY_HOST}}/{{REGISTRY_PROJECT}}/azp-agent-ubuntu:1.21.1
                 command:
                 - /bin/bash
                 - -c

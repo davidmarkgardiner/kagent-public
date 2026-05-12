@@ -340,8 +340,8 @@ spec:
                 namespace: kube-system
                 podLabels:
                   kubernetes.azure.com/managedby: aks
-              - name: ubs-control-plane-exception
-                namespace: ubs-system
+              - name: platform-control-plane-exception
+                namespace: platform-system
                 podLabels:
                   kubernetes.azure.com/managedby: aks
           # Resource group for node resources

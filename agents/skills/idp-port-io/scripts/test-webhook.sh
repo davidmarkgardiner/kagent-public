@@ -16,7 +16,7 @@ case "$ACTION" in
         "action": "create",
         "namespace": "platform-dev-testing",
         "cluster": "homelab",
-        "owner": "david@bank.com",
+        "owner": "david@example.com",
         "team": "platform",
         "environment": "dev",
         "cpu_quota": "4",
@@ -33,7 +33,7 @@ case "$ACTION" in
         "action": "delete",
         "namespace": "platform-dev-testing",
         "cluster": "homelab",
-        "owner": "david@bank.com",
+        "owner": "david@example.com",
         "team": "platform",
         "environment": "dev"
       }'
