@@ -159,6 +159,9 @@ groups:
           severity: warning
           pipeline_path: both
           signal_type: event
+          involved_object_kind: '{{ $labels.involved_object_kind }}'
+          involved_object_name: '{{ $labels.involved_object_name }}'
+          reason: '{{ $labels.reason }}'
         isPaused: false
 
       - uid: symphony-pod-cpu-threshold

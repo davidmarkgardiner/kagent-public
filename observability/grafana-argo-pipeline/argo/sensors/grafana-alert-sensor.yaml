@@ -62,6 +62,8 @@ spec:
                           SEVERITY=$(xf severity)
                           REASON=$(xf reason)
                           SOURCE=$(xf source)
+                          OBJECT_KIND=$(xf involved_object_kind)
+                          OBJECT_NAME=$(xf involved_object_name)
                           echo "════════════════════════════════════════════════════════════════"
                           echo "  TRIAGE CONTEXT"
                           echo "════════════════════════════════════════════════════════════════"
@@ -74,6 +76,8 @@ spec:
                           printf "  container   : %s\n" "${CONTAINER:-(n/a)}"
                           printf "  term_reason : %s\n" "${REASON:-(n/a)}"
                           printf "  source      : %s\n" "${SOURCE:-(unknown)}"
+                          printf "  object_kind : %s\n" "${OBJECT_KIND:-(n/a)}"
+                          printf "  object_name : %s\n" "${OBJECT_NAME:-(n/a)}"
                           echo ""
                           echo "── ALERT PAYLOAD ────────────────────────────────────────────────"
                           echo "$PAYLOAD"
@@ -96,6 +100,24 @@ spec:
                             echo "── KUBERNETES EVENTS FOR POD ────────────────────────────────────"
                             kubectl get events -n "$NAMESPACE" \
                               --field-selector "involvedObject.name=$POD" \
+                              --sort-by=.lastTimestamp -o wide 2>&1 | tail -30
+                            echo ""
+                            if [ -n "$OBJECT_KIND" ] && [ -n "$OBJECT_NAME" ] && [ "$OBJECT_KIND" != "Pod" ]; then
+                              KIND_LOWER=$(echo "$OBJECT_KIND" | tr '[:upper:]' '[:lower:]')
+                              echo "── KUBECTL DESCRIBE ${OBJECT_KIND} (event source object) ────────"
+                              kubectl describe "$KIND_LOWER" "$OBJECT_NAME" -n "$NAMESPACE" 2>&1 || echo "(describe failed)"
+                              echo ""
+                            fi
+                            echo "── ALL PODS IN NAMESPACE ────────────────────────────────────────"
+                            kubectl get pods -n "$NAMESPACE" -o wide 2>&1
+                          elif [ -n "$OBJECT_KIND" ] && [ -n "$OBJECT_NAME" ] && [ -n "$NAMESPACE" ]; then
+                            KIND_LOWER=$(echo "$OBJECT_KIND" | tr '[:upper:]' '[:lower:]')
+                            echo "── KUBECTL DESCRIBE ${OBJECT_KIND}/${OBJECT_NAME} ───────────────"
+                            kubectl describe "$KIND_LOWER" "$OBJECT_NAME" -n "$NAMESPACE" 2>&1 || echo "(describe failed)"
+                            echo ""
+                            echo "── K8S EVENTS FOR ${OBJECT_KIND}/${OBJECT_NAME} ─────────────────"
+                            kubectl get events -n "$NAMESPACE" \
+                              --field-selector "involvedObject.name=$OBJECT_NAME" \
                               --sort-by=.lastTimestamp -o wide 2>&1 | tail -30
                             echo ""
                             echo "── ALL PODS IN NAMESPACE ────────────────────────────────────────"
@@ -172,6 +194,8 @@ spec:
                           SEVERITY=$(xf severity)
                           REASON=$(xf reason)
                           SOURCE=$(xf source)
+                          OBJECT_KIND=$(xf involved_object_kind)
+                          OBJECT_NAME=$(xf involved_object_name)
                           echo "════════════════════════════════════════════════════════════════"
                           echo "  TRIAGE CONTEXT"
                           echo "════════════════════════════════════════════════════════════════"
@@ -184,6 +208,8 @@ spec:
                           printf "  container   : %s\n" "${CONTAINER:-(n/a)}"
                           printf "  term_reason : %s\n" "${REASON:-(n/a)}"
                           printf "  source      : %s\n" "${SOURCE:-(unknown)}"
+                          printf "  object_kind : %s\n" "${OBJECT_KIND:-(n/a)}"
+                          printf "  object_name : %s\n" "${OBJECT_NAME:-(n/a)}"
                           echo ""
                           echo "── ALERT PAYLOAD ────────────────────────────────────────────────"
                           echo "$PAYLOAD"
@@ -206,6 +232,24 @@ spec:
                             echo "── KUBERNETES EVENTS FOR POD ────────────────────────────────────"
                             kubectl get events -n "$NAMESPACE" \
                               --field-selector "involvedObject.name=$POD" \
+                              --sort-by=.lastTimestamp -o wide 2>&1 | tail -30
+                            echo ""
+                            if [ -n "$OBJECT_KIND" ] && [ -n "$OBJECT_NAME" ] && [ "$OBJECT_KIND" != "Pod" ]; then
+                              KIND_LOWER=$(echo "$OBJECT_KIND" | tr '[:upper:]' '[:lower:]')
+                              echo "── KUBECTL DESCRIBE ${OBJECT_KIND} (event source object) ────────"
+                              kubectl describe "$KIND_LOWER" "$OBJECT_NAME" -n "$NAMESPACE" 2>&1 || echo "(describe failed)"
+                              echo ""
+                            fi
+                            echo "── ALL PODS IN NAMESPACE ────────────────────────────────────────"
+                            kubectl get pods -n "$NAMESPACE" -o wide 2>&1
+                          elif [ -n "$OBJECT_KIND" ] && [ -n "$OBJECT_NAME" ] && [ -n "$NAMESPACE" ]; then
+                            KIND_LOWER=$(echo "$OBJECT_KIND" | tr '[:upper:]' '[:lower:]')
+                            echo "── KUBECTL DESCRIBE ${OBJECT_KIND}/${OBJECT_NAME} ───────────────"
+                            kubectl describe "$KIND_LOWER" "$OBJECT_NAME" -n "$NAMESPACE" 2>&1 || echo "(describe failed)"
+                            echo ""
+                            echo "── K8S EVENTS FOR ${OBJECT_KIND}/${OBJECT_NAME} ─────────────────"
+                            kubectl get events -n "$NAMESPACE" \
+                              --field-selector "involvedObject.name=$OBJECT_NAME" \
                               --sort-by=.lastTimestamp -o wide 2>&1 | tail -30
                             echo ""
                             echo "── ALL PODS IN NAMESPACE ────────────────────────────────────────"
