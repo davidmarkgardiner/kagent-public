@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kagent-knowledge-ui
+  namespace: kagent-knowledge-ui
+  labels:
+    app.kubernetes.io/name: kagent-knowledge-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kagent-knowledge-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kagent-knowledge-ui
+    spec:
+      serviceAccountName: kagent-knowledge-ui
+      containers:
+        - name: ui
+          image: ghcr.io/davidmarkgardiner/kagent-knowledge-ui:mil-128
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: KB_REPO_URL
+              value: "https://github.com/davidmarkgardiner/kagent-public.git"
+            - name: KB_REPO_REF
+              value: "main"
+            - name: TICKET_URL
+              value: "https://linear.app/milano2/issue/MIL-128/poc-k-agent-ui-knowledge-base-driven-assistant-for-aks-platform"
+            - name: GITHUB_REPO
+              value: "davidmarkgardiner/kagent-public"
+            - name: GITHUB_BASE_BRANCH
+              value: "main"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kagent-knowledge-ui
+  namespace: kagent-knowledge-ui
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kagent-knowledge-ui
+  namespace: kagent-knowledge-ui
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kagent-knowledge-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>K-Agent Knowledge UI</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="chat-panel" aria-label="K-Agent chat">
+        <header class="chat-header">
+          <div>
+            <p class="eyebrow">AKS Platform Assistant</p>
+            <h1>K-Agent Knowledge UI</h1>
+          </div>
+          <button id="refresh" type="button" title="Refresh knowledge index">Refresh index</button>
+        </header>
+
+        <div id="messages" class="messages" aria-live="polite"></div>
+
+        <form id="query-form" class="composer">
+          <label class="sr-only" for="question">Ask a Kubernetes or AKS platform question</label>
+          <input
+            id="question"
+            name="question"
+            type="text"
+            autocomplete="off"
+            placeholder="How do I secure my pod?"
+            required
+          >
+          <button type="submit">Ask</button>
+        </form>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+

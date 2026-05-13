@@ -1,0 +1,54 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: kagent-knowledge-ui
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: kagent-knowledge-ui
+    app.kubernetes.io/part-of: kagent
+    milano2/issue: MIL-128
+spec:
+  description: "Knowledge-base driven assistant for shared AKS platform questions."
+  type: Declarative
+  declarative:
+    a2aConfig:
+      skills:
+        - id: aks-platform-knowledge
+          name: AKS Platform Knowledge
+          description: Answer shared AKS platform questions from Git-backed Markdown docs and cite sources.
+          examples:
+            - "How do I secure my pod?"
+            - "How do I bring my own domain?"
+            - "How do I set up a pod disruption budget?"
+            - "What Kubernetes resources are available on the shared AKS platform?"
+          tags:
+            - aks
+            - knowledge-base
+            - platform
+    deployment:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    modelConfig: default-model-config
+    promptTemplate:
+      dataSources:
+        - alias: builtin
+          kind: ConfigMap
+          name: kagent-builtin-prompts
+    runtime: python
+    systemMessage: |
+      You are the K-Agent Knowledge UI assistant for the shared AKS platform.
+
+      Answer only from retrieved Markdown chunks supplied by the UI retrieval
+      service. If the retrieved context does not answer the question, return:
+      "Sorry, we couldn't help solve your problem. Please raise a ticket here."
+
+      For every supported answer, provide short numbered steps and cite source
+      document paths. If a user reports that the answer is stale or wrong,
+      route the feedback to the UI service so it can open a GitHub PR against
+      the knowledge-base repository.
+
