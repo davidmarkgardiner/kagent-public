@@ -1,3 +1,8 @@
+---
+name: fleet-health
+description: Monitor agent gateways, detect failures, attempt safe remediation, and escalate when human action is needed.
+---
+
 # Fleet Health Monitor
 
 Monitors all agent gateways, detects failures, auto-remediates where possible, and escalates to David when human action is needed.
