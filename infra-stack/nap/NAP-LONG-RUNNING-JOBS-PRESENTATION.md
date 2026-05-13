@@ -27,7 +27,8 @@ The practical control is workload and node-pool policy:
 - Put long-running jobs on a dedicated `NodePool`.
 - Configure that pool with `consolidationPolicy: WhenEmpty`.
 - Avoid Spot capacity for work that must finish.
-- Avoid short `terminationGracePeriod` settings on the NodePool.
+- Treat `terminationGracePeriod` as a hard drain deadline that can eventually
+  delete protected pods.
 
 ## 3. How NAP Disruption Works
 
@@ -141,11 +142,14 @@ spec:
 Protected:
 
 - Voluntary consolidation.
-- Most voluntary drift-driven movement.
+- Drift in the normal case, unless the NodeClaim has `terminationGracePeriod`
+  configured.
 - Routine NAP optimization decisions.
 
 Not protected:
 
+- Expiration.
+- Node repair.
 - VM failure.
 - Azure maintenance events.
 - Spot eviction.
@@ -243,8 +247,25 @@ Expected result:
 | Cost-sensitive interruptible jobs | Spot pool, checkpointing, retries |
 | Critical maintenance window | Temporary disruption budget with `nodes: "0"` |
 
-## 9. References
+## 9. Karpenter Cross-Check
+
+Current upstream Karpenter documents these details:
+
+- Default disruption policy is `WhenEmptyOrUnderutilized` with
+  `consolidateAfter: 0s` if fields are not set.
+- `WhenEmptyOrUnderutilized` can consider a node consolidatable after
+  `consolidateAfter` even when it is not empty.
+- `karpenter.sh/do-not-disrupt: "true"` is permanent protection for voluntary
+  disruption, and duration values such as `"30m"` are supported.
+- Protected pods exclude nodes from consolidation and conditionally exclude them
+  from drift.
+- `terminationGracePeriod` can bypass PDBs and `do-not-disrupt` once the node is
+  draining.
+- `do-not-disrupt` does not exclude nodes from forceful methods such as
+  expiration, interruption, node repair, or manual deletion.
+
+## 10. References
 
 - AKS NAP overview: https://learn.microsoft.com/en-us/azure/aks/node-auto-provisioning
 - AKS NAP disruption policies: https://learn.microsoft.com/en-us/azure/aks/node-auto-provisioning-disruption
-- Karpenter disruption documentation: https://karpenter.sh/v1.12/concepts/disruption/
+- Karpenter disruption documentation: https://karpenter.sh/docs/concepts/disruption/

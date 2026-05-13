@@ -10,13 +10,18 @@ policy:
 1. Annotate the Job pod template with `karpenter.sh/do-not-disrupt: "true"`.
 2. Prefer a dedicated batch `NodePool` with `consolidationPolicy: WhenEmpty`.
 3. Avoid Spot capacity for jobs that cannot tolerate interruption.
-4. Set `expireAfter: Never` or a value longer than the maximum job runtime.
-5. Avoid a NodePool `terminationGracePeriod` that is shorter than the maximum
-   job runtime, because it can eventually force-delete protected pods.
+4. Prefer `expireAfter: Never` for the batch pool when jobs must run to
+   completion.
+5. Be careful with NodePool `terminationGracePeriod`: once a node is already
+   being drained, Karpenter can force-delete protected pods when this timer
+   elapses.
 
-This protects against voluntary NAP disruption such as consolidation and drift.
-It does not protect against VM failure, Azure maintenance, Spot interruption,
-manual `kubectl delete node`, or deleting the `NodePool`.
+This protects against voluntary NAP disruption such as consolidation. It also
+blocks drift in the normal case, but upstream Karpenter documents that drift can
+still proceed when the owning NodeClaim has `terminationGracePeriod` configured.
+It does not protect against forceful disruption methods such as expiration,
+interruption, node repair, manual `kubectl delete node`, or deleting the
+`NodePool`.
 
 ## Job Annotation
 
@@ -53,9 +58,9 @@ for voluntary disruption. The node is not fully terminated until the protected
 pod is removed, the annotation is removed or expires, the pod reaches
 `Succeeded`/`Failed`, or the NodeClaim termination grace period elapses.
 
-For bounded protection, recent Karpenter versions support a duration. If AKS
+For bounded protection, current upstream Karpenter supports a duration. If AKS
 does not accept this form in the managed NAP version on the cluster, use the
-documented boolean value instead:
+AKS-documented boolean value instead:
 
 ```yaml
 metadata:
@@ -104,6 +109,12 @@ spec:
         kind: AKSNodeClass
         name: batch-azurelinux
 ```
+
+Do not combine `do-not-disrupt` with a routine `expireAfter` unless the
+operational behavior is intentional. Upstream Karpenter warns that protected
+pods can block node draining indefinitely without `terminationGracePeriod`, but
+also documents that setting `terminationGracePeriod` gives Karpenter a hard
+deadline after which remaining pods can be deleted.
 
 Schedule the Job onto the batch pool:
 
@@ -159,6 +170,10 @@ restart-safe workloads.
 Use a dedicated `WhenEmpty` NodePool plus `karpenter.sh/do-not-disrupt: "true"`
 for long-running batch jobs that must run to completion.
 
+If administrators need a hard upper bound for node lifetime, use
+`terminationGracePeriod` deliberately and set workload expectations clearly: it
+can bypass PDBs and `karpenter.sh/do-not-disrupt` once the node is draining.
+
 If a whole NodePool must be frozen during a critical processing window, use a
 zero-node disruption budget:
 
@@ -176,4 +191,4 @@ can retain excess nodes and cost more than expected.
 
 - [AKS NAP overview](https://learn.microsoft.com/en-us/azure/aks/node-auto-provisioning)
 - [AKS NAP disruption policies](https://learn.microsoft.com/en-us/azure/aks/node-auto-provisioning-disruption)
-- [Karpenter disruption documentation](https://karpenter.sh/v1.12/concepts/disruption/)
+- [Karpenter disruption documentation](https://karpenter.sh/docs/concepts/disruption/)

@@ -25,6 +25,9 @@ The test is successful when:
 
 - Long-running Job pods have `karpenter.sh/do-not-disrupt: "true"` on the pod.
 - The batch `NodePool` uses `consolidationPolicy: WhenEmpty`.
+- The batch `NodePool` does not use routine expiration for run-to-completion
+  jobs, or the team has explicitly accepted the `terminationGracePeriod`
+  behavior.
 - NAP does not voluntarily evict the running Job pod.
 - After the Job completes, empty nodes become eligible for normal cleanup.
 - Events and Karpenter logs support the observed behavior.
@@ -64,6 +67,10 @@ Record:
 - Whether any pool uses `WhenEmptyOrUnderutilized`.
 - Whether `expireAfter` or `terminationGracePeriod` is configured.
 - Whether Spot capacity is used.
+
+If `terminationGracePeriod` is configured, record it as a potential hard
+deadline: upstream Karpenter documents that it can bypass PDBs and
+`karpenter.sh/do-not-disrupt` after a node has started draining.
 
 ## Phase 2: Check Existing Job Protection
 
@@ -148,7 +155,11 @@ kubectl logs -n kube-system -l app.kubernetes.io/name=karpenter -c controller --
 Expected:
 
 - No voluntary eviction of the protected test pod.
-- If consolidation is skipped, the logs or events should be consistent with the protected pod or `WhenEmpty` policy.
+- If consolidation is skipped, the logs or events should be consistent with the
+  protected pod or `WhenEmpty` policy.
+- If eviction still occurs, classify the reason before calling it a NAP
+  consolidation issue. Check for expiration, node repair, Spot interruption,
+  manual deletion, or NodePool deletion.
 
 ## Phase 6: Completion and Cleanup
 
@@ -201,4 +212,6 @@ For work clusters, treat long-running batch as a separate scheduling class:
 - `consolidationPolicy: WhenEmpty`.
 - `karpenter.sh/do-not-disrupt: "true"` on the Job pod template.
 - On-demand capacity unless the workload is explicitly checkpointed and retry-safe.
+- No routine `expireAfter` for run-to-completion pools unless the team has also
+  accepted the corresponding `terminationGracePeriod` tradeoff.
 - Evidence captured before and after rollout.

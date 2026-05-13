@@ -443,7 +443,7 @@
         <div class="eyebrow">Main answer</div>
         <h2>There is no global "only after jobs finish" switch.</h2>
         <div class="callout">Use workload and NodePool policy: protect the pod with <code>karpenter.sh/do-not-disrupt</code>, and run it on a batch pool that consolidates only when empty.</div>
-        <div class="footer-note">This controls voluntary NAP disruption. It is not a guarantee against VM failure, Azure maintenance, Spot eviction, or manual deletion.</div>
+        <div class="footer-note">This controls voluntary NAP disruption. It is not a guarantee against expiration, node repair, VM failure, Azure maintenance, Spot eviction, or manual deletion.</div>
       </div>
     </section>
 
@@ -583,13 +583,14 @@ spec:
             <ul>
               <li>Voluntary consolidation</li>
               <li>Routine optimization decisions</li>
-              <li>Most voluntary drift movement</li>
+              <li>Drift in the normal case, unless NodeClaim termination grace changes the decision</li>
               <li>Underutilized-node cleanup while the pod is active</li>
             </ul>
           </div>
           <div class="panel bad">
             <h3>Not protected</h3>
             <ul>
+              <li>Expiration and node repair</li>
               <li>VM failure or node not-ready events</li>
               <li>Azure maintenance and platform interruption</li>
               <li>Spot eviction</li>
@@ -602,6 +603,24 @@ spec:
     </section>
 
     <section class="slide" id="slide-9">
+      <div class="wrap">
+        <div class="eyebrow">Karpenter cross-check</div>
+        <h2>Upstream docs add two hard edges.</h2>
+        <div class="grid-2">
+          <div class="panel warn">
+            <h3>Termination grace</h3>
+            <p>Once a node is already draining, NodePool <code>terminationGracePeriod</code> is a hard deadline. It can bypass PDBs and <code>do-not-disrupt</code>.</p>
+          </div>
+          <div class="panel bad">
+            <h3>Forceful methods</h3>
+            <p><code>do-not-disrupt</code> does not exclude nodes from expiration, interruption, node repair, or manual deletion.</p>
+          </div>
+        </div>
+        <div class="footer-note">The duration form is valid in current upstream Karpenter, for example <code>karpenter.sh/do-not-disrupt: "30m"</code>.</div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-10">
       <div class="wrap">
         <div class="eyebrow">Work test</div>
         <h2>Verify in phases, starting read-only.</h2>
@@ -623,7 +642,7 @@ spec:
       </div>
     </section>
 
-    <section class="slide" id="slide-10">
+    <section class="slide" id="slide-11">
       <div class="wrap grid-2">
         <div>
           <div class="eyebrow">Commands</div>
@@ -642,7 +661,7 @@ kubectl get pods --all-namespaces \
       </div>
     </section>
 
-    <section class="slide" id="slide-11">
+    <section class="slide" id="slide-12">
       <div class="wrap grid-2">
         <div>
           <div class="eyebrow">Evidence</div>
@@ -664,7 +683,7 @@ kubectl wait -n nap-disruption-test \
       </div>
     </section>
 
-    <section class="slide" id="slide-12">
+    <section class="slide" id="slide-13">
       <div class="wrap">
         <div class="eyebrow">Decision</div>
         <h2>Recommended work standard</h2>
@@ -675,7 +694,7 @@ kubectl wait -n nap-disruption-test \
             <ul>
               <li><a href="https://learn.microsoft.com/en-us/azure/aks/node-auto-provisioning">AKS NAP overview</a></li>
               <li><a href="https://learn.microsoft.com/en-us/azure/aks/node-auto-provisioning-disruption">AKS NAP disruption policies</a></li>
-              <li><a href="https://karpenter.sh/v1.12/concepts/disruption/">Karpenter disruption documentation</a></li>
+              <li><a href="https://karpenter.sh/docs/concepts/disruption/">Karpenter disruption documentation</a></li>
             </ul>
           </div>
           <div class="panel">
@@ -694,7 +713,7 @@ kubectl wait -n nap-disruption-test \
 
   <nav class="toolbar" aria-label="Presentation controls">
     <a href="#slide-1">Start</a>
-    <a href="#slide-12">End</a>
+    <a href="#slide-13">End</a>
     <button id="copyBtn" type="button">Copy as markdown</button>
   </nav>
 
@@ -711,7 +730,7 @@ Use workload and NodePool policy:
 - Run long jobs on a dedicated batch \`NodePool\`.
 - Set \`consolidationPolicy: WhenEmpty\`.
 - Avoid Spot for jobs that must finish.
-- Avoid short NodePool \`terminationGracePeriod\` settings.
+- Treat NodePool \`terminationGracePeriod\` as a hard drain deadline that can eventually delete protected pods.
 
 ## Job annotation
 
@@ -733,9 +752,9 @@ spec:
     expireAfter: Never
 \`\`\`
 
-## Work test
+## Karpenter cross-check
 
-Start read-only, validate with server-side dry-run, then run a controlled workload test only after approval because NAP can create or remove Azure VM capacity.`;
+Current upstream Karpenter confirms that \`do-not-disrupt\` blocks voluntary consolidation, supports duration values like \`"30m"\`, conditionally blocks drift, and does not block forceful methods such as expiration, interruption, node repair, or manual deletion.`;
 
     const btn = document.getElementById("copyBtn");
     btn.addEventListener("click", () => {
