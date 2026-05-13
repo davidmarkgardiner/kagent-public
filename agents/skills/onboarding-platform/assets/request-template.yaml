@@ -1,0 +1,45 @@
+# request.yaml — BYO-KAgent submission template
+#
+# Submit this file as a PR labelled 'byo-kagent' to the platform GitOps repo.
+# The byo-kagent-onboarding-template workflow will review, validate, and promote
+# the agent onto the target clusters.
+#
+# Placeholders to replace:
+#   {{AGENT_NAME}}      — kebab-case agent name, e.g. payments-triage-agent
+#   {{TEAM_NAME}}       — your team name
+#   {{COST_CENTER}}     — SWC or cost centre code
+#   {{CLUSTER_NAME}}    — target cluster name(s)
+#   {{NAMESPACE}}       — namespace the agent will cover
+#   {{TOOL_CATALOG_REF}} — verified tool from the platform catalog (see tool-catalog.md)
+
+metadata:
+  agentName: "{{AGENT_NAME}}"
+  team: "{{TEAM_NAME}}"
+  costCenter: "{{COST_CENTER}}"
+
+target:
+  clusters:
+    - "{{CLUSTER_NAME}}"
+
+model:
+  ref: shared/default-model-config           # use shared/litellm-azure-gpt4o for production
+
+tools:
+  - catalogRef: "{{TOOL_CATALOG_REF}}@v1"   # must be a verified ToolCatalogEntry
+    scopes:
+      - "namespace:{{NAMESPACE}}"
+
+budget:
+  cpu: 100m
+  memory: 256Mi
+
+# Optional fields:
+#
+# schedule:                                 # for scheduled agents (e.g. daily health checks)
+#   cron: "0 8 * * 1-5"
+#
+# escalation:
+#   slack: "#platform-alerts"
+#
+# review:                                   # set to false to bypass PR review gate (platform team only)
+#   required: true

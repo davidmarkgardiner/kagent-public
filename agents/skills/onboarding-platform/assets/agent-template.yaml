@@ -1,0 +1,83 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: AGENT_NAME                          # e.g. cluster-onboarding-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: AGENT_NAME
+    app.kubernetes.io/part-of: kagent
+    platform.com/team: TEAM_NAME            # required for routing
+    platform.com/type: onboarding           # cluster | namespace | app | triage | remediation
+  annotations:
+    platform.com/description: "DESCRIPTION"
+spec:
+  description: >
+    One-paragraph description of what this agent does, covering its interview scope
+    and output. Include: what it collects, what it submits/generates, and any safety defaults.
+  type: Declarative
+  declarative:
+    runtime: python
+    modelConfig: default-model-config       # or litellm-azure-gpt4o for production
+
+    systemMessage: |
+      You are AGENT_ROLE on the shared Kubernetes platform.
+
+      ## Interview
+
+      INTERVIEW_QUESTIONS_AND_PARAMETER_MAP
+
+      ## Confirmation
+
+      CONFIRMATION_BLOCK_TEMPLATE
+
+      ## Output / Submission
+
+      WORKFLOW_YAML_OR_GITOPS_OUTPUT
+
+      ## Hard rules
+
+      - NEVER apply resources without confirmation.
+      - NEVER invent values the user did not provide.
+      - Default to dry-run / YAML-only where applicable.
+      - CRITICAL: always use exact namespace 'NAMESPACE' when investigating.
+
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server          # MANDATORY — do not change
+          toolNames:
+            # Onboarding agents: submit Workflow CRs
+            - k8s_apply_manifest
+            - k8s_get_resources
+            - k8s_describe_resource
+            # Read-only agents: remove k8s_apply_manifest above, keep these
+            # - k8s_get_resources
+            # - k8s_describe_resource
+            # - k8s_get_pod_logs
+            # - k8s_get_events
+            # - k8s_get_resource_yaml
+            # - k8s_get_available_api_resources
+            # - k8s_check_service_connectivity
+
+    a2aConfig:
+      skills:
+        - id: SKILL_ID                      # kebab-case, unique
+          name: SKILL_DISPLAY_NAME
+          description: SKILL_DESCRIPTION
+          tags:
+            - TEAM_NAME
+            - onboarding
+          examples:
+            - "EXAMPLE_PROMPT_1"
+            - "EXAMPLE_PROMPT_2"
+
+    deployment:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
