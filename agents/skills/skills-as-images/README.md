@@ -7,7 +7,7 @@ kagent pulls the image in an init container, extracts files to `/skills`.
 which uses the **node's** CA trust store — already pre-loaded with your
 corporate root CA on AKS. The `gitRefs` path runs `git clone` inside a
 container whose trust store has only public CAs — fails against internal
-Gitea/GitLab served with corp certs.
+Gitea/GitLab served with corporate certs.
 
 **Upstream documented path.** The kagent docs page
 (`/docs/kagent/examples/skills`) exclusively shows container images. `gitRefs`
@@ -23,7 +23,7 @@ Developer edits SKILL.md in git repo
 Gitea / GitHub Actions
        │ docker build + docker push
        ▼
-Container registry (gitea.internal / harbor / ACR)
+Container registry (gitea.example.internal / harbor / ACR)
        │
        │ bump tag in agent.yaml via GitOps
        ▼
@@ -44,12 +44,12 @@ Agent's SkillsTool reads SKILL.md, exposes skill to the LLM
 | Situation | Recommend |
 |---|---|
 | Git repo hosted on public GitHub / GitLab.com | `gitRefs` — simpler, no build pipeline |
-| Git repo on internal Gitea/GitLab with corp-CA cert | **Images** (this folder) |
+| Git repo on internal Gitea/GitLab with corporate-CA cert | **Images** (this folder) |
 | Air-gapped environment | **Images** |
 | Production use, audit trail requirements | **Images** — immutable tags, scannable |
 | Quick POC, iteration | Either; `gitRefs` has faster edit-commit-reload loop |
 
-At work (AKS + internal Gitea) → images.
+For AKS + internal Gitea/Harbor → images.
 
 ## Anatomy of a Skill Image
 
@@ -79,8 +79,8 @@ That's it. Three lines. Image size <10 KB typically.
 ### Build + push
 
 ```bash
-docker build -t gitea.internal.bank.com/platform/my-skill:v1 .
-docker push gitea.internal.bank.com/platform/my-skill:v1
+docker build -t gitea.example.internal/platform/my-skill:v1 .
+docker push gitea.example.internal/platform/my-skill:v1
 ```
 
 See `example-skill/` in this folder for a ready-to-copy template.
@@ -97,8 +97,8 @@ spec:
   type: Declarative
   skills:
     refs:
-      - gitea.internal.bank.com/platform/dns-diagnostics:v1
-      - gitea.internal.bank.com/platform/k8s-networking:v1
+      - gitea.example.internal/platform/dns-diagnostics:v1
+      - gitea.example.internal/platform/k8s-networking:v1
     # Optional: skip TLS verification for dev registries with self-signed cert
     # insecureSkipVerify: true
   declarative:
@@ -112,14 +112,14 @@ No `gitRefs`. No `gitAuthSecretRef`. Done.
 
 Image pulls need credentials if the registry is private. Three common patterns:
 
-### Pattern A — Cluster-level credentials (most common at banks)
+### Pattern A — Cluster-level credentials (most common in enterprise)
 
 Platform team has already configured kubelet with registry credentials. You do nothing:
 
 ```bash
 # Quick test — can any workload pull from the registry?
 kubectl run test -n kagent --rm --restart=Never \
-  --image=gitea.internal.bank.com/platform/any-existing-image:latest -- /bin/true
+  --image=gitea.example.internal/platform/any-existing-image:latest -- /bin/true
 # If this works without --overrides or imagePullSecrets, you're on Pattern A
 ```
 
@@ -130,7 +130,7 @@ Create a docker-registry secret in the kagent namespace:
 ```bash
 kubectl create secret docker-registry gitea-pull-secret \
   -n kagent \
-  --docker-server=gitea.internal.bank.com \
+  --docker-server=gitea.example.internal \
   --docker-username=<gitea-user> \
   --docker-password=<gitea-pat-with-read-package-scope>
 ```
@@ -182,7 +182,7 @@ jobs:
       - name: Login to Gitea container registry
         run: |
           echo "${{ secrets.GITEA_TOKEN }}" \
-            | docker login gitea.internal.bank.com \
+            | docker login gitea.example.internal \
               -u ${{ gitea.actor }} --password-stdin
 
       - name: Build + push each skill
@@ -190,7 +190,7 @@ jobs:
           SHA=${GITHUB_SHA:0:7}
           for d in skills/*/; do
             NAME=$(basename "$d")
-            IMAGE="gitea.internal.bank.com/platform/skill-$NAME"
+            IMAGE="gitea.example.internal/platform/skill-$NAME"
 
             echo "Building $IMAGE:$SHA"
             docker build -t "$IMAGE:$SHA" "$d"
@@ -233,7 +233,7 @@ Manual bumps.
 Pros: deliberate, versioned.
 Cons: friction for iterating on prompts.
 
-My suggestion for the bank: **Option 2** for prod agents, **Option 1** for
+Recommended: **Option 2** for prod agents, **Option 1** for
 dev/test agents. Same pipeline supports both.
 
 ## Verification Steps
@@ -290,8 +290,8 @@ To convert when you're ready:
    # Add:
    skills:
      refs:
-       - gitea.internal.bank.com/platform/dns-diagnostics:v1
-       - gitea.internal.bank.com/platform/k8s-networking:v1
+       - gitea.example.internal/platform/dns-diagnostics:v1
+       - gitea.example.internal/platform/k8s-networking:v1
    ```
 
 See `example-skill/` in this folder for the file layout + a ready-to-copy

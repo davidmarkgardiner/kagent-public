@@ -407,8 +407,8 @@ spec:
                 namespace: kube-system
                 podLabels:
                   kubernetes.azure.com/managedby: aks
-              - name: ubs-control-plane-exception
-                namespace: ubs-system
+              - name: platform-control-plane-exception
+                namespace: platform-system
                 podLabels:
                   kubernetes.azure.com/managedby: aks
           nodeResourceGroup: MC_${schema.spec.resourceGroup}_${schema.spec.clusterName}_${schema.spec.location}
@@ -590,7 +590,7 @@ spec:
           issuerFromConfig:
             name: oidc-${schema.spec.clusterName}
             key: ${schema.spec.oidcIssuer.configMapKey}
-          subject: system:serviceaccount:ubs-issuer-system:cert-manager
+          subject: system:serviceaccount:platform-issuer-system:cert-manager
 
     # NOTE: Flux federated credentials reference external management identities
     # These should be created separately or parameterized
@@ -610,7 +610,7 @@ spec:
           azureName: federated_workload_identity_flux_src_${schema.spec.clusterName}
           owner:
             # TODO: Parameterize this external identity reference
-            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-at39473-flux-mi4-dev
+            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-dev01-flux-mi4-dev
           audiences:
             - api://AzureADTokenExchange
           issuerFromConfig:
@@ -634,7 +634,7 @@ spec:
           azureName: federated_workload_identity_flux_img_${schema.spec.clusterName}
           owner:
             # TODO: Parameterize this external identity reference
-            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-at39473-flux-mi4-dev
+            armId: /subscriptions/${schema.spec.subscriptionId}/resourcegroups/eng-management-cluster/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-weu-dev01-flux-mi4-dev
           audiences:
             - api://AzureADTokenExchange
           issuerFromConfig:

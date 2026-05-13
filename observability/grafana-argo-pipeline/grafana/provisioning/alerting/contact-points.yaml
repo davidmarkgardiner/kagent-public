@@ -1,0 +1,52 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: argo-direct-webhook
+    receivers:
+      - uid: argo_direct_webhook
+        type: webhook
+        settings:
+          url: ${ARGO_DIRECT_WEBHOOK_URL}
+          httpMethod: POST
+          title: '{{ template "symphony.alert.title" . }}'
+          message: '{{ template "symphony.alert.message" . }}'
+          maxAlerts: "0"
+        disableResolveMessage: false
+
+  - orgId: 1
+    name: argo-redpanda-webhook
+    receivers:
+      - uid: argo_redpanda_webhook
+        type: webhook
+        settings:
+          url: ${GRAFANA_REDPANDA_WEBHOOK_URL}
+          httpMethod: POST
+          title: '{{ template "symphony.alert.title" . }}'
+          message: '{{ template "symphony.alert.message" . }}'
+          maxAlerts: "0"
+        disableResolveMessage: false
+
+templates:
+  - orgId: 1
+    name: symphony-alert-webhook-context
+    template: |
+      {{ define "symphony.alert.title" -}}
+      {{- if .CommonLabels.alertname -}}{{ .CommonLabels.alertname }}{{- else -}}Grafana alert{{- end -}}
+      {{- end }}
+
+      {{ define "symphony.alert.message" -}}
+      {{- range .Alerts }}
+      alertname={{ .Labels.alertname }}
+      summary={{ .Annotations.summary }}
+      description={{ .Annotations.description }}
+      severity={{ .Labels.severity }}
+      namespace={{ .Labels.namespace }}
+      pod={{ .Labels.pod }}
+      node={{ .Labels.node }}
+      grafana_panel_url={{ .Annotations.grafana_panel_url }}
+      runbook_url={{ .Annotations.runbook_url }}
+      starts_at={{ .StartsAt }}
+      ends_at={{ .EndsAt }}
+      {{- end }}
+      {{- end }}

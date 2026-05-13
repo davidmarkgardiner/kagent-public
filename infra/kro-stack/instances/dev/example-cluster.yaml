@@ -25,7 +25,7 @@ spec:
   # ========================================
   # Resource Group
   # ========================================
-  resourceGroup: "at39473-weu-dev-prod"
+  resourceGroup: "dev01-weu-dev-prod"
 
   # ========================================
   # Kubernetes Configuration
@@ -176,7 +176,7 @@ spec:
     managedBy: flux-system
     billingReference: BT-TS-INFRA
     opEnvironment: EV
-    cmdbReference: AT39473
+    cmdbReference: DEV01
     Owner: DavidGardiner
     Status: InUse
     Team: AKSEngineering

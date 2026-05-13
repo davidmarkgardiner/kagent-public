@@ -130,7 +130,7 @@ curl -sS -X POST http://argo-events-webhook.internal/approval-callback \
   -d '{
     "workflow_name": "net-triage-xyz123",
     "decision": "approved",
-    "approver": "test@bank.com",
+    "approver": "test@example.com",
     "decided_at": "2026-04-24T10:00:00Z"
   }'
 ```
@@ -183,7 +183,7 @@ kubectl get pods -n argo-events -l eventsource-name=teams-hitl-callback
 Same pattern as agentgateway — reuse the existing shared wildcard Gateway in
 `aks-istio-ingress` (or wherever your platform hosts it). The EventSource is
 exposed at a specific hostname under the wildcard, e.g.
-`hitl-callback.internal.bank.com`.
+`hitl-callback.example.internal`.
 
 ```bash
 # Pick a hostname under your wildcard. Example: hitl-callback.<wildcard-domain>

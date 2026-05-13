@@ -1,0 +1,257 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: symphony-alerting-pipeline
+    folder: Observability
+    interval: 1m
+    rules:
+      - uid: symphony-log-error-rate
+        title: Kubernetes log error rate spike
+        condition: C
+        data:
+          - refId: A
+            queryType: range
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: loki
+            model:
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              expr: 'sum by (namespace, pod) (rate({job=~"integrations/kubernetes/pod-logs|pod-logs"} |~ "(?i)level=error|\\berror\\b|exception" [5m]))'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: 'Error logs are above 0.1 lines/sec in {{ $labels.namespace }}/{{ $labels.pod }}.'
+          description: 'Loki saw {{ printf "%.3f" $values.B.Value }} error log lines/sec for 5m in pod {{ $labels.namespace }}/{{ $labels.pod }}, above threshold 0.1 for at least 2m. Inspect the linked Loki panel for the matching log line excerpt.'
+          log_line_excerpt: 'Run: {namespace="{{ $labels.namespace }}", pod="{{ $labels.pod }}"} |~ "(?i)level=error|\\berror\\b|exception"'
+          error_rate: '{{ printf "%.3f" $values.B.Value }} lines/sec'
+          window: 5m
+          grafana_panel_url: '${GRAFANA_PUBLIC_URL}/d/kubernetes-logs/kubernetes-logs?orgId=1&var-namespace={{ $labels.namespace }}&var-pod={{ $labels.pod }}'
+          runbook_url: 'https://runbooks.example.com/kubernetes/log-error-rate'
+        labels:
+          alertname: Kubernetes log error rate spike
+          severity: warning
+          pipeline_path: both
+          signal_type: log
+        isPaused: false
+
+      - uid: symphony-kubernetes-warning-event
+        title: Kubernetes warning event observed
+        condition: C
+        data:
+          - refId: A
+            queryType: range
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: loki
+            model:
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              expr: 'sum by (namespace, involved_object_kind, involved_object_name, reason, message) (count_over_time({job=~"integrations/kubernetes/eventhandler|kubernetes-events"} | json | type="Warning" [5m]))'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: 'Kubernetes Warning event {{ $labels.reason }} on {{ $labels.involved_object_kind }}/{{ $labels.involved_object_name }}.'
+          description: 'Kubernetes emitted {{ printf "%.0f" $values.B.Value }} Warning event(s) in 5m for {{ $labels.involved_object_kind }}/{{ $labels.involved_object_name }} in namespace {{ $labels.namespace }}. Reason={{ $labels.reason }}. Message={{ $labels.message }}. Grafana alert timestamps provide first/last notification times.'
+          event_reason: '{{ $labels.reason }}'
+          involved_object: '{{ $labels.involved_object_kind }}/{{ $labels.involved_object_name }}'
+          message: '{{ $labels.message }}'
+          count: '{{ printf "%.0f" $values.B.Value }}'
+          first_timestamp: '{{ $__from }}'
+          last_timestamp: '{{ $__to }}'
+          grafana_panel_url: '${GRAFANA_PUBLIC_URL}/d/kubernetes-events/kubernetes-events?orgId=1&var-namespace={{ $labels.namespace }}&var-reason={{ $labels.reason }}'
+          runbook_url: 'https://runbooks.example.com/kubernetes/warning-events'
+        labels:
+          alertname: Kubernetes warning event observed
+          severity: warning
+          pipeline_path: both
+          signal_type: event
+          involved_object_kind: '{{ $labels.involved_object_kind }}'
+          involved_object_name: '{{ $labels.involved_object_name }}'
+          reason: '{{ $labels.reason }}'
+        isPaused: false
+
+      - uid: symphony-pod-cpu-threshold
+        title: Pod CPU threshold breach
+        condition: C
+        data:
+          - refId: A
+            queryType: timeSeriesQuery
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: '100 * sum by (namespace, pod, node) (rate(container_cpu_usage_seconds_total{container!="", pod!=""}[5m])) / sum by (namespace, pod, node) (kube_pod_container_resource_limits{resource="cpu", unit="core"})'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: true
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: D
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: $B - 85
+              refId: D
+              type: math
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 85
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} is above 85% CPU limit.'
+          description: 'Metric container_cpu_usage_seconds_total / kube_pod_container_resource_limits is {{ printf "%.1f" $values.B.Value }}% for {{ $labels.namespace }}/{{ $labels.pod }} on {{ $labels.node }}, threshold 85%, {{ printf "%.1f" $values.D.Value }} percentage points over, breaching for at least 5m.'
+          metric_name: container_cpu_usage_seconds_total
+          current_value: '{{ printf "%.1f" $values.B.Value }}%'
+          threshold: 85%
+          percentage_over: '{{ printf "%.1f" $values.D.Value }} percentage points'
+          duration_breaching: 5m
+          affected_pod: '{{ $labels.namespace }}/{{ $labels.pod }}'
+          affected_node: '{{ $labels.node }}'
+          grafana_panel_url: '${GRAFANA_PUBLIC_URL}/d/kubernetes-compute-resources-pod/kubernetes-compute-resources-pod?orgId=1&var-namespace={{ $labels.namespace }}&var-pod={{ $labels.pod }}'
+          runbook_url: 'https://runbooks.example.com/kubernetes/pod-cpu-threshold'
+        labels:
+          alertname: Pod CPU threshold breach
+          severity: critical
+          pipeline_path: both
+          signal_type: metric
+        isPaused: false

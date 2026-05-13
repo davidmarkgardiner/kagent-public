@@ -310,7 +310,7 @@ Summary: 7 passed, 0 failed
 
 === Getting AKS Credentials ===
 Cluster: uk8s-tsshared-weu-gt025-int-dev-public2
-Resource Group: at39473-weu-dev-public2
+Resource Group: dev01-weu-dev-public2
 Subscription: {{AZURE_SUBSCRIPTION_ID}}
 Using workload identity
 Getting AKS credentials...

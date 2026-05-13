@@ -233,7 +233,7 @@ spec:
           issuerFromConfig:
             name: oidc-${schema.spec.clusterName}
             key: issuer-url
-          subject: system:serviceaccount:ubs-issuer-system:cert-manager
+          subject: system:serviceaccount:platform-issuer-system:cert-manager
 
     - id: grafanaFederatedCredential
       template:
@@ -319,7 +319,7 @@ spec:
         kind: ServiceAccount
         metadata:
           name: cert-manager
-          namespace: ubs-issuer-system
+          namespace: platform-issuer-system
           annotations:
             azure.workload.identity/client-id: ${schema.spec.platformFoundation.certManagerClientId}
 

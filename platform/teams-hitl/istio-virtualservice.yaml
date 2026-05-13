@@ -27,7 +27,7 @@
 #   kubectl get svc -n aks-istio-ingress   # find the external ingress LB IP
 #
 # Substitute placeholders before applying:
-#   REPLACE_WITH_CALLBACK_HOST        e.g. hitl-callback.internal.bank.com
+#   REPLACE_WITH_CALLBACK_HOST        e.g. hitl-callback.example.internal
 #   REPLACE_WITH_SHARED_GATEWAY_NS    e.g. aks-istio-ingress
 #   REPLACE_WITH_SHARED_GATEWAY_NAME  the wildcard Gateway's name
 #
@@ -47,7 +47,7 @@ metadata:
   namespace: argo-events
 spec:
   hosts:
-    - "REPLACE_WITH_CALLBACK_HOST"    # e.g. hitl-callback.internal.bank.com
+    - "REPLACE_WITH_CALLBACK_HOST"    # e.g. hitl-callback.example.internal
 
   # Attach ONLY to the shared ingress Gateway — not `mesh`.
   # AKS Istio addon clusters are separate meshes by default; the Teams bot

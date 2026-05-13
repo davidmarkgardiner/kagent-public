@@ -1,0 +1,55 @@
+{
+  "receiver": "argo-direct-webhook",
+  "status": "firing",
+  "orgId": 1,
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "Pod CPU threshold breach",
+        "severity": "critical",
+        "namespace": "payments",
+        "pod": "checkout-api-7f9d9c4b6c-n7p2v",
+        "node": "aks-nodepool1-12345678-vmss000001",
+        "pipeline_path": "both",
+        "signal_type": "metric"
+      },
+      "annotations": {
+        "summary": "Pod payments/checkout-api-7f9d9c4b6c-n7p2v is above 85% CPU limit.",
+        "description": "Metric container_cpu_usage_seconds_total / kube_pod_container_resource_limits is 93.7% for payments/checkout-api-7f9d9c4b6c-n7p2v on aks-nodepool1-12345678-vmss000001, threshold 85%, 8.7 percentage points over, breaching for at least 5m.",
+        "metric_name": "container_cpu_usage_seconds_total",
+        "current_value": "93.7%",
+        "threshold": "85%",
+        "percentage_over": "8.7 percentage points",
+        "duration_breaching": "5m",
+        "affected_pod": "payments/checkout-api-7f9d9c4b6c-n7p2v",
+        "affected_node": "aks-nodepool1-12345678-vmss000001",
+        "grafana_panel_url": "https://grafana.example.com/d/kubernetes-compute-resources-pod/kubernetes-compute-resources-pod?orgId=1&var-namespace=payments&var-pod=checkout-api-7f9d9c4b6c-n7p2v",
+        "runbook_url": "https://runbooks.example.com/kubernetes/pod-cpu-threshold"
+      },
+      "startsAt": "2026-05-12T10:00:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "https://grafana.example.com/alerting/grafana/symphony-pod-cpu-threshold/view",
+      "fingerprint": "metric-threshold-demo"
+    }
+  ],
+  "commonLabels": {
+    "alertname": "Pod CPU threshold breach",
+    "severity": "critical",
+    "namespace": "payments",
+    "pod": "checkout-api-7f9d9c4b6c-n7p2v",
+    "node": "aks-nodepool1-12345678-vmss000001",
+    "pipeline_path": "both",
+    "signal_type": "metric"
+  },
+  "commonAnnotations": {
+    "summary": "Pod payments/checkout-api-7f9d9c4b6c-n7p2v is above 85% CPU limit.",
+    "description": "Metric container_cpu_usage_seconds_total / kube_pod_container_resource_limits is 93.7%, threshold 85%, 8.7 percentage points over, breaching for at least 5m.",
+    "grafana_panel_url": "https://grafana.example.com/d/kubernetes-compute-resources-pod/kubernetes-compute-resources-pod?orgId=1&var-namespace=payments&var-pod=checkout-api-7f9d9c4b6c-n7p2v",
+    "runbook_url": "https://runbooks.example.com/kubernetes/pod-cpu-threshold"
+  },
+  "externalURL": "https://grafana.example.com",
+  "version": "1",
+  "groupKey": "{}:{alertname=\"Pod CPU threshold breach\"}",
+  "truncatedAlerts": 0
+}

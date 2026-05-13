@@ -195,7 +195,7 @@ Create scorecard: `POST /v1/blueprints/{blueprint}/scorecards`.
 kubectl run -n argo-events test-create --rm -it --restart=Never --image=curlimages/curl -- \
   curl -s -X POST http://port-webhook-eventsource-svc.argo-events.svc.cluster.local:12000/namespace-action \
   -H "Content-Type: application/json" \
-  -d '{"action":"create","namespace":"platform-dev-testing","cluster":"homelab","owner":"david@bank.com","team":"platform","environment":"dev","cpu_quota":"4","memory_quota":"8Gi"}'
+  -d '{"action":"create","namespace":"platform-dev-testing","cluster":"homelab","owner":"david@example.com","team":"platform","environment":"dev","cpu_quota":"4","memory_quota":"8Gi"}'
 ```
 
 ### Test app deployment webhook
