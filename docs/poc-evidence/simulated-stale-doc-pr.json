@@ -1,0 +1,9 @@
+{
+  "mode": "simulated",
+  "branch": "mil-128/kagent-kb-update-1778670658",
+  "pr_url": "https://github.com/davidmarkgardiner/kagent-public/pull/simulated-mil-128",
+  "changed_file": "docs/platform-kb/aks/pod-security.md",
+  "summary": "Simulated stale-doc PR creation for smoke test.",
+  "question": "How do I secure my pod?",
+  "reason": "Smoke test marked answer stale."
+}

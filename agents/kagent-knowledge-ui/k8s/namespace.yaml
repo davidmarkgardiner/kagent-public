@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kagent-knowledge-ui
+  labels:
+    app.kubernetes.io/name: kagent-knowledge-ui
+
