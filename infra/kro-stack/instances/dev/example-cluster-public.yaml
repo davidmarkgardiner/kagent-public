@@ -5,7 +5,7 @@
 apiVersion: kro.run/v1alpha1
 kind: UK8SClusterPublic
 metadata:
-  name: uk8s-tsshared-weu-gt025-int-dev-public2
+  name: example-cluster-dev-public2
   namespace: uk8s-nextgen
   labels:
     environment: dev
@@ -19,7 +19,7 @@ spec:
   # ========================================
   # Cluster Identity
   # ========================================
-  clusterName: "uk8s-tsshared-weu-gt025-int-dev-public2"
+  clusterName: "example-cluster-dev-public2"
   location: "uksouth"
   subscriptionId: "{{AZURE_SUBSCRIPTION_ID}}"
 

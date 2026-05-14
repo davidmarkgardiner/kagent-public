@@ -5,7 +5,7 @@
 apiVersion: kro.run/v1alpha1
 kind: UK8SCluster
 metadata:
-  name: uk8s-tsshared-weu-gt025-int-prod
+  name: example-cluster-prod
   namespace: uk8s-nextgen
   labels:
     environment: dev
@@ -18,14 +18,14 @@ spec:
   # ========================================
   # Cluster Identity
   # ========================================
-  clusterName: "uk8s-tsshared-weu-gt025-int-prod"
+  clusterName: "example-cluster-prod"
   location: "uksouth"
   subscriptionId: "{{AZURE_SUBSCRIPTION_ID}}"
 
   # ========================================
   # Resource Group
   # ========================================
-  resourceGroup: "dev01-weu-dev-prod"
+  resourceGroup: "example-rg"
 
   # ========================================
   # Kubernetes Configuration

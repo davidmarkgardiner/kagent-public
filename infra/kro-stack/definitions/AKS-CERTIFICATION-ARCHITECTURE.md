@@ -309,7 +309,7 @@ Summary: 7 passed, 0 failed
 ✅ KRO validation complete
 
 === Getting AKS Credentials ===
-Cluster: uk8s-tsshared-weu-gt025-int-dev-public2
+Cluster: example-cluster-dev-public2
 Resource Group: dev01-weu-dev-public2
 Subscription: {{AZURE_SUBSCRIPTION_ID}}
 Using workload identity
@@ -319,7 +319,7 @@ Testing connection to AKS cluster...
 ✅ AKS credentials acquired successfully
 
 === AKS System Components Validation ===
-Validating components IN the AKS cluster: uk8s-tsshared-weu-gt025-int-dev-public2
+Validating components IN the AKS cluster: example-cluster-dev-public2
 
 Checking Flux...
 ✓ Namespace flux-system exists
@@ -338,7 +338,7 @@ Summary: 15 passed, 0 failed, 2 warnings
 
 === UK8S CLUSTER CERTIFICATION REPORT ===
 {
-  "cluster": "uk8s-tsshared-weu-gt025-int-dev-public2",
+  "cluster": "example-cluster-dev-public2",
   "namespace": "uk8s-nextgen",
   "environment": "dev",
   "cluster_type": "PUBLIC",
@@ -346,7 +346,7 @@ Summary: 15 passed, 0 failed, 2 warnings
   "workflow": "certify-...-auto-abc123",
   "certification": {
     "status": "CERTIFIED",
-    "workflow_name": "certify-uk8s-tsshared-weu-gt025-int-dev-public2"
+    "workflow_name": "certify-example-cluster-dev-public2"
   }
 }
 ✅ CLUSTER CERTIFICATION COMPLETE

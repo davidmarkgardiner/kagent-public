@@ -1,10 +1,10 @@
 apiVersion: kro.run/v1alpha1
 kind: UK8SCluster
 metadata:
-  name: uk8s-tsshared-weu-gt025-int-d08
+  name: example-cluster-d08
   namespace: uk8s-nextgen
 spec:
-  clusterName: "uk8s-tsshared-weu-gt025-int-d08"
+  clusterName: "example-cluster-d08"
   location: "westeurope"
   resourceGroup: ""
   flux:

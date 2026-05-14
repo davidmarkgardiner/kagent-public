@@ -31,13 +31,13 @@ escalate() { ESCALATIONS+=("$1"); echo "🔴 ESCALATE: $1"; }
 ok() { $QUIET || echo "✅ $1"; }
 
 # --- Agent definitions ---
-declare -A HOSTS=( [scotty]="local" [codex]="192.168.6.105" [gem]="192.168.6.10" [kimi]="192.168.6.104" )
+declare -A HOSTS=( [scotty]="local" [codex]="${CODEX_HOST:-codex-host}" [gem]="${GEM_HOST:-gem-host}" [kimi]="${KIMI_HOST:-kimi-host}" )
 declare -A PORTS=( [scotty]="18789" [codex]="18791" [gem]="18789" [kimi]="18790" )
 declare -A MODELS=( [scotty]="anthropic/claude-opus-4-6" [codex]="openai-codex/gpt-5.3-codex" [gem]="google-gemini-cli/gemini-3.1-pro" [kimi]="kimi-code/kimi-for-coding" )
 declare -A FALLBACKS=( [codex]="google-gemini-cli/gemini-2.5-pro" [gem]="google-gemini-cli/gemini-2.5-pro" )
 declare -A SERVICES=( [scotty]="openclaw-gateway" [codex]="openclaw-gateway" [gem]="openclaw-gateway" [kimi]="openclaw-gateway" )
 
-# Shutdown window: Proxmox VMs (192.168.6.x) are off 22:00-09:00 UTC weekdays, all weekend
+# Shutdown window: homelab VMs are off 22:00-09:00 UTC weekdays, all weekend
 in_shutdown_window() {
   local host="${HOSTS[$1]}"
   [[ "$host" == "local" ]] && return 1

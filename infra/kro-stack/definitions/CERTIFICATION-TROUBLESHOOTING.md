@@ -30,7 +30,7 @@ kubectl rollout restart deployment kro -n kro
 
 ### 2. ResourceGroup Deletion Conflict
 
-**Problem**: Second cluster instance (`uk8s-tsshared-weu-gt025-int-dev-public2`) was blocked with:
+**Problem**: Second cluster instance (`example-cluster-dev-public2`) was blocked with:
 ```
 Owner "dev01-weu-dev-public, Group/Kind: resources.azure.com/ResourceGroup" cannot be found
 ```
@@ -40,7 +40,7 @@ Owner "dev01-weu-dev-public, Group/Kind: resources.azure.com/ResourceGroup" cann
 **Solution**:
 ```bash
 # Update the second instance to use a different ResourceGroup
-kubectl patch uk8sclusterpublic uk8s-tsshared-weu-gt025-int-dev-public2 \
+kubectl patch uk8sclusterpublic example-cluster-dev-public2 \
   -n uk8s-nextgen --type=merge \
   -p '{"spec":{"resourceGroup":"dev01-weu-dev-public2"}}'
 ```

@@ -28,12 +28,12 @@ kubectl apply -f - <<'EOF'
 apiVersion: kro.run/v1alpha1
 kind: UK8SCluster
 metadata:
-  name: aks-event-triage-dev
+  name: example-aks-triage
   namespace: uk8s-nextgen
 spec:
-  clusterName: aks-event-triage-dev
+  clusterName: example-aks-triage
   location: uksouth
-  ownerResourceGroup: rg-event-triage-dev
+  ownerResourceGroup: example-rg-triage
   kubernetesVersion: "1.32"
   nodePool:
     count: 1
@@ -53,20 +53,20 @@ kubectl get akscluster -n uk8s-nextgen -w
 
 ```bash
 # Azure AD auth (default — local accounts disabled)
-az aks get-credentials -g rg-event-triage-dev -n aks-event-triage-dev
+az aks get-credentials -g example-rg-triage -n example-aks-triage
 
 # If you need admin access (enable local accounts first)
-az aks update -g rg-event-triage-dev -n aks-event-triage-dev --enable-local-accounts --yes
-az aks get-credentials -g rg-event-triage-dev -n aks-event-triage-dev --admin
+az aks update -g example-rg-triage -n example-aks-triage --enable-local-accounts --yes
+az aks get-credentials -g example-rg-triage -n example-aks-triage --admin
 
 # Verify
-kubectl --context aks-event-triage-dev-admin get ns
+kubectl --context example-aks-triage-admin get ns
 ```
 
 ## Step 3: Deploy Argo Workflows + Events
 
 ```bash
-AKS=aks-event-triage-dev-admin
+AKS=example-aks-triage-admin
 
 # Argo Workflows
 helm install argo-workflows argo/argo-workflows \
@@ -152,7 +152,7 @@ kubectl --context $AKS get pods -n argo -n argo-events
 ## Step 4: Deploy kagent + agentgateway
 
 ```bash
-AKS=aks-event-triage-dev-admin
+AKS=example-aks-triage-admin
 
 # Create kagent namespace
 kubectl --context $AKS create namespace kagent
@@ -291,7 +291,7 @@ kubectl --context $AKS get pods -n kagent -w
 ## Step 5: Deploy Agents + Sensors
 
 ```bash
-AKS=aks-event-triage-dev-admin
+AKS=example-aks-triage-admin
 
 # Deploy AKS namespace agents
 cd kagent-triage/aks
@@ -308,7 +308,7 @@ kubectl --context $AKS get sensors -n argo-events
 ## Step 6: Smoke Test (1 Call Only)
 
 ```bash
-AKS=aks-event-triage-dev-admin
+AKS=example-aks-triage-admin
 
 cat <<'SCRIPT' | kubectl --context $AKS run smoke-test --image=python:3.11-slim --rm -i --restart=Never -n kagent -- python3
 import json, urllib.request, sys
@@ -337,14 +337,14 @@ SCRIPT
 
 ```bash
 # Option A: Stop the cluster (keeps config, stops billing for compute)
-az aks stop -g rg-event-triage-dev -n aks-event-triage-dev
+az aks stop -g example-rg-triage -n example-aks-triage
 
 # Option B: Delete via KRO (removes everything including Azure resources)
 kubectx {{CLUSTER_NAME}}
-kubectl delete akscluster aks-event-triage-dev -n uk8s-nextgen
+kubectl delete akscluster example-aks-triage -n uk8s-nextgen
 
 # Option C: Delete the entire resource group
-az group delete -g rg-event-triage-dev --yes --no-wait
+az group delete -g example-rg-triage --yes --no-wait
 ```
 
 ---
@@ -395,7 +395,7 @@ az group delete -g rg-event-triage-dev --yes --no-wait
 | kyverno-agent | kyverno | 7/7 PASS |
 | reloader-agent | reloader | 7/7 PASS |
 
-### AKS Cluster (context: aks-event-triage-dev-admin)
+### AKS Cluster (context: example-aks-triage-admin)
 | Agent | Namespace | Result |
 |-------|-----------|--------|
 | flux-system-agent | flux-system | PASS — listed pods, identified node drain |

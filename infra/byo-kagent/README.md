@@ -262,7 +262,7 @@ apps/04-applications/agents/webx/frontend-debugger/
   base/           ← single base, cluster-agnostic
   overlays/
     red-cluster/  ← patches: replicas, resource limits
-    uk8s-tsshared-weu-gt025-int-prod/
+    example-cluster-prod/
 ```
 
 The `FluxGitOps` CR for each cluster already has `ownerCluster` pointing at the right target. Adding a new cluster overlay is a git-only operation.

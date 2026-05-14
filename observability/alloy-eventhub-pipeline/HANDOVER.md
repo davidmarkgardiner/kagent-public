@@ -1,7 +1,7 @@
 # K8s Event Triage Platform — Handover Document
 
 **Date:** 2026-03-12
-**Cluster:** aks-event-triage-dev (kubectl context: `aks-event-triage-dev`)
+**Cluster:** example-aks-triage (kubectl context: `example-aks-triage`)
 **Region:** UK South
 
 ---
@@ -225,8 +225,8 @@ K8s Warning Events
 
 | Resource | Name | Notes |
 |----------|------|-------|
-| Resource Group | rg-event-triage-dev | UK South |
-| AKS Cluster | aks-event-triage-dev | Standard_B4ms, K8s 1.32.11 |
+| Resource Group | example-rg-triage | UK South |
+| AKS Cluster | example-aks-triage | Standard_B4ms, K8s 1.32.11 |
 | Event Hub NS | evhns-event-triage-dev | Standard, Kafka enabled |
 | Event Hub | k8s-events | 2 partitions, freshly recreated |
 | VNet | vnet-event-triage-dev | 10.0.0.0/16, subnet aks-subnet 10.0.0.0/22 |

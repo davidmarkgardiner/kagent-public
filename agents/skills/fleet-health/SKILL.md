@@ -36,9 +36,9 @@ Monitors all agent gateways, detects failures, auto-remediates where possible, a
 | Agent | Primary Model | Heartbeat Model |
 |-------|--------------|-----------------|
 | Scotty (local) | anthropic/claude-opus-4-6 | anthropic/claude-sonnet-4-6 |
-| Codex (192.168.6.105) | openai-codex/gpt-5.3-codex | openai-codex/gpt-5.3-codex |
-| Gem (192.168.6.10) | google-gemini-cli/gemini-3.1-pro | google-gemini-cli/gemini-2.5-flash |
-| Kimi (192.168.6.104) | kimi-code/kimi-for-coding | kimi-code/kimi-for-coding |
+| Codex (`<codex-host>`) | openai-codex/gpt-5.3-codex | openai-codex/gpt-5.3-codex |
+| Gem (`<gem-host>`) | google-gemini-cli/gemini-3.1-pro | google-gemini-cli/gemini-2.5-flash |
+| Kimi (`<kimi-host>`) | kimi-code/kimi-for-coding | kimi-code/kimi-for-coding |
 
 ## Fallback Models (when primary is unavailable)
 
@@ -50,7 +50,7 @@ Monitors all agent gateways, detects failures, auto-remediates where possible, a
 
 ## Escalation
 
-When human action is needed, send a Telegram message to David with:
+When human action is needed, send a Telegram message to the operator with:
 - Which agent is affected
 - What the problem is
 - Exact steps to fix (copy-paste ready)
@@ -62,9 +62,9 @@ When human action is needed, send a Telegram message to David with:
 
 **Expected re-auth frequency:** Every few weeks to months, depending on token expiry.
 
-**Re-auth steps for David:**
+**Re-auth steps for the operator:**
 ```
-ssh david@192.168.6.105
+ssh <user>@<codex-host>
 openclaw configure --section model
 # Select openai-codex → browser opens → login → done
 ```

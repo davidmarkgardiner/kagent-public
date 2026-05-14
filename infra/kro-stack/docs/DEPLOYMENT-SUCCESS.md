@@ -19,11 +19,11 @@ UK8SCluster: ACTIVE ✅
 
 Total: **11 Azure resources** created via KRO + ASO:
 
-1. ✅ **ResourceGroup**: `dev01-weu-dev-prod`
-2. ✅ **ManagedCluster**: `uk8s-tsshared-weu-gt025-int-prod` (Provisioning in Azure)
-3. ✅ **UserAssignedIdentity**: `uami-uk8s-tsshared-weu-gt025-int-prod-externalsecrets`
-4. ✅ **UserAssignedIdentity**: `uami-uk8s-tsshared-weu-gt025-int-prod-externaldns`
-5. ✅ **UserAssignedIdentity**: `uami-uk8s-tsshared-weu-gt025-int-prod-certmanager`
+1. ✅ **ResourceGroup**: `example-rg`
+2. ✅ **ManagedCluster**: `example-cluster-prod` (Provisioning in Azure)
+3. ✅ **UserAssignedIdentity**: `uami-example-cluster-prod-externalsecrets`
+4. ✅ **UserAssignedIdentity**: `uami-example-cluster-prod-externaldns`
+5. ✅ **UserAssignedIdentity**: `uami-example-cluster-prod-certmanager`
 6. ⏳ **FederatedIdentityCredential**: `certmanager-fic-...` (Waiting for OIDC)
 7. ⏳ **FederatedIdentityCredential**: `externaldns-fic-...` (Waiting for OIDC)
 8. ⏳ **FederatedIdentityCredential**: `externaldnsbcm-fic-...` (Waiting for OIDC)
@@ -93,7 +93,7 @@ The following will happen automatically as the cluster provisions:
 
 2. **OIDC ConfigMap Creation**
    - ASO will create ConfigMap with OIDC issuer URL
-   - ConfigMap name: `oidc-uk8s-tsshared-weu-gt025-int-prod`
+   - ConfigMap name: `oidc-example-cluster-prod`
 
 3. **Federated Identity Credentials**
    - Will become Ready once OIDC ConfigMap exists
@@ -114,18 +114,18 @@ The following will happen automatically as the cluster provisions:
 kubectl get uk8scluster -n uk8s-nextgen -w
 
 # Check ManagedCluster provisioning
-kubectl describe managedcluster uk8s-tsshared-weu-gt025-int-prod -n uk8s-nextgen
+kubectl describe managedcluster example-cluster-prod -n uk8s-nextgen
 
 # Check all Azure resources
 kubectl get resourcegroups,managedclusters,userassignedidentities,federatedidentitycredentials -n uk8s-nextgen
 
 # Check for OIDC ConfigMap (appears when cluster is ready)
-kubectl get configmap oidc-uk8s-tsshared-weu-gt025-int-prod -n uk8s-nextgen
+kubectl get configmap oidc-example-cluster-prod -n uk8s-nextgen
 
 # Once cluster is ready, get kubeconfig
 az aks get-credentials \
-  --resource-group dev01-weu-dev-prod \
-  --name uk8s-tsshared-weu-gt025-int-prod
+  --resource-group example-rg \
+  --name example-cluster-prod
 ```
 
 ## Success Criteria Met

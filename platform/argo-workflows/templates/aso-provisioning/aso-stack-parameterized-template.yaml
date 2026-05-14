@@ -20,7 +20,7 @@ spec:
         value: "uksouth"
         description: "Azure region"
       - name: cluster-name
-        value: "uk8s-tsshared-weu-gt025-int-prod"
+        value: "example-cluster-prod"
         description: "AKS cluster name"
       - name: vm-size
         value: "Standard_B8ms"

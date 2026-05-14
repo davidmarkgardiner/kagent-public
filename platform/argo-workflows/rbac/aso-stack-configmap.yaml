@@ -62,9 +62,9 @@ data:
     \   kubectl apply -k /path/to/aso-stack\n   ```\n\n2. **Monitor Azure resource\
     \ creation**\n\n   ```bash\n   # Check ASO resource status\n   kubectl get resourcegroup,managedidentity,managedcluster\
     \ -n azure-system\n\n   # Monitor cluster provisioning (15-20 minutes)\n   kubectl\
-    \ describe managedcluster uk8s-tsshared-weu-gt025-int-prod -n azure-system\n \
+    \ describe managedcluster example-cluster-prod -n azure-system\n \
     \  ```\n\n3. **Obtain AKS credentials**\n\n   ```bash\n   az aks get-credentials\
-    \ --resource-group dev01-weu-dev-prod --name uk8s-tsshared-weu-gt025-int-prod\n\
+    \ --resource-group example-rg --name example-cluster-prod\n\
     \   ```\n\n4. **Verify Flux deployment**\n\n   ```bash\n   # Check Flux extension\n\
     \   kubectl get extension -n azure-system\n\n   # Check GitOps sync status\n \
     \  kubectl get gitrepository,kustomization -n flux-system\n   ```\n\n5. **Verify\
@@ -74,7 +74,7 @@ data:
     \   kubectl get gateway,virtualservice -A\n   ```\n\n## Monitoring and Troubleshooting\n\
     \n### Infrastructure Status\n\n```bash\n# ASO operator status\nkubectl get pods\
     \ -n azureserviceoperator-system\n\n# Azure resource provisioning status\nkubectl\
-    \ get managedcluster uk8s-tsshared-weu-gt025-int-prod -n azure-system -o yaml\n\
+    \ get managedcluster example-cluster-prod -n azure-system -o yaml\n\
     ```\n\n### GitOps Status\n\n```bash\n# Flux controllers\nkubectl get pods -n flux-system\n\
     \n# Sync status and errors\nkubectl describe gitrepository -n flux-system\nkubectl\
     \ describe kustomization -n flux-system\n\n# Flux logs\nkubectl logs -n flux-system\
@@ -97,11 +97,11 @@ data:
     \ backup strategies for persistent workloads\n5. Configure alerting and incident\
     \ response procedures\n"
   cluster.yaml: "apiVersion: containerservice.azure.com/v1api20240402preview\nkind:\
-    \ ManagedCluster\nmetadata:\n  name: uk8s-tsshared-weu-gt025-int-prod\n  namespace:\
-    \ azure-system\nspec:\n  azureName: uk8s-tsshared-weu-gt025-int-prod\n  location:\
-    \ uksouth\n  owner:\n    name: dev01-weu-dev-prod\n  operatorSpec:\n    configMaps:\n\
+    \ ManagedCluster\nmetadata:\n  name: example-cluster-prod\n  namespace:\
+    \ azure-system\nspec:\n  azureName: example-cluster-prod\n  location:\
+    \ uksouth\n  owner:\n    name: example-rg\n  operatorSpec:\n    configMaps:\n\
     \      oidcIssuerProfile:\n        name: aks-oidc-config-prod\n        key: issuer-url\n\
-    \  dnsPrefix: uk8s-tsshared-weu-gt025-int-prodk8s\n  kubernetesVersion: \"1.32\"\
+    \  dnsPrefix: example-cluster-prodk8s\n  kubernetesVersion: \"1.32\"\
     \n  linuxProfile:\n    adminUsername: localadmin\n    ssh:\n      publicKeys:\n\
     \        - keyData: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6ACnIVTQEBTEjbxDAUIQVp8mrxwjmTEOXPx2W7GAMK/r8N66r8qEv51IPauNizNDmX8+Bg+kjPVXZh0ZNvGCKLyD/v/Oa2OzG54uw5HMeMbqn3v+dLtygr6wOFYFZuha93/yodfQdOZi2j0JPCH7+O5pVMiy8fyZF1R23rNbPdHUBbCcdgm3fbZZxfjhODfPrUyP5YVURpHmy3GL0Mq1Jcye51fB2ESBpOH3tp3JV6SsMtPcpxu/5VJkjg14BqKiW0JBOZZE9ujfnQVAYQI4mQOweGB9EpkqQp/lDe4+FtEuktV9jjbyxt7pzu/pwp8J0DhBuR08Wjw/+S9yWHCtLJw2Bz/Y9QtYDigc7KNCuGQQSJUGeJy/fd2Zdr53LyXlLJP3PK+PDJlaoLJUtNP+hxv5EJATN785ywOBB7KnB4kvU/ZZzwxfkvUi7GJCy7KGnShpfnTO/79oV5UYOOcScLSnIQznIqah7Cs0UEX7SRSCcrqpbfIZr4euzNhRBBx4NVptHZPv2OuwCeMFMJNDrY47MKsg0mE3R6S8WO1OCRZdvZdRxg2HnIicU2aqDYgvGV0VZmKjOgYKSlD27rLpLNoifjbc/ppym9nMc9MMqAGZ7Wx84XcvampwEcxinBkZi7mZHEu8wv6nQdcf3Cg5H4ETwYVQfwgvS7FLP/364tQ==\n\
     \  # Node provisioning with auto mode (NAP)\n  nodeProvisioningProfile:\n    mode:\
@@ -153,24 +153,24 @@ data:
     \       podLabels:\n          kubernetes.azure.com/managedby: aks\n      - name:\
     \ platform-control-plane-exception\n        namespace: platform-system\n        podLabels:\n\
     \          kubernetes.azure.com/managedby: aks\n  # Resource group for node resources\n\
-    \  nodeResourceGroup: MC_dev01-weu-dev-prod_uk8s-tsshared-weu-gt025-int-prod_uksouth\n\
+    \  nodeResourceGroup: MC_example-rg_example-cluster-prod_uksouth\n\
     \  # Service Principal Profile\n  servicePrincipalProfile:\n    clientId: msi\n\
     \  # Tags\n  tags:\n    environment: dev\n    project: uk8s\n    costCenter: BT-TS-INFRA-\n\
     \    managedBy: flux-system\n    billingReference: BT-TS-INFRA-\n    opEnvironment:\
     \ EV\n    cmdbReference: DEV01\n    Owner: DavidGardiner\n    Status: InUse\n\
     \    Team: AKSEngineering\n    DeployedBy: AzureServiceOperator\n  privateLinkResources:\n\
-    \    - reference:\n        armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/DEV01-weu-dev-prod/providers/Microsoft.ContainerService/managedClusters/uk8s-tsshared-weu-gt025-int-prod/privateLinkResources/management\n"
+    \    - reference:\n        armId: /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/EXAMPLE-RG/providers/Microsoft.ContainerService/managedClusters/example-cluster-prod/privateLinkResources/management\n"
   dns.yaml: "# DNS Resources for External DNS and Certificate Manager\napiVersion:\
     \ resources.azure.com/v1api20200601\nkind: ResourceGroup\nmetadata:\n  name: dns-rg\n\
     \  namespace: azure-system\nspec:\n  azureName: dns\n  location: westeurope\n\
     ---\napiVersion: network.azure.com/v1api20220701\nkind: DnsZone\nmetadata:\n \
-    \ name: davidmarkgardiner-co-uk\n  namespace: azure-system\nspec:\n  azureName:\
-    \ davidmarkgardiner.co.uk\n  owner:\n    name: dns-rg\n  zoneType: Public\n"
+    \ name: example-domain\n  namespace: azure-system\nspec:\n  azureName:\
+    \ {{EXAMPLE_DOMAIN}}\n  owner:\n    name: dns-rg\n  zoneType: Public\n"
   extension.yaml: "apiVersion: kubernetesconfiguration.azure.com/v1api20230501\nkind:\
     \ Extension\nmetadata:\n  name: aso-flux-extension\n  namespace: azure-system\n\
     spec:\n  azureName: aso-flux-extension\n  autoUpgradeMinorVersion: true\n  extensionType:\
     \ microsoft.flux\n  identity:\n    type: SystemAssigned\n  owner:\n    group:\
-    \ containerservice.azure.com\n    kind: ManagedCluster\n    name: uk8s-tsshared-weu-gt025-int-prod\n\
+    \ containerservice.azure.com\n    kind: ManagedCluster\n    name: example-cluster-prod\n\
     \  scope:\n    cluster:\n      releaseNamespace: flux-system\n  configurationSettings:\n\
     \    multiTenancy.enforce: \"false\"\n    image-automation-controller.enabled:\
     \ \"true\"\n    image-reflector-controller.enabled: \"true\"\n    workload-identity.enabled:\
@@ -411,11 +411,11 @@ data:
     \      dependsOn: [\"platform-services\"]\n      path: ./apps/04-applications\n\
     \      timeoutInSeconds: 180\n      syncIntervalInSeconds: 120\n      prune: true\n\
     \      force: true\n      wait: true\n  namespace: flux-system\n  owner:\n   \
-    \ group: containerservice.azure.com\n    kind: ManagedCluster\n    name: uk8s-tsshared-weu-gt025-int-prod\n\
+    \ group: containerservice.azure.com\n    kind: ManagedCluster\n    name: example-cluster-prod\n\
     \  sourceKind: GitRepository\n"
   identity.yaml: "# apiVersion: managedidentity.azure.com/v1api20230131\n# kind: UserAssignedIdentity\n\
     # metadata:\n#   name: flux-identity\n#   namespace: azure-system\n# spec:\n#\
-    \   azureName: flux-identity\n#   location: uksouth\n#   owner:\n#     name: dev01-weu-dev-prod\n\
+    \   azureName: flux-identity\n#   location: uksouth\n#   owner:\n#     name: example-rg\n\
     #   operatorSpec:\n#     configMaps:\n#       clientId:\n#         name: flux-identity-cm\n\
     #         key: clientId\n#       principalId:\n#         name: flux-identity-cm\n\
     #         key: principalId\n#       tenantId:\n#         name: flux-identity-cm\n\
@@ -429,7 +429,7 @@ data:
     \        name: external-dns-identity-cm\n        key: tenantId\n---\napiVersion:\
     \ managedidentity.azure.com/v1api20230131\nkind: UserAssignedIdentity\nmetadata:\n\
     \  name: cert-manager-identity\n  namespace: azure-system\nspec:\n  azureName:\
-    \ cert-manager-identity\n  location: uksouth\n  owner:\n    name: dev01-weu-dev-prod\n\
+    \ cert-manager-identity\n  location: uksouth\n  owner:\n    name: example-rg\n\
     \  operatorSpec:\n    configMaps:\n      clientId:\n        name: cert-manager-identity-cm\n\
     \        key: clientId\n      principalId:\n        name: cert-manager-identity-cm\n\
     \        key: principalId\n      tenantId:\n        name: cert-manager-identity-cm\n\
@@ -459,8 +459,8 @@ data:
     resources:\n  - resourcegroup.yaml\n  - identity.yaml\n  - roleassignment.yaml\n\
     \  - cluster.yaml\n  - federated.yaml\n  - extension.yaml\n  - fluxconfiguration.yaml\n"
   resourcegroup.yaml: "apiVersion: resources.azure.com/v1api20200601\nkind: ResourceGroup\n\
-    metadata:\n  name: dev01-weu-dev-prod\n  namespace: azure-system\nspec:\n  azureName:\
-    \ dev01-weu-dev-prod\n  location: uksouth\n---\n# /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/dns/providers/Microsoft.ManagedIdentity/userAssignedIdentities/external-dns-identity\n\
+    metadata:\n  name: example-rg\n  namespace: azure-system\nspec:\n  azureName:\
+    \ example-rg\n  location: uksouth\n---\n# /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/dns/providers/Microsoft.ManagedIdentity/userAssignedIdentities/external-dns-identity\n\
     \napiVersion: resources.azure.com/v1api20200601\nkind: ResourceGroup\nmetadata:\n\
     \  name: dns\n  namespace: azure-system\nspec:\n  azureName: dns\n  location:\
     \ westeurope\n---\n# /subscriptions/{{AZURE_SUBSCRIPTION_ID}}/resourcegroups/kv/providers/Microsoft.ManagedIdentity/userAssignedIdentities/external-secrets-uami\n\
@@ -518,7 +518,7 @@ data:
     ---\napiVersion: authorization.azure.com/v1api20200801preview\nkind: RoleAssignment\n\
     metadata:\n  name: aso-user-access-administrator\n  namespace: azure-system\n\
     spec:\n  # ASO needs User Access Administrator to manage role assignments\n  owner:\n\
-    \    name: dev01-weu-dev-prod\n    group: resources.azure.com\n    kind: ResourceGroup\n\
+    \    name: example-rg\n    group: resources.azure.com\n    kind: ResourceGroup\n\
     \  principalIdFromConfig:\n    name: aso-identity-cm\n    key: principalId\n \
     \ principalType: ServicePrincipal\n  roleDefinitionReference:\n    # This ARM\
     \ ID represents \"User Access Administrator\" - required for ASO to manage RBAC\n\
@@ -526,7 +526,7 @@ data:
     ---\napiVersion: authorization.azure.com/v1api20200801preview\nkind: RoleAssignment\n\
     metadata:\n  name: platform-api-cluster-admin\n  namespace: azure-system\nspec:\n\
     \  # AKS cluster needs permissions to manage RBAC for Platform API\n  owner:\n\
-    \    name: dev01-weu-dev-prod\n    group: resources.azure.com\n    kind: ResourceGroup\n\
+    \    name: example-rg\n    group: resources.azure.com\n    kind: ResourceGroup\n\
     \  # This is the Principal ID of the Platform API managed identity\n  principalIdFromConfig:\n\
     \    name: platform-api-identity-cm\n    key: principalId\n  principalType: ServicePrincipal\n\
     \  roleDefinitionReference:\n    # This ARM ID represents \"Azure Kubernetes Service\
@@ -534,7 +534,7 @@ data:
     ---\napiVersion: authorization.azure.com/v1api20200801preview\nkind: RoleAssignment\n\
     metadata:\n  name: eso-subscription-contributor\n  namespace: azure-system\nspec:\n\
     \  # ASO needs permissions at subscription level to manage all Azure resources\n\
-    \  owner:\n    name: dev01-weu-dev-prod\n    group: resources.azure.com\n  \
+    \  owner:\n    name: example-rg\n    group: resources.azure.com\n  \
     \  kind: ResourceGroup\n  # This is the Principal ID of the ASO workload identity\n\
     \  principalIdFromConfig:\n    name: eso-identity-cm\n    key: principalId\n \
     \ principalType: ServicePrincipal\n  roleDefinitionReference:\n    # This ARM\
