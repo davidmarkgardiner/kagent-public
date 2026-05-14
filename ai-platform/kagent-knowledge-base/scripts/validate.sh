@@ -17,6 +17,22 @@ render_kustomize() {
   fi
 }
 
+safety_scan() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -n "kind: (ManagedCluster|ResourceGroup|UserAssignedIdentity|VirtualNetwork|AKSCluster|UK8SCluster|DeploymentTemplate)" "$1"
+  else
+    grep -En "kind: (ManagedCluster|ResourceGroup|UserAssignedIdentity|VirtualNetwork|AKSCluster|UK8SCluster|DeploymentTemplate)" "$1"
+  fi
+}
+
+print_rendered_resources() {
+  if command -v yq >/dev/null 2>&1; then
+    yq e '[.kind, .metadata.name] | @tsv' "${RENDERED}" | awk 'NF == 2 {print $1 "/" $2}' | sort
+  else
+    awk '/^kind: / {kind=$2} /^  name: / && kind {print kind "/" $2; kind=""}' "${RENDERED}" | sort
+  fi
+}
+
 echo "== platform KB POC validation =="
 echo "root: ${ROOT}"
 
@@ -60,7 +76,7 @@ echo "ok: rendered ${RENDERED#${ROOT}/}"
 
 echo
 echo "== safety scan =="
-if rg -n "kind: (ManagedCluster|ResourceGroup|UserAssignedIdentity|VirtualNetwork|AKSCluster|UK8SCluster|DeploymentTemplate)" "${RENDERED}"; then
+if safety_scan "${RENDERED}"; then
   echo "ERROR: rendered manifests include Azure/KRO provisioning kinds" >&2
   exit 1
 fi
@@ -68,7 +84,7 @@ echo "ok: no Azure/KRO provisioning resource kinds found"
 
 echo
 echo "== rendered resources =="
-awk '/^kind: / {kind=$2} /^  name: / && kind {print kind "/" $2; kind=""}' "${RENDERED}" | sort
+print_rendered_resources
 
 echo
 echo "validation complete"

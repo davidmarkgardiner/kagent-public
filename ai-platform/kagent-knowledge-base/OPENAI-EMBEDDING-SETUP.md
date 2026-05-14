@@ -51,7 +51,7 @@ If `doc2vec` returns:
 
 the key is reaching OpenAI, but the selected project does not currently have usable API quota or billing. Add billing/credits to the project or create a key under a project with API quota, then rerun the build.
 
-## Update GEECOM Secret
+## Update Homelab Secret
 
 This creates a dedicated secret for the POC in the `kagent` namespace.
 

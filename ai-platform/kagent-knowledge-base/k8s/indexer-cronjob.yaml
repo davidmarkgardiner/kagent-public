@@ -13,18 +13,32 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      backoffLimit: 1
+      backoffLimit: 3
       template:
         metadata:
           labels:
             app.kubernetes.io/name: platform-kb-indexer
             app.kubernetes.io/part-of: kagent
         spec:
+          automountServiceAccountToken: false
           restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            fsGroup: 65532
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: indexer
-              image: node:20-bookworm-slim
+              image: node:20-bookworm
               imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
               env:
                 - name: KB_REPO_URL
                   value: "https://github.com/davidmarkgardiner/kagent-public.git"
@@ -34,38 +48,85 @@ spec:
                   value: "docs/platform-kb"
                 - name: DOC2VEC_REPO
                   value: "https://github.com/kagent-dev/doc2vec.git"
+                - name: DOC2VEC_REF
+                  value: "v2.11.0"
+                - name: HOME
+                  value: /tmp
+                - name: NPM_CONFIG_CACHE
+                  value: /tmp/.npm
                 - name: EMBEDDING_PROVIDER
-                  value: "openai"
+                  valueFrom:
+                    configMapKeyRef:
+                      name: platform-kb-embedding-config
+                      key: EMBEDDING_PROVIDER
+                - name: EMBEDDING_DIMENSION
+                  valueFrom:
+                    configMapKeyRef:
+                      name: platform-kb-embedding-config
+                      key: EMBEDDING_DIMENSION
+                - name: OPENAI_MODEL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: platform-kb-embedding-config
+                      key: OPENAI_MODEL
+                - name: OPENAI_BASE_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: platform-kb-embedding-config
+                      key: OPENAI_BASE_URL
+                - name: AZURE_OPENAI_ENDPOINT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: platform-kb-embedding-config
+                      key: AZURE_OPENAI_ENDPOINT
+                - name: AZURE_OPENAI_DEPLOYMENT_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: platform-kb-embedding-config
+                      key: AZURE_OPENAI_DEPLOYMENT_NAME
+                - name: AZURE_OPENAI_API_VERSION
+                  valueFrom:
+                    configMapKeyRef:
+                      name: platform-kb-embedding-config
+                      key: AZURE_OPENAI_API_VERSION
                 - name: OPENAI_API_KEY
                   valueFrom:
                     secretKeyRef:
                       name: platform-kb-openai
                       key: OPENAI_API_KEY
+                - name: AZURE_OPENAI_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: platform-kb-openai
+                      key: AZURE_OPENAI_KEY
+                      optional: true
               volumeMounts:
                 - name: data
                   mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
               command:
                 - /bin/bash
                 - -ceu
                 - |
-                  apt-get update
-                  apt-get install -y --no-install-recommends git ca-certificates
-                  rm -rf /var/lib/apt/lists/*
-
                   work="$(mktemp -d)"
                   git clone --depth 1 --branch "${KB_REPO_REF}" "${KB_REPO_URL}" "${work}/kb"
                   test -d "${work}/kb/${KB_SOURCE_PATH}"
-                  git clone --depth 1 "${DOC2VEC_REPO}" "${work}/doc2vec"
+                  git clone --depth 1 --branch "${DOC2VEC_REF}" "${DOC2VEC_REPO}" "${work}/doc2vec"
                   mkdir -p "${work}/doc2vec/platform-kb" "${work}/doc2vec/vector-dbs"
                   cp -R "${work}/kb/${KB_SOURCE_PATH}/." "${work}/doc2vec/platform-kb/"
 
-                  cat > "${work}/doc2vec/config.yaml" <<'EOF'
+                  case "${EMBEDDING_PROVIDER}" in
+                    openai)
+                      : "${OPENAI_API_KEY:?OPENAI_API_KEY is required when EMBEDDING_PROVIDER=openai}"
+                      : "${OPENAI_MODEL:?OPENAI_MODEL is required when EMBEDDING_PROVIDER=openai}"
+                      cat > "${work}/doc2vec/config.yaml" <<EOF
                   embedding:
                     provider: 'openai'
-                    dimension: 3072
+                    dimension: ${EMBEDDING_DIMENSION}
                     openai:
                       api_key: '${OPENAI_API_KEY}'
-                      model: 'text-embedding-3-large'
+                      model: '${OPENAI_MODEL}'
 
                   sources:
                     - type: 'local_directory'
@@ -81,11 +142,50 @@ spec:
                         params:
                           db_path: './vector-dbs/platform-kb.db'
                   EOF
+                      ;;
+                    azure)
+                      : "${AZURE_OPENAI_KEY:?AZURE_OPENAI_KEY is required when EMBEDDING_PROVIDER=azure}"
+                      : "${AZURE_OPENAI_ENDPOINT:?AZURE_OPENAI_ENDPOINT is required when EMBEDDING_PROVIDER=azure}"
+                      : "${AZURE_OPENAI_DEPLOYMENT_NAME:?AZURE_OPENAI_DEPLOYMENT_NAME is required when EMBEDDING_PROVIDER=azure}"
+                      if [[ "${AZURE_OPENAI_ENDPOINT}" == *"{{"* ]]; then
+                        echo "ERROR: patch AZURE_OPENAI_ENDPOINT in platform-kb-embedding-config before using EMBEDDING_PROVIDER=azure" >&2
+                        exit 2
+                      fi
+                      cat > "${work}/doc2vec/config.yaml" <<EOF
+                  embedding:
+                    provider: 'azure'
+                    dimension: ${EMBEDDING_DIMENSION}
+                    azure:
+                      api_key: '${AZURE_OPENAI_KEY}'
+                      endpoint: '${AZURE_OPENAI_ENDPOINT}'
+                      deployment_name: '${AZURE_OPENAI_DEPLOYMENT_NAME}'
+                      api_version: '${AZURE_OPENAI_API_VERSION}'
+
+                  sources:
+                    - type: 'local_directory'
+                      product_name: 'platform-kb'
+                      version: 'current'
+                      path: './platform-kb'
+                      include_extensions:
+                        - '.md'
+                      recursive: true
+                      max_size: 1048576
+                      database_config:
+                        type: 'sqlite'
+                        params:
+                          db_path: './vector-dbs/platform-kb.db'
+                  EOF
+                      ;;
+                    *)
+                      echo "ERROR: unsupported EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER}; expected openai or azure" >&2
+                      exit 2
+                      ;;
+                  esac
 
                   cd "${work}/doc2vec"
                   PUPPETEER_SKIP_DOWNLOAD=true npm install
                   npm start 2>&1 | tee "${work}/doc2vec-build.log"
-                  if grep -E -i "incorrect api key|401 unauthorized|error generating embeddings|failed to generate embeddings|failed to create embeddings|embedding failed|embedding error|^error:" "${work}/doc2vec-build.log" >/dev/null 2>&1; then
+                  if grep -E -i "incorrect api key|401 unauthorized|error generating embeddings|failed to generate embeddings|failed to create embeddings|embedding failed|embedding error|error:" "${work}/doc2vec-build.log" >/dev/null 2>&1; then
                     echo "ERROR: doc2vec reported embedding failures; refusing to publish platform-kb.db" >&2
                     exit 3
                   fi
@@ -99,3 +199,5 @@ spec:
             - name: data
               persistentVolumeClaim:
                 claimName: platform-kb-data
+            - name: tmp
+              emptyDir: {}

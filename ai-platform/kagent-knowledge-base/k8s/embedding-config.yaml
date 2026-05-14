@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-kb-embedding-config
+  labels:
+    app.kubernetes.io/name: platform-kb
+    app.kubernetes.io/part-of: kagent
+data:
+  EMBEDDING_PROVIDER: "openai"
+  EMBEDDING_DIMENSION: "3072"
+  OPENAI_MODEL: "text-embedding-3-large"
+  OPENAI_BASE_URL: "https://api.openai.com/v1"
+  AZURE_OPENAI_ENDPOINT: "{{AZURE_OPENAI_ENDPOINT}}"
+  AZURE_OPENAI_DEPLOYMENT_NAME: "text-embedding-3-large"
+  AZURE_OPENAI_API_VERSION: "2024-10-21"

@@ -16,16 +16,71 @@ spec:
         app.kubernetes.io/name: platform-kb-querydoc
         app.kubernetes.io/part-of: kagent
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: querydoc
-          image: ghcr.io/kagent-dev/doc2vec/mcp:1.1.14
+          image: ghcr.io/kagent-dev/doc2vec/mcp:2.11.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: platform-kb-openai
                   key: OPENAI_API_KEY
+            - name: AZURE_OPENAI_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-kb-openai
+                  key: AZURE_OPENAI_KEY
+                  optional: true
+            - name: EMBEDDING_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-kb-embedding-config
+                  key: EMBEDDING_PROVIDER
+            - name: EMBEDDING_DIMENSION
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-kb-embedding-config
+                  key: EMBEDDING_DIMENSION
+            - name: OPENAI_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-kb-embedding-config
+                  key: OPENAI_MODEL
+            - name: OPENAI_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-kb-embedding-config
+                  key: OPENAI_BASE_URL
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-kb-embedding-config
+                  key: AZURE_OPENAI_ENDPOINT
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-kb-embedding-config
+                  key: AZURE_OPENAI_DEPLOYMENT_NAME
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-kb-embedding-config
+                  key: AZURE_OPENAI_API_VERSION
             - name: SQLITE_DB_DIR
               value: /data
             - name: VECTOR_DB_TYPE
@@ -43,6 +98,8 @@ spec:
             - name: data
               mountPath: /data
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
           startupProbe:
             httpGet:
               path: /health
@@ -58,6 +115,14 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
           resources:
             requests:
               cpu: 100m
@@ -69,3 +134,5 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: platform-kb-data
+        - name: tmp
+          emptyDir: {}

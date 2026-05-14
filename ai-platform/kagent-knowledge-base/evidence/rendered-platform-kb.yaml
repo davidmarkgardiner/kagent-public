@@ -6,6 +6,23 @@ metadata:
   name: kagent
 ---
 apiVersion: v1
+data:
+  AZURE_OPENAI_API_VERSION: "2024-10-21"
+  AZURE_OPENAI_DEPLOYMENT_NAME: text-embedding-3-large
+  AZURE_OPENAI_ENDPOINT: '{{AZURE_OPENAI_ENDPOINT}}'
+  EMBEDDING_DIMENSION: "3072"
+  EMBEDDING_PROVIDER: openai
+  OPENAI_BASE_URL: https://api.openai.com/v1
+  OPENAI_MODEL: text-embedding-3-large
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-kb
+    app.kubernetes.io/part-of: kagent
+  name: platform-kb-embedding-config
+  namespace: kagent
+---
+apiVersion: v1
 kind: Service
 metadata:
   labels:
@@ -16,7 +33,7 @@ metadata:
   namespace: kagent
 spec:
   ports:
-  - appProtocol: mcp
+  - appProtocol: http
     name: http
     port: 8080
     protocol: TCP
@@ -59,6 +76,7 @@ spec:
         app.kubernetes.io/name: platform-kb-querydoc
         app.kubernetes.io/part-of: kagent
     spec:
+      automountServiceAccountToken: false
       containers:
       - env:
         - name: OPENAI_API_KEY
@@ -66,6 +84,47 @@ spec:
             secretKeyRef:
               key: OPENAI_API_KEY
               name: platform-kb-openai
+        - name: AZURE_OPENAI_KEY
+          valueFrom:
+            secretKeyRef:
+              key: AZURE_OPENAI_KEY
+              name: platform-kb-openai
+              optional: true
+        - name: EMBEDDING_PROVIDER
+          valueFrom:
+            configMapKeyRef:
+              key: EMBEDDING_PROVIDER
+              name: platform-kb-embedding-config
+        - name: EMBEDDING_DIMENSION
+          valueFrom:
+            configMapKeyRef:
+              key: EMBEDDING_DIMENSION
+              name: platform-kb-embedding-config
+        - name: OPENAI_MODEL
+          valueFrom:
+            configMapKeyRef:
+              key: OPENAI_MODEL
+              name: platform-kb-embedding-config
+        - name: OPENAI_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              key: OPENAI_BASE_URL
+              name: platform-kb-embedding-config
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              key: AZURE_OPENAI_ENDPOINT
+              name: platform-kb-embedding-config
+        - name: AZURE_OPENAI_DEPLOYMENT_NAME
+          valueFrom:
+            configMapKeyRef:
+              key: AZURE_OPENAI_DEPLOYMENT_NAME
+              name: platform-kb-embedding-config
+        - name: AZURE_OPENAI_API_VERSION
+          valueFrom:
+            configMapKeyRef:
+              key: AZURE_OPENAI_API_VERSION
+              name: platform-kb-embedding-config
         - name: SQLITE_DB_DIR
           value: /data
         - name: VECTOR_DB_TYPE
@@ -76,8 +135,16 @@ spec:
           value: http
         - name: KAGENT_LOG_LEVEL
           value: info
-        image: ghcr.io/kagent-dev/doc2vec/mcp:1.1.14
+        image: ghcr.io/kagent-dev/doc2vec/mcp:2.11.0
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 10
         name: querydoc
         ports:
         - containerPort: 8080
@@ -96,6 +163,12 @@ spec:
           requests:
             cpu: 100m
             memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
         startupProbe:
           failureThreshold: 12
           httpGet:
@@ -108,10 +181,21 @@ spec:
         - mountPath: /data
           name: data
           readOnly: true
+        - mountPath: /tmp
+          name: tmp
+      securityContext:
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
       volumes:
       - name: data
         persistentVolumeClaim:
           claimName: platform-kb-data
+      - emptyDir: {}
+        name: tmp
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -126,36 +210,37 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      backoffLimit: 1
+      backoffLimit: 3
       template:
         metadata:
           labels:
             app.kubernetes.io/name: platform-kb-indexer
             app.kubernetes.io/part-of: kagent
         spec:
+          automountServiceAccountToken: false
           containers:
           - command:
             - /bin/bash
             - -ceu
             - |
-              apt-get update
-              apt-get install -y --no-install-recommends git ca-certificates
-              rm -rf /var/lib/apt/lists/*
-
               work="$(mktemp -d)"
               git clone --depth 1 --branch "${KB_REPO_REF}" "${KB_REPO_URL}" "${work}/kb"
               test -d "${work}/kb/${KB_SOURCE_PATH}"
-              git clone --depth 1 "${DOC2VEC_REPO}" "${work}/doc2vec"
+              git clone --depth 1 --branch "${DOC2VEC_REF}" "${DOC2VEC_REPO}" "${work}/doc2vec"
               mkdir -p "${work}/doc2vec/platform-kb" "${work}/doc2vec/vector-dbs"
               cp -R "${work}/kb/${KB_SOURCE_PATH}/." "${work}/doc2vec/platform-kb/"
 
-              cat > "${work}/doc2vec/config.yaml" <<'EOF'
+              case "${EMBEDDING_PROVIDER}" in
+                openai)
+                  : "${OPENAI_API_KEY:?OPENAI_API_KEY is required when EMBEDDING_PROVIDER=openai}"
+                  : "${OPENAI_MODEL:?OPENAI_MODEL is required when EMBEDDING_PROVIDER=openai}"
+                  cat > "${work}/doc2vec/config.yaml" <<EOF
               embedding:
                 provider: 'openai'
-                dimension: 3072
+                dimension: ${EMBEDDING_DIMENSION}
                 openai:
                   api_key: '${OPENAI_API_KEY}'
-                  model: 'text-embedding-3-large'
+                  model: '${OPENAI_MODEL}'
 
               sources:
                 - type: 'local_directory'
@@ -171,11 +256,50 @@ spec:
                     params:
                       db_path: './vector-dbs/platform-kb.db'
               EOF
+                  ;;
+                azure)
+                  : "${AZURE_OPENAI_KEY:?AZURE_OPENAI_KEY is required when EMBEDDING_PROVIDER=azure}"
+                  : "${AZURE_OPENAI_ENDPOINT:?AZURE_OPENAI_ENDPOINT is required when EMBEDDING_PROVIDER=azure}"
+                  : "${AZURE_OPENAI_DEPLOYMENT_NAME:?AZURE_OPENAI_DEPLOYMENT_NAME is required when EMBEDDING_PROVIDER=azure}"
+                  if [[ "${AZURE_OPENAI_ENDPOINT}" == *"{{"* ]]; then
+                    echo "ERROR: patch AZURE_OPENAI_ENDPOINT in platform-kb-embedding-config before using EMBEDDING_PROVIDER=azure" >&2
+                    exit 2
+                  fi
+                  cat > "${work}/doc2vec/config.yaml" <<EOF
+              embedding:
+                provider: 'azure'
+                dimension: ${EMBEDDING_DIMENSION}
+                azure:
+                  api_key: '${AZURE_OPENAI_KEY}'
+                  endpoint: '${AZURE_OPENAI_ENDPOINT}'
+                  deployment_name: '${AZURE_OPENAI_DEPLOYMENT_NAME}'
+                  api_version: '${AZURE_OPENAI_API_VERSION}'
+
+              sources:
+                - type: 'local_directory'
+                  product_name: 'platform-kb'
+                  version: 'current'
+                  path: './platform-kb'
+                  include_extensions:
+                    - '.md'
+                  recursive: true
+                  max_size: 1048576
+                  database_config:
+                    type: 'sqlite'
+                    params:
+                      db_path: './vector-dbs/platform-kb.db'
+              EOF
+                  ;;
+                *)
+                  echo "ERROR: unsupported EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER}; expected openai or azure" >&2
+                  exit 2
+                  ;;
+              esac
 
               cd "${work}/doc2vec"
               PUPPETEER_SKIP_DOWNLOAD=true npm install
               npm start 2>&1 | tee "${work}/doc2vec-build.log"
-              if grep -E -i "incorrect api key|401 unauthorized|error generating embeddings|failed to generate embeddings|failed to create embeddings|embedding failed|embedding error|^error:" "${work}/doc2vec-build.log" >/dev/null 2>&1; then
+              if grep -E -i "incorrect api key|401 unauthorized|error generating embeddings|failed to generate embeddings|failed to create embeddings|embedding failed|embedding error|error:" "${work}/doc2vec-build.log" >/dev/null 2>&1; then
                 echo "ERROR: doc2vec reported embedding failures; refusing to publish platform-kb.db" >&2
                 exit 3
               fi
@@ -194,24 +318,86 @@ spec:
               value: docs/platform-kb
             - name: DOC2VEC_REPO
               value: https://github.com/kagent-dev/doc2vec.git
+            - name: DOC2VEC_REF
+              value: v2.11.0
+            - name: HOME
+              value: /tmp
+            - name: NPM_CONFIG_CACHE
+              value: /tmp/.npm
             - name: EMBEDDING_PROVIDER
-              value: openai
+              valueFrom:
+                configMapKeyRef:
+                  key: EMBEDDING_PROVIDER
+                  name: platform-kb-embedding-config
+            - name: EMBEDDING_DIMENSION
+              valueFrom:
+                configMapKeyRef:
+                  key: EMBEDDING_DIMENSION
+                  name: platform-kb-embedding-config
+            - name: OPENAI_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  key: OPENAI_MODEL
+                  name: platform-kb-embedding-config
+            - name: OPENAI_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: OPENAI_BASE_URL
+                  name: platform-kb-embedding-config
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  key: AZURE_OPENAI_ENDPOINT
+                  name: platform-kb-embedding-config
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  key: AZURE_OPENAI_DEPLOYMENT_NAME
+                  name: platform-kb-embedding-config
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  key: AZURE_OPENAI_API_VERSION
+                  name: platform-kb-embedding-config
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   key: OPENAI_API_KEY
                   name: platform-kb-openai
-            image: node:20-bookworm-slim
+            - name: AZURE_OPENAI_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: AZURE_OPENAI_KEY
+                  name: platform-kb-openai
+                  optional: true
+            image: node:20-bookworm
             imagePullPolicy: IfNotPresent
             name: indexer
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+              readOnlyRootFilesystem: true
             volumeMounts:
             - mountPath: /data
               name: data
+            - mountPath: /tmp
+              name: tmp
           restartPolicy: Never
+          securityContext:
+            fsGroup: 65532
+            fsGroupChangePolicy: OnRootMismatch
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
           volumes:
           - name: data
             persistentVolumeClaim:
               claimName: platform-kb-data
+          - emptyDir: {}
+            name: tmp
   schedule: 17 2 * * *
   successfulJobsHistoryLimit: 3
   suspend: true
@@ -299,7 +485,7 @@ spec:
   apiKeySecretKey: OPENAI_API_KEY
   model: gpt-4o-mini
   openAI:
-    maxTokens: 1200
+    maxTokens: 2000
     temperature: "0.1"
   provider: OpenAI
 ---
@@ -316,5 +502,5 @@ spec:
   protocol: STREAMABLE_HTTP
   sseReadTimeout: 5m0s
   terminateOnClose: true
-  timeout: 10s
+  timeout: 30s
   url: http://platform-kb-querydoc.kagent.svc.cluster.local:8080/mcp

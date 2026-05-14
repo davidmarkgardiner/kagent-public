@@ -73,7 +73,7 @@ kubectl -n "${NAMESPACE}" rollout status deployment/platform-kb-querydoc --timeo
 echo
 echo "== deployed resources =="
 kubectl -n "${NAMESPACE}" get deploy,svc,pvc,cronjob,remotemcpserver.kagent.dev,agent.kagent.dev \
-  -l app.kubernetes.io/part-of=kagent
+  -l 'app.kubernetes.io/name in (platform-kb-indexer,platform-kb-querydoc,platform-knowledge-agent,platform-kb,platform-kb-openai)'
 
 echo
 echo "deployment complete"

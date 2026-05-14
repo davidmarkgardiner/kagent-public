@@ -4,6 +4,7 @@ namespace: kagent
 resources:
   - namespace.yaml
   - pvc.yaml
+  - embedding-config.yaml
   - modelconfig.yaml
   - indexer-cronjob.yaml
   - querydoc-deployment.yaml

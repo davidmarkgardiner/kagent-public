@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 POC_DIR="${ROOT}/ai-platform/kagent-knowledge-base"
 DB_PATH="${DB_PATH:-${POC_DIR}/dist/platform-kb.db}"
-IMAGE="${QUERYDOC_IMAGE:-ghcr.io/kagent-dev/doc2vec/mcp:1.1.14}"
+IMAGE="${QUERYDOC_IMAGE:-ghcr.io/kagent-dev/doc2vec/mcp:2.11.0}"
 PORT="${PORT:-18080}"
 CONTAINER_NAME="${CONTAINER_NAME:-platform-kb-querydoc-smoke}"
 
@@ -50,4 +50,3 @@ done
 
 echo "ERROR: querydoc did not become healthy" >&2
 exit 1
-

@@ -1,7 +1,11 @@
 OPENAI_API_KEY=replace-me
+EMBEDDING_PROVIDER=openai
+EMBEDDING_DIMENSION=3072
+OPENAI_MODEL=text-embedding-3-large
+OPENAI_BASE_URL=https://api.openai.com/v1
 SQLITE_DB_DIR=/data
 VECTOR_DB_TYPE=sqlite
 PORT=8080
 TRANSPORT_TYPE=http
+# Querydoc log verbosity.
 KAGENT_LOG_LEVEL=info
-

@@ -8,7 +8,7 @@ RENDERED="${POC_DIR}/evidence/rendered-platform-kb.yaml"
 PREFLIGHT_LOG="${POC_DIR}/evidence/doc2vec-preflight.log"
 
 sanitize() {
-  sed -E $'s/\x1b\\[[0-9;]*[A-Za-z]//g; s/sk-[A-Za-z0-9_*.-]{6,}/sk-***/g'
+  sed -E $'s/\x1b\\[[0-9;]*[A-Za-z]//g; s/sk-[A-Za-z0-9_*.-]{6,}/sk-***/g; s/(OPENAI_API_KEY=)[^[:space:]]+/\\1***/g; s/(AZURE_OPENAI_KEY=)[^[:space:]]+/\\1***/g; s/(Bearer )[A-Za-z0-9._~+\\/-]+=*/\\1***/g; s/\\b[[:xdigit:]]{32}\\b/{{AZURE_OPENAI_KEY}}/g'
 }
 
 mkdir -p "${POC_DIR}/evidence"
@@ -25,9 +25,9 @@ mkdir -p "${POC_DIR}/evidence"
   "${POC_DIR}/scripts/validate.sh" 2>&1
   echo '```'
   echo
-  echo "## GEECOM Host Environment"
+  echo "## Homelab Host Environment"
   echo
-  echo "Expected host: GEECOM homelab server"
+  echo "Expected host: homelab server"
   echo
   echo '```text'
   hostname
@@ -46,7 +46,7 @@ mkdir -p "${POC_DIR}/evidence"
   kubectl apply --dry-run=client --validate=false -f "${RENDERED}" 2>&1
   echo '```'
   echo
-  echo "## GEECOM Cluster Readiness"
+  echo "## Homelab Cluster Readiness"
   echo
   echo '```text'
   kubectl config current-context 2>&1 || true
@@ -95,7 +95,7 @@ mkdir -p "${POC_DIR}/evidence"
   grep -m 1 "Cloning doc2vec" "${PREFLIGHT_LOG}" || true
   grep -m 1 "Running doc2vec" "${PREFLIGHT_LOG}" || true
   grep -m 1 "Incorrect API key" "${PREFLIGHT_LOG}" || true
-  grep -m 1 -E "refusing to publish|^ERROR:" "${PREFLIGHT_LOG}" || true
+  grep -m 1 -E "refusing to publish|ERROR:" "${PREFLIGHT_LOG}" || true
   echo '```'
 } > "${OUT}"
 

@@ -10,6 +10,5 @@ spec:
   protocol: STREAMABLE_HTTP
   sseReadTimeout: 5m0s
   terminateOnClose: true
-  timeout: 10s
+  timeout: 30s
   url: http://platform-kb-querydoc.kagent.svc.cluster.local:8080/mcp
-
