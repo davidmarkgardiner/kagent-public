@@ -27,6 +27,7 @@ docs/platform-kb
 | `evidence/` | Captured validation and connectivity evidence |
 | `EMBEDDING-OPTIONS.md` | Direct OpenAI, Azure OpenAI, and local OpenAI-compatible embedding options |
 | `OPENAI-EMBEDDING-SETUP.md` | OpenAI model/key setup commands for the demo |
+| `platform-kb-poc-presentation.html` | Static HTML presentation for review walkthroughs |
 
 ## Safety
 
