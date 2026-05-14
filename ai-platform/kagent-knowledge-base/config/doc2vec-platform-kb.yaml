@@ -1,0 +1,20 @@
+embedding:
+  provider: 'openai'
+  dimension: 3072
+  openai:
+    api_key: '${OPENAI_API_KEY}'
+    model: 'text-embedding-3-large'
+
+sources:
+  - type: 'local_directory'
+    product_name: 'platform-kb'
+    version: 'current'
+    path: './platform-kb'
+    include_extensions:
+      - '.md'
+    recursive: true
+    max_size: 1048576
+    database_config:
+      type: 'sqlite'
+      params:
+        db_path: './vector-dbs/platform-kb.db'

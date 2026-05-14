@@ -1,0 +1,15 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: platform-kb-openai
+  labels:
+    app.kubernetes.io/name: platform-kb-openai
+    app.kubernetes.io/part-of: kagent
+spec:
+  provider: OpenAI
+  model: gpt-4o-mini
+  apiKeySecret: platform-kb-openai
+  apiKeySecretKey: OPENAI_API_KEY
+  openAI:
+    temperature: "0.1"
+    maxTokens: 1200

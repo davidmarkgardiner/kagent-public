@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-kb-querydoc
+  labels:
+    app.kubernetes.io/name: platform-kb-querydoc
+    app.kubernetes.io/part-of: kagent
+    kagent.dev/mcp-service: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: platform-kb-querydoc
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+      appProtocol: mcp
+

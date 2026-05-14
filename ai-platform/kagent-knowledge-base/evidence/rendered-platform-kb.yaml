@@ -1,0 +1,320 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/part-of: kagent
+  name: kagent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-kb-querydoc
+    app.kubernetes.io/part-of: kagent
+    kagent.dev/mcp-service: "true"
+  name: platform-kb-querydoc
+  namespace: kagent
+spec:
+  ports:
+  - appProtocol: mcp
+    name: http
+    port: 8080
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/name: platform-kb-querydoc
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-kb
+    app.kubernetes.io/part-of: kagent
+  name: platform-kb-data
+  namespace: kagent
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-kb-querydoc
+    app.kubernetes.io/part-of: kagent
+  name: platform-kb-querydoc
+  namespace: kagent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: platform-kb-querydoc
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: platform-kb-querydoc
+        app.kubernetes.io/part-of: kagent
+    spec:
+      containers:
+      - env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: OPENAI_API_KEY
+              name: platform-kb-openai
+        - name: SQLITE_DB_DIR
+          value: /data
+        - name: VECTOR_DB_TYPE
+          value: sqlite
+        - name: PORT
+          value: "8080"
+        - name: TRANSPORT_TYPE
+          value: http
+        - name: KAGENT_LOG_LEVEL
+          value: info
+        image: ghcr.io/kagent-dev/doc2vec/mcp:1.1.14
+        imagePullPolicy: IfNotPresent
+        name: querydoc
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        startupProbe:
+          failureThreshold: 12
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 10
+        volumeMounts:
+        - mountPath: /data
+          name: data
+          readOnly: true
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: platform-kb-data
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-kb-indexer
+    app.kubernetes.io/part-of: kagent
+  name: platform-kb-indexer
+  namespace: kagent
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: platform-kb-indexer
+            app.kubernetes.io/part-of: kagent
+        spec:
+          containers:
+          - command:
+            - /bin/bash
+            - -ceu
+            - |
+              apt-get update
+              apt-get install -y --no-install-recommends git ca-certificates
+              rm -rf /var/lib/apt/lists/*
+
+              work="$(mktemp -d)"
+              git clone --depth 1 --branch "${KB_REPO_REF}" "${KB_REPO_URL}" "${work}/kb"
+              test -d "${work}/kb/${KB_SOURCE_PATH}"
+              git clone --depth 1 "${DOC2VEC_REPO}" "${work}/doc2vec"
+              mkdir -p "${work}/doc2vec/platform-kb" "${work}/doc2vec/vector-dbs"
+              cp -R "${work}/kb/${KB_SOURCE_PATH}/." "${work}/doc2vec/platform-kb/"
+
+              cat > "${work}/doc2vec/config.yaml" <<'EOF'
+              embedding:
+                provider: 'openai'
+                dimension: 3072
+                openai:
+                  api_key: '${OPENAI_API_KEY}'
+                  model: 'text-embedding-3-large'
+
+              sources:
+                - type: 'local_directory'
+                  product_name: 'platform-kb'
+                  version: 'current'
+                  path: './platform-kb'
+                  include_extensions:
+                    - '.md'
+                  recursive: true
+                  max_size: 1048576
+                  database_config:
+                    type: 'sqlite'
+                    params:
+                      db_path: './vector-dbs/platform-kb.db'
+              EOF
+
+              cd "${work}/doc2vec"
+              PUPPETEER_SKIP_DOWNLOAD=true npm install
+              npm start 2>&1 | tee "${work}/doc2vec-build.log"
+              if grep -E -i "incorrect api key|401 unauthorized|error generating embeddings|failed to generate embeddings|failed to create embeddings|embedding failed|embedding error|^error:" "${work}/doc2vec-build.log" >/dev/null 2>&1; then
+                echo "ERROR: doc2vec reported embedding failures; refusing to publish platform-kb.db" >&2
+                exit 3
+              fi
+              test -s vector-dbs/platform-kb.db
+              cp vector-dbs/platform-kb.db /data/platform-kb.db.tmp
+              mv /data/platform-kb.db.tmp /data/platform-kb.db
+              cat > /data/platform-kb-manifest.json <<EOF
+              {"repo":"${KB_REPO_URL}","ref":"${KB_REPO_REF}","source":"${KB_SOURCE_PATH}","generated_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+              EOF
+            env:
+            - name: KB_REPO_URL
+              value: https://github.com/davidmarkgardiner/kagent-public.git
+            - name: KB_REPO_REF
+              value: main
+            - name: KB_SOURCE_PATH
+              value: docs/platform-kb
+            - name: DOC2VEC_REPO
+              value: https://github.com/kagent-dev/doc2vec.git
+            - name: EMBEDDING_PROVIDER
+              value: openai
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: OPENAI_API_KEY
+                  name: platform-kb-openai
+            image: node:20-bookworm-slim
+            imagePullPolicy: IfNotPresent
+            name: indexer
+            volumeMounts:
+            - mountPath: /data
+              name: data
+          restartPolicy: Never
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: platform-kb-data
+  schedule: 17 2 * * *
+  successfulJobsHistoryLimit: 3
+  suspend: true
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-knowledge-agent
+    app.kubernetes.io/part-of: kagent
+  name: platform-knowledge-agent
+  namespace: kagent
+spec:
+  declarative:
+    a2aConfig:
+      skills:
+      - description: Answer shared AKS platform documentation questions from the Git-backed
+          platform knowledge base.
+        examples:
+        - How do I secure my pod?
+        - How do I bring my own domain?
+        - How do I set up a pod disruption budget?
+        - What Kubernetes resources are available on the shared AKS platform?
+        id: platform-knowledge
+        name: Platform Knowledge
+        tags:
+        - aks
+        - platform
+        - documentation
+        - knowledge-base
+    deployment:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+    modelConfig: platform-kb-openai
+    promptTemplate:
+      dataSources:
+      - alias: builtin
+        kind: ConfigMap
+        name: kagent-builtin-prompts
+    runtime: python
+    stream: true
+    systemMessage: |
+      You are the shared AKS platform knowledge-base agent.
+
+      Use the query_documentation tool before answering platform documentation
+      questions. Query the platform knowledge base with:
+      - productName: platform-kb
+      - version: current
+      - dbName: platform-kb.db
+
+      Answer only from retrieved documentation. Cite source paths and headings.
+      If the retrieved docs do not answer the user's question, say that clearly
+      and direct the user to raise a platform support ticket.
+
+      Do not create, modify, or delete Azure resources. Do not push to Git from
+      this chat agent. If the user reports stale or missing documentation,
+      summarize the gap and route it to the approved stale-doc PR workflow.
+    tools:
+    - mcpServer:
+        apiGroup: kagent.dev
+        kind: RemoteMCPServer
+        name: platform-kb-querydoc
+        toolNames:
+        - query_documentation
+      type: McpServer
+  description: Shared AKS platform documentation assistant backed by doc2vec/querydoc.
+  type: Declarative
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-kb-openai
+    app.kubernetes.io/part-of: kagent
+  name: platform-kb-openai
+  namespace: kagent
+spec:
+  apiKeySecret: platform-kb-openai
+  apiKeySecretKey: OPENAI_API_KEY
+  model: gpt-4o-mini
+  openAI:
+    maxTokens: 1200
+    temperature: "0.1"
+  provider: OpenAI
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  labels:
+    app.kubernetes.io/name: platform-kb-querydoc
+    app.kubernetes.io/part-of: kagent
+  name: platform-kb-querydoc
+  namespace: kagent
+spec:
+  description: Platform knowledge-base documentation search powered by doc2vec/querydoc.
+  protocol: STREAMABLE_HTTP
+  sseReadTimeout: 5m0s
+  terminateOnClose: true
+  timeout: 10s
+  url: http://platform-kb-querydoc.kagent.svc.cluster.local:8080/mcp
