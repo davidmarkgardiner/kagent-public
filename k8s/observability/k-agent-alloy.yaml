@@ -1,0 +1,288 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k-agent-alloy-endpoints
+  namespace: monitoring
+data:
+  # Override these per environment. Do not commit private lab hostnames or tokens.
+  LOKI_PUSH_URL: "http://loki.monitoring.svc:3100/loki/api/v1/push"
+  PROMETHEUS_REMOTE_WRITE_URL: "http://mimir.monitoring.svc:9009/api/v1/push"
+  CLUSTER_NAME: "{{CLUSTER_NAME}}"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k-agent-alloy
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k-agent-alloy
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/proxy", "pods", "services", "endpoints", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k-agent-alloy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k-agent-alloy
+subjects:
+  - kind: ServiceAccount
+    name: k-agent-alloy
+    namespace: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k-agent-alloy-config
+  namespace: monitoring
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+
+    discovery.relabel "kagent_gateway_logs" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "kagent|kgateway-system"
+        action        = "keep"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+        target_label  = "app"
+      }
+
+      rule {
+        replacement   = sys.env("CLUSTER_NAME")
+        target_label  = "cluster"
+      }
+    }
+
+    loki.source.kubernetes "kagent_gateway_pods" {
+      targets    = discovery.relabel.kagent_gateway_logs.output
+      forward_to = [loki.process.kagent_gateway.receiver]
+    }
+
+    loki.process "kagent_gateway" {
+      forward_to = [loki.write.lgtm.receiver]
+
+      stage.cri {}
+
+      stage.json {
+        expressions = {
+          level         = "level",
+          logger        = "logger",
+          msg           = "msg",
+          method        = "method",
+          path          = "path",
+          status        = "status",
+          duration      = "duration",
+          agent         = "agent",
+          model         = "model",
+          input_tokens  = "input_tokens",
+          output_tokens = "output_tokens",
+          total_tokens  = "total_tokens",
+        }
+      }
+
+      stage.labels {
+        values = {
+          level  = "",
+          logger = "",
+          method = "",
+          path   = "",
+          status = "",
+          agent  = "",
+          model  = "",
+        }
+      }
+    }
+
+    loki.write "lgtm" {
+      endpoint {
+        url = sys.env("LOKI_PUSH_URL")
+      }
+      external_labels = {
+        cluster = sys.env("CLUSTER_NAME"),
+      }
+    }
+
+    discovery.relabel "pod_annotation_metrics" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+        regex         = "true"
+        action        = "keep"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "kagent|kgateway-system"
+        action        = "keep"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+        regex         = "(.+)"
+        target_label  = "__metrics_path__"
+      }
+
+      rule {
+        source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+        regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+        replacement   = "$1:$2"
+        target_label  = "__address__"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+
+      rule {
+        replacement   = sys.env("CLUSTER_NAME")
+        target_label  = "cluster"
+      }
+    }
+
+    prometheus.scrape "pod_annotation_metrics" {
+      targets         = discovery.relabel.pod_annotation_metrics.output
+      scrape_interval = "30s"
+      forward_to      = [prometheus.remote_write.lgtm.receiver]
+    }
+
+    discovery.kubernetes "nodes" {
+      role = "node"
+    }
+
+    prometheus.scrape "kubelet_cadvisor" {
+      targets         = discovery.kubernetes.nodes.targets
+      scheme          = "https"
+      metrics_path    = "/metrics/cadvisor"
+      scrape_interval = "60s"
+
+      bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+      tls_config {
+        insecure_skip_verify = true
+      }
+
+      forward_to = [prometheus.remote_write.lgtm.receiver]
+    }
+
+    prometheus.remote_write "lgtm" {
+      endpoint {
+        url = sys.env("PROMETHEUS_REMOTE_WRITE_URL")
+      }
+      external_labels = {
+        cluster = sys.env("CLUSTER_NAME"),
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k-agent-alloy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: k-agent-alloy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k-agent-alloy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k-agent-alloy
+    spec:
+      serviceAccountName: k-agent-alloy
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.16.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - run
+            - /etc/alloy/config.alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+          envFrom:
+            - configMapRef:
+                name: k-agent-alloy-endpoints
+          ports:
+            - name: http
+              containerPort: 12345
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+      volumes:
+        - name: config
+          configMap:
+            name: k-agent-alloy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k-agent-alloy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: k-agent-alloy
+spec:
+  selector:
+    app.kubernetes.io/name: k-agent-alloy
+  ports:
+    - name: http
+      port: 12345
+      targetPort: http

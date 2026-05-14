@@ -1,0 +1,21 @@
+apiVersion: 1
+
+datasources:
+  - name: K-Agent Mimir
+    uid: kagent-mimir
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_URL}
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 30s
+
+  - name: K-Agent Loki
+    uid: kagent-loki
+    type: loki
+    access: proxy
+    url: ${LOKI_URL}
+    isDefault: false
+    editable: true
