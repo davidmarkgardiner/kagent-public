@@ -1,0 +1,15 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: platform-kb-querydoc
+  labels:
+    app.kubernetes.io/name: platform-kb-querydoc
+    app.kubernetes.io/part-of: kagent
+spec:
+  description: "Platform knowledge-base documentation search powered by doc2vec/querydoc."
+  protocol: STREAMABLE_HTTP
+  sseReadTimeout: 5m0s
+  terminateOnClose: true
+  timeout: 10s
+  url: http://platform-kb-querydoc.kagent.svc.cluster.local:8080/mcp
+

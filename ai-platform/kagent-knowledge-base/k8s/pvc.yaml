@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: platform-kb-data
+  labels:
+    app.kubernetes.io/name: platform-kb
+    app.kubernetes.io/part-of: kagent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+

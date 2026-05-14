@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kagent Platform Knowledge Base POC</title>
+  <style>
+    :root {
+      --ivory: #faf9f5;
+      --paper: #ffffff;
+      --ink: #171716;
+      --muted: #63625d;
+      --line: #d9d5ca;
+      --soft: #eeeae1;
+      --clay: #c86d4d;
+      --clay-dark: #984d35;
+      --olive: #657b48;
+      --blue: #3e6f88;
+      --gold: #b78b2f;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      background: var(--ivory);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.5;
+      background:
+        linear-gradient(90deg, rgba(217, 213, 202, 0.42) 1px, transparent 1px) 0 0 / 80px 80px,
+        var(--ivory);
+    }
+
+    .deck-nav {
+      position: fixed;
+      z-index: 10;
+      top: 18px;
+      right: 22px;
+      display: flex;
+      gap: 8px;
+      padding: 7px;
+      border: 1px solid var(--line);
+      background: rgba(250, 249, 245, 0.92);
+      backdrop-filter: blur(10px);
+    }
+
+    .deck-nav a {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--line);
+      display: block;
+      text-indent: -999px;
+      overflow: hidden;
+    }
+
+    .deck-nav a:hover { background: var(--clay); }
+
+    section.slide {
+      min-height: 100vh;
+      scroll-snap-align: start;
+      display: flex;
+      align-items: center;
+      padding: 56px 34px;
+      border-bottom: 1.5px solid var(--line);
+    }
+
+    .wrap {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: var(--clay-dark);
+      margin: 0 0 18px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 3px;
+      background: var(--clay);
+      display: inline-block;
+    }
+
+    h1, h2 {
+      font-family: var(--serif);
+      font-weight: 650;
+      letter-spacing: 0;
+      line-height: 1.05;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(42px, 6vw, 76px);
+      max-width: 980px;
+    }
+
+    h2 {
+      font-size: clamp(34px, 4.2vw, 58px);
+      max-width: 920px;
+    }
+
+    h1 em, h2 em {
+      color: var(--clay-dark);
+      font-style: italic;
+    }
+
+    .lede {
+      font-size: clamp(18px, 2vw, 24px);
+      color: var(--muted);
+      max-width: 780px;
+      margin: 24px 0 0;
+    }
+
+    .hero-grid, .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1.04fr) minmax(340px, 0.96fr);
+      gap: 42px;
+      align-items: center;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 32px;
+    }
+
+    .two-card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 32px;
+    }
+
+    .card, .metric, .evidence {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 22px;
+      box-shadow: 0 12px 28px rgba(37, 36, 33, 0.05);
+    }
+
+    .card h3, .metric h3, .evidence h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .card p, .metric p, .evidence p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .metric strong {
+      display: block;
+      font-family: var(--serif);
+      font-size: 44px;
+      line-height: 1;
+      color: var(--olive);
+      margin-bottom: 10px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 8px 11px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--ink);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 10px;
+      background: #eef3ea;
+      color: #385126;
+      border: 1px solid #cbd8c0;
+      margin-bottom: 18px;
+    }
+
+    .status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 99px;
+      background: var(--olive);
+    }
+
+    .flow {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 18px;
+      box-shadow: 0 12px 28px rgba(37, 36, 33, 0.05);
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .flow text {
+      font-family: var(--sans);
+      fill: var(--ink);
+      font-size: 14px;
+    }
+
+    .flow .small {
+      font-family: var(--mono);
+      font-size: 11px;
+      fill: var(--muted);
+    }
+
+    .flow .box {
+      fill: #fff;
+      stroke: var(--line);
+      stroke-width: 1.5;
+    }
+
+    .flow .accent { fill: #f7e8df; stroke: var(--clay); }
+    .flow .green { fill: #eef3ea; stroke: var(--olive); }
+    .flow .blue { fill: #e8f0f3; stroke: var(--blue); }
+    .flow .arrow { stroke: var(--clay-dark); stroke-width: 2; fill: none; marker-end: url(#arrow); }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .step {
+      border-top: 4px solid var(--clay);
+      background: var(--paper);
+      padding: 18px;
+      min-height: 154px;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .step .num {
+      font-family: var(--mono);
+      color: var(--clay-dark);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    .step h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .code {
+      font-family: var(--mono);
+      background: #171716;
+      color: #f5f2ea;
+      padding: 18px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.45;
+      border: 1px solid #2e2d29;
+      margin-top: 22px;
+    }
+
+    .matrix {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 28px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      font-size: 15px;
+    }
+
+    .matrix th, .matrix td {
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      padding: 15px 16px;
+      vertical-align: top;
+    }
+
+    .matrix th {
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--clay-dark);
+      background: var(--soft);
+    }
+
+    .matrix tr:last-child td { border-bottom: 0; }
+
+    .quote {
+      margin-top: 28px;
+      border-left: 5px solid var(--clay);
+      padding: 10px 0 10px 22px;
+      max-width: 880px;
+      font-family: var(--serif);
+      font-size: clamp(22px, 2.4vw, 32px);
+      line-height: 1.22;
+    }
+
+    .source {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    .review-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .review-item {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+
+    .review-item .label {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--clay-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .review-item p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .footer-note {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 820px;
+    }
+
+    @media (max-width: 900px) {
+      .hero-grid, .two-col, .card-grid, .two-card-grid, .pipeline {
+        grid-template-columns: 1fr;
+      }
+
+      section.slide {
+        padding: 62px 20px;
+      }
+
+      .deck-nav { display: none; }
+
+      .review-item {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="deck-nav" aria-label="Slide navigation">
+    <a href="#s1">1</a>
+    <a href="#s2">2</a>
+    <a href="#s3">3</a>
+    <a href="#s4">4</a>
+    <a href="#s5">5</a>
+    <a href="#s6">6</a>
+    <a href="#s7">7</a>
+    <a href="#s8">8</a>
+  </nav>
+
+  <section class="slide" id="s1">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">Kagent knowledge base POC</p>
+        <h1>Git-backed docs, served as a <em>queryable</em> kagent tool.</h1>
+        <p class="lede">A proof of concept that turns platform documentation into a doc2vec vector database, exposes it through querydoc MCP, and lets a kagent agent answer with cited source paths.</p>
+        <div class="tag-row">
+          <span class="tag">doc2vec</span>
+          <span class="tag">querydoc MCP</span>
+          <span class="tag">RemoteMCPServer</span>
+          <span class="tag">platform-knowledge-agent</span>
+        </div>
+      </div>
+      <div class="flow" aria-label="End-to-end architecture diagram">
+        <svg viewBox="0 0 520 420" role="img">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L8,3 z" fill="#984d35"></path>
+            </marker>
+          </defs>
+          <rect class="box" x="34" y="28" width="190" height="74" rx="8"></rect>
+          <text x="54" y="58">Git repository</text>
+          <text class="small" x="54" y="82">docs/platform-kb/*.md</text>
+
+          <rect class="accent" x="294" y="28" width="190" height="74" rx="8"></rect>
+          <text x="314" y="58">doc2vec indexer</text>
+          <text class="small" x="314" y="82">chunks and embeds docs</text>
+
+          <rect class="green" x="164" y="166" width="190" height="74" rx="8"></rect>
+          <text x="184" y="196">platform-kb.db</text>
+          <text class="small" x="184" y="220">SQLite vector DB on PVC</text>
+
+          <rect class="blue" x="34" y="306" width="190" height="74" rx="8"></rect>
+          <text x="54" y="336">querydoc MCP</text>
+          <text class="small" x="54" y="360">query_documentation</text>
+
+          <rect class="box" x="294" y="306" width="190" height="74" rx="8"></rect>
+          <text x="314" y="336">kagent agent</text>
+          <text class="small" x="314" y="360">answers with citations</text>
+
+          <path class="arrow" d="M224 65 H292"></path>
+          <path class="arrow" d="M389 102 C389 138 338 153 294 166"></path>
+          <path class="arrow" d="M224 240 C176 260 145 280 129 305"></path>
+          <path class="arrow" d="M224 343 H292"></path>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="s2">
+    <div class="wrap">
+      <p class="eyebrow">What the README explains</p>
+      <h2>The POC is built from a small set of <em>reviewable</em> parts.</h2>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Seed corpus</h3>
+          <p><code>docs/platform-kb</code> contains the source docs and index used by the demo.</p>
+        </div>
+        <div class="card">
+          <h3>Indexer</h3>
+          <p><code>build-platform-kb-db.sh</code> runs doc2vec and refuses to publish a DB if embeddings fail.</p>
+        </div>
+        <div class="card">
+          <h3>Kubernetes runtime</h3>
+          <p><code>k8s/</code> defines the PVC, querydoc service, RemoteMCPServer, ModelConfig, and agent.</p>
+        </div>
+        <div class="card">
+          <h3>Deployment script</h3>
+          <p><code>deploy-geecom-demo.sh</code> applies resources, seeds the PVC, restarts querydoc, and verifies rollout.</p>
+        </div>
+        <div class="card">
+          <h3>Evidence capture</h3>
+          <p>Evidence scripts record dry-run checks, live health, agent card, and A2A proof markers.</p>
+        </div>
+        <div class="card">
+          <h3>Credential isolation</h3>
+          <p>The demo uses dedicated <code>platform-kb-openai</code> secret and ModelConfig, separate from shared defaults.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="s3">
+    <div class="wrap">
+      <p class="eyebrow">Why this pattern</p>
+      <h2>Pre-indexing is simpler than asking every chat session to clone and search Git.</h2>
+      <div class="two-card-grid">
+        <div class="card">
+          <h3>Direct Git pull inside the chat agent</h3>
+          <p>Every session needs Git credentials, network access, parsing/indexing logic, and working-tree lifecycle handling. It also makes freshness and repeatability session-specific.</p>
+        </div>
+        <div class="card">
+          <h3>doc2vec + querydoc MCP</h3>
+          <p>Indexing happens once on a schedule or manual trigger. The chat agent stays read-only and calls one tool: <code>query_documentation</code>.</p>
+        </div>
+      </div>
+      <div class="quote">The chat agent answers from a shared, refreshed search surface instead of becoming a repo crawler.</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s4">
+    <div class="wrap">
+      <p class="eyebrow">Runtime flow</p>
+      <h2>From Markdown to cited answer in five steps.</h2>
+      <div class="pipeline">
+        <div class="step">
+          <div class="num">01</div>
+          <h3>Docs live in Git</h3>
+          <p>Markdown remains the authoring surface for platform guidance.</p>
+        </div>
+        <div class="step">
+          <div class="num">02</div>
+          <h3>doc2vec embeds</h3>
+          <p>The indexer chunks docs and writes vectors into SQLite.</p>
+        </div>
+        <div class="step">
+          <div class="num">03</div>
+          <h3>PVC stores DB</h3>
+          <p><code>platform-kb.db</code> persists independently of querydoc pods.</p>
+        </div>
+        <div class="step">
+          <div class="num">04</div>
+          <h3>querydoc serves MCP</h3>
+          <p>The MCP server exposes <code>query_documentation</code>.</p>
+        </div>
+        <div class="step">
+          <div class="num">05</div>
+          <h3>Agent answers</h3>
+          <p>kagent calls the tool and cites retrieved source paths.</p>
+        </div>
+      </div>
+      <pre class="code">docs/platform-kb -> doc2vec -> platform-kb.db -> querydoc MCP -> RemoteMCPServer -> platform-knowledge-agent</pre>
+    </div>
+  </section>
+
+  <section class="slide" id="s5">
+    <div class="wrap two-col">
+      <div>
+        <p class="eyebrow">Safety model</p>
+        <h2>The demo is intentionally <em>non-provisioning</em>.</h2>
+        <p class="lede">It creates Kubernetes resources only in the kagent namespace. It does not create Azure, ASO, or KRO cluster resources.</p>
+      </div>
+      <div>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>Control</th>
+              <th>Implementation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Azure/KRO guard</td>
+              <td>Validation scans rendered YAML for provisioning resource kinds.</td>
+            </tr>
+            <tr>
+              <td>CronJob safety</td>
+              <td>Nightly indexer is rendered with <code>suspend: true</code>.</td>
+            </tr>
+            <tr>
+              <td>Secret isolation</td>
+              <td>POC uses dedicated <code>platform-kb-openai</code> secret.</td>
+            </tr>
+            <tr>
+              <td>DB integrity</td>
+              <td>Build fails if doc2vec logs embedding errors.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="s6">
+    <div class="wrap">
+      <p class="eyebrow">Live evidence</p>
+      <h2>The end-to-end path has been exercised.</h2>
+      <div class="card-grid">
+        <div class="metric">
+          <strong>1/1</strong>
+          <h3>querydoc ready</h3>
+          <p>Deployment is available and health endpoint returns <code>OK</code>.</p>
+        </div>
+        <div class="metric">
+          <strong>True</strong>
+          <h3>MCP accepted</h3>
+          <p><code>RemoteMCPServer/platform-kb-querydoc</code> is accepted by kagent.</p>
+        </div>
+        <div class="metric">
+          <strong>13</strong>
+          <h3>Embeddings built</h3>
+          <p>The seed corpus produced a working vector DB for the demo.</p>
+        </div>
+      </div>
+      <div class="review-list">
+        <div class="review-item">
+          <div class="label">A2A question</div>
+          <p>Using the platform knowledge base, how do I secure my pod? Cite the source path.</p>
+        </div>
+        <div class="review-item">
+          <div class="label">Tool call</div>
+          <p><code>query_documentation</code> with <code>productName=platform-kb</code>, <code>version=current</code>, and query text <code>secure my pod</code>.</p>
+        </div>
+        <div class="review-item">
+          <div class="label">Retrieved source</div>
+          <p><code>file://platform-kb/aks/pod-security.md</code></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="s7">
+    <div class="wrap">
+      <p class="eyebrow">Failure modes</p>
+      <h2>Known failure modes are explicit and observable.</h2>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Failure</th>
+            <th>Expected behavior</th>
+            <th>Review signal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Embedding key missing or invalid</td>
+            <td>Indexer/querydoc fail fast; existing DB remains untouched.</td>
+            <td>Build logs contain embedding error; DB is not published.</td>
+          </tr>
+          <tr>
+            <td>Docs repo unavailable</td>
+            <td>Indexer job fails; querydoc keeps serving last successful DB.</td>
+            <td>CronJob failure with unchanged PVC content.</td>
+          </tr>
+          <tr>
+            <td>No matching docs</td>
+            <td>Agent says the docs do not answer and routes to support process.</td>
+            <td>Final response avoids unsupported remediation.</td>
+          </tr>
+          <tr>
+            <td>Stale docs reported</td>
+            <td>Agent summarizes the gap; chat agent does not push Git.</td>
+            <td>Separate approved stale-doc workflow owns PR creation.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="slide" id="s8">
+    <div class="wrap">
+      <p class="eyebrow">Review package</p>
+      <h2>What to review before calling this production-ready.</h2>
+      <div class="two-card-grid">
+        <div class="evidence">
+          <h3>Code and docs</h3>
+          <p><code>ai-platform/kagent-knowledge-base/README.md</code>, <code>ARCHITECTURE.md</code>, <code>k8s/</code>, and <code>scripts/</code>.</p>
+        </div>
+        <div class="evidence">
+          <h3>Live proof</h3>
+          <p><code>evidence/LIVE-DEMO-EVIDENCE.md</code> and <code>evidence/a2a-platform-knowledge-response.json</code> in the private working repo.</p>
+        </div>
+        <div class="evidence">
+          <h3>Public mirror</h3>
+          <p>Sanitized source is in <code>kagent-public</code>; generated DBs, logs, live evidence, and local environment files are excluded.</p>
+        </div>
+        <div class="evidence">
+          <h3>Next hardening</h3>
+          <p>Decide production embedding provider, storage location for DB artifacts, refresh trigger, and stale-doc PR workflow ownership.</p>
+        </div>
+      </div>
+      <p class="footer-note">This presentation is a static HTML artifact generated from the POC README, architecture notes, and live evidence. It intentionally avoids embedding secrets, private host details, or generated database artifacts.</p>
+    </div>
+  </section>
+</body>
+</html>

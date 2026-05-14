@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Gateway as the MCP Tool Control Plane</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --paper: #ffffff;
+      --ink: #171923;
+      --muted: #5b6472;
+      --line: #d8dde8;
+      --blue: #2563eb;
+      --blue-soft: #e9f0ff;
+      --green: #0f766e;
+      --green-soft: #e6f5f2;
+      --amber: #a16207;
+      --amber-soft: #fff5d6;
+      --red: #b42318;
+      --red-soft: #fee8e5;
+      --violet: #6d28d9;
+      --violet-soft: #f0e9ff;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 42px 28px 72px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 30px;
+      height: 3px;
+      background: var(--blue);
+      border-radius: 2px;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(42px, 5vw, 68px);
+      line-height: 1.04;
+      letter-spacing: 0;
+      font-weight: 700;
+    }
+
+    h1 em {
+      color: var(--green);
+      font-style: italic;
+    }
+
+    .lede {
+      max-width: 850px;
+      margin: 22px 0 0;
+      color: #303744;
+      font-size: 19px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 34px;
+    }
+
+    .verdict {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      background: var(--paper);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 24px rgba(17, 24, 39, .06);
+    }
+
+    .verdict strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 15px;
+    }
+
+    .verdict p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .section {
+      border-top: 1.5px solid var(--line);
+      padding-top: 42px;
+      margin-top: 42px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .section-intro {
+      max-width: 850px;
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 190px;
+      padding: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 8px 18px rgba(17, 24, 39, .05);
+    }
+
+    .step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      width: 12px;
+      height: 2px;
+      background: var(--line);
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--blue);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .step h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 13px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .blue { color: #174ea6; background: var(--blue-soft); }
+    .green { color: var(--green); background: var(--green-soft); }
+    .amber { color: var(--amber); background: var(--amber-soft); }
+    .violet { color: var(--violet); background: var(--violet-soft); }
+    .red { color: var(--red); background: var(--red-soft); }
+
+    .diagram-wrap {
+      overflow-x: auto;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 10px 24px rgba(17, 24, 39, .06);
+    }
+
+    svg {
+      display: block;
+      min-width: 980px;
+      width: 100%;
+      height: auto;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 8px 18px rgba(17, 24, 39, .05);
+    }
+
+    .panel h3 {
+      margin: 0 0 12px;
+      font-size: 19px;
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .panel li + li {
+      margin-top: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 8px 18px rgba(17, 24, 39, .05);
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      background: #eef2f7;
+      color: #303744;
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: .92em;
+      color: #111827;
+      background: #eef2f7;
+      padding: 2px 5px;
+      border-radius: 5px;
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 18px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .snippet-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .callout {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 12px;
+      align-items: start;
+      margin-top: 22px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .callout-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-family: var(--mono);
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .callout p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .footer-note {
+      margin-top: 42px;
+      color: var(--muted);
+      font-size: 13px;
+      font-family: var(--mono);
+    }
+
+    @media (max-width: 960px) {
+      .hero-grid,
+      .matrix,
+      .snippet-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .step {
+        min-height: auto;
+      }
+
+      .step:not(:last-child)::after {
+        top: auto;
+        right: auto;
+        bottom: -12px;
+        left: 28px;
+        width: 2px;
+        height: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero-grid">
+      <div>
+        <p class="eyebrow">MCP Tool Platform Pattern</p>
+        <h1>Put the tools <em>behind</em> Agent Gateway</h1>
+        <p class="lede">
+          Kagent still defines agents and their intended tools. Agent Gateway becomes the runtime
+          control point that authenticates the caller, filters tool discovery, and blocks calls
+          outside the grant.
+        </p>
+      </div>
+      <aside class="verdict">
+        <strong>One-line explanation</strong>
+        <p>
+          ToolCatalogEntry and ToolGrant describe who should get what; Agent Gateway enforces it;
+          kagent consumes only the gateway-fronted MCP endpoint.
+        </p>
+      </aside>
+    </section>
+
+    <section class="section">
+      <h2>The Moving Parts</h2>
+      <p class="section-intro">
+        The design splits source-of-truth objects from runtime enforcement. That keeps onboarding,
+        audit, and policy review declarative, while avoiding trust in the agent process as the
+        security boundary.
+      </p>
+
+      <div class="flow">
+        <article class="step">
+          <span class="step-num">1</span>
+          <h3>Tool is catalogued</h3>
+          <p>A BYO MCP server is verified and written into <code>ToolCatalogEntry</code>.</p>
+          <span class="pill blue">source of truth</span>
+        </article>
+        <article class="step">
+          <span class="step-num">2</span>
+          <h3>Agent gets a grant</h3>
+          <p><code>ToolGrant</code> says exactly which agent can use which verified tools.</p>
+          <span class="pill amber">approval record</span>
+        </article>
+        <article class="step">
+          <span class="step-num">3</span>
+          <h3>Gateway policy is rendered</h3>
+          <p>A controller or GitOps renderer turns the grant into MCP auth policy.</p>
+          <span class="pill violet">projection</span>
+        </article>
+        <article class="step">
+          <span class="step-num">4</span>
+          <h3>Kagent points at gateway</h3>
+          <p>The agent uses a <code>RemoteMCPServer</code> URL for Agent Gateway, not the tool service.</p>
+          <span class="pill green">controlled path</span>
+        </article>
+        <article class="step">
+          <span class="step-num">5</span>
+          <h3>Discovery and calls are enforced</h3>
+          <p><code>tools/list</code> is filtered. <code>tools/call</code> is blocked if not granted.</p>
+          <span class="pill red">runtime guard</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Runtime Request Flow</h2>
+      <p class="section-intro">
+        The important change is the middle hop. Agents no longer talk directly to every MCP server.
+        They talk to Agent Gateway, which fans out to the right MCP target only after policy is applied.
+      </p>
+
+      <div class="diagram-wrap" aria-label="Runtime request flow diagram">
+        <svg viewBox="0 0 1120 430" role="img">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#5b6472"></path>
+            </marker>
+          </defs>
+
+          <rect x="22" y="42" width="190" height="106" rx="8" fill="#ffffff" stroke="#d8dde8"></rect>
+          <text x="44" y="78" font-family="system-ui" font-size="18" font-weight="700" fill="#171923">kagent Agent</text>
+          <text x="44" y="106" font-family="ui-monospace, monospace" font-size="13" fill="#5b6472">cert-manager-agent</text>
+          <text x="44" y="128" font-family="ui-monospace, monospace" font-size="13" fill="#5b6472">namespace: team-a</text>
+
+          <rect x="302" y="42" width="236" height="106" rx="8" fill="#e9f0ff" stroke="#91b2ff"></rect>
+          <text x="326" y="78" font-family="system-ui" font-size="18" font-weight="700" fill="#174ea6">RemoteMCPServer</text>
+          <text x="326" y="106" font-family="ui-monospace, monospace" font-size="13" fill="#1f3f7a">url: ai-gateway/.../mcp</text>
+          <text x="326" y="128" font-family="ui-monospace, monospace" font-size="13" fill="#1f3f7a">toolNames: allowed subset</text>
+
+          <rect x="622" y="24" width="252" height="146" rx="8" fill="#f0e9ff" stroke="#bda7ff"></rect>
+          <text x="648" y="60" font-family="system-ui" font-size="18" font-weight="700" fill="#4c1d95">Agent Gateway</text>
+          <text x="648" y="88" font-family="ui-monospace, monospace" font-size="13" fill="#5b21b6">authn: JWT/OIDC/API key</text>
+          <text x="648" y="112" font-family="ui-monospace, monospace" font-size="13" fill="#5b21b6">authz: MCP CEL rules</text>
+          <text x="648" y="136" font-family="ui-monospace, monospace" font-size="13" fill="#5b21b6">discovery: filtered tools/list</text>
+
+          <rect x="942" y="42" width="156" height="106" rx="8" fill="#e6f5f2" stroke="#82c7bd"></rect>
+          <text x="966" y="78" font-family="system-ui" font-size="18" font-weight="700" fill="#0f766e">MCP Service</text>
+          <text x="966" y="106" font-family="ui-monospace, monospace" font-size="13" fill="#0f766e">team-owned</text>
+          <text x="966" y="128" font-family="ui-monospace, monospace" font-size="13" fill="#0f766e">actual tools</text>
+
+          <line x1="212" y1="95" x2="292" y2="95" stroke="#5b6472" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="538" y1="95" x2="612" y2="95" stroke="#5b6472" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="874" y1="95" x2="932" y2="95" stroke="#5b6472" stroke-width="2" marker-end="url(#arrow)"></line>
+
+          <rect x="62" y="250" width="226" height="112" rx="8" fill="#ffffff" stroke="#d8dde8"></rect>
+          <text x="86" y="286" font-family="system-ui" font-size="17" font-weight="700" fill="#171923">ToolCatalogEntry</text>
+          <text x="86" y="314" font-family="ui-monospace, monospace" font-size="13" fill="#5b6472">verifiedTools[]</text>
+          <text x="86" y="336" font-family="ui-monospace, monospace" font-size="13" fill="#5b6472">versioned source URL</text>
+
+          <rect x="346" y="250" width="220" height="112" rx="8" fill="#fff5d6" stroke="#e8c768"></rect>
+          <text x="370" y="286" font-family="system-ui" font-size="17" font-weight="700" fill="#7c4a03">ToolGrant</text>
+          <text x="370" y="314" font-family="ui-monospace, monospace" font-size="13" fill="#7c4a03">agentRef</text>
+          <text x="370" y="336" font-family="ui-monospace, monospace" font-size="13" fill="#7c4a03">allowedToolNames[]</text>
+
+          <rect x="624" y="250" width="250" height="112" rx="8" fill="#f0e9ff" stroke="#bda7ff"></rect>
+          <text x="648" y="286" font-family="system-ui" font-size="17" font-weight="700" fill="#4c1d95">Rendered Gateway Policy</text>
+          <text x="648" y="314" font-family="ui-monospace, monospace" font-size="13" fill="#5b21b6">mcp.tool.name in grant</text>
+          <text x="648" y="336" font-family="ui-monospace, monospace" font-size="13" fill="#5b21b6">agent identity matches</text>
+
+          <line x1="288" y1="306" x2="336" y2="306" stroke="#5b6472" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="566" y1="306" x2="614" y2="306" stroke="#5b6472" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="748" y1="250" x2="748" y2="180" stroke="#5b6472" stroke-width="2" marker-end="url(#arrow)"></line>
+        </svg>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>What Each Layer Owns</h2>
+      <p class="section-intro">
+        This is the easiest way to explain the split to reviewers: kagent remains the agent platform,
+        ToolGrant remains the platform approval model, and Agent Gateway becomes the enforcement layer.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Owns</th>
+            <th>Does not own</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>ToolCatalogEntry</strong></td>
+            <td>Verified tool server version, discovered tool names, safety metadata, source URL.</td>
+            <td>Runtime request enforcement.</td>
+          </tr>
+          <tr>
+            <td><strong>ToolGrant</strong></td>
+            <td>Per-agent permission: agent X may use tools A, B, C from catalog entry Y.</td>
+            <td>Networking, routing, or protocol handling.</td>
+          </tr>
+          <tr>
+            <td><strong>Agent Gateway</strong></td>
+            <td>Authentication, authorization, filtered discovery, multiplexing, audit telemetry.</td>
+            <td>Agent prompts, model choice, or business approval workflow.</td>
+          </tr>
+          <tr>
+            <td><strong>kagent</strong></td>
+            <td>Agent CRs, model config, prompt, selected RemoteMCPServer, client-side toolNames.</td>
+            <td>The final security boundary for MCP tool access.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>The Policy Projection</h2>
+      <p class="section-intro">
+        The platform renderer takes a friendly grant and turns it into gateway-enforced CEL. The
+        same rule affects both discovery and execution.
+      </p>
+
+      <div class="snippet-grid">
+        <div class="panel">
+          <h3>Human-readable grant</h3>
+          <pre>apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolGrant
+metadata:
+  name: cert-manager-agent-kube-readonly
+  namespace: team-a
+spec:
+  agentRef:
+    name: cert-manager-agent
+  toolCatalogRef: kube-readonly-tools@v1.0.0
+  allowedToolNames:
+    - k8s_get_resources
+    - k8s_describe_resource
+    - k8s_get_events</pre>
+        </div>
+
+        <div class="panel">
+          <h3>Gateway enforcement rule</h3>
+          <pre>backend:
+  mcp:
+    authorization:
+      policy:
+        matchExpressions:
+          - &gt;-
+            request.headers["x-kagent-namespace"] == "team-a" &amp;&amp;
+            request.headers["x-kagent-agent"] == "cert-manager-agent" &amp;&amp;
+            mcp.tool.target == "team-a-kube" &amp;&amp;
+            mcp.tool.name in [
+              "k8s_get_resources",
+              "k8s_describe_resource",
+              "k8s_get_events"
+            ]</pre>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-icon">!</div>
+        <p>
+          The headers in this demo are deliberately simple so the pattern is easy to see. For a
+          production boundary, use signed identity, mTLS, or network policy so tenants cannot bypass
+          kagent and spoof <code>x-kagent-agent</code>.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Why This Is Better Than Direct MCP Access</h2>
+      <div class="matrix">
+        <article class="panel">
+          <h3>Direct kagent → MCP server</h3>
+          <ul>
+            <li>Every agent needs direct network reachability to every granted tool server.</li>
+            <li><code>toolNames</code> narrows what the agent asks for, but it is not the central enforcement point.</li>
+            <li>Discovery, auth, and audit are spread across tool servers and agent config.</li>
+          </ul>
+        </article>
+        <article class="panel">
+          <h3>kagent → Agent Gateway → MCP server</h3>
+          <ul>
+            <li>Agents use one controlled MCP entry point per tool surface.</li>
+            <li>Discovery is filtered before the agent sees tools it is not allowed to use.</li>
+            <li>Tool execution is blocked centrally using the same policy and same telemetry path.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>What We Need To Build</h2>
+      <p class="section-intro">
+        The upstream projects already have the important primitives. The platform work is the
+        projection layer that keeps source-of-truth grants and runtime gateway policy in sync.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Responsibility</th>
+            <th>Output</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Onboarding workflow</strong></td>
+            <td>Quarantine a BYO MCP server, run <code>tools/list</code>, validate safety metadata.</td>
+            <td><code>ToolCatalogEntry.status.verifiedTools[]</code></td>
+          </tr>
+          <tr>
+            <td><strong>Grant validator</strong></td>
+            <td>Check grants refer to verified catalog entries and valid tool names.</td>
+            <td>Admission decision or GitOps PR check.</td>
+          </tr>
+          <tr>
+            <td><strong>Policy renderer</strong></td>
+            <td>Convert grants into Agent Gateway backend, route, and MCP authorization policy.</td>
+            <td><code>AgentgatewayBackend</code>, <code>HTTPRoute</code>, <code>AgentgatewayPolicy</code></td>
+          </tr>
+          <tr>
+            <td><strong>kagent projection</strong></td>
+            <td>Point agents at gateway-fronted MCP endpoints and keep <code>toolNames</code> aligned.</td>
+            <td><code>RemoteMCPServer</code> and Agent tool refs.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="footer-note">
+      Companion YAML: ai-platform/agentgateway/mcp-tool-auth-discovery-demo.yaml
+    </p>
+  </main>
+</body>
+</html>

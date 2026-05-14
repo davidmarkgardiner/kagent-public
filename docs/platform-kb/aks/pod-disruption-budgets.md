@@ -2,16 +2,21 @@
 
 ## Summary
 
-Use a `PodDisruptionBudget` when an application needs a minimum number of replicas available during voluntary disruptions such as node upgrades, drain operations, or cluster maintenance.
+Use a `PodDisruptionBudget` when an application must keep a minimum number of pods available during voluntary disruptions such as node upgrades, drain operations, cluster maintenance, or autoscaler consolidation.
+
+## When to Use a PDB
+
+Create a PDB for production workloads with more than one replica when one unavailable replica is acceptable but full disruption is not. Do not add a PDB to a single-replica workload unless the team understands it can block voluntary node maintenance.
 
 ## Steps
 
-1. Make sure the workload has at least two replicas before adding a budget.
-2. Choose either `minAvailable` or `maxUnavailable`; do not set both in the same PDB.
-3. Match the selector to the same labels used by the Deployment, StatefulSet, or ReplicaSet.
-4. For stateless services, start with `maxUnavailable: 1` so one replica can be evicted at a time.
-5. For quorum-based systems, calculate `minAvailable` from the quorum requirement and test a node drain in non-production.
-6. Check PDB status before maintenance with `kubectl get pdb -n <namespace>`.
+1. Make sure the workload has at least two replicas.
+2. Choose either `minAvailable` or `maxUnavailable`; do not set both.
+3. Match the selector to the labels used by the Deployment, StatefulSet, or ReplicaSet.
+4. For stateless services, start with `maxUnavailable: 1`.
+5. For quorum-based systems, calculate `minAvailable` from the quorum requirement.
+6. Test a node drain in non-production before relying on the budget.
+7. Check PDB status before maintenance with `kubectl get pdb -n <namespace>`.
 
 ## Example
 
@@ -27,7 +32,7 @@ spec:
       app: web
 ```
 
-## Related source links
+## Related References
 
 - Kubernetes disruption budgets: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
 - AKS planned maintenance: https://learn.microsoft.com/azure/aks/planned-maintenance

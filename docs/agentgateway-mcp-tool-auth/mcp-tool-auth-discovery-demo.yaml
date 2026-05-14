@@ -1,0 +1,245 @@
+# Demonstration only.
+#
+# This file shows how the platform-owned ToolCatalogEntry/ToolGrant model can
+# be projected into:
+#
+# - Agent Gateway MCP backend/route/policy resources
+# - kagent RemoteMCPServer + Agent tool references
+#
+# Do not apply this whole file as-is. The ToolCatalogEntry status section is
+# shown for readability, but status is normally written through the /status
+# subresource by the onboarding/orchestrator workflow.
+
+---
+# ---------------------------------------------------------------------------
+# 1. Tenant namespace. The label lets Agent Gateway select tenant MCP Services.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels:
+    platform.kagent.dev/tenant: team-a
+
+---
+# ---------------------------------------------------------------------------
+# 2. Platform catalog source of truth.
+#    This is the verified tool-server version a team can request access to.
+# ---------------------------------------------------------------------------
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolCatalogEntry
+metadata:
+  name: kube-readonly-tools-v1-0-0
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+spec:
+  name: kube-readonly-tools
+  version: v1.0.0
+  description: "Read-only Kubernetes diagnostic MCP tools"
+  source:
+    url: http://kube-readonly-tools.team-a.svc.cluster.local:8000/mcp
+    protocol: STREAMABLE_HTTP
+  maintainer: platform-team
+  tags:
+    - kubernetes
+    - read-only
+    - diagnostics
+status:
+  verifiedAt: "2026-05-13T00:00:00Z"
+  verifiedBy: byo-kagent-orchestrator
+  toolCount: 3
+  verifiedTools:
+    - name: k8s_get_resources
+      verbClassification: read
+      dangerous: false
+    - name: k8s_describe_resource
+      verbClassification: read
+      dangerous: false
+    - name: k8s_get_events
+      verbClassification: read
+      dangerous: false
+
+---
+# ---------------------------------------------------------------------------
+# 3. Per-agent grant. This is what the platform renderer/controller consumes.
+# ---------------------------------------------------------------------------
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolGrant
+metadata:
+  name: cert-manager-agent-kube-readonly
+  namespace: team-a
+spec:
+  agentRef:
+    name: cert-manager-agent
+  toolCatalogRef: kube-readonly-tools@v1.0.0
+  allowedToolNames:
+    - k8s_get_resources
+    - k8s_describe_resource
+    - k8s_get_events
+  reason: "Cert-manager troubleshooting requires read-only namespace diagnostics"
+
+---
+# ---------------------------------------------------------------------------
+# 4. The real MCP tool server Service.
+#    The Service can be team-owned. Agent Gateway selects it by labels.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-readonly-tools
+  namespace: team-a
+  labels:
+    platform.kagent.dev/mcp-tool-server: kube-readonly-tools
+    platform.kagent.dev/tenant: team-a
+spec:
+  selector:
+    app.kubernetes.io/name: kube-readonly-tools
+  ports:
+    - name: mcp
+      port: 8000
+      targetPort: 8000
+      appProtocol: agentgateway.dev/mcp
+
+---
+# ---------------------------------------------------------------------------
+# 5. Agent Gateway MCP backend.
+#    In production this would be rendered from ToolCatalogEntry.source.
+# ---------------------------------------------------------------------------
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: team-a-kube-readonly-tools
+  namespace: agentgateway-system
+spec:
+  mcp:
+    sessionRouting: Stateful
+    failureMode: FailClosed
+    targets:
+      - name: team-a-kube
+        selector:
+          namespaces:
+            matchLabels:
+              platform.kagent.dev/tenant: team-a
+          services:
+            matchLabels:
+              platform.kagent.dev/mcp-tool-server: kube-readonly-tools
+
+---
+# ---------------------------------------------------------------------------
+# 6. Gateway API route exposing the MCP endpoint through Agent Gateway.
+#    kagent agents call this URL, not the team-owned MCP Service directly.
+# ---------------------------------------------------------------------------
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: team-a-kube-readonly-mcp
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp/team-a/kube-readonly
+      backendRefs:
+        - group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: team-a-kube-readonly-tools
+
+---
+# ---------------------------------------------------------------------------
+# 7. Agent Gateway runtime authorization.
+#    This is the enforcement projection of ToolGrant.allowedToolNames.
+#
+#    Discovery behavior:
+#    - tools/list only returns matching tools for this agent identity.
+#    - tools/call rejects any tool outside the grant.
+#
+#    The x-kagent-* headers must be trusted. In production, prefer a signed
+#    workload/user JWT or restrict direct access so tenants cannot spoof them.
+# ---------------------------------------------------------------------------
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: team-a-cert-manager-agent-tools
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: team-a-kube-readonly-mcp
+  backend:
+    mcp:
+      authorization:
+        policy:
+          matchExpressions:
+            - >-
+              request.headers["x-kagent-namespace"] == "team-a" &&
+              request.headers["x-kagent-agent"] == "cert-manager-agent" &&
+              mcp.tool.target == "team-a-kube" &&
+              mcp.tool.name in [
+                "k8s_get_resources",
+                "k8s_describe_resource",
+                "k8s_get_events"
+              ]
+
+---
+# ---------------------------------------------------------------------------
+# 8. kagent RemoteMCPServer.
+#    This points at Agent Gateway and exposes gateway-filtered discovery.
+# ---------------------------------------------------------------------------
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: kube-readonly-tools-via-agentgateway
+  namespace: team-a
+spec:
+  description: "Read-only Kubernetes tools routed through Agent Gateway"
+  protocol: STREAMABLE_HTTP
+  url: http://ai-gateway.agentgateway-system.svc.cluster.local/mcp/team-a/kube-readonly
+  timeout: 30s
+  allowedNamespaces:
+    from: Same
+
+---
+# ---------------------------------------------------------------------------
+# 9. kagent Agent consuming the gateway-fronted tool server.
+#    toolNames is still useful as a client-side allowlist, but Agent Gateway is
+#    the runtime enforcement point.
+# ---------------------------------------------------------------------------
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: cert-manager-agent
+  namespace: team-a
+  annotations:
+    platform.kagent.dev/tool-grants-verified: "true"
+spec:
+  type: Declarative
+  declarative:
+    description: "Cert-manager read-only troubleshooting agent"
+    modelConfig: agentgateway-azure-openai
+    systemMessage: |
+      You are a cert-manager troubleshooting agent. Use only read-only tools.
+    tools:
+      - type: McpServer
+        mcpServer:
+          name: kube-readonly-tools-via-agentgateway
+          kind: RemoteMCPServer
+          apiGroup: kagent.dev
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_events
+          allowedHeaders:
+            - x-user-email
+            - x-tenant-id
+        headersFrom:
+          - name: x-kagent-agent
+            value: cert-manager-agent
+          - name: x-kagent-namespace
+            value: team-a
+          - name: x-kagent-tenant
+            value: team-a

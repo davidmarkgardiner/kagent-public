@@ -1,0 +1,163 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k-agent-agentgateway-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prom
+    shipto.lgtm: "true"
+    lgtm.tenant: platform
+    route_to: triage
+spec:
+  groups:
+    - name: k-agent-agentgateway-token-usage
+      interval: 1m
+      rules:
+        - record: agentgateway:tokens_per_minute:rate5m
+          expr: |
+            sum by (cluster, namespace, gen_ai_request_model, gen_ai_token_type) (
+              rate(agentgateway_gen_ai_client_token_usage_sum[5m]) * 60
+            )
+
+        - alert: AgentgatewayRunawayInputTokens
+          expr: |
+            sum by (cluster, gen_ai_request_model) (
+              rate(agentgateway_gen_ai_client_token_usage_sum{gen_ai_token_type="input"}[5m]) * 60
+            ) > 100000
+          for: 5m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "Runaway input token usage on {{ $labels.gen_ai_request_model }}"
+            description: "{{ $value | printf \"%.0f\" }} input tokens/min sustained for 5m. Check for a stuck kagent loop, retry storm, or unexpected prompt expansion."
+
+        - alert: AgentgatewayNoTokenActivity
+          expr: |
+            sum(rate(agentgateway_gen_ai_client_token_usage_count[30m])) == 0
+          for: 30m
+          labels:
+            severity: info
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "No token usage observed through agentgateway"
+            description: "Expected only when no agents are active. If agents should be running, check kagent ModelConfig routing and agentgateway health."
+
+        - alert: AgentgatewayTokenMetricsMissing
+          expr: |
+            absent(agentgateway_gen_ai_client_token_usage_count)
+          for: 30m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "agentgateway token metrics are missing"
+            description: "The gateway is not emitting agentgateway_gen_ai_client_token_usage_count. Token dashboards and token-budget alerts are blind unless the structured-log fallback is available."
+
+    - name: k-agent-agentgateway-runtime
+      interval: 30s
+      rules:
+        - alert: AgentgatewayHigh5xxRate
+          expr: |
+            (
+              sum by (cluster, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_xx{envoy_response_code_class="5"}[5m]))
+              /
+              sum by (cluster, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_completed[5m]))
+            ) > 0.05
+            and
+            sum by (cluster, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_completed[5m])) > 0.01
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "agentgateway upstream 5xx rate > 5%"
+            description: "Cluster {{ $labels.cluster }} upstream {{ $labels.envoy_cluster_name }} is returning elevated 5xx responses."
+
+        - alert: AgentgatewayMetricsMissing
+          expr: |
+            absent(up{namespace="kgateway-system", pod=~"ai-gateway-.+"} == 1)
+          for: 10m
+          labels:
+            severity: critical
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "agentgateway metrics are missing"
+            description: "Alloy or Prometheus is not scraping the gateway metrics endpoint. Token dashboards and alerts may be blind."
+
+    - name: k-agent-controller-and-container-health
+      interval: 30s
+      rules:
+        - alert: KagentControllerDown
+          expr: |
+            absent(kube_deployment_status_replicas_available{namespace="kagent", deployment="kagent-controller"} > 0)
+          for: 5m
+          labels:
+            severity: critical
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "kagent controller has no available replicas"
+            description: "The kagent API and A2A endpoints are unavailable."
+
+        - alert: KagentContainerRestartBurst
+          expr: |
+            sum by (cluster, namespace, pod, container) (
+              increase(kube_pod_container_status_restarts_total{namespace="kagent"}[15m])
+            ) > 3
+          for: 5m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "kagent container restart burst"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} restarted more than 3 times in 15m."
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k-agent-log-alerts
+  namespace: monitoring
+  labels:
+    shipto.lgtm: "true"
+    lgtm.tenant: platform
+    lgtm.engine: loki
+    route_to: triage
+spec:
+  groups:
+    - name: k-agent-log-signals
+      interval: 1m
+      rules:
+        - alert: KagentA2AParseErrors
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace="kagent"} |~ "(?i)((json-rpc|a2a|parse).*error|missing\\s+kind\\s+field)" [5m])
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "kagent A2A parse errors"
+            description: "kagent logged repeated A2A/JSON-RPC parse errors. Check Argo workflow payload shape and agent gateway routing."
+
+        - alert: AgentgatewayUpstreamResetBurst
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace="kgateway-system"} |~ "(?i)(upstream reset|connection reset|upstream timeout)" [10m])
+            ) > 20
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "agentgateway upstream reset burst"
+            description: "agentgateway logged repeated upstream resets or timeouts. Check model backend health and retry behavior."
