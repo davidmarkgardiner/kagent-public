@@ -75,6 +75,27 @@ secret-rotation-safe UAMI custom-scope workflow.
 | `networkpolicy.yaml` | CNI with NetworkPolicy support (Calico, Cilium) |
 | `monitoring.yaml` | Prometheus Operator CRDs |
 
+### MVP demo set — gateway-as-control-plane
+
+Sequenced PRs. Read `DEMO-SCHEMA-GATE.md` first; nothing in this section
+applies until that file's verdict table is filled in against a live cluster.
+
+| File | Demo | Purpose |
+|---|---|---|
+| `DEMO-SCHEMA-GATE.md` | PR 0 | Read-only CRD/runtime support verdict for PRs 1-4 |
+| `policy-prompt-enrichment.yaml` | PR 1 | Inject org-wide SRE system prompt at the gateway, no kagent edits |
+| `backend-llm-failover.yaml` | PR 2 | Single `/llm/v1` endpoint with local model first, Azure OpenAI fallback |
+| `FAILOVER-DEMO.md` | PR 2 | Safe failover test options + rollback |
+| `backend-argo-openapi-mcp.yaml` | PR 3 | Argo Server REST OpenAPI → MCP tools (gated on schema verdict) |
+| `policy-argo-openapi-mcp.yaml` | PR 3 | MCP CEL authz: read tools open, writes allowlisted |
+| `argo-openapi-spec-configmap.yaml` | PR 3 | Version-pinned Argo Server REST OpenAPI document |
+| `remotemcpserver-argo.yaml` | PR 3 | Worker-cluster `RemoteMCPServer` pointed at the gateway route |
+| `ARGO-OPENAPI-MCP-DEMO.md` | PR 3 | Schema verdict, spec source, read-only and write-denial tests |
+| `service-a2a-fleet-agent.yaml` | PR 4 | ReferenceGrant in `kagent` allowing agentgateway HTTPRoutes to reach `kagent-controller` (plan B — no `appProtocol: agentgateway.dev/a2a` because CRD doesn't support it) |
+| `route-a2a-fleet-agent.yaml` | PR 4 | `HTTPRoute /a2a/fleet/` → URL-rewrite → `kagent-controller.kagent:8083/api/a2a/kagent/<fleet-agent>/` |
+| `policy-a2a-fleet-agent.yaml` | PR 4 | Rate limit + request timeout for the A2A path. Identity gate lives at the Istio AuthorizationPolicy layer (CRD has no `backend.a2a.authorization`) |
+| `A2A-FLEET-DEMO.md` | PR 4 | A2A identity model, manual + ingress tests, trailing-slash variants, rollback |
+
 ### Worker cluster
 
 | File | Applies when |

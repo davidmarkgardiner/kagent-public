@@ -1,0 +1,67 @@
+# ConfigMap — Argo Server REST OpenAPI document (version-pinned)
+#
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ DO NOT APPLY — BLOCKED by PR 0 verdict on proxmox-k8s (2026-05-14).       ║
+# ║ The AgentgatewayBackend this ConfigMap is meant to feed cannot consume   ║
+# ║ it: `spec.mcp.targets[].openapi` is not in the CRD. See                  ║
+# ║ DEMO-SCHEMA-GATE.md for evidence and the PR 3 rescope path.              ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# DEPLOY ON: management cluster (or wherever agentgateway runs)
+#
+# DO NOT APPLY THIS FILE BEFORE POPULATING `argo-openapi.json`. The
+# placeholder below is intentionally empty so a `kubectl apply` of an
+# unpopulated ConfigMap will not silently break MCP tool discovery.
+#
+# This is the **Argo Server REST OpenAPI**, not the Kubernetes CRD
+# OpenAPI for `argoproj.io`. The CRD OpenAPI describes Workflow objects;
+# it does not describe Argo Server REST endpoints (`submitWorkflow`,
+# `listWorkflows`, `terminateWorkflow`, etc.). MCP tool names are derived
+# from REST operationIds, so the right document must come from the Argo
+# Server.
+#
+# How to populate, in order of preference:
+#
+# 1. Live Argo Server (matches what's deployed on this cluster):
+#      kubectl port-forward -n argo svc/argo-server 2746:2746 &
+#      curl -sk https://localhost:2746/api/v1/docs/openapi.json > argo-openapi.json
+#      kubectl create configmap argo-openapi-spec \
+#        --from-file=argo-openapi.json=argo-openapi.json \
+#        -n agentgateway-system --dry-run=client -o yaml > argo-openapi-spec-configmap.yaml
+#      # Record the Argo version this came from:
+#      kubectl get deploy -n argo argo-server -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+#
+# 2. Version-pinned release artifact (use when no live argo-server is reachable):
+#      Download the swagger.json from the Argo Workflows GitHub release
+#      whose tag matches the chart/app version on this cluster, save it as
+#      argo-openapi.json, then run the `kubectl create configmap ... --dry-run`
+#      step above to regenerate this file.
+#
+# Record the exact source URL and Argo version in ARGO-OPENAPI-MCP-DEMO.md
+# §"Spec source captured" before applying.
+# ---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argo-openapi-spec
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    demo: argo-openapi-mcp
+  annotations:
+    # Fill these in when the spec is populated. Empty values mean the
+    # ConfigMap is still a placeholder.
+    argo.io/source-version: ""        # e.g. v3.6.2
+    argo.io/source-url: ""            # e.g. argo-server local /api/v1/docs/openapi.json
+    argo.io/captured-at: ""           # ISO 8601 timestamp
+data:
+  argo-openapi.json: |
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "PLACEHOLDER - replace with Argo Server REST OpenAPI",
+        "version": "0.0.0"
+      },
+      "paths": {}
+    }

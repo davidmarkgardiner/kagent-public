@@ -269,6 +269,14 @@ spec:
 # FAILOVER DETECTION (traffic hitting fallback group):
 #   sum(rate(envoy_cluster_upstream_rq_total{envoy_cluster_name=~".*fallback.*"}[5m]))
 #
+# NOTE — `/llm/v1` failover (see backend-llm-failover.yaml, FAILOVER-DEMO.md):
+#   The exact `envoy_cluster_name` regex above is a placeholder. Before
+#   adding an `LLMFailoverEngaged` alert here, drive real failover traffic
+#   via FAILOVER-DEMO.md §3, then query
+#     topk(20, count by (envoy_cluster_name) (envoy_cluster_upstream_rq_total))
+#   and lock the alert to the observed cluster-name label. Do not commit
+#   an alert that fires on a guessed regex.
+#
 # ── KAGENT (worker cluster) ──
 #
 # REQUESTS PER AGENT PER MINUTE:

@@ -1,0 +1,185 @@
+# AgentgatewayBackend + HTTPRoute + Policy — single `/llm/v1` endpoint
+# with local-model primary and Azure OpenAI fallback
+#
+# DEPLOY ON: management cluster
+#
+# Demonstrates "cost control + resilience" in one place: kagent points at
+# `/llm/v1`, the gateway prefers a local model (KubeAI primary group), and
+# only falls back to Azure OpenAI when the local group fails.
+#
+# SCHEMA GATE: depends on `AgentgatewayBackend.spec.ai.groups[]` allowing a
+# mix of provider types in one backend (KubeAI `openai` + Azure
+# `azureopenai`). Confirm in PR 0 (DEMO-SCHEMA-GATE.md) before applying.
+#
+# If mixed providers in one backend are NOT supported, follow the
+# alternative pattern in FAILOVER-DEMO.md: two AgentgatewayBackends + two
+# HTTPRoutes + retry/failover at the route level.
+#
+# Pre-reqs:
+#   - This file ships its OWN dummy KubeAI secret + Azure API-key secret
+#     in the namespace, both keyed `Authorization` (the key that
+#     agentgateway secretRef expects). The repo's older
+#     `backend-kubeai.yaml` ships a Secret keyed `api-key`, which
+#     agentgateway does NOT accept — that's a separate cleanup. Do not
+#     point this file at `kubeai-dummy-key`.
+#   - UAMI is NOT used here. Per CRD verdict in DEMO-SCHEMA-GATE.md,
+#     per-provider `azureAuth` is unsupported and top-level azureAuth
+#     applies to every provider in every group, which doesn't work
+#     for a mixed KubeAI + Azure backend. For UAMI failover, see the
+#     two-backend route-level pattern in FAILOVER-DEMO.md §4.
+#
+# Apply:
+#   kubectl apply --dry-run=server -f backend-llm-failover.yaml
+#   kubectl apply -f backend-llm-failover.yaml
+#
+# Verify happy path (should resolve via the local group):
+#   kubectl port-forward -n agentgateway-system svc/ai-gateway 8080:80 &
+#   curl -s -X POST http://localhost:8080/llm/v1/chat/completions \
+#     -H "Content-Type: application/json" \
+#     -d '{"model":"<local-model>","messages":[{"role":"user","content":"ping"}],"max_tokens":20}' | jq .
+#
+# Verify failover path: see FAILOVER-DEMO.md. Do **not** scale shared
+# KubeAI/vLLM deployments to zero unless explicitly approved — use the
+# temporary bad-host overlay described in the runbook instead.
+#
+# Rollback:
+#   kubectl delete -f backend-llm-failover.yaml
+# ---
+
+# KubeAI dummy secret keyed `Authorization` (the key agentgateway
+# secretRef requires). The repo's existing `kubeai-dummy-key` is
+# keyed `api-key` and would be silently ignored by the backend — see
+# DEMO-SCHEMA-GATE.md schema-corrections note.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llm-failover-kubeai-key
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  Authorization: "Bearer not-required"
+---
+# Azure OpenAI API-key secret used by the fallback group. Replace the
+# value before applying. For UAMI-based auth the schema forces the
+# top-level/two-backend pattern (see FAILOVER-DEMO.md §4).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-openai-api-key
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  Authorization: "Bearer REPLACE_WITH_AZURE_OPENAI_API_KEY"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: llm-failover-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    demo: llm-failover
+spec:
+  ai:
+    groups:
+      # ─── Priority 0 — local model (KubeAI). Tried first. ──────────────
+      - providers:
+          - name: local-kubeai
+            openai:
+              model: REPLACE_WITH_PRIMARY_MODEL    # match `kubectl get model -n kubeai`
+            host: kubeai.kubeai.svc.cluster.local
+            port: 80
+            policies:
+              auth:
+                secretRef:
+                  name: llm-failover-kubeai-key
+      # ─── Priority 1 — Azure OpenAI fallback. Used only if group 0 fails. ──
+      # CRD constraint observed on proxmox-k8s (2026-05-14):
+      # `groups[].providers[].policies.auth` accepts `aws`, `gcp`, `key`,
+      # `passthrough`, `secretRef` — but **not** `azureAuth`. UAMI native
+      # managed-identity only works at the top-level
+      # `AgentgatewayBackend.spec.policies.auth.azureAuth`, which then
+      # applies to all providers in all groups. Since KubeAI doesn't use
+      # UAMI, mixing them in one backend forces an Azure API-key auth
+      # path here. For UAMI failover, use the route-level two-backend
+      # pattern in FAILOVER-DEMO.md §4 instead.
+      - providers:
+          - name: azure-fallback
+            azureopenai:
+              endpoint: REPLACE_RESOURCE.openai.azure.com
+              deploymentName: REPLACE_DEPLOYMENT_NAME
+              apiVersion: "2024-10-21"
+            policies:
+              auth:
+                secretRef:
+                  name: azure-openai-api-key
+---
+# HTTPRoute — `/llm/v1` on the shared ai-gateway → llm-failover-backend.
+# The chat-completions path comes after this prefix, so kagent calls
+# `/llm/v1/chat/completions` and the backend's provider implementations
+# handle the OpenAI-compatible path internally.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: llm-failover-route
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /llm/v1
+      backendRefs:
+        - name: llm-failover-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+---
+# AgentgatewayPolicy — timeouts, rate limit, PII guard for the failover route.
+# Prompt enrichment from policy-prompt-enrichment.yaml will also need a new
+# targetRef row added for `llm-failover-route` once that policy is in place
+# (validate policy-merge behavior first per the plan's Risks section).
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: llm-failover-ai-policy
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: llm-failover-route
+  traffic:
+    # 120s — covers KubeAI cold-start (60-90s) plus Azure fallback round-trip.
+    # CRD shape on v1alpha1: `traffic.timeouts.request`, not the legacy
+    # `traffic.requestTimeout` used in this repo's older ai-policy.yaml.
+    timeouts:
+      request: "120s"
+    rateLimit:
+      local:
+        - requests: 10
+          unit: Seconds
+          burst: 30
+  backend:
+    ai:
+      promptGuard:
+        request:
+          - regex:
+              builtins:
+                - CreditCard
+                - Ssn
+                - PhoneNumber
+              action: Reject
+            response:
+              message: "Request blocked: contains PII."
+        response:
+          - regex:
+              builtins:
+                - CreditCard
+                - Ssn
+                - Email
+                - PhoneNumber
+              action: Mask

@@ -1,0 +1,89 @@
+# AgentgatewayPolicy — CEL authz for Argo OpenAPI MCP tools
+#
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ DO NOT APPLY — BLOCKED by PR 0 verdict on proxmox-k8s (2026-05-14).       ║
+# ║ The backend this policy targets (backend-argo-openapi-mcp.yaml) is        ║
+# ║ blocked because the OpenAPI MCP target field does not exist in the       ║
+# ║ installed agentgateway CRD. The CEL authorization shape itself IS         ║
+# ║ supported and would be reusable for a thin-shim rescope of PR 3.          ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# DEPLOY ON: management cluster
+#
+# Read tools are open to approved kagent agents identified by header.
+# Write tools (submit / terminate / delete / retry) are restricted to an
+# explicit allowlist with namespace constraints. Anything else is denied
+# by default (FailClosed in the backend).
+#
+# Header trust note: `x-kagent-*` headers are only as trustworthy as the
+# ingress/auth layer in front of agentgateway. On this cluster the worker
+# reaches the gateway over Istio + AuthorizationPolicy (source-IP allowlist
+# today, JWT planned). Treat the matchExpressions below as defense in depth
+# only — the real identity guarantee lives at the ingress layer.
+#
+# MCP tool names below are placeholders. The real names come from the
+# operationIds in the Argo Server REST OpenAPI document and must be
+# captured in ARGO-OPENAPI-MCP-DEMO.md §"Tool inventory" before this
+# policy is applied. The names in this file follow the typical Argo
+# operationId pattern but MUST be verified against the actual spec.
+#
+# Apply (after PR 0 schema gate + backend manifest):
+#   kubectl apply --dry-run=server -f policy-argo-openapi-mcp.yaml
+#   kubectl apply -f policy-argo-openapi-mcp.yaml
+# ---
+
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: argo-openapi-mcp-authz
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    demo: argo-openapi-mcp
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: argo-openapi-mcp-route
+  backend:
+    mcp:
+      authorization:
+        policy:
+          matchExpressions:
+            # ─── Read tools — any approved kagent agent ────────────────
+            - >-
+              request.headers["x-kagent-agent"] in [
+                "argo-workflows-agent",
+                "argo-onboarding-agent"
+              ] &&
+              mcp.tool.target == "argo-rest" &&
+              mcp.tool.name in [
+                "WorkflowService_ListWorkflows",
+                "WorkflowService_GetWorkflow",
+                "WorkflowService_WorkflowLogs",
+                "ArchivedWorkflowService_ListArchivedWorkflows",
+                "ArchivedWorkflowService_GetArchivedWorkflow"
+              ]
+            # ─── Write tools — explicit agent + namespace allowlist ────
+            # Submit is intentionally restricted to a known-safe namespace.
+            # Adjust the allowed namespace list once the demo template is
+            # in place.
+            - >-
+              request.headers["x-kagent-agent"] == "argo-workflows-agent" &&
+              request.headers["x-kagent-namespace"] in [
+                "argo-demo"
+              ] &&
+              mcp.tool.target == "argo-rest" &&
+              mcp.tool.name == "WorkflowService_SubmitWorkflow"
+            # Terminate is allowed only for the same agent + same namespace
+            # set. Delete is intentionally NOT in the initial allowlist.
+            - >-
+              request.headers["x-kagent-agent"] == "argo-workflows-agent" &&
+              request.headers["x-kagent-namespace"] in [
+                "argo-demo"
+              ] &&
+              mcp.tool.target == "argo-rest" &&
+              mcp.tool.name in [
+                "WorkflowService_TerminateWorkflow",
+                "WorkflowService_StopWorkflow"
+              ]

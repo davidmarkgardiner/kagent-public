@@ -1,0 +1,48 @@
+# kagent RemoteMCPServer — worker-cluster registration pointing at the gateway-fronted
+# Argo OpenAPI MCP route. Lives in the worker cluster (not agentgateway-system).
+#
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ DO NOT APPLY — BLOCKED by PR 0 verdict on proxmox-k8s (2026-05-14).       ║
+# ║ The upstream gateway route this RemoteMCPServer points at cannot be      ║
+# ║ created because the OpenAPI MCP target field is missing from the CRD.    ║
+# ║ kagent would discover zero tools from this URL.                          ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# DEPLOY ON: worker cluster
+#
+# The gateway URL below uses the cross-cluster ingress host the worker
+# already trusts for chat-completions, not the in-cluster Service name.
+# kagent on the worker calls https://agentgateway.<wildcard-domain>/openapi-mcp/argo,
+# Istio terminates TLS, agentgateway authorizes via the CEL policy in
+# policy-argo-openapi-mcp.yaml and translates MCP calls into REST calls
+# against argo-server.
+#
+# SCHEMA GATE: this file is only meaningful once PR 0 has confirmed the
+# OpenAPI MCP target shape AND the backend/policy/configmap from PR 3 are
+# applied on the management cluster.
+#
+# Apply on the worker cluster:
+#   kubectl apply --dry-run=server -f remotemcpserver-argo.yaml
+#   kubectl apply -f remotemcpserver-argo.yaml
+#
+# Verify the tool list is filtered per policy-argo-openapi-mcp.yaml:
+#   kubectl describe remotemcpserver argo-openapi-mcp -n kagent
+# ---
+
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: argo-openapi-mcp
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: kagent
+    demo: argo-openapi-mcp
+spec:
+  description: "Argo Workflows REST API tools, fronted by agentgateway"
+  protocol: STREAMABLE_HTTP
+  # Cross-cluster URL — same hostname kagent already uses for /azure/v1 etc.
+  # Replace <wildcard-domain> with the cluster's actual ingress host.
+  url: https://agentgateway.REPLACE_WITH_WILDCARD_DOMAIN/openapi-mcp/argo
+  timeout: 30s
+  allowedNamespaces:
+    from: Same

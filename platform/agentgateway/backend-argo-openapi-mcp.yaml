@@ -1,0 +1,132 @@
+# AgentgatewayBackend + HTTPRoute — Argo Server REST OpenAPI exposed as MCP tools
+#
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ DO NOT APPLY — BLOCKED by PR 0 verdict on proxmox-k8s (2026-05-14).       ║
+# ║                                                                          ║
+# ║ `agentgatewaybackend.spec.mcp.targets[].openapi` does not exist on the   ║
+# ║ installed CRD release. `kubectl explain` returns                          ║
+# ║   error: field "openapi" does not exist                                  ║
+# ║ Accepted target types are `selector` and `static` only.                   ║
+# ║                                                                          ║
+# ║ Next steps (pick one):                                                   ║
+# ║   1. Wait for an agentgateway release that ships the OpenAPI target,     ║
+# ║      then re-run the PR 0 probe and remove this banner.                  ║
+# ║   2. Rescope PR 3 to a thin Argo MCP shim: a small MCP server that       ║
+# ║      wraps argo-server REST and is exposed via `spec.mcp.targets[].      ║
+# ║      selector`. Update README + ARGO-OPENAPI-MCP-DEMO.md to match.       ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# DEPLOY ON: management cluster
+#
+# SCHEMA GATE: depends on `AgentgatewayBackend.spec.mcp.targets[].openapi`
+# being present in the installed agentgateway CRD. The local Rust/static
+# config supports this target type, but the CRD shape must be confirmed in
+# PR 0 (DEMO-SCHEMA-GATE.md) before this file is applied.
+#
+# If the verdict is "unsupported" or "needs upgrade", do **not** apply this
+# file. Pick one of the documented fallbacks in ARGO-OPENAPI-MCP-DEMO.md
+# (defer the demo, or replace it with a thin Argo MCP shim).
+#
+# Pre-reqs:
+#   - argo-openapi-spec-configmap.yaml is populated and applied (the
+#     ConfigMap data field must NOT be the placeholder shipped in repo).
+#   - Argo Workflows installed in namespace `argo` with `argo-server`
+#     reachable at `argo-server.argo.svc.cluster.local:2746`.
+#   - Argo Server authentication mode is known. Do not rely on
+#     `--auth-mode=server` (no-auth) in production — set up SSO or
+#     client-cert auth and inject the bearer token via Secret below.
+#   - `ReferenceGrant` exists in `argo` allowing
+#     agentgateway-system HTTPRoutes to reference the Service (see below).
+#
+# Apply ONLY after PR 0 says "supported":
+#   kubectl apply --dry-run=server -f argo-openapi-spec-configmap.yaml
+#   kubectl apply -f argo-openapi-spec-configmap.yaml
+#   kubectl apply --dry-run=server -f backend-argo-openapi-mcp.yaml
+#   kubectl apply -f backend-argo-openapi-mcp.yaml
+# ---
+
+# Argo Server bearer token, if Argo is configured for token auth. Replace
+# the value below with a real token (e.g. from `argo auth token` for an
+# authenticated ServiceAccount), or remove this Secret + the auth.secretRef
+# below if Argo is in trusted-network/no-auth mode.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argo-server-token
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  Authorization: "Bearer REPLACE_WITH_ARGO_SERVER_TOKEN"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: argo-openapi-mcp-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    demo: argo-openapi-mcp
+spec:
+  mcp:
+    sessionRouting: Stateful
+    failureMode: FailClosed
+    targets:
+      - name: argo-rest
+        openapi:
+          # The exact sub-field name (schema.file vs schema.configMapRef vs
+          # schema.inline) is the CRD detail that PR 0 must confirm. Adjust
+          # the three lines below to match `kubectl explain
+          # agentgatewaybackend.spec.mcp.targets.openapi`. The intent is:
+          # "load the OpenAPI document from the argo-openapi-spec
+          # ConfigMap, key argo-openapi.json".
+          schema:
+            configMapRef:
+              name: argo-openapi-spec
+              key: argo-openapi.json
+          host: argo-server.argo.svc.cluster.local
+          port: 2746
+          policies:
+            auth:
+              secretRef:
+                name: argo-server-token
+---
+# HTTPRoute — MCP discovery URL kagent points at.
+# Path `/openapi-mcp/argo` is reserved by the plan; agentgateway translates
+# JSON-RPC `tools/list` and `tools/call` against this route into HTTP calls
+# against the backing OpenAPI host above.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argo-openapi-mcp-route
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /openapi-mcp/argo
+      backendRefs:
+        - group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: argo-openapi-mcp-backend
+---
+# ReferenceGrant — let agentgateway-system HTTPRoutes reach argo-server
+# directly. Only needed if the backend host above resolves cross-namespace
+# AND Gateway API enforces ReferenceGrant for cross-namespace Service
+# references in this cluster. Safe to apply even if unused.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-agentgateway-to-argo
+  namespace: argo
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: agentgateway-system
+  to:
+    - group: ""
+      kind: Service

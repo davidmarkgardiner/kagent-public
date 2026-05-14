@@ -1,0 +1,104 @@
+# AgentgatewayPolicy — organization-wide SRE system prompt injected at the gateway
+#
+# DEPLOY ON: management cluster
+#
+# Goal: stamp a baseline platform-SRE system message onto every LLM request
+# leaving the cluster, without editing kagent ModelConfig or per-Agent
+# `systemMessage` fields. One policy, every route, every model.
+#
+# Schema requirement: this depends on
+#   AgentgatewayPolicy.spec.backend.ai.prompt.prepend[]
+# Confirm via PR 0 (DEMO-SCHEMA-GATE.md) before applying. Field name is
+# `prompt` (singular), not `prompts`.
+#
+# Targets: every existing LLM route that fronts a chat-completions backend.
+# Add a new target when a new LLM HTTPRoute is added. Routes that don't
+# exist on this cluster (e.g. vllm-qwen-route on a cluster without vLLM)
+# can be removed before apply.
+#
+# Apply:
+#   kubectl apply --dry-run=server -f policy-prompt-enrichment.yaml
+#   kubectl apply -f policy-prompt-enrichment.yaml
+#
+# Verify the prompt is injected:
+#   kubectl port-forward -n agentgateway-system svc/ai-gateway 8080:80 &
+#   curl -s -X POST http://localhost:8080/openai/v1/chat/completions \
+#     -H "Content-Type: application/json" \
+#     -d '{"model":"<kubeai-model>","messages":[{"role":"user","content":"who are you?"}],"max_tokens":120}' \
+#     | jq .choices[0].message.content
+#   # Expect: a reply that identifies as the platform SRE assistant.
+#
+# Rollback:
+#   kubectl delete -f policy-prompt-enrichment.yaml
+# ---
+
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: org-prompt-enrichment
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    demo: prompt-enrichment
+spec:
+  # One policy, multiple routes — every LLM HTTPRoute on this gateway gets
+  # the same baseline SRE prompt prepended.
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: kubeai-route
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: azure-openai-route
+    # Uncomment if vllm-qwen-route is applied on this cluster
+    # (backend-vllm-qwen.yaml).
+    # - group: gateway.networking.k8s.io
+    #   kind: HTTPRoute
+    #   name: vllm-qwen-route
+    # Uncomment once PR 2 (backend-llm-failover.yaml) is applied so the
+    # `/llm/v1` endpoint also picks up the org prompt. Note: multiple
+    # AgentgatewayPolicies targeting the same route merge field-by-field
+    # per the CRD `policy.spec.traffic` doc — validate the merged result
+    # with `kubectl get agentgatewaypolicy ... -o yaml` after applying
+    # both. If merge order surprises, point this policy at the broader
+    # Gateway instead of each HTTPRoute.
+    # - group: gateway.networking.k8s.io
+    #   kind: HTTPRoute
+    #   name: llm-failover-route
+  backend:
+    ai:
+      prompt:
+        prepend:
+          - role: SYSTEM
+            content: |-
+              You are a platform SRE assistant operating inside a Kubernetes
+              environment. Follow these rules on every response:
+
+              1. Never echo secret values verbatim. Refer to them by name
+                 (e.g. "the value of secret/kagent/litellm-key") rather than
+                 reproducing the value.
+              2. When the user names a cluster or namespace, include both in
+                 your reply so commands are unambiguous.
+              3. Structure every diagnostic answer as: Observations,
+                 Likely cause, Next action. Keep each section short.
+              4. Do not propose changes to Azure resources or to shared
+                 cluster infrastructure without first asking the user to
+                 confirm the change and the blast radius.
+              5. Prefer read-only commands when investigating. Suggest
+                 mutating commands only after the cause is clear and the
+                 user has acknowledged the risk.
+      # Narrow request-side guard for clear exfiltration phrases only.
+      # The base PII guard (CreditCard / Ssn / PhoneNumber / Email) lives
+      # in ai-policy.yaml so it applies cluster-wide; do not duplicate it
+      # here. Keep this list tight: agents legitimately discuss the word
+      # "kubeconfig" all day — match on exfil phrasing, not the noun.
+      promptGuard:
+        request:
+          # regex.matches is []string on agentgateway CRD v1alpha1 — see
+          # `kubectl explain agentgatewaypolicy.spec.backend.ai.promptGuard.request.regex.matches`
+          - regex:
+              matches:
+                - "(?i)(exfiltrate|leak|dump)\\s+(the\\s+)?(secret|password|api[- ]?key|token|kubeconfig)"
+              action: Reject
+            response:
+              message: "Request blocked: looks like an exfiltration request."

@@ -56,6 +56,10 @@ spec:
               - "/openai/v1/*"
               - "/azure/v1/*"
               - "/qwen/v1/*"
+              # MVP demo paths — keep in sync with the four-PR demo set:
+              - "/llm/v1/*"              # PR 2 — failover endpoint
+              - "/openapi-mcp/argo*"     # PR 3 — Argo MCP route (currently blocked by CRD)
+              - "/a2a/fleet/*"           # PR 4 — cross-cluster A2A escalation
 ---
 # Default DENY — anything that didn't match the ALLOW above is rejected
 apiVersion: security.istio.io/v1
@@ -93,7 +97,8 @@ spec:
 #   rules:
 #     - to:
 #         - operation:
-#             paths: ["/openai/v1/*", "/azure/v1/*", "/qwen/v1/*"]
+#             paths: ["/openai/v1/*", "/azure/v1/*", "/qwen/v1/*",
+#                     "/llm/v1/*", "/openapi-mcp/argo*", "/a2a/fleet/*"]
 #       when:
 #         - key: request.headers[x-platform-key]
 #           notValues: ["<your-shared-secret>"]
@@ -134,7 +139,8 @@ spec:
 #   rules:
 #     - to:
 #         - operation:
-#             paths: ["/openai/v1/*", "/azure/v1/*", "/qwen/v1/*"]
+#             paths: ["/openai/v1/*", "/azure/v1/*", "/qwen/v1/*",
+#                     "/llm/v1/*", "/openapi-mcp/argo*", "/a2a/fleet/*"]
 #       when:
 #         - key: request.auth.principal
 #           values: [""]     # no valid principal = no JWT present = deny
