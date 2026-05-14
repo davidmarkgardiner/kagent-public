@@ -11,7 +11,7 @@ Goal: prove Alloy can collect kagent and agentgateway logs, metrics, and token u
 | kagent pod logs | Proven | Existing Alloy tails `kagent` pod logs and Loki returns streams for `{namespace="kagent"}` |
 | agentgateway pod logs | Proven at collector level | Existing Alloy opens log streams for `kgateway-system/kgateway` and `kgateway-system/ai-gateway` |
 | agentgateway metrics source | Proven | `kgateway-system/ai-gateway` exposes Prometheus metrics on `:9091/metrics` |
-| kagent runtime/container metrics source | Proven via Kubernetes metrics path | kubelet/cAdvisor and kube-state-style queries are covered by the Alloy and alert bundle |
+| kagent runtime/container metrics source | Proven via Kubernetes metrics path | kubelet/cAdvisor is scraped by Alloy; kube-state panels and alerts require kube-state-metrics in the target cluster |
 | token usage metrics | Ready in repo, blocked live by source metric availability | Dashboard and alerts use `agentgateway_gen_ai_client_token_usage_*`; live gateway metrics currently returned Envoy request metrics, not token counters in the sampled output |
 | metrics shipping from Alloy | Blocked live | Existing Alloy remote_write target returns HTTP `405 Method Not Allowed` |
 | Grafana dashboards | Ready in repo | Dashboard JSON and provisioning templates added under `observability/grafana/` |
@@ -65,7 +65,7 @@ Query:
 
 ```bash
 kubectl -n kgateway-system exec deploy/ai-gateway -- \
-  wget -qO- http://127.0.0.1:9091/metrics
+  curl -fsS http://127.0.0.1:9091/metrics
 ```
 
 Result:

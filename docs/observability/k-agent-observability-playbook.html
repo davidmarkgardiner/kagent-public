@@ -295,9 +295,9 @@
     <section>
       <h2>Dashboard Visual Checks</h2>
       <div class="panel-grid">
-        <article class="card"><h3>agentgateway Tokens Per Minute</h3><p>Should move after an LLM-backed request. Blank means no traffic, missing token metrics, or remote_write failure.</p></article>
+        <article class="card"><h3>agentgateway Tokens Per Minute</h3><p>Should move after an LLM-backed request when the gateway emits token counters. Blank means no traffic, missing token metrics, or remote_write failure; use the log fallback if token fields are present there.</p></article>
         <article class="card"><h3>agentgateway Upstream Response Rate</h3><p>Confirms gateway metrics are landing. Look for response class split and upstream names.</p></article>
-        <article class="card"><h3>Running kagent Pods</h3><p>Confirms kube-state/container metrics are available for the kagent namespace.</p></article>
+        <article class="card"><h3>Running kagent Pods</h3><p>Confirms kube-state-metrics and container metrics are available for the kagent namespace.</p></article>
         <article class="card"><h3>kagent Restarts Last Hour</h3><p>Useful early warning for unstable agents or controllers.</p></article>
         <article class="card"><h3>kagent API and A2A Logs</h3><p>Confirms Loki labels and JSON parsing are usable from Grafana.</p></article>
         <article class="card"><h3>agentgateway Suspicious Logs</h3><p>Surfaces reset, timeout, model, token, and upstream patterns for investigation.</p></article>
@@ -327,7 +327,7 @@
         </article>
         <article class="card query">
           <header><h3>kagent logs</h3><button class="copy" data-copy="q4">Copy</button></header>
-          <pre id="q4">{namespace="kagent"} | json | line_format "{{.ts}} {{.logger}} {{.path}} status={{.status}}"</pre>
+          <pre id="q4">{namespace="kagent"} | json | line_format "{{.level}} {{.logger}} {{.path}} status={{.status}}"</pre>
         </article>
       </div>
     </section>

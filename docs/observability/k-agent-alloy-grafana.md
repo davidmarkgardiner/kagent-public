@@ -10,6 +10,16 @@ This plan proves the end-to-end LGTM path for kagent and agentgateway:
 
 All environment-specific values must stay outside Git. Use `k-agent-alloy-endpoints` for endpoint overrides and use secret-backed Alloy auth blocks if the target LGTM stack requires tokens.
 
+## Preconditions
+
+- Kubernetes cluster with kagent in `kagent` and agentgateway/AI gateway pods in `kgateway-system`.
+- Grafana Alloy can authenticate to the Kubernetes API and has `pods/log` access for log tailing.
+- A Loki push endpoint and a Mimir or Prometheus remote-write endpoint are available.
+- kube-state-metrics is installed if you want the dashboard panels and alerts based on `kube_pod_status_phase`, `kube_pod_container_status_restarts_total`, and `kube_deployment_status_replicas_available`.
+- Gateway pods expose Prometheus scrape annotations, including `prometheus.io/scrape: "true"`, `prometheus.io/port`, and `prometheus.io/path`.
+- The Alloy log parser uses `stage.cri`, so it assumes containerd or CRI-O formatted pod logs.
+- The kubelet cAdvisor scrape uses `insecure_skip_verify: true` by default. If the work cluster has a valid kubelet CA chain, tighten this before production rollout.
+
 ## Files
 
 | File | Purpose |
@@ -59,6 +69,9 @@ All environment-specific values must stay outside Git. Use `k-agent-alloy-endpoi
    ```
 
    Set `PROMETHEUS_URL` and `LOKI_URL` in the Grafana environment.
+   If the work LGTM stack is multi-tenant or authenticated, add the required
+   `X-Scope-OrgID`, `Authorization`, basic auth, or Grafana Cloud credentials
+   to the datasource provisioning before rollout.
 
 ## Proof Queries
 
@@ -141,7 +154,7 @@ sum by (envoy_cluster_name, envoy_response_code_class) (
 ```
 
 ```logql
-{namespace="kagent"} | json | line_format "{{.ts}} {{.logger}} {{.path}} status={{.status}}"
+{namespace="kagent"} | json | line_format "{{.level}} {{.logger}} {{.path}} status={{.status}}"
 ```
 
 Expected result: PromQL returns gateway time series and LogQL returns recent
@@ -169,6 +182,12 @@ In Grafana or Prometheus, check that the rules appear under the active rules
 view. If the work environment uses managed Mimir/Loki rulers, ensure the labels
 `shipto.lgtm: "true"` and `route_to: triage` match the platform team's rule
 sync and Alertmanager routing selectors.
+
+The `k-agent-log-alerts` object contains LogQL expressions in a
+`PrometheusRule` shape for environments where Alloy or the managed LGTM stack
+syncs labelled rules to a Loki ruler. Do not select that object with a vanilla
+Prometheus rule selector unless your platform explicitly supports LogQL rules
+from `PrometheusRule` resources.
 
 ### Scenario checks
 

@@ -45,6 +45,18 @@ spec:
             summary: "No token usage observed through agentgateway"
             description: "Expected only when no agents are active. If agents should be running, check kagent ModelConfig routing and agentgateway health."
 
+        - alert: AgentgatewayTokenMetricsMissing
+          expr: |
+            absent(agentgateway_gen_ai_client_token_usage_count)
+          for: 30m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "agentgateway token metrics are missing"
+            description: "The gateway is not emitting agentgateway_gen_ai_client_token_usage_count. Token dashboards and token-budget alerts are blind unless the structured-log fallback is available."
+
     - name: k-agent-agentgateway-runtime
       interval: 30s
       rules:
@@ -53,8 +65,10 @@ spec:
             (
               sum by (cluster, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_xx{envoy_response_code_class="5"}[5m]))
               /
-              clamp_min(sum by (cluster, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_completed[5m])), 1)
+              sum by (cluster, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_completed[5m]))
             ) > 0.05
+            and
+            sum by (cluster, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_completed[5m])) > 0.01
           for: 10m
           labels:
             severity: warning
@@ -123,7 +137,7 @@ spec:
         - alert: KagentA2AParseErrors
           expr: |
             sum by (cluster) (
-              count_over_time({namespace="kagent"} |~ "(?i)(json-rpc|a2a|parse).*error|missing.*kind" [5m])
+              count_over_time({namespace="kagent"} |~ "(?i)((json-rpc|a2a|parse).*error|missing\\s+kind\\s+field)" [5m])
             ) > 5
           for: 5m
           labels:

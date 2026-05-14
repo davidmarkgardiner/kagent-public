@@ -11,6 +11,11 @@ datasources:
     jsonData:
       httpMethod: POST
       timeInterval: 30s
+      # For multi-tenant Mimir/Grafana Cloud, uncomment and set the matching
+      # secureJsonData value through Grafana environment substitution.
+      # httpHeaderName1: X-Scope-OrgID
+    # secureJsonData:
+    #   httpHeaderValue1: ${PROMETHEUS_TENANT_ID}
 
   - name: K-Agent Loki
     uid: kagent-loki
@@ -19,3 +24,10 @@ datasources:
     url: ${LOKI_URL}
     isDefault: false
     editable: true
+    jsonData:
+      maxLines: 1000
+      # For multi-tenant Loki/Grafana Cloud, uncomment and set the matching
+      # secureJsonData value through Grafana environment substitution.
+      # httpHeaderName1: X-Scope-OrgID
+    # secureJsonData:
+    #   httpHeaderValue1: ${LOKI_TENANT_ID}

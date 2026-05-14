@@ -14,7 +14,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "tpm"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -25,6 +25,7 @@
         "y": 0
       },
       "id": 1,
+      "description": "Authoritative token usage when agentgateway emits agentgateway_gen_ai_client_token_usage_* metrics. If blank after traffic, check the gateway version/config or use the structured-log fallback panel.",
       "options": {
         "legend": {
           "displayMode": "table",
@@ -101,6 +102,7 @@
         "y": 8
       },
       "id": 3,
+      "description": "Requires kube-state-metrics in the metrics backend.",
       "options": {
         "colorMode": "background",
         "graphMode": "area",
@@ -142,6 +144,7 @@
         "y": 8
       },
       "id": 4,
+      "description": "Requires kube-state-metrics in the metrics backend.",
       "options": {
         "colorMode": "background",
         "graphMode": "area",
@@ -198,7 +201,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(envoy_cluster_external_upstream_rq_xx{envoy_response_code_class=\"5\"}[5m])) / clamp_min(sum(rate(envoy_cluster_external_upstream_rq_completed[5m])), 1)",
+          "expr": "(sum(rate(envoy_cluster_external_upstream_rq_xx{envoy_response_code_class=\"5\"}[5m])) / sum(rate(envoy_cluster_external_upstream_rq_completed[5m]))) and (sum(rate(envoy_cluster_external_upstream_rq_completed[5m])) > 0.01)",
           "legendFormat": "5xx",
           "refId": "A"
         }
@@ -286,6 +289,7 @@
         "y": 22
       },
       "id": 8,
+      "description": "Fallback token view for environments where kagent logs include total_tokens, agent, and model fields. Blank means the log schema does not include token fields or no token-bearing requests occurred in the time range.",
       "options": {
         "legend": {
           "displayMode": "table",
@@ -303,7 +307,7 @@
           "refId": "A"
         }
       ],
-      "title": "kagent Token Fields From Structured Logs",
+      "title": "Token Fallback From kagent Logs",
       "type": "timeseries"
     }
   ],

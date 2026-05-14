@@ -12,7 +12,7 @@ data:
   # Override these per environment. Do not commit private lab hostnames or tokens.
   LOKI_PUSH_URL: "http://loki.monitoring.svc:3100/loki/api/v1/push"
   PROMETHEUS_REMOTE_WRITE_URL: "http://mimir.monitoring.svc:9009/api/v1/push"
-  CLUSTER_NAME: "{{CLUSTER_NAME}}"
+  CLUSTER_NAME: "unset"
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -27,6 +27,9 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["nodes", "nodes/proxy", "pods", "services", "endpoints", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["discovery.k8s.io"]
     resources: ["endpointslices"]
@@ -87,10 +90,6 @@ data:
         target_label  = "app"
       }
 
-      rule {
-        replacement   = sys.env("CLUSTER_NAME")
-        target_label  = "cluster"
-      }
     }
 
     loki.source.kubernetes "kagent_gateway_pods" {
@@ -120,17 +119,6 @@ data:
         }
       }
 
-      stage.labels {
-        values = {
-          level  = "",
-          logger = "",
-          method = "",
-          path   = "",
-          status = "",
-          agent  = "",
-          model  = "",
-        }
-      }
     }
 
     loki.write "lgtm" {
@@ -180,10 +168,6 @@ data:
         target_label  = "pod"
       }
 
-      rule {
-        replacement   = sys.env("CLUSTER_NAME")
-        target_label  = "cluster"
-      }
     }
 
     prometheus.scrape "pod_annotation_metrics" {
@@ -208,7 +192,17 @@ data:
         insecure_skip_verify = true
       }
 
+      forward_to = [prometheus.relabel.kagent_gateway_cadvisor.receiver]
+    }
+
+    prometheus.relabel "kagent_gateway_cadvisor" {
       forward_to = [prometheus.remote_write.lgtm.receiver]
+
+      rule {
+        source_labels = ["namespace"]
+        regex         = "kagent|kgateway-system"
+        action        = "keep"
+      }
     }
 
     prometheus.remote_write "lgtm" {
