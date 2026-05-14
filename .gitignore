@@ -1,2 +1,4 @@
 .omc/
 __pycache__/
+.codex/
+CLAUDE.md
