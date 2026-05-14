@@ -19,6 +19,7 @@ All environment-specific values must stay outside Git. Use `k-agent-alloy-endpoi
 | `observability/grafana/provisioning/datasources/k-agent-lgtm.yaml` | Grafana datasource provisioning template |
 | `observability/grafana/provisioning/dashboards/k-agent-dashboards.yaml` | Grafana dashboard provider |
 | `observability/grafana/dashboards/k-agent-metrics.json` | Dashboard for token usage, gateway rates, kagent health, and logs |
+| `docs/observability/k-agent-observability-playbook.html` | Visual HTML playbook for verification, queries, and alerts |
 | `scripts/observability/verify-k-agent-observability.sh` | Static and optional live validation |
 
 ## Deployment Plan
@@ -61,33 +62,126 @@ All environment-specific values must stay outside Git. Use `k-agent-alloy-endpoi
 
 ## Proof Queries
 
+Use these in Grafana Explore or any Prometheus/Loki query UI after Alloy is
+running and the Grafana data sources point at the same LGTM backends.
+
 PromQL:
 
 ```promql
+# Is Alloy remote_write landing gateway metrics?
+count({__name__=~"envoy_cluster_external_upstream_rq.*", namespace="kgateway-system"})
+
+# Tokens per minute by model and token type
 sum by (gen_ai_request_model, gen_ai_token_type) (
   rate(agentgateway_gen_ai_client_token_usage_sum[5m]) * 60
 )
 
+# Gateway request rate by upstream and response class
 sum by (envoy_cluster_name, envoy_response_code_class) (
   rate(envoy_cluster_external_upstream_rq_xx[5m])
 )
 
+# kagent container restarts in the last hour
 sum by (namespace, pod, container) (
   increase(kube_pod_container_status_restarts_total{namespace="kagent"}[1h])
+)
+
+# kagent pod CPU by pod
+sum by (pod) (
+  rate(container_cpu_usage_seconds_total{namespace="kagent", container!="", container!="POD"}[5m])
+)
+
+# kagent memory working set by pod
+sum by (pod) (
+  container_memory_working_set_bytes{namespace="kagent", container!="", container!="POD"}
 )
 ```
 
 LogQL:
 
 ```logql
+# Recent kagent API/A2A logs
 {namespace="kagent"} | json | line_format "{{.level}} {{.logger}} {{.path}} status={{.status}} {{.msg}}"
 
+# Suspicious gateway log patterns
 {namespace="kgateway-system"} |~ "(?i)(error|reset|timeout|token|model|upstream)"
 
+# Token fields from structured kagent logs, if present
 sum by (agent, model) (
   sum_over_time({namespace="kagent"} | json | unwrap total_tokens [5m])
 )
 ```
+
+## Work Verification Checklist
+
+### Visual check in Grafana
+
+1. Open the `K-Agent and agentgateway Observability` dashboard.
+2. Confirm these panels are non-empty over `Last 6 hours`:
+   - `agentgateway Upstream Response Rate`
+   - `Running kagent Pods`
+   - `kagent Restarts Last Hour`
+   - `kagent API and A2A Logs`
+   - `agentgateway Suspicious Logs`
+3. If `agentgateway Tokens Per Minute` is blank, run the token query in
+   Grafana Explore. A blank result means either no model calls have happened in
+   the selected time window or this gateway build is not emitting
+   `agentgateway_gen_ai_client_token_usage_*`.
+4. Click a metric panel data point and pivot to a Loki query using the same
+   `cluster`, `namespace`, and `pod` labels where available.
+
+### Query check in Grafana Explore
+
+Run one PromQL and one LogQL query:
+
+```promql
+sum by (envoy_cluster_name, envoy_response_code_class) (
+  rate(envoy_cluster_external_upstream_rq_xx[5m])
+)
+```
+
+```logql
+{namespace="kagent"} | json | line_format "{{.ts}} {{.logger}} {{.path}} status={{.status}}"
+```
+
+Expected result: PromQL returns gateway time series and LogQL returns recent
+kagent API/A2A lines. If PromQL is empty but the live gateway exposes metrics,
+Alloy remote_write or the metric backend endpoint is the issue. If LogQL is
+empty, check Alloy `loki.write` delivery and label relabeling.
+
+### Alert check
+
+Apply the alert bundle:
+
+```bash
+kubectl apply -f k8s/observability/k-agent-alerts.yaml
+kubectl -n monitoring get prometheusrule k-agent-agentgateway-alerts k-agent-log-alerts
+```
+
+Verify rule discovery:
+
+```bash
+kubectl -n monitoring get prometheusrule k-agent-agentgateway-alerts -o yaml \
+  | rg 'AgentgatewayRunawayInputTokens|AgentgatewayHigh5xxRate|KagentControllerDown'
+```
+
+In Grafana or Prometheus, check that the rules appear under the active rules
+view. If the work environment uses managed Mimir/Loki rulers, ensure the labels
+`shipto.lgtm: "true"` and `route_to: triage` match the platform team's rule
+sync and Alertmanager routing selectors.
+
+### Scenario checks
+
+Use these low-risk scenarios:
+
+1. Generate a normal kagent request and confirm new kagent log lines appear in
+   Loki within a few minutes.
+2. Send one agentgateway-backed model request and confirm gateway request rate
+   increases.
+3. If token metrics are supported, confirm `agentgateway Tokens Per Minute`
+   increases after the request.
+4. Temporarily lower an alert threshold in a non-production namespace or test
+   branch, confirm the rule fires, then revert the threshold.
 
 ## Live Lab Findings From 2026-05-13
 

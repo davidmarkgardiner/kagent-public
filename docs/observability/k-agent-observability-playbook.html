@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>K-Agent Observability Playbook</title>
+  <style>
+    :root {
+      --ivory: #faf9f5;
+      --paper: #ffffff;
+      --slate: #141413;
+      --clay: #d97757;
+      --clay-d: #b85c3e;
+      --oat: #e3dacc;
+      --olive: #788c5d;
+      --g100: #f0eee6;
+      --g200: #e6e3da;
+      --g300: #d1cfc5;
+      --g500: #87867f;
+      --g700: #3d3d3a;
+      --red: #b94a48;
+      --amber: #b77b2a;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--ivory);
+      color: var(--slate);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 44px 28px 72px;
+    }
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--g700);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 3px;
+      background: var(--clay);
+      display: inline-block;
+    }
+    h1 {
+      max-width: 920px;
+      margin: 18px 0 14px;
+      font-family: var(--serif);
+      font-size: 56px;
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+    h1 em { color: var(--clay-d); font-style: italic; }
+    h2 {
+      margin: 0 0 18px;
+      font-family: var(--serif);
+      font-size: 30px;
+      line-height: 1.12;
+    }
+    h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+    p { margin: 0 0 14px; color: var(--g700); }
+    code, pre {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    pre {
+      white-space: pre-wrap;
+      background: #171716;
+      color: #f7f2e9;
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 0;
+    }
+    section {
+      border-bottom: 1.5px solid var(--g300);
+      padding: 56px 0;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+      gap: 34px;
+      align-items: center;
+      padding-top: 10px;
+    }
+    .lede {
+      max-width: 760px;
+      font-size: 18px;
+      color: var(--g700);
+    }
+    .status-grid, .panel-grid, .query-grid, .alert-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--g200);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 1px 0 rgba(20, 20, 19, .04);
+    }
+    .card p:last-child { margin-bottom: 0; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      border: 1px solid var(--g300);
+      padding: 4px 9px;
+      margin-bottom: 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .ok { color: var(--olive); border-color: rgba(120,140,93,.35); background: rgba(120,140,93,.09); }
+    .warn { color: var(--amber); border-color: rgba(183,123,42,.35); background: rgba(183,123,42,.09); }
+    .stop { color: var(--red); border-color: rgba(185,74,72,.35); background: rgba(185,74,72,.08); }
+    .diagram {
+      background: var(--paper);
+      border: 1px solid var(--g200);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .flow svg { width: 100%; height: auto; display: block; }
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    label.check {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--paper);
+      border: 1px solid var(--g200);
+      border-radius: 8px;
+      padding: 14px;
+      cursor: pointer;
+    }
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--clay);
+      margin-top: 2px;
+      flex: 0 0 auto;
+    }
+    .query-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .query {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .query header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    .copy {
+      border: 1px solid var(--g300);
+      background: var(--paper);
+      color: var(--slate);
+      border-radius: 7px;
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .copy:hover { border-color: var(--clay); color: var(--clay-d); }
+    .primary {
+      border: 0;
+      background: var(--clay);
+      color: white;
+      border-radius: 7px;
+      padding: 12px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary:hover { background: var(--clay-d); }
+    .export {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      background: var(--paper);
+      border: 1px solid var(--g200);
+      border-radius: 8px;
+      padding: 18px;
+      margin-top: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--g200);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--g200);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--g700);
+      background: var(--g100);
+    }
+    tr:last-child td { border-bottom: 0; }
+    .small { font-size: 13px; color: var(--g500); }
+    @media (max-width: 900px) {
+      .hero, .status-grid, .panel-grid, .query-grid, .alert-grid, .checklist {
+        grid-template-columns: 1fr;
+      }
+      .wrap { padding: 32px 18px 56px; }
+      h1 { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">MIL-124 verification</div>
+        <h1>K-Agent <em>observability</em> from Alloy to Grafana</h1>
+        <p class="lede">Use this page to prove logs, metrics, token usage, dashboards, and alerts for kagent and agentgateway in a work environment. The checks map directly to the repo manifests and Grafana dashboard.</p>
+      </div>
+      <div class="diagram flow" aria-label="Observability flow diagram">
+        <svg viewBox="0 0 620 360" role="img">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#3d3d3a"></path>
+            </marker>
+          </defs>
+          <rect x="20" y="35" width="170" height="82" rx="8" fill="#fff" stroke="#d1cfc5"></rect>
+          <text x="42" y="70" font-family="system-ui" font-size="18" font-weight="700">kagent</text>
+          <text x="42" y="96" font-family="ui-monospace" font-size="12" fill="#3d3d3a">logs, pods, API/A2A</text>
+          <rect x="20" y="145" width="170" height="82" rx="8" fill="#fff" stroke="#d1cfc5"></rect>
+          <text x="42" y="180" font-family="system-ui" font-size="18" font-weight="700">agentgateway</text>
+          <text x="42" y="206" font-family="ui-monospace" font-size="12" fill="#3d3d3a">Envoy + token metrics</text>
+          <rect x="245" y="90" width="145" height="110" rx="8" fill="#f0eee6" stroke="#d1cfc5"></rect>
+          <text x="282" y="132" font-family="system-ui" font-size="22" font-weight="700">Alloy</text>
+          <text x="270" y="160" font-family="ui-monospace" font-size="12" fill="#3d3d3a">scrape + tail</text>
+          <rect x="455" y="35" width="145" height="82" rx="8" fill="#fff" stroke="#d1cfc5"></rect>
+          <text x="492" y="70" font-family="system-ui" font-size="18" font-weight="700">Mimir</text>
+          <text x="481" y="96" font-family="ui-monospace" font-size="12" fill="#3d3d3a">PromQL</text>
+          <rect x="455" y="145" width="145" height="82" rx="8" fill="#fff" stroke="#d1cfc5"></rect>
+          <text x="500" y="180" font-family="system-ui" font-size="18" font-weight="700">Loki</text>
+          <text x="482" y="206" font-family="ui-monospace" font-size="12" fill="#3d3d3a">LogQL</text>
+          <rect x="245" y="260" width="355" height="70" rx="8" fill="#fff" stroke="#d1cfc5"></rect>
+          <text x="350" y="292" font-family="system-ui" font-size="18" font-weight="700">Grafana dashboard + alerts</text>
+          <text x="333" y="316" font-family="ui-monospace" font-size="12" fill="#3d3d3a">visuals, queries, routing to triage</text>
+          <line x1="190" y1="76" x2="244" y2="130" stroke="#3d3d3a" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="190" y1="186" x2="244" y2="160" stroke="#3d3d3a" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="390" y1="125" x2="455" y2="78" stroke="#3d3d3a" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="390" y1="165" x2="455" y2="185" stroke="#3d3d3a" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="527" y1="117" x2="527" y2="259" stroke="#3d3d3a" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="500" y1="228" x2="500" y2="259" stroke="#3d3d3a" stroke-width="2" marker-end="url(#arrow)"></line>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>What To Prove</h2>
+      <div class="status-grid">
+        <article class="card"><span class="badge ok">Logs</span><h3>kagent and gateway logs land in Loki</h3><p>Verify with LogQL for <code>{namespace="kagent"}</code> and <code>{namespace="kgateway-system"}</code>.</p></article>
+        <article class="card"><span class="badge ok">Metrics</span><h3>Gateway and container metrics land in Mimir/Prometheus</h3><p>Verify Envoy request metrics, kagent pod restarts, CPU, and memory queries.</p></article>
+        <article class="card"><span class="badge warn">Tokens</span><h3>Token usage is visible or fallback is explicit</h3><p>Prefer <code>agentgateway_gen_ai_client_token_usage_*</code>. If absent, use structured kagent log token fields until gateway emits counters.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Dashboard Visual Checks</h2>
+      <div class="panel-grid">
+        <article class="card"><h3>agentgateway Tokens Per Minute</h3><p>Should move after an LLM-backed request. Blank means no traffic, missing token metrics, or remote_write failure.</p></article>
+        <article class="card"><h3>agentgateway Upstream Response Rate</h3><p>Confirms gateway metrics are landing. Look for response class split and upstream names.</p></article>
+        <article class="card"><h3>Running kagent Pods</h3><p>Confirms kube-state/container metrics are available for the kagent namespace.</p></article>
+        <article class="card"><h3>kagent Restarts Last Hour</h3><p>Useful early warning for unstable agents or controllers.</p></article>
+        <article class="card"><h3>kagent API and A2A Logs</h3><p>Confirms Loki labels and JSON parsing are usable from Grafana.</p></article>
+        <article class="card"><h3>agentgateway Suspicious Logs</h3><p>Surfaces reset, timeout, model, token, and upstream patterns for investigation.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Copy-Paste Queries</h2>
+      <div class="query-grid">
+        <article class="card query">
+          <header><h3>Token usage by model</h3><button class="copy" data-copy="q1">Copy</button></header>
+          <pre id="q1">sum by (gen_ai_request_model, gen_ai_token_type) (
+  rate(agentgateway_gen_ai_client_token_usage_sum[5m]) * 60
+)</pre>
+        </article>
+        <article class="card query">
+          <header><h3>Gateway response rate</h3><button class="copy" data-copy="q2">Copy</button></header>
+          <pre id="q2">sum by (envoy_cluster_name, envoy_response_code_class) (
+  rate(envoy_cluster_external_upstream_rq_xx[5m])
+)</pre>
+        </article>
+        <article class="card query">
+          <header><h3>kagent restarts</h3><button class="copy" data-copy="q3">Copy</button></header>
+          <pre id="q3">sum by (namespace, pod, container) (
+  increase(kube_pod_container_status_restarts_total{namespace="kagent"}[1h])
+)</pre>
+        </article>
+        <article class="card query">
+          <header><h3>kagent logs</h3><button class="copy" data-copy="q4">Copy</button></header>
+          <pre id="q4">{namespace="kagent"} | json | line_format "{{.ts}} {{.logger}} {{.path}} status={{.status}}"</pre>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Alert Setup</h2>
+      <table>
+        <thead><tr><th>Alert</th><th>Why it matters</th><th>Primary signal</th></tr></thead>
+        <tbody>
+          <tr><td><code>AgentgatewayRunawayInputTokens</code></td><td>Detect stuck agents or retry storms.</td><td>Token usage rate</td></tr>
+          <tr><td><code>AgentgatewayHigh5xxRate</code></td><td>Detect model backend or gateway failures.</td><td>Envoy 5xx ratio</td></tr>
+          <tr><td><code>AgentgatewayMetricsMissing</code></td><td>Detect observability blindness.</td><td>Missing scrape/up series</td></tr>
+          <tr><td><code>KagentControllerDown</code></td><td>Detect broken agent API/A2A plane.</td><td>Deployment availability</td></tr>
+          <tr><td><code>KagentContainerRestartBurst</code></td><td>Detect unstable agents or controllers.</td><td>Container restart increase</td></tr>
+          <tr><td><code>KagentA2AParseErrors</code></td><td>Detect malformed workflow or A2A payloads.</td><td>Loki parse/error patterns</td></tr>
+        </tbody>
+      </table>
+      <div class="card" style="margin-top:16px">
+        <pre>kubectl apply -f k8s/observability/k-agent-alerts.yaml
+kubectl -n monitoring get prometheusrule k-agent-agentgateway-alerts k-agent-log-alerts</pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Verification Checklist</h2>
+      <div class="checklist">
+        <label class="check"><input type="checkbox"><span>Alloy pod is healthy and has no recent remote_write or loki.write delivery errors.</span></label>
+        <label class="check"><input type="checkbox"><span>Grafana data sources for Mimir/Prometheus and Loki test successfully.</span></label>
+        <label class="check"><input type="checkbox"><span>Gateway response-rate query returns non-empty PromQL series.</span></label>
+        <label class="check"><input type="checkbox"><span>kagent LogQL query returns recent API or A2A logs.</span></label>
+        <label class="check"><input type="checkbox"><span>Token panel moves after a real LLM-backed request, or token-log fallback is documented.</span></label>
+        <label class="check"><input type="checkbox"><span>Prometheus/Loki alert rules are visible in the active rules view.</span></label>
+      </div>
+      <div class="export">
+        <div>
+          <h3>Export the checked state</h3>
+          <p class="small">Copies a Markdown summary you can paste into Linear, a PR, or a handover note.</p>
+        </div>
+        <button id="copyBtn" class="primary">Copy as markdown</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-copy');
+        const text = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          const old = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = old; }, 1300);
+        });
+      });
+    });
+
+    function buildExport() {
+      const checks = Array.from(document.querySelectorAll('.check')).map((label) => {
+        const done = label.querySelector('input').checked ? '[x]' : '[ ]';
+        const text = label.querySelector('span').innerText;
+        return `- ${done} ${text}`;
+      }).join('\n');
+      return `# K-Agent Observability Verification\n\n## Checklist\n\n${checks}\n\n## Key Queries\n\nPromQL gateway response rate:\n\n\`\`\`promql\n${document.getElementById('q2').innerText}\n\`\`\`\n\nLogQL kagent logs:\n\n\`\`\`logql\n${document.getElementById('q4').innerText}\n\`\`\`\n\n## Alert Bundle\n\nApply: \`kubectl apply -f k8s/observability/k-agent-alerts.yaml\`\n`;
+    }
+
+    const copyBtn = document.getElementById('copyBtn');
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(buildExport()).then(() => {
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => { copyBtn.textContent = 'Copy as markdown'; }, 1600);
+      });
+    });
+  </script>
+</body>
+</html>
