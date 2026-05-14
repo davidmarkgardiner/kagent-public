@@ -14,7 +14,7 @@ A complete platform stack for production Kubernetes on Azure:
 - **Flux CD** — single reconciliation plane across management + worker clusters
 - **Argo Workflows + Argo Events** — namespace onboarding, cluster provisioning, fleet updates, AI-driven triage
 - **kagent** — CNCF Sandbox AI agent framework ([upstream](https://github.com/kagent-dev/kagent))
-- **agentgateway** — unified LLM + MCP + A2A routing ([upstream](https://github.com/envoyproxy/ai-gateway))
+- **agentgateway** — unified LLM + MCP + A2A routing ([upstream](https://github.com/agentgateway/agentgateway))
 - **AKS-MCP** — kubectl/az access via Model Context Protocol ([upstream](https://github.com/Azure/aks-mcp))
 
 ---
@@ -37,11 +37,13 @@ examples/           Quickstart and sample payloads
 
 | I want to… | Go to |
 |---|---|
+| See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
 | Onboard a namespace via PR | [`platform/argo-workflows/templates/namespace-onboarding/`](platform/argo-workflows/templates/namespace-onboarding/) |
 | Set up AI triage for a namespace | [`agents/kagent-triage/`](agents/kagent-triage/README.md) |
 | Try the K-Agent knowledge-base UI POC | [`agents/kagent-knowledge-ui/`](agents/kagent-knowledge-ui/README.md) |
 | Wire K8s events → EventHub → AI diagnosis | [`observability/alloy-eventhub-pipeline/`](observability/alloy-eventhub-pipeline/) |
+| Monitor kagent + agentgateway with Alloy/Grafana | [`docs/observability/k-agent-alloy-grafana.md`](docs/observability/k-agent-alloy-grafana.md) |
 | Deploy the AI gateway (LLM + MCP + A2A) | [`platform/agentgateway/`](platform/agentgateway/README.md) |
 | Add a HITL approval gate for remediation | [`platform/teams-hitl/`](platform/teams-hitl/README.md) |
 | Bring Your Own Agent to the platform | [`infra/byo-kagent/`](infra/byo-kagent/README.md) |
@@ -53,7 +55,7 @@ examples/           Quickstart and sample payloads
 ## Prerequisites
 
 - Kubernetes cluster (AKS or kind for local dev)
-- [KRO](https://github.com/kro-run/kro) on management cluster
+- [KRO](https://github.com/kubernetes-sigs/kro) on management cluster
 - [Azure Service Operator v2](https://github.com/Azure/azure-service-operator) on management cluster
 - [Argo Workflows v3.x](https://argoproj.github.io/argo-workflows/) in `argo` namespace
 - [Argo Events](https://argoproj.github.io/argo-events/) in `argo-events` namespace — **pin chart 2.4.14 / app v1.9.5** (see [EventHub regression note](platform/argo-events/README.md#eventhub-version-pin))
@@ -71,6 +73,8 @@ Use `{{PLACEHOLDER}}` tokens for all environment-specific values. See [`CONTRIBU
 ## Related
 
 - [kagent upstream](https://github.com/kagent-dev/kagent)
+- [agentgateway upstream](https://github.com/agentgateway/agentgateway)
+- [Official upstream reference map](docs/upstreams.md)
 - [A2A specification](https://a2aproject.org)
 - [Argo Workflows docs](https://argoproj.github.io/argo-workflows/)
 - [Argo Events docs](https://argoproj.github.io/argo-events/)
