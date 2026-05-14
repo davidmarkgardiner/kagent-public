@@ -1,9 +1,11 @@
-# Argo Events Sensor — translates bot callbacks into Argo Workflow operations
+# Argo Events Sensors — translate bot callbacks into Argo Workflow operations.
 #
-# Triggers (in order evaluated):
-#   - body.decision == "approved" → resume the named workflow
-#   - body.decision == "rejected" → stop the named workflow (fails it)
-#   - body.decision == "expired"  → stop the named workflow
+# Argo Events v1.9 rejects multiple dependencies in one Sensor that reference
+# the same EventSource/event pair. Keep one Sensor per decision so each callback
+# path can use a data filter safely:
+#   - body.decision == "approved" -> resume the named workflow
+#   - body.decision == "rejected" -> stop the named workflow
+#   - body.decision == "expired"  -> stop the named workflow
 #
 # The bot POSTs a JSON body with at least:
 #   { "workflow_name": "<argo workflow name>",
@@ -17,8 +19,7 @@
 #   kubectl apply -f sensor.yaml
 #
 # Verify:
-#   kubectl get sensor -n argo-events teams-hitl-sensor
-#   kubectl logs -n argo-events deploy/teams-hitl-sensor-sensor --tail=50
+#   kubectl get sensors -n argo-events | grep teams-hitl
 # ---
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
@@ -27,40 +28,19 @@ metadata:
   namespace: argo-events
 spec:
   template:
-    serviceAccountName: argo-events-sa     # must have workflows.argoproj.io patch permission
+    serviceAccountName: argo-events-sa
   dependencies:
-    - name: approval-dep
+    - name: approval-approved
       eventSourceName: teams-hitl-callback
       eventName: approval
-
+      filters:
+        data:
+          - path: body.decision
+            type: string
+            value: [approved]
   triggers:
-    # ─── APPROVED → resume the paused workflow ───────────────────────────
     - template:
         name: resume-on-approve
-        conditions: approval-dep
-        k8s:
-          operation: patch
-          source:
-            resource:
-              apiVersion: argoproj.io/v1alpha1
-              kind: Workflow
-              metadata:
-                name: ""                    # filled from payload
-                namespace: argo
-          parameters:
-            - src:
-                dependencyName: approval-dep
-                dataKey: body.workflow_name
-              dest: metadata.name
-            - src:
-                dependencyName: approval-dep
-                dataKey: body.workflow_namespace
-                value: argo                  # fallback if bot omits namespace
-              dest: metadata.namespace
-          patchStrategy: application/merge-patch+json
-          # Resume the workflow by setting the `suspend` node condition to false
-          # (via Argo Workflows' built-in resume via the argoWorkflow trigger type)
-        # Alternative using dedicated argoWorkflow trigger — cleaner:
         argoWorkflow:
           operation: resume
           source:
@@ -72,19 +52,34 @@ spec:
                 namespace: argo
           parameters:
             - src:
-                dependencyName: approval-dep
+                dependencyName: approval-approved
                 dataKey: body.workflow_name
               dest: metadata.name
-      conditions: approval-dep
-      # Only fire on decision=approved
-      when:
-        any:
-          - expr: 'decision == "approved"'
-            dependencies:
-              - name: approval-dep
-                dataTemplate: "{{ .Input.body.decision }}"
-
-    # ─── REJECTED → stop the workflow ─────────────────────────────────────
+            - src:
+                dependencyName: approval-approved
+                dataKey: body.workflow_namespace
+                value: argo
+              dest: metadata.namespace
+      conditions: approval-approved
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: teams-hitl-reject-sensor
+  namespace: argo-events
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: approval-rejected
+      eventSourceName: teams-hitl-callback
+      eventName: approval
+      filters:
+        data:
+          - path: body.decision
+            type: string
+            value: [rejected]
+  triggers:
     - template:
         name: stop-on-reject
         argoWorkflow:
@@ -98,21 +93,34 @@ spec:
                 namespace: argo
           parameters:
             - src:
-                dependencyName: approval-dep
+                dependencyName: approval-rejected
                 dataKey: body.workflow_name
               dest: metadata.name
-      conditions: approval-dep
-      when:
-        any:
-          - expr: 'decision == "rejected"'
-            dependencies:
-              - name: approval-dep
-                dataTemplate: "{{ .Input.body.decision }}"
-
-    # ─── EXPIRED → stop the workflow (same effect as reject) ──────────────
-    # The workflow's own suspend duration may also time out first, in which
-    # case this trigger is a no-op — Argo Events handles missing workflows
-    # gracefully.
+            - src:
+                dependencyName: approval-rejected
+                dataKey: body.workflow_namespace
+                value: argo
+              dest: metadata.namespace
+      conditions: approval-rejected
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: teams-hitl-expire-sensor
+  namespace: argo-events
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: approval-expired
+      eventSourceName: teams-hitl-callback
+      eventName: approval
+      filters:
+        data:
+          - path: body.decision
+            type: string
+            value: [expired]
+  triggers:
     - template:
         name: stop-on-expire
         argoWorkflow:
@@ -126,13 +134,12 @@ spec:
                 namespace: argo
           parameters:
             - src:
-                dependencyName: approval-dep
+                dependencyName: approval-expired
                 dataKey: body.workflow_name
               dest: metadata.name
-      conditions: approval-dep
-      when:
-        any:
-          - expr: 'decision == "expired"'
-            dependencies:
-              - name: approval-dep
-                dataTemplate: "{{ .Input.body.decision }}"
+            - src:
+                dependencyName: approval-expired
+                dataKey: body.workflow_namespace
+                value: argo
+              dest: metadata.namespace
+      conditions: approval-expired

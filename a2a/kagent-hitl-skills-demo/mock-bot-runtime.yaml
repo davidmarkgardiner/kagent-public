@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-bot
+  namespace: argo
+  labels:
+    app: mock-bot
+    tier: dev-only
+    app.kubernetes.io/part-of: mil-126-demo
+    platform.com/team: mil-126-demo
+    platform.com/type: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mock-bot
+  template:
+    metadata:
+      labels:
+        app: mock-bot
+        tier: dev-only
+        app.kubernetes.io/part-of: mil-126-demo
+        platform.com/team: mil-126-demo
+        platform.com/type: demo
+    spec:
+      containers:
+        - name: mock-bot
+          image: python:3.12-slim
+          imagePullPolicy: IfNotPresent
+          command: [sh, -c]
+          args:
+            - |
+              set -eu
+              pip install --no-cache-dir -r /app/requirements.txt
+              exec uvicorn app:app --host 0.0.0.0 --port 8080 --app-dir /app
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: mock-bot-src
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: mock-bot-src
+          configMap:
+            name: mock-bot-src
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-bot
+  namespace: argo
+  labels:
+    app: mock-bot
+    app.kubernetes.io/part-of: mil-126-demo
+    platform.com/team: mil-126-demo
+    platform.com/type: demo
+spec:
+  selector:
+    app: mock-bot
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  type: ClusterIP

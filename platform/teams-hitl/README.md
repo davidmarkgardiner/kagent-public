@@ -148,8 +148,8 @@ chat platform.
    cheap to spin up a Slack workspace, easier than Teams for dev cycles
 4. **Production:** Real Teams bot via the bank's platform capability
 
-All four share the same EventSource/Sensor on our side — only the payload
-shape and callback URL change.
+All four share the same EventSource and decision-specific Sensors on our side
+— only the payload shape and callback URL change.
 
 ## Files In This Folder
 
@@ -157,7 +157,7 @@ shape and callback URL change.
 |---|---|
 | `README.md` | You are here — design + integration options |
 | `eventsource.yaml` | Argo Events webhook receiver for bot callbacks |
-| `sensor.yaml` | Translates callbacks to Argo resume/stop operations |
+| `sensor.yaml` | Translates approved/rejected/expired callbacks to Argo resume/stop operations |
 | `istio-virtualservice.yaml` | Expose the callback webhook via the wildcard Istio Gateway |
 | `istio-authorization-policy.yaml` | IP allow-list + default deny on the callback endpoint |
 | `workflow-approval-template.yaml` | WorkflowTemplate snippets: request-approval + wait-for-approval + tier dispatch |
@@ -174,7 +174,7 @@ kubectl apply -f sensor.yaml
 
 # Verify
 kubectl get eventsource -n argo-events teams-hitl-callback
-kubectl get sensor -n argo-events teams-hitl-sensor
+kubectl get sensors -n argo-events | grep teams-hitl
 kubectl get pods -n argo-events -l eventsource-name=teams-hitl-callback
 ```
 

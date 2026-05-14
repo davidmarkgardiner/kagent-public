@@ -7,6 +7,9 @@ Upstream repo: https://github.com/google/a2a
 
 ## Usage in this repo
 
+For the full MIL-126 demo of three agents, skill loading, A2A calls, and a
+human approval gate, see [kagent-hitl-skills-demo](kagent-hitl-skills-demo/).
+
 All kagent agent-to-agent calls use:
 
 - **Method:** `POST /api/a2a/kagent/{agent-name}/` (trailing slash REQUIRED — omitting it returns 404)
@@ -39,4 +42,4 @@ Status is at: `result.status.state`
 
 ## kagent Memory
 
-kagent v0.8.0+ supports agent memory. See [memory-reference.md](memory-reference.md) for the full reference.
+kagent v0.8.0+ supports agent memory. See [memory-reference.md](memory-reference.md) for the full reference and [red live evidence](../docs/kagent-memory/README.md) for the homelab `red` validation.

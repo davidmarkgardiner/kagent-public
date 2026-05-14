@@ -3,8 +3,9 @@
 What kagent provides out of the box for agent memory, how to enable it in the
 Helm chart, and how it differs from sessions and external memory providers.
 
-**Ground truth:** this doc is cross-checked against the kagent source as of the
-latest `main` branch (commit 24b6c5a, 2026-04-23). Specifically:
+**Ground truth:** this doc is cross-checked against the kagent source. The
+homelab `red` cluster evidence from 2026-05-13 is captured in
+[`docs/kagent-memory/README.md`](../docs/kagent-memory/README.md). Specifically:
 - CRD schema: `kagent/helm/kagent-crds/templates/kagent.dev_agents.yaml`
 - External Memory CRD: `kagent/helm/kagent-crds/templates/kagent.dev_memories.yaml`
 - Helm values: `kagent/helm/kagent/values.yaml`
@@ -167,9 +168,9 @@ metadata:
 spec:
   type: Declarative
   declarative:
-    modelConfig: agentgateway-azure-openai     # reasoning model
+    modelConfig: default-model-config          # reasoning/chat model
     memory:
-      modelConfig: agentgateway-qwen           # embedding model (REQUIRED field)
+      modelConfig: embedding-model-config      # embedding-capable ModelConfig (REQUIRED)
       ttlDays: 30                               # optional; default 15; minimum 1
     systemMessage: |
       You are a helpful assistant with long-term memory.
@@ -188,7 +189,7 @@ spec:
 
 ```bash
 # 1. Controller ConfigMap has DATABASE_VECTOR_ENABLED=true
-kubectl get cm -n kagent kagent -o jsonpath='{.data.DATABASE_VECTOR_ENABLED}'
+kubectl get cm -n kagent kagent-controller -o jsonpath='{.data.DATABASE_VECTOR_ENABLED}'
 # Expected: "true"
 
 # 2. Postgres has the pgvector extension
@@ -232,18 +233,15 @@ The controller exposes a REST API for memory (designed for UI + automation):
 kubectl port-forward -n kagent svc/kagent-controller 8083:8083 &
 
 # List memories for an agent+user
-curl -s "http://localhost:8083/api/memories?agentName=<agent>&userId=admin@kagent.dev" \
-  -H "X-User-Id: admin@kagent.dev" | jq .
+curl -s "http://localhost:8083/api/memories?agent_name=<agent>&user_id=admin@kagent.dev" | jq .
 
-# Search memories semantically
+# Search memories by vector. Agent tools normally generate this vector for you.
 curl -s -X POST "http://localhost:8083/api/memories/search" \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: admin@kagent.dev" \
-  -d '{"agentName":"<agent>","query":"namespace preference","topK":5}' | jq .
+  -d '{"agent_name":"<agent>","user_id":"admin@kagent.dev","vector":[...768 floats...],"limit":5,"min_score":0.3}' | jq .
 
 # Delete all memories for an agent+user (reset)
-curl -s -X DELETE "http://localhost:8083/api/memories?agentName=<agent>&userId=admin@kagent.dev" \
-  -H "X-User-Id: admin@kagent.dev"
+curl -s -X DELETE "http://localhost:8083/api/memories?agent_name=<agent>&user_id=admin@kagent.dev"
 ```
 
 See design doc §2 for the full API surface.
@@ -305,12 +303,19 @@ tag a memory as "permanent" explicitly.
 ## Embedding Model — What to Point `modelConfig` At
 
 The `memory.modelConfig` field must point at a ModelConfig whose provider can
-generate embeddings. Our agentgateway setup gives you two options:
+generate embeddings. The live homelab `red` cluster does **not** currently have
+one wired: `default-model-config` routes to `kimi-for-coding`, and the
+embedding probe against that route failed.
 
-| ModelConfig | Cost per 1K tokens | Recommendation |
+Supported provider paths in kagent's embedding client include:
+
+| Provider path | Notes |
 |---|---|---|
-| `agentgateway-qwen` | ~free (in-cluster Qwen via vLLM) | ✅ Use for memory — embeddings are high-volume, low-stakes |
-| `agentgateway-azure-openai` | ~$0.0001/1K (embedding tier) | Overkill for memory; save GPT tokens for reasoning |
+| OpenAI-compatible embeddings | Must accept `/embeddings` and return at least 768 dimensions. |
+| Azure OpenAI embeddings | Use an embedding deployment, not a chat deployment. |
+| Ollama embeddings | Useful for local/private testing if the model emits enough dimensions. |
+| Gemini / Vertex AI embeddings | Supported by upstream kagent's embedding client. |
+| Bedrock Titan embeddings | Supported by upstream kagent's embedding client. |
 
 Note: kagent **hardcodes the embedding dimension to 768**. If the chosen
 model emits a different dimension, kagent will truncate/normalize. This is
@@ -323,11 +328,14 @@ is limited.
 |---|---|---|
 | What's stored | Full raw conversation history | Extracted facts + embeddings |
 | Scope | One session (one conversation thread) | All sessions of that agent+user |
-| Storage | kagent Postgres (doesn't need pgvector) | kagent Postgres (needs pgvector) |
+| Storage | kagent database; SQLite in local/dev or Postgres in durable installs | kagent database with vector support; Postgres+pgvector for durable installs |
 | Use case | "What did we just discuss?" | "What has this user ever told me?" |
 | Enabled by | `database.type: postgres` | `database.postgres.vectorEnabled: true` + per-agent `memory:` |
 
-Both persist through controller pod restarts when Postgres is the backend.
+Both persist through controller pod restarts when Postgres is the backend. On
+the current homelab `red` install, the controller uses SQLite on an in-memory
+`emptyDir`, so sessions and memories are cross-session only while the
+controller pod survives.
 
 ## External Memory Providers — Separate CRD
 
@@ -398,7 +406,8 @@ Native memory is per-agent — can't.
 
 **Solution:** build a small `lessons-mcp` MCP server with its own table in the
 same Postgres (pgvector enabled). Both agents call `lessons.search` /
-`lessons.add` as tools. See discussion in `ai-platform/agentgateway/` notes.
+`lessons.add` as tools. Route those tool calls through the same kagent /
+agentgateway control plane, but keep the storage contract explicit.
 
 ### 2. Structured queries over memory
 
@@ -417,13 +426,13 @@ source sessions" — the design doc flags audit as out of scope.
 and audit triggers, not native memory. Keep native memory for low-stakes
 per-user preferences only.
 
-## Our Current Usage
+## Current red Usage
 
 | Agent | Memory? | Rationale |
 |---|---|---|
-| `networking-triage-agent` | Native, 30-day TTL, Qwen embeddings | Benefits from cross-session pattern recall; individual (not shared) memory is fine |
-| Fleet agents (`agent-*` in `kagent-triage/worker-cluster-bundle/`) | None yet | Short-lived task agents; no session continuity benefit today. Could opt in later. |
-| Planned `lessons-mcp` | External MCP, not kagent memory | Cross-agent shared knowledge — native doesn't fit |
+| Existing agents in `kagent` namespace | None | Live check on 2026-05-13 showed `spec.declarative.memory == null` for every Agent. |
+| Controller memory API | Available | Direct API store/list/search works with caller-supplied 768-dim vectors. |
+| Full agent memory tools | Not yet | Needs an embedding-capable ModelConfig before `save_memory`, `load_memory`, `prefetch_memory`, and auto-save can work. |
 
 ## Gotchas
 
@@ -470,10 +479,9 @@ per-user preferences only.
 
 | Topic | Where |
 |---|---|
-| pgvector enablement (3 paths: Azure FS, CloudNativePG, pgvector/pgvector image) | `ai-platform/agentgateway/` (scroll to "How do we enable pgvector") |
-| Rationale for pgvector over Pinecone | Same — "one Postgres for HA + memory + lessons" |
-| Example memory block in a real agent | `ai-platform/kagent-agents/networking-triage-agent/agent.yaml` |
-| Cross-agent shared knowledge model | `ai-platform/cross-bank-integration/README.md` |
+| Live red evidence and rollout plan | `docs/kagent-memory/README.md` |
+| A2A request format | `a2a/README.md` |
+| agentgateway deployment pattern | `platform/agentgateway/README.md` |
 
 For anything not covered here, the upstream docs + source (top of this file)
 are the definitive reference.

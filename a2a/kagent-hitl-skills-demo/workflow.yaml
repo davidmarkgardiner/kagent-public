@@ -1,0 +1,286 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: demo-a2a-hitl-skills-
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: mil-126-demo
+    platform.com/team: mil-126-demo
+    platform.com/type: demo
+spec:
+  entrypoint: main
+  serviceAccountName: demo-a2a-hitl-workflow
+  activeDeadlineSeconds: 1200
+  ttlStrategy:
+    secondsAfterCompletion: 900
+    secondsAfterSuccess: 600
+    secondsAfterFailure: 900
+  arguments:
+    parameters:
+      - name: coordinator_url
+        value: "http://demo-a2a-coordinator-agent.kagent:8080/"
+      - name: skill_loader_url
+        value: "http://demo-skill-loader-agent.kagent:8080/"
+      - name: hitl_approval_url
+        value: "http://demo-hitl-approval-agent.kagent:8080/"
+      - name: bot_endpoint
+        value: "http://mock-bot.argo:8080/approvals"
+      - name: callback_url
+        value: "http://teams-hitl-callback-eventsource-svc.argo-events:12000/approval-callback"
+      - name: action
+        value: "kubectl rollout restart deploy/example-api -n demo"
+      - name: target
+        value: "demo/deployment/example-api"
+      - name: scenario
+        value: "CrashLoopBackOff after a config rollout in the demo namespace"
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: load-skills
+            template: call-skill-loader
+            arguments:
+              parameters:
+                - name: prompt
+                  value: |
+                    Scenario: {{workflow.parameters.scenario}}
+                    CRITICAL: Return the loaded skill marker exactly.
+
+          - name: prepare-hitl-approval
+            template: call-hitl-approval
+            dependencies: [load-skills]
+            arguments:
+              parameters:
+                - name: prompt
+                  value: |
+                    Proposed remediation action: {{workflow.parameters.action}}
+                    Target: {{workflow.parameters.target}}
+                    Human decision: not approved yet.
+                    Create the approval packet and require a human approval gate.
+
+          - name: coordinator-before-approval
+            template: call-coordinator
+            dependencies: [prepare-hitl-approval]
+            arguments:
+              parameters:
+                - name: phase
+                  value: before-approval
+                - name: prompt
+                  value: |
+                    Scenario: {{workflow.parameters.scenario}}
+                    Proposed remediation action: {{workflow.parameters.action}}
+                    Target: {{workflow.parameters.target}}
+                    Human decision: not approved yet.
+                    Load the relevant skills, call the HITL approval agent, and stop for approval.
+
+          - name: request-human-approval
+            template: request-approval
+            dependencies: [coordinator-before-approval]
+
+          - name: wait-for-human-approval
+            template: wait-for-approval
+            dependencies: [request-human-approval]
+
+          - name: coordinator-after-approval
+            template: call-coordinator
+            dependencies: [wait-for-human-approval]
+            arguments:
+              parameters:
+                - name: phase
+                  value: after-approval
+                - name: prompt
+                  value: |
+                    Scenario: {{workflow.parameters.scenario}}
+                    Proposed remediation action: {{workflow.parameters.action}}
+                    Target: {{workflow.parameters.target}}
+                    Human decision: approved.
+                    Approval id: {{tasks.request-human-approval.outputs.parameters.approval_id}}
+                    Continue with the simulated remediation plan and verification checklist.
+
+    - name: call-coordinator
+      inputs:
+        parameters:
+          - name: phase
+          - name: prompt
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl jq >/dev/null
+
+          jq -n \
+            --arg id "mil-126-{{workflow.name}}-{{inputs.parameters.phase}}" \
+            --arg message_id "msg-{{workflow.name}}-{{inputs.parameters.phase}}" \
+            --arg text "{{inputs.parameters.prompt}}" \
+            '{
+              jsonrpc: "2.0",
+              id: $id,
+              method: "message/send",
+              params: {
+                message: {
+                  messageId: $message_id,
+                  role: "user",
+                  parts: [{kind: "text", text: $text}]
+                }
+              }
+            }' > /tmp/request.json
+
+          curl -sS -m 180 -X POST "{{workflow.parameters.coordinator_url}}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/request.json \
+            -o /tmp/response.json
+
+          jq -r '.result.status.state // "unknown"' /tmp/response.json > /tmp/state.txt
+          jq -r 'if (.result.artifacts // [] | length) > 0 then [.result.artifacts[]?.parts[]?.text] | join("\n") else [.result.status.message.parts[]?.text] | join("\n") end' /tmp/response.json > /tmp/agent_response.txt
+          sed 's/[*`]//g' /tmp/agent_response.txt > /tmp/agent_response.normalized.txt
+
+          echo "A2A phase: {{inputs.parameters.phase}}"
+          echo "A2A state: $(cat /tmp/state.txt)"
+          cat /tmp/agent_response.txt
+
+          test "$(cat /tmp/state.txt)" = "completed"
+          grep -Eq 'A2A_CALLS:.*skill-loader.*hitl-approval' /tmp/agent_response.normalized.txt
+          case "{{inputs.parameters.phase}}" in
+            before-approval)
+              grep -Eq 'APPROVAL_REQUIRED:.*yes' /tmp/agent_response.normalized.txt
+              grep -Eq 'WAITING_ON:.*human approval callback' /tmp/agent_response.normalized.txt
+              ;;
+            after-approval)
+              grep -Eq 'APPROVAL_REQUIRED:.*satisfied' /tmp/agent_response.normalized.txt
+              grep -Eq 'PROCEED:.*simulated remediation may continue' /tmp/agent_response.normalized.txt
+              ;;
+          esac
+
+    - name: call-skill-loader
+      inputs:
+        parameters:
+          - name: prompt
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl jq >/dev/null
+
+          jq -n \
+            --arg id "mil-126-{{workflow.name}}-skill-loader" \
+            --arg message_id "msg-{{workflow.name}}-skill-loader" \
+            --arg text "{{inputs.parameters.prompt}}" \
+            '{
+              jsonrpc: "2.0",
+              id: $id,
+              method: "message/send",
+              params: {
+                message: {
+                  messageId: $message_id,
+                  role: "user",
+                  parts: [{kind: "text", text: $text}]
+                }
+              }
+            }' > /tmp/request.json
+
+          curl -sS -m 180 -X POST "{{workflow.parameters.skill_loader_url}}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/request.json \
+            -o /tmp/response.json
+
+          jq -r '.result.status.state // "unknown"' /tmp/response.json > /tmp/state.txt
+          jq -r 'if (.result.artifacts // [] | length) > 0 then [.result.artifacts[]?.parts[]?.text] | join("\n") else [.result.status.message.parts[]?.text] | join("\n") end' /tmp/response.json > /tmp/agent_response.txt
+          sed 's/[*`]//g' /tmp/agent_response.txt > /tmp/agent_response.normalized.txt
+
+          echo "A2A phase: direct-skill-loader"
+          echo "A2A state: $(cat /tmp/state.txt)"
+          cat /tmp/agent_response.txt
+
+          test "$(cat /tmp/state.txt)" = "completed"
+          grep -Eq 'SKILLS(_LOADED)?[: ].*k8s-troubleshooter.*byoa-agent-builder.*fleet-health' /tmp/agent_response.normalized.txt
+
+    - name: call-hitl-approval
+      inputs:
+        parameters:
+          - name: prompt
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl jq >/dev/null
+
+          jq -n \
+            --arg id "mil-126-{{workflow.name}}-hitl-approval" \
+            --arg message_id "msg-{{workflow.name}}-hitl-approval" \
+            --arg text "{{inputs.parameters.prompt}}" \
+            '{
+              jsonrpc: "2.0",
+              id: $id,
+              method: "message/send",
+              params: {
+                message: {
+                  messageId: $message_id,
+                  role: "user",
+                  parts: [{kind: "text", text: $text}]
+                }
+              }
+            }' > /tmp/request.json
+
+          curl -sS -m 180 -X POST "{{workflow.parameters.hitl_approval_url}}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/request.json \
+            -o /tmp/response.json
+
+          jq -r '.result.status.state // "unknown"' /tmp/response.json > /tmp/state.txt
+          jq -r 'if (.result.artifacts // [] | length) > 0 then [.result.artifacts[]?.parts[]?.text] | join("\n") else [.result.status.message.parts[]?.text] | join("\n") end' /tmp/response.json > /tmp/agent_response.txt
+          sed 's/[*`]//g' /tmp/agent_response.txt > /tmp/agent_response.normalized.txt
+
+          echo "A2A phase: direct-hitl-approval"
+          echo "A2A state: $(cat /tmp/state.txt)"
+          cat /tmp/agent_response.txt
+
+          test "$(cat /tmp/state.txt)" = "completed"
+          grep -Eiq 'approval_required.*true|approval_required.*yes' /tmp/agent_response.normalized.txt
+          grep -Eq 'human approval|approval gate|WAITING_ON' /tmp/agent_response.normalized.txt
+
+    - name: request-approval
+      outputs:
+        parameters:
+          - name: approval_id
+            valueFrom:
+              path: /tmp/approval_id
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl jq >/dev/null
+
+          jq -n \
+            --arg workflow_name "{{workflow.name}}" \
+            --arg workflow_namespace "{{workflow.namespace}}" \
+            --arg callback_url "{{workflow.parameters.callback_url}}" \
+            --arg action "{{workflow.parameters.action}}" \
+            --arg target "{{workflow.parameters.target}}" \
+            --arg rationale "MIL-126 demo: coordinator called the skill-loader and HITL approval agents over A2A; human approval is required before simulated remediation proceeds." \
+            '{
+              workflow_name: $workflow_name,
+              workflow_namespace: $workflow_namespace,
+              callback_url: $callback_url,
+              tier: "T2",
+              action: $action,
+              target: $target,
+              rationale: $rationale,
+              expiry_seconds: 600
+            }' > /tmp/approval_request.json
+
+          curl -sS -m 60 -X POST "{{workflow.parameters.bot_endpoint}}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/approval_request.json \
+            -o /tmp/approval_response.json
+
+          cat /tmp/approval_response.json
+          jq -r '.approval_id' /tmp/approval_response.json > /tmp/approval_id
+          test "$(cat /tmp/approval_id)" != "null"
+
+    - name: wait-for-approval
+      suspend:
+        duration: "10m"

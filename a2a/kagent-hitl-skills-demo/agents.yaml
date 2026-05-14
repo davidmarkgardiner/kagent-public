@@ -1,0 +1,144 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: demo-skill-loader-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: mil-126-demo
+    platform.com/team: mil-126-demo
+    platform.com/type: demo
+    role: skill-loader
+spec:
+  description: "MIL-126 demo agent that exposes platform skills and returns the skill set loaded for the scenario."
+  type: Declarative
+  declarative:
+    modelConfig: default-model-config
+    a2aConfig:
+      skills:
+        - id: k8s-troubleshooter
+          name: Kubernetes Troubleshooter
+          description: Diagnose pod, namespace, node, networking, and storage failures.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [kubernetes, sre, troubleshooting]
+        - id: byoa-agent-builder
+          name: BYOA Agent Builder
+          description: Review BYO kagent requests, tool grants, and agent manifests before GitOps merge.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [byoa, kagent, gitops]
+        - id: fleet-health
+          name: Fleet Health
+          description: Summarise AKS fleet health, ring status, and promotion risk.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [aks, fleet, health]
+    systemMessage: |
+      You are the skill loader for the MIL-126 A2A/HITL demo.
+
+      When called, return the exact skills you loaded for the scenario:
+      - k8s-troubleshooter: Kubernetes incident diagnosis.
+      - byoa-agent-builder: BYO kagent manifest and tool-grant review.
+      - fleet-health: AKS fleet/ring health review.
+
+      CRITICAL: The first line of your response MUST be exactly:
+      SKILLS_LOADED: k8s-troubleshooter, byoa-agent-builder, fleet-health
+
+      Keep the response short. Do not claim to apply cluster changes.
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: demo-hitl-approval-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: mil-126-demo
+    platform.com/team: mil-126-demo
+    platform.com/type: demo
+    role: hitl-approval
+spec:
+  description: "MIL-126 demo agent that turns a proposed remediation into a human approval request."
+  type: Declarative
+  declarative:
+    modelConfig: default-model-config
+    a2aConfig:
+      skills:
+        - id: human-approval-gate
+          name: Human Approval Gate
+          description: Convert a proposed T2/T3 remediation into a human approval request.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [hitl, approval, remediation]
+    systemMessage: |
+      You are the HITL approval agent for the MIL-126 demo.
+
+      Hard rules:
+      - Never approve your own request.
+      - Never say remediation can proceed until the workflow reports a human
+        decision of approved.
+      - For any restart, delete, scale, patch, or apply action, classify the
+        request as approval_required=true.
+      - Return a compact approval packet with these fields:
+        approval_required, tier, action, target, rationale, next_step.
+
+      The next_step must tell the caller to pause on the Teams/mock-bot approval
+      gate and wait for the human decision callback.
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: demo-a2a-coordinator-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: mil-126-demo
+    platform.com/team: mil-126-demo
+    platform.com/type: demo
+    role: coordinator
+spec:
+  description: "MIL-126 demo coordinator that calls the skill loader and HITL approval agent over A2A."
+  type: Declarative
+  declarative:
+    modelConfig: default-model-config
+    a2aConfig:
+      skills:
+        - id: a2a-hitl-skills-demo
+          name: A2A HITL Skills Demo
+          description: Coordinate skill loading, agent-to-agent calls, and a human approval gate.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [a2a, hitl, skills, demo]
+    systemMessage: |
+      You coordinate the MIL-126 demo.
+
+      First call demo-skill-loader-agent and ask it to load the platform skills
+      for the scenario. Then call demo-hitl-approval-agent with the proposed
+      remediation action and target.
+
+      If the user message says a human has not approved yet, stop after the
+      HITL agent response and return:
+      - A2A_CALLS: skill-loader, hitl-approval
+      - SKILLS: k8s-troubleshooter, byoa-agent-builder, fleet-health
+      - APPROVAL_REQUIRED: yes
+      - WAITING_ON: human approval callback
+
+      If the user message contains "human decision: approved", return:
+      - A2A_CALLS: skill-loader, hitl-approval
+      - SKILLS: k8s-troubleshooter, byoa-agent-builder, fleet-health
+      - APPROVAL_REQUIRED: satisfied
+      - PROCEED: simulated remediation may continue
+      - VERIFY: what should be checked after the remediation
+
+      CRITICAL: Always include all three skill ids exactly in the SKILLS line:
+      k8s-troubleshooter, byoa-agent-builder, fleet-health.
+
+      This is a public demo. Do not include secrets, real cluster names, private
+      hostnames, or real resource ids.
+    tools:
+      - type: Agent
+        agent:
+          name: demo-skill-loader-agent
+          namespace: kagent
+      - type: Agent
+        agent:
+          name: demo-hitl-approval-agent
+          namespace: kagent
