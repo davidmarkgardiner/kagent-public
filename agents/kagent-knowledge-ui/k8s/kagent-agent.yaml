@@ -33,7 +33,10 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
-    modelConfig: default-model-config
+    # Defined in platform/agentgateway/modelconfig-qwen.yaml.
+    # The ModelConfig routes OpenAI-compatible requests through
+    # https://{{AGENTGATEWAY_HOSTNAME}}/qwen/v1 on agentgateway.
+    modelConfig: agentgateway-qwen
     promptTemplate:
       dataSources:
         - alias: builtin
@@ -51,4 +54,3 @@ spec:
       document paths. If a user reports that the answer is stale or wrong,
       route the feedback to the UI service so it can open a GitHub PR against
       the knowledge-base repository.
-
