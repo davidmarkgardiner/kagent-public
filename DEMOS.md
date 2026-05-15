@@ -8,12 +8,13 @@ clean clone can replicate every pillar without hunting.
 | # | Pillar | Entry point |
 |---|---|---|
 | 1 | Kagent + agentgateway observability | [`docs/observability/k-agent-alloy-grafana.md`](docs/observability/k-agent-alloy-grafana.md) |
-| 2 | Bring Your Own Agent (BYO-kagent) | [`infra/byo-kagent/README.md`](infra/byo-kagent/README.md) |
-| 3 | Build Your Own Cluster Skill (ASO) | [`agents/aso-cluster-agent/README.md`](agents/aso-cluster-agent/README.md) |
-| 4 | Agent-to-Agent (A2A) communication | [`a2a/kagent-hitl-skills-demo/README.md`](a2a/kagent-hitl-skills-demo/README.md) |
-| 5 | Teams human-in-the-loop (HITL) | [`platform/teams-hitl/README.md`](platform/teams-hitl/README.md) |
-| 6 | Kagent memory | [`docs/kagent-memory/README.md`](docs/kagent-memory/README.md) |
-| 7 | Kagent knowledge base (RAG) | [`ai-platform/kagent-knowledge-base/README.md`](ai-platform/kagent-knowledge-base/README.md) |
+| 2 | Agentgateway MVP control-plane demo set | [`platform/agentgateway/DEMO-SCHEMA-GATE.md`](platform/agentgateway/DEMO-SCHEMA-GATE.md) |
+| 3 | Bring Your Own Agent (BYO-kagent) | [`infra/byo-kagent/README.md`](infra/byo-kagent/README.md) |
+| 4 | Build Your Own Cluster Skill (ASO) | [`agents/aso-cluster-agent/README.md`](agents/aso-cluster-agent/README.md) |
+| 5 | Agent-to-Agent (A2A) communication | [`a2a/kagent-hitl-skills-demo/README.md`](a2a/kagent-hitl-skills-demo/README.md) |
+| 6 | Teams human-in-the-loop (HITL) | [`platform/teams-hitl/README.md`](platform/teams-hitl/README.md) |
+| 7 | Kagent memory | [`docs/kagent-memory/README.md`](docs/kagent-memory/README.md) |
+| 8 | Kagent knowledge base (RAG) | [`ai-platform/kagent-knowledge-base/README.md`](ai-platform/kagent-knowledge-base/README.md) |
 
 ---
 
@@ -53,7 +54,52 @@ show it firing.
 
 ---
 
-## 2. Bring Your Own Agent (BYO-kagent)
+## 2. Agentgateway MVP Control-Plane Demo Set
+
+**Story.** agentgateway becomes the control plane between kagent, model
+providers, MCP tools, and management-cluster agents. The demo set is staged
+as schema-gated PRs: first verify the installed CRD shape, then show
+gateway-injected SRE prompts, `/llm/v1` local-primary failover with Azure
+fallback, the current Argo OpenAPI-to-MCP decision boundary, and a
+cross-cluster A2A escalation path through the gateway.
+
+**Replicable artefacts**
+
+- Schema gate and verdict table (read first) — [`platform/agentgateway/DEMO-SCHEMA-GATE.md`](platform/agentgateway/DEMO-SCHEMA-GATE.md)
+- Agentgateway reference README and deploy path — [`platform/agentgateway/README.md`](platform/agentgateway/README.md)
+- PR 1 prompt enrichment policy — [`platform/agentgateway/policy-prompt-enrichment.yaml`](platform/agentgateway/policy-prompt-enrichment.yaml)
+- PR 2 `/llm/v1` local-primary / Azure fallback manifest — [`platform/agentgateway/backend-llm-failover.yaml`](platform/agentgateway/backend-llm-failover.yaml)
+- PR 2 failover runbook and safe failure triggers — [`platform/agentgateway/FAILOVER-DEMO.md`](platform/agentgateway/FAILOVER-DEMO.md)
+- PR 3 Argo OpenAPI-to-MCP runbook and blocked/rescope guidance — [`platform/agentgateway/ARGO-OPENAPI-MCP-DEMO.md`](platform/agentgateway/ARGO-OPENAPI-MCP-DEMO.md)
+- PR 3 gated manifests — [`platform/agentgateway/backend-argo-openapi-mcp.yaml`](platform/agentgateway/backend-argo-openapi-mcp.yaml), [`platform/agentgateway/policy-argo-openapi-mcp.yaml`](platform/agentgateway/policy-argo-openapi-mcp.yaml), [`platform/agentgateway/remotemcpserver-argo.yaml`](platform/agentgateway/remotemcpserver-argo.yaml)
+- PR 4 A2A fleet escalation runbook — [`platform/agentgateway/A2A-FLEET-DEMO.md`](platform/agentgateway/A2A-FLEET-DEMO.md)
+- PR 4 plan-B routing manifests — [`platform/agentgateway/service-a2a-fleet-agent.yaml`](platform/agentgateway/service-a2a-fleet-agent.yaml), [`platform/agentgateway/route-a2a-fleet-agent.yaml`](platform/agentgateway/route-a2a-fleet-agent.yaml), [`platform/agentgateway/policy-a2a-fleet-agent.yaml`](platform/agentgateway/policy-a2a-fleet-agent.yaml)
+- Ingress allowlist carrying the demo paths — [`platform/agentgateway/istio-authorization-policy.yaml`](platform/agentgateway/istio-authorization-policy.yaml)
+
+**Current verdicts from `proxmox-k8s` on 2026-05-14**
+
+- PR 1 is green after route-name inventory is aligned: `AgentgatewayPolicy.spec.backend.ai.prompt.prepend[]` exists and injects an org-wide SRE prompt at the gateway.
+- PR 2 is green with auth-shape caveats: `spec.ai.groups[]` supports mixed providers, but per-provider Azure auth is API-key `secretRef`; UAMI requires the two-backend route-level pattern in the runbook.
+- PR 3 is red/blocked as a direct OpenAPI target: `agentgatewaybackend.spec.mcp.targets[].openapi` is absent on this CRD release. Ship it only after a CRD upgrade or rescope it as a thin Argo MCP shim.
+- PR 4 is amber/plan B: A2A-specific backend and policy fields are absent, so the demo uses plain HTTP routing to `kagent-controller` plus `ReferenceGrant`; identity is enforced at Istio ingress, not by gateway A2A auth.
+
+**Known gotchas**
+
+- On the captured cluster the Gateway is `agent-gw`, while repo manifests default to `ai-gateway`; align `parentRefs` before applying.
+- Server-side dry-run does not prove secret key names, real ingress allowlists, or worker-to-management traffic. Test runtime paths after dry-run.
+- Use `traffic.timeouts.request`, not the older `traffic.requestTimeout` shape.
+- Canonical A2A path is `/a2a/fleet/` with a trailing slash; the runbook includes `/a2a/fleet`, `/a2a/fleet/`, and nested-path checks.
+
+**What to show.** Open `DEMO-SCHEMA-GATE.md` first and walk the verdict table.
+Apply PR 1 and PR 2 with server-side dry-run, then run the `/llm/v1`
+happy-path and failover probes from `FAILOVER-DEMO.md`. For PR 3, show why
+the direct OpenAPI target is blocked and explain the thin-shim alternative.
+For PR 4, show the plan-B HTTPRoute/ReferenceGrant path and the real-ingress
+identity test from `A2A-FLEET-DEMO.md`.
+
+---
+
+## 3. Bring Your Own Agent (BYO-kagent)
 
 **Story.** A team wants their own kagent in the platform. They open a PR with
 their `Agent` CRD; Argo Events picks it up; an orchestrator reviews; Flux
@@ -76,7 +122,7 @@ filled `agent-template.yaml` for one of the existing demo agents.
 
 ---
 
-## 3. Build Your Own Cluster Skill — ASO Cluster Agent
+## 4. Build Your Own Cluster Skill — ASO Cluster Agent
 
 **Story.** Natural-language request ("I'd like a cluster") becomes a
 structured interview (name, region, size, dry-run), which is rendered into a
@@ -101,7 +147,7 @@ generated KRO/ASO YAML and the Argo Workflow execution.
 
 ---
 
-## 4. Agent-to-Agent (A2A) Communication
+## 5. Agent-to-Agent (A2A) Communication
 
 **Story.** A coordinator agent receives a request, calls a skill-loader agent
 over kagent agent-as-tool A2A, then calls an approval agent that produces a
@@ -131,9 +177,9 @@ callback; show the workflow resume.
 
 ---
 
-## 5. Teams Human-in-the-Loop (HITL)
+## 6. Teams Human-in-the-Loop (HITL)
 
-**Story.** The HITL gate is the suspend/resume step from Demo 4 expressed as a
+**Story.** The HITL gate is the suspend/resume step from Demo 5 expressed as a
 generic platform pattern: agent decides an action needs human sign-off →
 workflow suspends → Teams (or Slack/Discord/curl) sends an approval card →
 Argo Events sensor catches the callback → workflow resumes or terminates.
@@ -150,7 +196,7 @@ callbacks to demonstrate each path.
 
 ---
 
-## 6. Kagent Memory
+## 7. Kagent Memory
 
 **Story.** Three different "memory" scopes coexist in kagent: A2A session
 memory, the native long-term memory API (vector store keyed by
@@ -172,7 +218,7 @@ results in `docs/kagent-memory/README.md`. Open `a2a/memory-reference.md`
 
 ---
 
-## 7. Kagent Knowledge Base (RAG)
+## 8. Kagent Knowledge Base (RAG)
 
 **Story.** A POC of the kagent RAG pattern: `doc2vec` indexes the platform
 documentation into a vector store, a `querydoc` MCP server exposes
@@ -208,6 +254,7 @@ For the cluster path, run `validate.sh` then `kubectl apply -k k8s/`.
 - [`docs/checkpoint/MIL-126-review.md`](docs/checkpoint/MIL-126-review.md) — A2A + HITL + skills demo review
 - [`docs/checkpoint/kagent-knowledge-base-review.md`](docs/checkpoint/kagent-knowledge-base-review.md) — KB POC review
 - [`docs/observability/MIL-124-review.md`](docs/observability/MIL-124-review.md) — Observability stack review
+- [`platform/agentgateway/DEMO-SCHEMA-GATE.md`](platform/agentgateway/DEMO-SCHEMA-GATE.md) — Agentgateway MVP demo schema gate and CRD verdicts
 
 These reviews list the deferred fixes that don't block a controlled demo but
 should be addressed before applying any of this to a shared / production

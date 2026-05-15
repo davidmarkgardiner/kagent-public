@@ -36,6 +36,8 @@ secret-rotation-safe UAMI custom-scope workflow.
 
 | Task | Read |
 |---|---|
+| Present the repo-wide Agentgateway MVP demo | [`../../DEMOS.md#2-agentgateway-mvp-control-plane-demo-set`](../../DEMOS.md#2-agentgateway-mvp-control-plane-demo-set) |
+| Run the MVP demo schema gate | [`DEMO-SCHEMA-GATE.md`](DEMO-SCHEMA-GATE.md) |
 | First-time deploy at work | `DEPLOY.md` |
 | Validate mgmt cluster before worker | `VALIDATE-MGMT.md` |
 | Check required CRDs | `./preflight-check.sh` |
