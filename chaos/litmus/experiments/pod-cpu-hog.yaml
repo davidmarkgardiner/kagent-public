@@ -1,0 +1,99 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: pod-cpu-hog
+  namespace: chaos-demo
+  labels:
+    app: pod-cpu-hog
+    app.kubernetes.io/name: pod-cpu-hog
+    app.kubernetes.io/part-of: litmus
+    litmuschaos.io/version: 3.28.0
+description:
+  message: |
+    Injects CPU consumption on pods belonging to an app deployment.
+spec:
+  definition:
+    scope: Namespaced
+    image: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.28.0
+    imagePullPolicy: Always
+    command: ["/bin/bash"]
+    args: ["-c", "./experiments -name pod-cpu-hog"]
+    labels:
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/runtime-api-usage: "true"
+      name: pod-cpu-hog
+    env:
+      - name: TOTAL_CHAOS_DURATION
+        value: "60"
+      - name: CPU_CORES
+        value: "1"
+      - name: CPU_LOAD
+        value: "100"
+      - name: PODS_AFFECTED_PERC
+        value: ""
+      - name: RAMP_TIME
+        value: ""
+      - name: SEQUENCE
+        value: parallel
+      - name: LIB_IMAGE
+        value: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.28.0
+      - name: TARGET_PODS
+        value: ""
+      - name: SOCKET_PATH
+        value: /run/containerd/containerd.sock
+      - name: CONTAINER_RUNTIME
+        value: containerd
+    permissions:
+      - apiGroups: ["", "apps", "apps.openshift.io", "argoproj.io", "batch", "litmuschaos.io"]
+        resources:
+          - chaosengines
+          - chaosexperiments
+          - chaosresults
+          - daemonsets
+          - deploymentconfigs
+          - deployments
+          - events
+          - jobs
+          - pods
+          - pods/exec
+          - pods/log
+          - replicasets
+          - replicationcontrollers
+          - rollouts
+          - statefulsets
+        verbs: ["create", "delete", "deletecollection", "get", "list", "patch", "update"]
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: litmus-pod-cpu-hog
+  namespace: chaos-demo
+  labels:
+    app: litmus-pod-cpu-hog
+    app.kubernetes.io/name: litmus-pod-cpu-hog
+    app.kubernetes.io/part-of: litmus
+spec:
+  appinfo:
+    appns: chaos-demo
+    applabel: "app.kubernetes.io/name=chaos-target"
+    appkind: deployment
+  chaosServiceAccount: k8s-chaos-admin
+  engineState: active
+  jobCleanUpPolicy: retain
+  experiments:
+    - name: pod-cpu-hog
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "30"
+            - name: CPU_CORES
+              value: "1"
+            - name: CPU_LOAD
+              value: "80"
+            - name: PODS_AFFECTED_PERC
+              value: "50"
+            - name: CONTAINER_RUNTIME
+              value: containerd
+            - name: SOCKET_PATH
+              value: /run/containerd/containerd.sock

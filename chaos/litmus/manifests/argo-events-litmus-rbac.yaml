@@ -1,0 +1,69 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-events-litmus-reader
+  namespace: chaos-demo
+  labels:
+    app: argo-events-litmus-reader
+    app.kubernetes.io/name: argo-events-litmus-reader
+    app.kubernetes.io/part-of: litmus
+rules:
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    verbs: ["get", "list", "patch", "update", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-events-litmus-reader
+  namespace: chaos-demo
+  labels:
+    app: argo-events-litmus-reader
+    app.kubernetes.io/name: argo-events-litmus-reader
+    app.kubernetes.io/part-of: litmus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-events-litmus-reader
+subjects:
+  - kind: ServiceAccount
+    name: argo-events-sa
+    namespace: argo-events
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-events-litmus-hive-mind
+  namespace: kagent
+  labels:
+    app: argo-events-litmus-hive-mind
+    app.kubernetes.io/name: argo-events-litmus-hive-mind
+    app.kubernetes.io/part-of: litmus
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-events-litmus-hive-mind
+  namespace: kagent
+  labels:
+    app: argo-events-litmus-hive-mind
+    app.kubernetes.io/name: argo-events-litmus-hive-mind
+    app.kubernetes.io/part-of: litmus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-events-litmus-hive-mind
+subjects:
+  - kind: ServiceAccount
+    name: argo-events-sa
+    namespace: argo-events

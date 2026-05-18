@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: litmus-chaos-events
+  namespace: argo-events
+  labels:
+    app: litmus-chaos-events
+    app.kubernetes.io/name: litmus-chaos-events
+    app.kubernetes.io/part-of: litmus
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  resource:
+    chaosresult-finished:
+      group: litmuschaos.io
+      version: v1alpha1
+      resource: chaosresults
+      namespace: chaos-demo
+      eventTypes:
+        - ADD
+        - UPDATE
