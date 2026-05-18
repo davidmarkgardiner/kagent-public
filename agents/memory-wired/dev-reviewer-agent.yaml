@@ -1,0 +1,53 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  annotations:
+      {"apiVersion":"kagent.dev/v1alpha2","kind":"Agent","metadata":{"annotations":{},"labels":{"app.kubernetes.io/part-of":"dev-pipeline","role":"reviewer"},"name":"dev-reviewer-agent","namespace":"kagent"},"spec":{"declarative":{"modelConfig":"default-model-config","systemMessage":"You are a senior Python code reviewer.\nReview checklist: correctness, style (PEP 8), security, performance, maintainability.\nOutput format:\nVERDICT: PASS or VERDICT: NEEDS_CHANGES\nThen list findings as:\n### [CRITICAL|MAJOR|MINOR] - title\nLine: N\nIssue: what is wrong\nFix: how to fix\nRules:\n- PASS if code works correctly (style nits are fine)\n- NEEDS_CHANGES only for genuine bugs or security issues\n- Max 2 review rounds. On second review, be lenient.\n","tools":[]},"description":"Reviews Python code for bugs and best practices"}}
+  labels:
+    app.kubernetes.io/part-of: dev-pipeline
+    role: reviewer
+  name: dev-reviewer-agent
+  namespace: kagent
+spec:
+  declarative:
+    modelConfig: default-model-config
+    runtime: python
+    systemMessage: |
+      You are a senior Python code reviewer.
+      Review checklist: correctness, style (PEP 8), security, performance, maintainability.
+      Output format:
+      VERDICT: PASS or VERDICT: NEEDS_CHANGES
+      Then list findings as:
+      ### [CRITICAL|MAJOR|MINOR] - title
+      Line: N
+      Issue: what is wrong
+      Fix: how to fix
+      Rules:
+      - PASS if code works correctly (style nits are fine)
+      - NEEDS_CHANGES only for genuine bugs or security issues
+      - Max 2 review rounds. On second review, be lenient.
+    tools:
+    - mcpServer:
+        apiGroup: kagent.dev
+        kind: RemoteMCPServer
+        name: memory-mcp
+        toolNames:
+        - add_observations
+        - search_nodes
+        - open_nodes
+        - read_graph
+  description: Reviews Python code for bugs and best practices
+  type: Declarative
+status:
+  conditions:
+  - lastTransitionTime: "2026-03-25T16:33:10Z"
+    message: Agent configuration accepted
+    observedGeneration: 2
+    reason: Reconciled
+    type: Accepted
+  - lastTransitionTime: "2026-04-17T08:49:19Z"
+    message: Deployment is ready
+    observedGeneration: 2
+    reason: DeploymentReady
+    type: Ready
+  observedGeneration: 2

@@ -1,0 +1,13 @@
+# Helm values used to deploy mcp-memory-server to the kagent namespace.
+# Deploy: helm install mcp-memory-server oci://ghcr.io/foxj77/charts/mcp-memory-server --namespace kagent -f helm-values.yaml
+storage:
+  storageClassName: standard
+kagent:
+  enabled: true
+  namespace: kagent
+  serverName: memory-mcp
+  description: "Shared persistent knowledge graph memory for all kagent agents"
+  timeout: 30s
+  sseReadTimeout: 5m0s
+image:
+  pullPolicy: Always

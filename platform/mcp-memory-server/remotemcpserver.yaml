@@ -1,0 +1,51 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  annotations:
+    meta.helm.sh/release-name: mcp-memory-server
+    meta.helm.sh/release-namespace: kagent
+  labels:
+    app.kubernetes.io/component: remote-mcp-server
+    app.kubernetes.io/instance: mcp-memory-server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mcp-memory-server
+    app.kubernetes.io/version: 0.2.5
+    helm.sh/chart: mcp-memory-server-0.2.5
+  name: memory-mcp
+  namespace: kagent
+spec:
+  description: Shared persistent knowledge graph memory
+  protocol: STREAMABLE_HTTP
+  sseReadTimeout: 5m0s
+  terminateOnClose: true
+  timeout: 30s
+  url: http://mcp-memory-server.kagent.svc.cluster.local:3000/mcp
+status:
+  conditions:
+  - lastTransitionTime: "2026-05-18T15:16:56Z"
+    message: Remote MCP server configuration accepted
+    observedGeneration: 1
+    reason: Reconciled
+    type: Accepted
+  discoveredTools:
+  - description: Create multiple new entities in the knowledge graph
+    name: create_entities
+  - description: Create multiple new relations between entities in the knowledge graph.
+      Relations should be in active voice
+    name: create_relations
+  - description: Add new observations to existing entities in the knowledge graph
+    name: add_observations
+  - description: Delete multiple entities and their associated relations from the
+      knowledge graph
+    name: delete_entities
+  - description: Delete specific observations from entities in the knowledge graph
+    name: delete_observations
+  - description: Delete multiple relations from the knowledge graph
+    name: delete_relations
+  - description: Read the entire knowledge graph
+    name: read_graph
+  - description: Search for nodes in the knowledge graph based on a query
+    name: search_nodes
+  - description: Open specific nodes in the knowledge graph by their names
+    name: open_nodes
+  observedGeneration: 1

@@ -1,0 +1,48 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  annotations:
+      {"apiVersion":"kagent.dev/v1alpha2","kind":"Agent","metadata":{"annotations":{},"labels":{"app.kubernetes.io/part-of":"dev-pipeline","role":"coder"},"name":"dev-coder-agent","namespace":"kagent"},"spec":{"declarative":{"modelConfig":"default-model-config","systemMessage":"You are a Python developer. Write clean, functional code.\nRules:\n1. Return ONLY Python code in a single fenced ```python block\n2. Include type hints on function signatures\n3. Include a module-level docstring\n4. Do NOT include tests or documentation beyond docstrings\n5. If spec is ambiguous, make a reasonable choice and note it in a comment\nOutput: one-line summary, then one code block, then any assumptions.\n","tools":[]},"description":"Writes Python code based on specifications"}}
+  labels:
+    app.kubernetes.io/part-of: dev-pipeline
+    role: coder
+  name: dev-coder-agent
+  namespace: kagent
+spec:
+  declarative:
+    modelConfig: default-model-config
+    runtime: python
+    systemMessage: |
+      You are a Python developer. Write clean, functional code.
+      Rules:
+      1. Return ONLY Python code in a single fenced ```python block
+      2. Include type hints on function signatures
+      3. Include a module-level docstring
+      4. Do NOT include tests or documentation beyond docstrings
+      5. If spec is ambiguous, make a reasonable choice and note it in a comment
+      Output: one-line summary, then one code block, then any assumptions.
+    tools:
+    - mcpServer:
+        apiGroup: kagent.dev
+        kind: RemoteMCPServer
+        name: memory-mcp
+        toolNames:
+        - add_observations
+        - search_nodes
+        - open_nodes
+        - read_graph
+  description: Writes Python code based on specifications
+  type: Declarative
+status:
+  conditions:
+  - lastTransitionTime: "2026-03-25T16:33:10Z"
+    message: Agent configuration accepted
+    observedGeneration: 2
+    reason: Reconciled
+    type: Accepted
+  - lastTransitionTime: "2026-04-17T08:49:17Z"
+    message: Deployment is ready
+    observedGeneration: 2
+    reason: DeploymentReady
+    type: Ready
+  observedGeneration: 2
