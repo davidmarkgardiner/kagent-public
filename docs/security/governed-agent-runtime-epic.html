@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Governed Agent Runtime Behind Agent Gateway</title>
+<style>
+  :root {
+    --ivory: #faf9f5;
+    --paper: #ffffff;
+    --ink: #151515;
+    --muted: #5f6461;
+    --line: #d8d2c6;
+    --clay: #c96f4a;
+    --forest: #266653;
+    --steel: #315d78;
+    --plum: #6d4f7a;
+    --gold: #b38b28;
+    --red: #a84238;
+    --soft: #f0eee8;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-snap-type: y mandatory; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--ivory);
+    font-family: var(--sans);
+    line-height: 1.45;
+  }
+
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: grid;
+    align-items: center;
+    padding: 48px 32px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .wrap {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    color: var(--muted);
+    font: 700 12px/1 var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 28px;
+    height: 2px;
+    background: var(--clay);
+    display: inline-block;
+  }
+
+  h1, h2 {
+    font-family: var(--serif);
+    font-weight: 520;
+    letter-spacing: 0;
+    margin: 0;
+  }
+
+  h1 {
+    font-size: clamp(42px, 6vw, 76px);
+    line-height: 1.02;
+    max-width: 980px;
+  }
+
+  h2 {
+    font-size: clamp(32px, 4.5vw, 56px);
+    line-height: 1.08;
+    margin-bottom: 18px;
+  }
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 760px;
+  }
+
+  .lede {
+    margin-top: 24px;
+    font-family: var(--serif);
+    font-size: clamp(20px, 2vw, 28px);
+    color: #383a38;
+  }
+
+  .grid {
+    display: grid;
+    gap: 18px;
+  }
+
+  .two { grid-template-columns: 1.05fr 0.95fr; align-items: center; }
+  .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 22px;
+    box-shadow: 0 14px 30px rgba(30, 25, 20, 0.06);
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font: 700 11px/1 var(--mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
+    background: var(--soft);
+    color: var(--muted);
+  }
+
+  .tag.green { background: #e7f1eb; color: var(--forest); border-color: #bcd7c8; }
+  .tag.blue { background: #e7eef3; color: var(--steel); border-color: #bfd1dc; }
+  .tag.gold { background: #f5efd9; color: #765b14; border-color: #dec783; }
+  .tag.red { background: #f6e6e3; color: var(--red); border-color: #e0b2aa; }
+
+  .card-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .item {
+    display: grid;
+    grid-template-columns: 94px 1fr;
+    gap: 14px;
+    align-items: start;
+    padding: 14px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .item p { font-size: 15px; }
+
+  .matrix {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 22px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+  }
+
+  .matrix th, .matrix td {
+    text-align: left;
+    vertical-align: top;
+    padding: 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+
+  .matrix th {
+    font: 700 12px/1.2 var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--soft);
+  }
+
+  .matrix tr:last-child td { border-bottom: 0; }
+
+  .diagram {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .node {
+    fill: #fff;
+    stroke: #bdb6aa;
+    stroke-width: 1.4;
+  }
+
+  .node.gateway { fill: #edf3f5; stroke: var(--steel); }
+  .node.policy { fill: #eef4ee; stroke: var(--forest); }
+  .node.risk { fill: #f7ebe8; stroke: var(--red); }
+  .node.audit { fill: #f6f0dc; stroke: var(--gold); }
+
+  .svg-label {
+    font: 700 13px var(--sans);
+    fill: #1d1d1b;
+  }
+
+  .svg-small {
+    font: 11px var(--sans);
+    fill: #626760;
+  }
+
+  .arrow {
+    stroke: #7b7b74;
+    stroke-width: 1.8;
+    fill: none;
+    marker-end: url(#arrow);
+  }
+
+  .risk-row {
+    display: grid;
+    grid-template-columns: 1.1fr 1.1fr 1.4fr;
+    gap: 12px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .risk-row:last-child { border-bottom: 0; }
+  .risk-row strong { display: block; margin-bottom: 3px; }
+  .risk-row span { color: var(--muted); font-size: 14px; }
+
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .pillar {
+    min-height: 148px;
+    padding: 16px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-top: 5px solid var(--clay);
+    border-radius: 8px;
+  }
+
+  .pillar:nth-child(2) { border-top-color: var(--steel); }
+  .pillar:nth-child(3) { border-top-color: var(--forest); }
+  .pillar:nth-child(4) { border-top-color: var(--plum); }
+  .pillar:nth-child(5) { border-top-color: var(--gold); }
+  .pillar p { font-size: 14px; }
+
+  .footer-note {
+    margin-top: 24px;
+    font: 12px/1.4 var(--mono);
+    color: var(--muted);
+  }
+
+  @media (max-width: 900px) {
+    .slide { padding: 36px 18px; }
+    .two, .three, .four, .pillars { grid-template-columns: 1fr; }
+    .item { grid-template-columns: 1fr; }
+    .risk-row { grid-template-columns: 1fr; }
+    .matrix { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">Governance epic</div>
+      <h1>Governed agent runtime behind agentgateway</h1>
+      <p class="lede">A compliance-facing control model for kagent agents that call LLMs, MCP tools, and peer agents only through governed gateway paths.</p>
+      <div class="card-list" style="max-width: 860px;">
+        <div class="item">
+          <span class="tag green">Outcome</span>
+          <p>Every agent interaction has an owner, identity, route, grant, data handling decision, audit trail, and exception path.</p>
+        </div>
+        <div class="item">
+          <span class="tag blue">Boundary</span>
+          <p>Agentgateway becomes the control plane for LLM, MCP, and A2A traffic. Kubernetes policy locks down the agent and tool runtime underneath it.</p>
+        </div>
+        <div class="item">
+          <span class="tag gold">Handoff</span>
+          <p>Engineering owns build and validation. Governance owns policy decisions, risk acceptance, control mapping, and sign-off evidence.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">Runtime architecture</div>
+      <div class="grid two">
+        <div>
+          <h2>One gateway for models, tools, and agents</h2>
+          <p>Agents can request access, but the platform decides. Model calls, MCP discovery, MCP execution, and A2A routes pass through policy layers that can be audited and changed through Git.</p>
+        </div>
+        <div class="diagram">
+          <svg viewBox="0 0 760 520" role="img" aria-label="Agent gateway runtime architecture">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#7b7b74" />
+              </marker>
+            </defs>
+            <rect class="node policy" x="28" y="32" width="170" height="72" rx="8" />
+            <text class="svg-label" x="113" y="61" text-anchor="middle">Git PR</text>
+            <text class="svg-small" x="113" y="83" text-anchor="middle">owner, purpose, diff</text>
+
+            <rect class="node policy" x="252" y="32" width="190" height="72" rx="8" />
+            <text class="svg-label" x="347" y="61" text-anchor="middle">Argo + Kyverno</text>
+            <text class="svg-small" x="347" y="83" text-anchor="middle">schema and policy gates</text>
+
+            <rect class="node" x="514" y="32" width="190" height="72" rx="8" />
+            <text class="svg-label" x="609" y="61" text-anchor="middle">kagent Agent</text>
+            <text class="svg-small" x="609" y="83" text-anchor="middle">restricted pod</text>
+
+            <rect class="node gateway" x="286" y="214" width="214" height="92" rx="10" />
+            <text class="svg-label" x="393" y="252" text-anchor="middle">agentgateway</text>
+            <text class="svg-small" x="393" y="276" text-anchor="middle">auth, policy, routing, telemetry</text>
+
+            <rect class="node" x="38" y="392" width="178" height="72" rx="8" />
+            <text class="svg-label" x="127" y="421" text-anchor="middle">Approved LLMs</text>
+            <text class="svg-small" x="127" y="443" text-anchor="middle">region and spend controls</text>
+
+            <rect class="node" x="292" y="392" width="196" height="72" rx="8" />
+            <text class="svg-label" x="390" y="421" text-anchor="middle">MCP tool servers</text>
+            <text class="svg-small" x="390" y="443" text-anchor="middle">catalog and grants</text>
+
+            <rect class="node" x="560" y="392" width="166" height="72" rx="8" />
+            <text class="svg-label" x="643" y="421" text-anchor="middle">Peer agents</text>
+            <text class="svg-small" x="643" y="443" text-anchor="middle">A2A route policy</text>
+
+            <rect class="node audit" x="34" y="210" width="178" height="98" rx="8" />
+            <text class="svg-label" x="123" y="244" text-anchor="middle">Evidence</text>
+            <text class="svg-small" x="123" y="268" text-anchor="middle">logs, metrics, traces,</text>
+            <text class="svg-small" x="123" y="286" text-anchor="middle">policy reports</text>
+
+            <path class="arrow" d="M198 68 H252" />
+            <path class="arrow" d="M442 68 H514" />
+            <path class="arrow" d="M609 104 C609 154 500 156 500 230" />
+            <path class="arrow" d="M393 306 C300 336 190 346 128 392" />
+            <path class="arrow" d="M393 306 V392" />
+            <path class="arrow" d="M500 260 C600 288 645 328 645 392" />
+            <path class="arrow" d="M286 260 H212" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">Control stack</div>
+      <h2>Security is layered, not delegated to the LLM</h2>
+      <div class="pillars">
+        <div class="pillar">
+          <h3>Change gate</h3>
+          <p>PR, schema validation, security review, Argo workflow, Flux reconcile, Kyverno admission.</p>
+        </div>
+        <div class="pillar">
+          <h3>Gateway gate</h3>
+          <p>JWT, API key, OAuth or ingress identity, CEL authorization, rate limits, guardrails, telemetry.</p>
+        </div>
+        <div class="pillar">
+          <h3>Tool gate</h3>
+          <p>Quarantine, discovered tools, catalog status, ToolGrant, explicit toolNames, denied calls.</p>
+        </div>
+        <div class="pillar">
+          <h3>Runtime gate</h3>
+          <p>PSS restricted, no unnecessary SA token, narrow RBAC, default-deny egress, resource limits.</p>
+        </div>
+        <div class="pillar">
+          <h3>Evidence gate</h3>
+          <p>Logs, traces, policy reports, spend dashboards, approval records, exception expiry.</p>
+        </div>
+      </div>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Policy question</th>
+            <th>Engineering control</th>
+            <th>Governance evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Can this agent call this model?</td>
+            <td>ModelConfig through agentgateway, direct provider egress denied unless exception exists.</td>
+            <td>Model inventory, route policy, data residency decision, token budget.</td>
+          </tr>
+          <tr>
+            <td>Can this agent call this tool?</td>
+            <td>Verified ToolCatalogEntry plus ToolGrant plus agentgateway MCP authorization.</td>
+            <td>Grant list, gateway policy, denied-call log, catalog status.</td>
+          </tr>
+          <tr>
+            <td>Can this agent call another agent?</td>
+            <td>A2A route policy at gateway or ingress with trusted identity and default deny.</td>
+            <td>Caller/callee register, approval, route tests, audit trail.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">Sandbox model</div>
+      <div class="grid two">
+        <div>
+          <h2>Sandbox where risk concentrates</h2>
+          <p>Most agent risk is permission misuse, not container escape. The baseline is RBAC, ToolGrant, NetworkPolicy, Kyverno, and audit. Kata is reserved for higher-risk MCP and custom-code surfaces.</p>
+          <div class="card-list">
+            <div class="item">
+              <span class="tag green">Baseline</span>
+              <p>Trusted read-only agents: restricted pod security, narrow tools, default-deny egress, no direct LLM provider route.</p>
+            </div>
+            <div class="item">
+              <span class="tag gold">Review</span>
+              <p>Write-capable agents and broad platform tools: human approval, narrower RBAC, explicit destructive action controls.</p>
+            </div>
+            <div class="item">
+              <span class="tag red">Isolate</span>
+              <p>BYO MCP, custom-code agents, shell/code-exec tools, and quarantine servers: consider AKS Kata pod sandboxing.</p>
+            </div>
+          </div>
+        </div>
+        <div class="diagram">
+          <svg viewBox="0 0 720 470" role="img" aria-label="Tiered sandbox model">
+            <defs>
+              <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#7b7b74" />
+              </marker>
+            </defs>
+            <rect x="54" y="46" width="612" height="92" rx="10" fill="#eaf3ee" stroke="#266653" />
+            <text class="svg-label" x="360" y="82" text-anchor="middle">Tier 1: trusted read-only agents</text>
+            <text class="svg-small" x="360" y="108" text-anchor="middle">PSS restricted, grants, read tools, gateway-only model route</text>
+
+            <rect x="54" y="190" width="612" height="92" rx="10" fill="#f5efd9" stroke="#b38b28" />
+            <text class="svg-label" x="360" y="226" text-anchor="middle">Tier 2: write-capable platform agents</text>
+            <text class="svg-small" x="360" y="252" text-anchor="middle">HITL approval, narrow RBAC, destructive verb control, audit focus</text>
+
+            <rect x="54" y="334" width="612" height="92" rx="10" fill="#f6e6e3" stroke="#a84238" />
+            <text class="svg-label" x="360" y="370" text-anchor="middle">Tier 3: BYO MCP, custom-code, shell/code-exec</text>
+            <text class="svg-small" x="360" y="396" text-anchor="middle">Quarantine, extra review, Kata runtime where justified</text>
+
+            <path d="M360 138 V190" stroke="#7b7b74" stroke-width="1.8" marker-end="url(#arrow2)" />
+            <path d="M360 282 V334" stroke="#7b7b74" stroke-width="1.8" marker-end="url(#arrow2)" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">Threat model</div>
+      <h2>Primary risks and required controls</h2>
+      <div class="panel">
+        <div class="risk-row">
+          <div><strong>Prompt injection</strong><span>Agent follows hostile text from documents, tool output, or users.</span></div>
+          <div><strong>Control</strong><span>Least-privilege tools, prompt baseline, guardrails, approval for destructive actions.</span></div>
+          <div><strong>Evidence</strong><span>ToolGrant, requireApproval, gateway logs, policy tests.</span></div>
+        </div>
+        <div class="risk-row">
+          <div><strong>Tool RBAC amplification</strong><span>Agent calls a tool with broader permissions than its own pod.</span></div>
+          <div><strong>Control</strong><span>Tool server RBAC review, catalog classification, gateway MCP auth, read-only defaults.</span></div>
+          <div><strong>Evidence</strong><span>kubectl auth can-i checks, catalog status, denied tool-call audit.</span></div>
+        </div>
+        <div class="risk-row">
+          <div><strong>A2A escalation</strong><span>Tenant agent invokes a more privileged platform agent.</span></div>
+          <div><strong>Control</strong><span>Default-deny A2A, trusted identity, ingress or gateway route authorization.</span></div>
+          <div><strong>Evidence</strong><span>Caller/callee inventory, denied-route test, route approval.</span></div>
+        </div>
+        <div class="risk-row">
+          <div><strong>Data egress</strong><span>Secrets or internal data leave through model prompts or HTTP tools.</span></div>
+          <div><strong>Control</strong><span>Gateway-only LLM route, NetworkPolicy, data classification, self-hosted model option.</span></div>
+          <div><strong>Evidence</strong><span>Egress tests, ModelConfig inventory, retention decision.</span></div>
+        </div>
+        <div class="risk-row">
+          <div><strong>Container escape</strong><span>High-risk tool server reaches beyond its pod boundary.</span></div>
+          <div><strong>Control</strong><span>PSS restricted baseline, no host access, Kata for justified high-risk workloads.</span></div>
+          <div><strong>Evidence</strong><span>RuntimeClass, pod spec, kernel-boundary smoke test.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">Compliance backlog</div>
+      <h2>Top-level epic workstreams</h2>
+      <div class="grid three">
+        <div class="panel">
+          <span class="tag blue">1</span>
+          <h3>Inventory and ownership</h3>
+          <p>Register agents, tools, models, grants, A2A routes, owners, data classes, expiry, and approval status.</p>
+        </div>
+        <div class="panel">
+          <span class="tag blue">2</span>
+          <h3>Model governance</h3>
+          <p>Approve providers, regions, token budgets, retention terms, direct-provider exceptions, and gateway policies.</p>
+        </div>
+        <div class="panel">
+          <span class="tag blue">3</span>
+          <h3>MCP authorization</h3>
+          <p>Quarantine tool servers, verify discovered tools, issue ToolGrants, and enforce gateway discovery filtering.</p>
+        </div>
+        <div class="panel">
+          <span class="tag blue">4</span>
+          <h3>A2A governance</h3>
+          <p>Define caller and callee trust, route approval, identity requirements, and default-deny tests.</p>
+        </div>
+        <div class="panel">
+          <span class="tag blue">5</span>
+          <h3>Sandbox baseline</h3>
+          <p>Set pod hardening, egress, service account token, RBAC, quota, and Kata tiering requirements.</p>
+        </div>
+        <div class="panel">
+          <span class="tag blue">6</span>
+          <h3>Evidence pack</h3>
+          <p>Produce diagrams, control matrix, validation output, policy reports, telemetry samples, and residual risks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">First proof</div>
+      <h2>What sign-off should see first</h2>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Proof</th>
+            <th>Pass condition</th>
+            <th>Evidence owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Gateway-only LLM access</td>
+            <td>Direct provider call fails from agent namespace; agentgateway route succeeds.</td>
+            <td>Platform engineering</td>
+          </tr>
+          <tr>
+            <td>Granted MCP only</td>
+            <td>Agent sees only granted tools; denied tool call is blocked and logged.</td>
+            <td>Platform engineering</td>
+          </tr>
+          <tr>
+            <td>A2A default deny</td>
+            <td>Tenant agent cannot reach privileged platform agent without approved route policy.</td>
+            <td>Platform security</td>
+          </tr>
+          <tr>
+            <td>Egress isolation</td>
+            <td>Agent and tool workloads cannot reach IMDS, direct model providers, arbitrary external HTTP, or cross-namespace services unless allowlisted. This is workload isolation, not the gateway data-plane egress policy.</td>
+            <td>Platform security</td>
+          </tr>
+          <tr>
+            <td>Governed change path</td>
+            <td>PR, workflow, Flux state, Kyverno report, and telemetry all correlate to one change.</td>
+            <td>Governance team</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="footer-note">Related Markdown artifact: docs/security/governed-agent-runtime-epic.md</p>
+    </div>
+  </section>
+</body>
+</html>
