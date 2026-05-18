@@ -122,9 +122,14 @@ security boundary.
 | Audit and monitoring | Gateway logs/metrics/traces, kagent tool-call logs, Argo workflow history, Kyverno policy reports, spend dashboards, alert rules. | Dashboard screenshots, query pack, retention config. |
 | Change management | Agent, tool, and gateway changes enter through PR, schema checks, policy dry-run, security review, and Flux reconciliation. | PR template, check results, approval trail, Flux status. |
 
-## Child features
+## Governance workstreams and engineering deliverables
 
-### Feature 1: Agent and tool inventory
+These workstreams are not a governance-team build backlog. Governance defines
+the control expectations, approval rules, evidence needs, and residual-risk
+decisions. Engineering implements the Kubernetes, gateway, policy, workflow, and
+observability controls that satisfy them.
+
+### Workstream 1: Agent and tool inventory
 
 Create a governed inventory covering every `Agent`, `RemoteMCPServer`,
 `ModelConfig`, `ToolCatalogEntry`, `ToolGrant`, gateway route, and A2A endpoint.
@@ -138,7 +143,7 @@ Acceptance criteria:
 - Unowned or expired agents, tools, and grants produce policy findings.
 - Inventory output is safe to share in a public/sanitized evidence pack.
 
-### Feature 2: Model access governance
+### Workstream 2: Model access governance
 
 Require all normal agent LLM access to go through agentgateway-managed
 `ModelConfig` resources.
@@ -154,7 +159,7 @@ Acceptance criteria:
 - Sensitive-data workloads have an approved route to an in-region or
   self-hosted model.
 
-### Feature 3: MCP tool authorization and discovery
+### Workstream 3: MCP tool authorization and discovery
 
 Make agentgateway the runtime enforcement point for MCP discovery and execution.
 
@@ -169,7 +174,7 @@ Acceptance criteria:
 - Agent-side `toolNames` is kept aligned with the grant, but gateway policy is
   treated as the authoritative enforcement point.
 
-### Feature 4: A2A governance
+### Workstream 4: A2A governance
 
 Define which agents can call which peer agents, and enforce the policy at the
 gateway or ingress layer supported by the installed CRD version.
@@ -185,7 +190,7 @@ Acceptance criteria:
 - Where agentgateway lacks native A2A authorization in the installed CRD, the
   compensating control is documented at the Istio/ingress layer.
 
-### Feature 5: Agent and tool sandbox baseline
+### Workstream 5: Agent and tool sandbox baseline
 
 Define baseline hardening for agent and MCP pods, with a tiered isolation model.
 
@@ -201,7 +206,7 @@ Acceptance criteria:
 - A live proof exists for each sandbox tier: regular restricted pod, restricted
   MCP tool server, and Kata-isolated high-risk tool server.
 
-### Feature 6: Destructive action control
+### Workstream 6: Destructive action control
 
 Prevent prompt injection or tool chaining from producing destructive platform
 actions without explicit approval.
@@ -217,7 +222,7 @@ Acceptance criteria:
 - Policy blocks dangerous verbs from leaving MCP quarantine unless a manual
   risk exception exists.
 
-### Feature 7: Evidence and audit pack
+### Workstream 7: Evidence and audit pack
 
 Produce the compliance evidence pack for sign-off.
 
