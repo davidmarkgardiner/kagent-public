@@ -1,0 +1,235 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"argoproj.io/v1alpha1","kind":"Sensor","metadata":{"annotations":{},"creationTimestamp":"2026-05-18T14:47:29Z","finalizers":["sensor-controller"],"generation":3,"labels":{"app":"kagent-triage-litmus","app.kubernetes.io/name":"kagent-triage-litmus","app.kubernetes.io/part-of":"litmus","kagent-agent":"chaos-triage-agent","kagent-triage/namespace":"chaos-demo"},"name":"kagent-triage-litmus","namespace":"argo-events","resourceVersion":"59092029","uid":"cf3318aa-f0f5-4345-be41-0d5cd70c9baf"},"spec":{"dependencies":[{"eventName":"chaosresult-finished","eventSourceName":"litmus-chaos-events","filters":{"data":[{"path":"body.metadata.namespace","type":"string","value":["chaos-demo"]},{"path":"body.status.experimentStatus.verdict","type":"string","value":["Pass","Fail"]}]},"name":"chaosresult-finished"}],"eventBusName":"default","template":{"serviceAccountName":"argo-events-sa"},"triggers":[{"rateLimit":{"requestsPerUnit":6,"unit":"Minute"},"template":{"conditions":"chaosresult-finished","k8s":{"operation":"create","parameters":[{"dest":"spec.arguments.parameters.0.value","src":{"dataTemplate":"{{
+      .Input.body | toJson }}","dependencyName":"chaosresult-finished"}},{"dest":"spec.arguments.parameters.1.value","src":{"dataKey":"body.metadata.name","dependencyName":"chaosresult-finished"}},{"dest":"spec.arguments.parameters.2.value","src":{"dataKey":"body.spec.experiment","dependencyName":"chaosresult-finished"}},{"dest":"spec.arguments.parameters.3.value","src":{"dataKey":"body.status.experimentStatus.verdict","dependencyName":"chaosresult-finished"}},{"dest":"spec.arguments.parameters.4.value","src":{"dataKey":"body.spec.engine","dependencyName":"chaosresult-finished"}}],"source":{"resource":{"apiVersion":"argoproj.io/v1alpha1","kind":"Workflow","metadata":{"generateName":"kagent-triage-litmus-","labels":{"app":"kagent-triage-litmus","app.kubernetes.io/name":"kagent-triage-litmus","app.kubernetes.io/part-of":"litmus","kagent-agent":"chaos-triage-agent"},"namespace":"argo"},"spec":{"arguments":{"parameters":[{"name":"raw-payload","value":"{}"},{"name":"result-name","value":"unknown"},{"name":"experiment-name","value":"unknown"},{"name":"verdict","value":"unknown"},{"name":"engine-name","value":"unknown"}]},"entrypoint":"litmus-triage","serviceAccountName":"argo","templates":[{"name":"litmus-triage","steps":[[{"continueOn":{"failed":true},"name":"invoke-qwen","template":"invoke-qwen-agent"}],[{"name":"bounded-remediation","template":"bounded-remediation"}],[{"name":"log-hive-mind","template":"log-hive-mind"}]]},{"name":"invoke-qwen-agent","script":{"command":["python"],"image":"python:3.11-slim","source":"import
+      json\nimport sys\nimport urllib.request\nimport urllib.error\n\nraw_payload
+      = r''''''{{workflow.parameters.raw-payload}}''''''\nmessage = f\"\"\"Analyze
+      this LitmusChaos ChaosResult end-to-end.\n\nRequirements:\n- Identify experiment
+      name, verdict, probe success percentage, affected pods, and engine.\n- Inspect
+      chaos-demo/chaos-target before choosing an action.\n- Decide auto_remediate,
+      teams_hitl, or observe_only.\n- If auto_remediate is safe, perform it with Kubernetes
+      tools.\n- Include a structured Hive Mind Log entry.\n\nRaw Argo Events payload:\n{raw_payload}\n\"\"\"\n\npayload
+      = json.dumps({\n    \"jsonrpc\": \"2.0\",\n    \"id\": \"litmus-triage-{{workflow.name}}\",\n    \"method\":
+      \"message/send\",\n    \"params\": {\n        \"message\": {\n            \"role\":
+      \"user\",\n            \"parts\": [{\"kind\": \"text\", \"text\": message}]\n        }\n    }\n}).encode()\n\nreq
+      = urllib.request.Request(\n    \"http://kagent-controller.kagent:8083/api/a2a/kagent/chaos-triage-agent/\",\n    data=payload,\n    headers={\"Content-Type\":
+      \"application/json\"},\n    method=\"POST\",\n)\n\ntry:\n    with urllib.request.urlopen(req,
+      timeout=300) as response:\n        result = json.loads(response.read().decode())\nexcept
+      urllib.error.HTTPError as exc:\n    body = exc.read().decode()\n    print(f\"QWEN_TRIAGE_HTTP_ERROR
+      status={exc.code} body={body}\", file=sys.stderr)\n    raise\n\nartifacts =
+      result.get(\"result\", {}).get(\"artifacts\", [])\ntext = \"\"\nfor artifact
+      in artifacts:\n    for part in artifact.get(\"parts\", []):\n        text +=
+      part.get(\"text\", \"\")\n\nstatus = result.get(\"result\", {}).get(\"status\",
+      {}).get(\"state\", \"unknown\")\nprint(f\"QWEN_TRIAGE_STATUS={status}\")\nprint(\"QWEN_TRIAGE_ANALYSIS_BEGIN\")\nprint(text
+      or json.dumps(result)[:4000])\nprint(\"QWEN_TRIAGE_ANALYSIS_END\")\n"}},{"name":"bounded-remediation","script":{"command":["bash"],"image":"bitnami/kubectl:latest","source":"set
+      -euo pipefail\n\nRESULT=\"{{workflow.parameters.result-name}}\"\nEXPERIMENT=\"{{workflow.parameters.experiment-name}}\"\nVERDICT=\"{{workflow.parameters.verdict}}\"\nENGINE=\"{{workflow.parameters.engine-name}}\"\nTS=\"$(date
+      -u +%Y-%m-%dT%H:%M:%SZ)\"\n\necho \"LITMUS_TRIAGE_RESULT=$RESULT experiment=$EXPERIMENT
+      verdict=$VERDICT engine=$ENGINE\"\nkubectl get chaosresult \"$RESULT\" -n chaos-demo
+      -o wide || true\nkubectl get deploy chaos-target -n chaos-demo -o wide\nkubectl
+      get pods -n chaos-demo -l app.kubernetes.io/name=chaos-target -o wide\n\nkubectl
+      annotate deployment/chaos-target -n chaos-demo \\\n  chaos.symphony.dev/last-litmus-result=\"$RESULT\"
+      \\\n  chaos.symphony.dev/last-litmus-experiment=\"$EXPERIMENT\" \\\n  chaos.symphony.dev/last-litmus-verdict=\"$VERDICT\"
+      \\\n  chaos.symphony.dev/last-litmus-triage=\"$TS\" \\\n  --overwrite\n\nif
+      [ \"$VERDICT\" = \"Fail\" ] \u0026\u0026 [ \"$EXPERIMENT\" = \"pod-delete\"
+      ]; then\n  kubectl rollout restart deployment/chaos-target -n chaos-demo\n  kubectl
+      rollout status deployment/chaos-target -n chaos-demo --timeout=120s\n  echo
+      \"AUTO_REMEDIATION_ACTION=rollout_restart target=deployment/chaos-target reason=litmus_pod_delete_failed\"\nelse\n  kubectl
+      scale deployment/chaos-target -n chaos-demo --replicas=2\n  echo \"AUTO_REMEDIATION_ACTION=audit_annotate_and_ensure_two_replicas
+      target=deployment/chaos-target\"\nfi\n"}},{"name":"log-hive-mind","script":{"command":["bash"],"image":"bitnami/kubectl:latest","source":"set
+      -euo pipefail\n\nTS=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"\nKEY=\"$(echo \"{{workflow.name}}\"
+      | tr -c ''a-zA-Z0-9._-'' ''-'')\"\ncat \u003e /tmp/litmus-hive-mind.yaml \u003c\u003cEOF\napiVersion:
+      v1\nkind: ConfigMap\nmetadata:\n  name: chaos-triage-hive-mind\n  namespace:
+      kagent\n  labels:\n    app: chaos-triage-hive-mind\n    app.kubernetes.io/name:
+      chaos-triage-hive-mind\n    app.kubernetes.io/part-of: litmus\ndata:\n  ${KEY}.json:
+      |\n    {\n      \"timestamp\": \"${TS}\",\n      \"workflow\": \"{{workflow.name}}\",\n      \"agent\":
+      \"kagent/chaos-triage-agent\",\n      \"source\": \"litmuschaos\",\n      \"namespace\":
+      \"chaos-demo\",\n      \"result\": \"{{workflow.parameters.result-name}}\",\n      \"experiment\":
+      \"{{workflow.parameters.experiment-name}}\",\n      \"engine\": \"{{workflow.parameters.engine-name}}\",\n      \"verdict\":
+      \"{{workflow.parameters.verdict}}\"\n    }\nEOF\n\nkubectl apply -f /tmp/litmus-hive-mind.yaml\necho
+      \"HIVE_MIND_LOG=configmap/kagent/chaos-triage-hive-mind key=${KEY}.json\"\n"}}],"ttlStrategy":{"secondsAfterCompletion":900,"secondsAfterFailure":1800,"secondsAfterSuccess":900}}}}},"name":"invoke-chaos-triage-agent"}}]},"status":{"conditions":[{"lastTransitionTime":"2026-05-18T15:41:15Z","status":"True","type":"DependenciesProvided"},{"lastTransitionTime":"2026-05-18T15:41:15Z","status":"True","type":"Deployed"},{"lastTransitionTime":"2026-05-18T15:41:15Z","status":"True","type":"TriggersProvided"}]}}
+
+      '
+  finalizers:
+  - sensor-controller
+  labels:
+    app: kagent-triage-litmus
+    app.kubernetes.io/name: kagent-triage-litmus
+    app.kubernetes.io/part-of: litmus
+    kagent-agent: chaos-triage-agent
+    kagent-triage/namespace: chaos-demo
+  name: kagent-triage-litmus
+  namespace: argo-events
+spec:
+  dependencies:
+  - eventName: chaosresult-finished
+    eventSourceName: litmus-chaos-events
+    filters:
+      data:
+      - path: body.metadata.namespace
+        type: string
+        value:
+        - chaos-demo
+      - path: body.status.experimentStatus.verdict
+        type: string
+        value:
+        - Pass
+        - Fail
+    name: chaosresult-finished
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  triggers:
+  - rateLimit:
+      requestsPerUnit: 6
+      unit: Minute
+    template:
+      conditions: chaosresult-finished
+      k8s:
+        operation: create
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataTemplate: '{{ .Input.body | toJson }}'
+            dependencyName: chaosresult-finished
+        - dest: spec.arguments.parameters.1.value
+          src:
+            dataKey: body.metadata.name
+            dependencyName: chaosresult-finished
+        - dest: spec.arguments.parameters.2.value
+          src:
+            dataKey: body.spec.experiment
+            dependencyName: chaosresult-finished
+        - dest: spec.arguments.parameters.3.value
+          src:
+            dataKey: body.status.experimentStatus.verdict
+            dependencyName: chaosresult-finished
+        - dest: spec.arguments.parameters.4.value
+          src:
+            dataKey: body.spec.engine
+            dependencyName: chaosresult-finished
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: kagent-triage-litmus-
+              labels:
+                app: kagent-triage-litmus
+                app.kubernetes.io/name: kagent-triage-litmus
+                app.kubernetes.io/part-of: litmus
+                kagent-agent: chaos-triage-agent
+              namespace: argo
+            spec:
+              arguments:
+                parameters:
+                - name: raw-payload
+                  value: '{}'
+                - name: result-name
+                  value: unknown
+                - name: experiment-name
+                  value: unknown
+                - name: verdict
+                  value: unknown
+                - name: engine-name
+                  value: unknown
+              entrypoint: litmus-triage
+              serviceAccountName: argo
+              templates:
+              - name: litmus-triage
+                steps:
+                - - continueOn:
+                      failed: true
+                    name: invoke-qwen
+                    template: invoke-qwen-agent
+                - - name: bounded-remediation
+                    template: bounded-remediation
+                - - name: log-hive-mind
+                    template: log-hive-mind
+              - name: invoke-qwen-agent
+                script:
+                  command:
+                  - python
+                  image: python:3.11-slim
+                  source: "import json\nimport sys\nimport urllib.request\nimport\
+                    \ urllib.error\n\nraw_payload = r'''{{workflow.parameters.raw-payload}}'''\n\
+                    message = f\"\"\"Analyze this LitmusChaos ChaosResult end-to-end.\n\
+                    \nRequirements:\n- Identify experiment name, verdict, probe success\
+                    \ percentage, affected pods, and engine.\n- Inspect chaos-demo/chaos-target\
+                    \ before choosing an action.\n- Decide auto_remediate, teams_hitl,\
+                    \ or observe_only.\n- If auto_remediate is safe, perform it with\
+                    \ Kubernetes tools.\n- Include a structured Hive Mind Log entry.\n\
+                    \nRaw Argo Events payload:\n{raw_payload}\n\"\"\"\n\npayload =\
+                    \ json.dumps({\n    \"jsonrpc\": \"2.0\",\n    \"id\": \"litmus-triage-{{workflow.name}}\"\
+                    ,\n    \"method\": \"message/send\",\n    \"params\": {\n    \
+                    \    \"message\": {\n            \"role\": \"user\",\n       \
+                    \     \"parts\": [{\"kind\": \"text\", \"text\": message}]\n \
+                    \       }\n    }\n}).encode()\n\nreq = urllib.request.Request(\n\
+                    \    \"http://kagent-controller.kagent:8083/api/a2a/kagent/chaos-triage-agent/\"\
+                    ,\n    data=payload,\n    headers={\"Content-Type\": \"application/json\"\
+                    },\n    method=\"POST\",\n)\n\ntry:\n    with urllib.request.urlopen(req,\
+                    \ timeout=300) as response:\n        result = json.loads(response.read().decode())\n\
+                    except urllib.error.HTTPError as exc:\n    body = exc.read().decode()\n\
+                    \    print(f\"QWEN_TRIAGE_HTTP_ERROR status={exc.code} body={body}\"\
+                    , file=sys.stderr)\n    raise\n\nartifacts = result.get(\"result\"\
+                    , {}).get(\"artifacts\", [])\ntext = \"\"\nfor artifact in artifacts:\n\
+                    \    for part in artifact.get(\"parts\", []):\n        text +=\
+                    \ part.get(\"text\", \"\")\n\nstatus = result.get(\"result\",\
+                    \ {}).get(\"status\", {}).get(\"state\", \"unknown\")\nprint(f\"\
+                    QWEN_TRIAGE_STATUS={status}\")\nprint(\"QWEN_TRIAGE_ANALYSIS_BEGIN\"\
+                    )\nprint(text or json.dumps(result)[:4000])\nprint(\"QWEN_TRIAGE_ANALYSIS_END\"\
+                    )\n"
+              - name: bounded-remediation
+                script:
+                  command:
+                  - bash
+                  image: bitnami/kubectl:latest
+                  source: "set -euo pipefail\n\nRESULT=\"{{workflow.parameters.result-name}}\"\
+                    \nEXPERIMENT=\"{{workflow.parameters.experiment-name}}\"\nVERDICT=\"\
+                    {{workflow.parameters.verdict}}\"\nENGINE=\"{{workflow.parameters.engine-name}}\"\
+                    \nTS=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"\n\necho \"LITMUS_TRIAGE_RESULT=$RESULT\
+                    \ experiment=$EXPERIMENT verdict=$VERDICT engine=$ENGINE\"\nkubectl\
+                    \ get chaosresult \"$RESULT\" -n chaos-demo -o wide || true\n\
+                    kubectl get deploy chaos-target -n chaos-demo -o wide\nkubectl\
+                    \ get pods -n chaos-demo -l app.kubernetes.io/name=chaos-target\
+                    \ -o wide\n\nkubectl annotate deployment/chaos-target -n chaos-demo\
+                    \ \\\n  chaos.symphony.dev/last-litmus-result=\"$RESULT\" \\\n\
+                    \  chaos.symphony.dev/last-litmus-experiment=\"$EXPERIMENT\" \\\
+                    \n  chaos.symphony.dev/last-litmus-verdict=\"$VERDICT\" \\\n \
+                    \ chaos.symphony.dev/last-litmus-triage=\"$TS\" \\\n  --overwrite\n\
+                    \nif [ \"$VERDICT\" = \"Fail\" ] && [ \"$EXPERIMENT\" = \"pod-delete\"\
+                    \ ]; then\n  kubectl rollout restart deployment/chaos-target -n\
+                    \ chaos-demo\n  kubectl rollout status deployment/chaos-target\
+                    \ -n chaos-demo --timeout=120s\n  echo \"AUTO_REMEDIATION_ACTION=rollout_restart\
+                    \ target=deployment/chaos-target reason=litmus_pod_delete_failed\"\
+                    \nelse\n  kubectl scale deployment/chaos-target -n chaos-demo\
+                    \ --replicas=2\n  echo \"AUTO_REMEDIATION_ACTION=audit_annotate_and_ensure_two_replicas\
+                    \ target=deployment/chaos-target\"\nfi\n"
+              - name: log-hive-mind
+                script:
+                  command:
+                  - bash
+                  image: bitnami/kubectl:latest
+                  source: "set -euo pipefail\n\nTS=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"\
+                    \nKEY=\"$(echo \"{{workflow.name}}\" | tr -c 'a-zA-Z0-9._-' '-')\"\
+                    \ncat > /tmp/litmus-hive-mind.yaml <<EOF\napiVersion: v1\nkind:\
+                    \ ConfigMap\nmetadata:\n  name: chaos-triage-hive-mind\n  namespace:\
+                    \ kagent\n  labels:\n    app: chaos-triage-hive-mind\n    app.kubernetes.io/name:\
+                    \ chaos-triage-hive-mind\n    app.kubernetes.io/part-of: litmus\n\
+                    data:\n  ${KEY}.json: |\n    {\n      \"timestamp\": \"${TS}\"\
+                    ,\n      \"workflow\": \"{{workflow.name}}\",\n      \"agent\"\
+                    : \"kagent/chaos-triage-agent\",\n      \"source\": \"litmuschaos\"\
+                    ,\n      \"namespace\": \"chaos-demo\",\n      \"result\": \"\
+                    {{workflow.parameters.result-name}}\",\n      \"experiment\":\
+                    \ \"{{workflow.parameters.experiment-name}}\",\n      \"engine\"\
+                    : \"{{workflow.parameters.engine-name}}\",\n      \"verdict\"\
+                    : \"{{workflow.parameters.verdict}}\"\n    }\nEOF\n\nkubectl apply\
+                    \ -f /tmp/litmus-hive-mind.yaml\necho \"HIVE_MIND_LOG=configmap/kagent/chaos-triage-hive-mind\
+                    \ key=${KEY}.json\"\n"
+              ttlStrategy:
+                secondsAfterCompletion: 900
+                secondsAfterFailure: 1800
+                secondsAfterSuccess: 900
+      name: invoke-chaos-triage-agent
+
