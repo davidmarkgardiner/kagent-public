@@ -10,7 +10,7 @@ metadata:
     platform.com/provider: openrouter
 spec:
   provider: OpenAI
-  model: qwen/qwen-2.5-72b-instruct
+  model: qwen/qwen3-next-80b-a3b-instruct:free
   apiKeySecret: openrouter-api-key
   apiKeySecretKey: OPENROUTER_API_KEY
   defaultHeaders:
@@ -18,5 +18,5 @@ spec:
     X-Title: MIL-144 LitmusChaos triage POC
   openAI:
     baseUrl: https://openrouter.ai/api/v1
-    maxTokens: 1800
+    maxTokens: 1200
     temperature: "0.1"

@@ -7,6 +7,7 @@ KUBECTL_CONTEXT="${KUBECTL_CONTEXT:-kind-homelab}"
 LITMUS_NAMESPACE="${LITMUS_NAMESPACE:-litmus}"
 TARGET_NAMESPACE="${TARGET_NAMESPACE:-chaos-demo}"
 ARGO_EVENTS_NAMESPACE="${ARGO_EVENTS_NAMESPACE:-argo-events}"
+WORKFLOW_NAMESPACE="${WORKFLOW_NAMESPACE:-argo}"
 KAGENT_NAMESPACE="${KAGENT_NAMESPACE:-kagent}"
 
 require() {
@@ -51,6 +52,55 @@ wait_for_result() {
   done
 }
 
+latest_workflow_name() {
+  kubectl get workflows -n "$WORKFLOW_NAMESPACE" \
+    -l app.kubernetes.io/name=kagent-triage-litmus \
+    --sort-by=.metadata.creationTimestamp \
+    -o name 2>/dev/null | tail -n 1 | sed 's#^.*/##'
+}
+
+wait_for_new_workflow_success() {
+  local previous_workflow="$1"
+  local timeout="${2:-300}"
+  local start
+  local workflow=""
+  local phase=""
+  start="$(date +%s)"
+
+  while true; do
+    workflow="$(latest_workflow_name || true)"
+    if [[ -n "$workflow" && "$workflow" != "$previous_workflow" ]]; then
+      break
+    fi
+    if (( "$(date +%s)" - start > timeout )); then
+      echo "timed out waiting for a new Litmus triage workflow" >&2
+      kubectl get workflows -n "$WORKFLOW_NAMESPACE" -l app.kubernetes.io/name=kagent-triage-litmus || true
+      return 1
+    fi
+    sleep 3
+  done
+
+  echo "==> Waiting for workflow/$workflow"
+  while true; do
+    phase="$(kubectl get workflow "$workflow" -n "$WORKFLOW_NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    if [[ "$phase" == "Succeeded" ]]; then
+      kubectl get workflow "$workflow" -n "$WORKFLOW_NAMESPACE"
+      return 0
+    fi
+    if [[ "$phase" == "Failed" || "$phase" == "Error" ]]; then
+      kubectl get workflow "$workflow" -n "$WORKFLOW_NAMESPACE" -o wide || true
+      kubectl logs -n "$WORKFLOW_NAMESPACE" -l workflows.argoproj.io/workflow="$workflow" --all-containers --tail=200 || true
+      return 1
+    fi
+    if (( "$(date +%s)" - start > timeout )); then
+      echo "timed out waiting for workflow/$workflow to finish" >&2
+      kubectl get workflow "$workflow" -n "$WORKFLOW_NAMESPACE" -o wide || true
+      return 1
+    fi
+    sleep 5
+  done
+}
+
 require kubectl
 require helm
 require curl
@@ -65,7 +115,11 @@ helm upgrade --install chaos litmuschaos/litmus \
   --create-namespace
 helm upgrade --install litmus-core litmuschaos/litmus-core \
   --namespace "$LITMUS_NAMESPACE" \
-  --set policies.monitoring.disabled=true
+  --set policies.monitoring.disabled=true \
+  --set resources.requests.cpu=200m \
+  --set resources.requests.memory=256Mi \
+  --set resources.limits.cpu=500m \
+  --set resources.limits.memory=512Mi
 if helm status litmus-kubernetes-chaos -n "$TARGET_NAMESPACE" >/dev/null 2>&1; then
   echo "litmus-kubernetes-chaos release already present"
 else
@@ -77,7 +131,12 @@ else
 fi
 
 echo "==> Waiting for ChaosCenter and Litmus operator pods"
-kubectl wait --for=condition=Ready pod --all -n "$LITMUS_NAMESPACE" --timeout=300s
+kubectl rollout status deployment/chaos-litmus-auth-server -n "$LITMUS_NAMESPACE" --timeout=300s
+kubectl rollout status deployment/chaos-litmus-frontend -n "$LITMUS_NAMESPACE" --timeout=300s
+kubectl rollout status deployment/chaos-litmus-server -n "$LITMUS_NAMESPACE" --timeout=300s
+kubectl rollout status deployment/litmus -n "$LITMUS_NAMESPACE" --timeout=300s
+kubectl rollout status statefulset/chaos-mongodb -n "$LITMUS_NAMESPACE" --timeout=300s
+kubectl rollout status statefulset/chaos-mongodb-arbiter -n "$LITMUS_NAMESPACE" --timeout=300s
 kubectl get pods -n "$LITMUS_NAMESPACE"
 
 echo "==> Applying target, RBAC, Argo Events, and kagent manifests"
@@ -87,7 +146,7 @@ kubectl apply -f "$ROOT/manifests/argo-events-litmus-rbac.yaml"
 kubectl apply -f "$ROOT/manifests/modelconfig-qwen.yaml"
 kubectl apply -f "$ROOT/manifests/agent-chaos-triage.yaml"
 kubectl apply -f "$ROOT/manifests/eventsource-litmus.yaml"
-kubectl apply -f "$ROOT/manifests/sensor-litmus-triage.yaml"
+kubectl apply --server-side --force-conflicts -f "$ROOT/manifests/sensor-litmus-triage.yaml"
 
 echo "==> Waiting for EventSource and Sensor deployments"
 kubectl wait --for=condition=Deployed eventsource/litmus-chaos-events -n "$ARGO_EVENTS_NAMESPACE" --timeout=120s
@@ -99,21 +158,25 @@ if ! pgrep -f "kubectl port-forward -n ${LITMUS_NAMESPACE} svc/chaos-litmus-fron
   echo $! >/tmp/litmus-chaoscenter-port-forward.pid
   sleep 3
 fi
-curl -fsSI http://localhost:9091 >/tmp/litmus-chaoscenter-http-headers.txt || true
+curl --retry 10 --retry-all-errors --retry-delay 2 -fsSI http://localhost:9091 >/tmp/litmus-chaoscenter-http-headers.txt
 
 echo "==> Triggering pod-delete ChaosEngine"
+previous_workflow="$(latest_workflow_name || true)"
 delete_engine litmus-pod-delete
 kubectl delete chaosresult litmus-pod-delete-pod-delete -n "$TARGET_NAMESPACE" --ignore-not-found --wait=false
 kubectl apply -f "$ROOT/experiments/pod-delete.yaml"
 wait_for_result litmus-pod-delete-pod-delete 300
 kubectl rollout status deployment/chaos-target -n "$TARGET_NAMESPACE" --timeout=120s
+wait_for_new_workflow_success "$previous_workflow" 360
 sleep 10
 
 echo "==> Triggering pod-cpu-hog ChaosEngine"
+previous_workflow="$(latest_workflow_name || true)"
 delete_engine litmus-pod-cpu-hog
 kubectl delete chaosresult litmus-pod-cpu-hog-pod-cpu-hog -n "$TARGET_NAMESPACE" --ignore-not-found --wait=false
 kubectl apply -f "$ROOT/experiments/pod-cpu-hog.yaml"
 wait_for_result litmus-pod-cpu-hog-pod-cpu-hog 300
+wait_for_new_workflow_success "$previous_workflow" 360
 
 echo "==> Current ChaosResults"
 kubectl get chaosresult -n "$TARGET_NAMESPACE" -o wide
@@ -126,7 +189,7 @@ echo "==> kagent chaos triage agent log excerpt"
 kubectl logs -n "$KAGENT_NAMESPACE" -l app.kubernetes.io/name=chaos-triage-agent --tail=120 || true
 
 echo "==> Recent Litmus triage workflows"
-kubectl get workflows -n "$ARGO_EVENTS_NAMESPACE" -l app.kubernetes.io/name=kagent-triage-litmus || true
+kubectl get workflows -n "$WORKFLOW_NAMESPACE" -l app.kubernetes.io/name=kagent-triage-litmus || true
 
 echo "==> Demo complete"
 echo "ChaosCenter: http://localhost:9091"

@@ -37,7 +37,7 @@ spec:
               kind: Workflow
               metadata:
                 generateName: kagent-triage-litmus-
-                namespace: argo-events
+                namespace: argo
                 labels:
                   app: kagent-triage-litmus
                   app.kubernetes.io/name: kagent-triage-litmus
@@ -45,7 +45,7 @@ spec:
                   kagent-agent: chaos-triage-agent
               spec:
                 entrypoint: litmus-triage
-                serviceAccountName: argo-events-sa
+                serviceAccountName: argo
                 ttlStrategy:
                   secondsAfterCompletion: 900
                   secondsAfterSuccess: 900
@@ -67,8 +67,6 @@ spec:
                     steps:
                       - - name: invoke-qwen
                           template: invoke-qwen-agent
-                          continueOn:
-                            failed: true
                       - - name: bounded-remediation
                           template: bounded-remediation
                       - - name: log-hive-mind
@@ -135,6 +133,8 @@ spec:
                         print("QWEN_TRIAGE_ANALYSIS_BEGIN")
                         print(text or json.dumps(result)[:4000])
                         print("QWEN_TRIAGE_ANALYSIS_END")
+                        if status not in {"completed", "succeeded"}:
+                            raise SystemExit(f"Qwen triage did not complete: {status}")
                   - name: bounded-remediation
                     script:
                       image: bitnami/kubectl:latest

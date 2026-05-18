@@ -24,7 +24,11 @@ helm upgrade --install chaos litmuschaos/litmus \
 
 helm upgrade --install litmus-core litmuschaos/litmus-core \
   --namespace litmus \
-  --set policies.monitoring.disabled=true
+  --set policies.monitoring.disabled=true \
+  --set resources.requests.cpu=200m \
+  --set resources.requests.memory=256Mi \
+  --set resources.limits.cpu=500m \
+  --set resources.limits.memory=512Mi
 
 helm upgrade --install litmus-kubernetes-chaos litmuschaos/kubernetes-chaos \
   --namespace chaos-demo \
@@ -45,13 +49,15 @@ kubectl create secret generic openrouter-api-key \
   --from-literal=OPENROUTER_API_KEY="$OPENROUTER_API_KEY"
 ```
 
+The default model is `qwen/qwen3-next-80b-a3b-instruct:free` so the demo does not require paid OpenRouter credits. If that shared free route is rate-limited, set `spec.model` in `manifests/modelconfig-qwen.yaml` to a funded Qwen model before rerunning.
+
 ## Run
 
 ```bash
 ./chaos/litmus/run-demo.sh
 ```
 
-The script applies the target and manifests, runs `pod-delete` and `pod-cpu-hog`, tails Argo Events and kagent logs, prints `ChaosResult` state, and starts a ChaosCenter UI port-forward at `http://localhost:9091`.
+The script applies the target and manifests, runs `pod-delete` and `pod-cpu-hog`, waits for each triage workflow to succeed, tails Argo Events and kagent logs, prints `ChaosResult` state, and starts a ChaosCenter UI port-forward at `http://localhost:9091`. Triage workflows are created in the `argo` namespace.
 
 ## Expected Evidence
 
@@ -60,6 +66,7 @@ kubectl get pods -n litmus
 kubectl get chaosresult -n chaos-demo -o wide
 kubectl logs -n argo-events -l eventsource-name=litmus-chaos-events --tail=80
 kubectl logs -n argo-events -l sensor-name=kagent-triage-litmus --tail=120
+kubectl get workflows -n argo -l app.kubernetes.io/name=kagent-triage-litmus
 kubectl logs -n kagent -l app.kubernetes.io/name=chaos-triage-agent --tail=120
 ```
 
