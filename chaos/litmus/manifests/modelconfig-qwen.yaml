@@ -1,22 +1,19 @@
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
 metadata:
-  name: qwen-openrouter
+  name: litellm-qwen-14b
   namespace: kagent
   labels:
-    app: qwen-openrouter
-    app.kubernetes.io/name: qwen-openrouter
+    app: litellm-qwen-14b
+    app.kubernetes.io/name: litellm-qwen-14b
     app.kubernetes.io/part-of: kagent
-    platform.com/provider: openrouter
+    platform.com/provider: kubeai
 spec:
   provider: OpenAI
-  model: qwen/qwen3-next-80b-a3b-instruct:free
-  apiKeySecret: openrouter-api-key
-  apiKeySecretKey: OPENROUTER_API_KEY
-  defaultHeaders:
-    HTTP-Referer: https://linear.app/milano2/issue/MIL-144
-    X-Title: MIL-144 LitmusChaos triage POC
+  model: qwen3-14b
+  apiKeySecret: litellm-key
+  apiKeySecretKey: api-key
   openAI:
-    baseUrl: https://openrouter.ai/api/v1
+    baseUrl: http://kubeai.kubeai.svc.cluster.local/openai/v1
     maxTokens: 1200
     temperature: "0.1"

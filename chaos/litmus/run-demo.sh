@@ -3,12 +3,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-KUBECTL_CONTEXT="${KUBECTL_CONTEXT:-kind-homelab}"
+KUBECTL_CONTEXT="${KUBECTL_CONTEXT:-proxmox-k8s}"
 LITMUS_NAMESPACE="${LITMUS_NAMESPACE:-litmus}"
 TARGET_NAMESPACE="${TARGET_NAMESPACE:-chaos-demo}"
 ARGO_EVENTS_NAMESPACE="${ARGO_EVENTS_NAMESPACE:-argo-events}"
 WORKFLOW_NAMESPACE="${WORKFLOW_NAMESPACE:-argo}"
 KAGENT_NAMESPACE="${KAGENT_NAMESPACE:-kagent}"
+RESET_LITMUS_MONGODB="${RESET_LITMUS_MONGODB:-auto}"
+DEMO_AVOID_NODE="${DEMO_AVOID_NODE:-}"
+avoid_node_was_unschedulable=""
 
 require() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -101,25 +104,74 @@ wait_for_new_workflow_success() {
   done
 }
 
+cleanup() {
+  if [[ -n "$DEMO_AVOID_NODE" && "$avoid_node_was_unschedulable" == "false" ]]; then
+    kubectl uncordon "$DEMO_AVOID_NODE" >/dev/null 2>&1 || true
+  fi
+}
+
 require kubectl
 require helm
 require curl
 
 kubectl config use-context "$KUBECTL_CONTEXT" >/dev/null
+trap cleanup EXIT
 
 echo "==> Installing or verifying LitmusChaos"
 helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/ >/dev/null 2>&1 || true
 helm repo update litmuschaos >/dev/null
+kubectl create namespace "$LITMUS_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+reset_mongodb="$RESET_LITMUS_MONGODB"
+if [[ "$reset_mongodb" == "auto" ]]; then
+  reset_mongodb="false"
+  current_replicas="$(kubectl get statefulset chaos-mongodb -n "$LITMUS_NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || true)"
+  if [[ "$current_replicas" != "" && "$current_replicas" != "1" ]] ||
+    kubectl get statefulset chaos-mongodb-arbiter -n "$LITMUS_NAMESPACE" >/dev/null 2>&1 ||
+    kubectl get deployment chaos-mongodb -n "$LITMUS_NAMESPACE" >/dev/null 2>&1; then
+    reset_mongodb="true"
+  fi
+fi
+if [[ "$reset_mongodb" == "true" ]]; then
+  kubectl delete deployment/chaos-mongodb statefulset/chaos-mongodb statefulset/chaos-mongodb-arbiter \
+    -n "$LITMUS_NAMESPACE" --ignore-not-found --wait=false >/dev/null
+  kubectl delete pod -n "$LITMUS_NAMESPACE" \
+    -l app.kubernetes.io/name=mongodb,app.kubernetes.io/instance=chaos \
+    --ignore-not-found --wait=true --timeout=120s >/dev/null || true
+  kubectl delete pvc -n "$LITMUS_NAMESPACE" \
+    -l app.kubernetes.io/name=mongodb,app.kubernetes.io/instance=chaos \
+    --ignore-not-found --wait=false >/dev/null
+fi
+if kubectl get secret chaos-mongodb -n "$LITMUS_NAMESPACE" >/dev/null 2>&1 &&
+  [[ "$(kubectl get secret chaos-mongodb -n "$LITMUS_NAMESPACE" -o jsonpath='{.data.mongodb-replica-set-key}' 2>/dev/null || true)" != "bGl0bXVzcmVwbGljYXNldGtleQ==" ]]; then
+  kubectl patch secret chaos-mongodb -n "$LITMUS_NAMESPACE" \
+    --type=merge \
+    -p '{"data":{"mongodb-replica-set-key":"bGl0bXVzcmVwbGljYXNldGtleQ=="}}' >/dev/null
+  kubectl delete pod -n "$LITMUS_NAMESPACE" \
+    -l app.kubernetes.io/name=mongodb,app.kubernetes.io/instance=chaos \
+    --ignore-not-found --wait=false >/dev/null
+fi
 helm upgrade --install chaos litmuschaos/litmus \
   --namespace "$LITMUS_NAMESPACE" \
-  --create-namespace
+  --create-namespace \
+  --set 'portal.frontend.tolerations[0].key=node-role.kubernetes.io/control-plane' \
+  --set 'portal.frontend.tolerations[0].operator=Exists' \
+  --set 'portal.frontend.tolerations[0].effect=NoSchedule' \
+  --set 'portal.server.tolerations[0].key=node-role.kubernetes.io/control-plane' \
+  --set 'portal.server.tolerations[0].operator=Exists' \
+  --set 'portal.server.tolerations[0].effect=NoSchedule' \
+  --set mongodb.architecture=replicaset \
+  --set mongodb.replicaCount=1 \
+  --set mongodb.arbiter.enabled=false
 helm upgrade --install litmus-core litmuschaos/litmus-core \
   --namespace "$LITMUS_NAMESPACE" \
   --set policies.monitoring.disabled=true \
   --set resources.requests.cpu=200m \
   --set resources.requests.memory=256Mi \
   --set resources.limits.cpu=500m \
-  --set resources.limits.memory=512Mi
+  --set resources.limits.memory=512Mi \
+  --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
+  --set 'tolerations[0].operator=Exists' \
+  --set 'tolerations[0].effect=NoSchedule'
 if helm status litmus-kubernetes-chaos -n "$TARGET_NAMESPACE" >/dev/null 2>&1; then
   echo "litmus-kubernetes-chaos release already present"
 else
@@ -135,8 +187,14 @@ kubectl rollout status deployment/chaos-litmus-auth-server -n "$LITMUS_NAMESPACE
 kubectl rollout status deployment/chaos-litmus-frontend -n "$LITMUS_NAMESPACE" --timeout=300s
 kubectl rollout status deployment/chaos-litmus-server -n "$LITMUS_NAMESPACE" --timeout=300s
 kubectl rollout status deployment/litmus -n "$LITMUS_NAMESPACE" --timeout=300s
-kubectl rollout status statefulset/chaos-mongodb -n "$LITMUS_NAMESPACE" --timeout=300s
-kubectl rollout status statefulset/chaos-mongodb-arbiter -n "$LITMUS_NAMESPACE" --timeout=300s
+if kubectl get deployment/chaos-mongodb -n "$LITMUS_NAMESPACE" >/dev/null 2>&1; then
+  kubectl rollout status deployment/chaos-mongodb -n "$LITMUS_NAMESPACE" --timeout=300s
+else
+  kubectl rollout status statefulset/chaos-mongodb -n "$LITMUS_NAMESPACE" --timeout=300s
+fi
+if kubectl get statefulset/chaos-mongodb-arbiter -n "$LITMUS_NAMESPACE" >/dev/null 2>&1; then
+  kubectl rollout status statefulset/chaos-mongodb-arbiter -n "$LITMUS_NAMESPACE" --timeout=300s
+fi
 kubectl get pods -n "$LITMUS_NAMESPACE"
 
 echo "==> Applying target, RBAC, Argo Events, and kagent manifests"
@@ -148,13 +206,24 @@ kubectl apply -f "$ROOT/manifests/agent-chaos-triage.yaml"
 kubectl apply -f "$ROOT/manifests/eventsource-litmus.yaml"
 kubectl apply --server-side --force-conflicts -f "$ROOT/manifests/sensor-litmus-triage.yaml"
 
+echo "==> Waiting for kagent chaos triage agent"
+kubectl rollout status deployment/chaos-triage-agent -n "$KAGENT_NAMESPACE" --timeout=300s
+
 echo "==> Waiting for EventSource and Sensor deployments"
 kubectl wait --for=condition=Deployed eventsource/litmus-chaos-events -n "$ARGO_EVENTS_NAMESPACE" --timeout=120s
 kubectl wait --for=condition=Deployed sensor/kagent-triage-litmus -n "$ARGO_EVENTS_NAMESPACE" --timeout=120s
 
+if [[ -n "$DEMO_AVOID_NODE" ]] && kubectl get node "$DEMO_AVOID_NODE" >/dev/null 2>&1; then
+  avoid_node_was_unschedulable="$(kubectl get node "$DEMO_AVOID_NODE" -o jsonpath='{.spec.unschedulable}' 2>/dev/null || true)"
+  if [[ "$avoid_node_was_unschedulable" != "true" ]]; then
+    avoid_node_was_unschedulable="false"
+    kubectl cordon "$DEMO_AVOID_NODE" >/dev/null
+  fi
+fi
+
 echo "==> Starting ChaosCenter port-forward for UI evidence on http://localhost:9091"
-if ! pgrep -f "kubectl port-forward -n ${LITMUS_NAMESPACE} svc/chaos-litmus-frontend-service 9091:9091" >/dev/null 2>&1; then
-  kubectl port-forward -n "$LITMUS_NAMESPACE" svc/chaos-litmus-frontend-service 9091:9091 >/tmp/litmus-chaoscenter-port-forward.log 2>&1 &
+if ! pgrep -f "kubectl --context ${KUBECTL_CONTEXT} port-forward -n ${LITMUS_NAMESPACE} svc/chaos-litmus-frontend-service 9091:9091" >/dev/null 2>&1; then
+  kubectl --context "$KUBECTL_CONTEXT" port-forward -n "$LITMUS_NAMESPACE" svc/chaos-litmus-frontend-service 9091:9091 >/tmp/litmus-chaoscenter-port-forward.log 2>&1 &
   echo $! >/tmp/litmus-chaoscenter-port-forward.pid
   sleep 3
 fi
