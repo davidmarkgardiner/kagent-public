@@ -6,6 +6,8 @@ metadata:
     app: chaos-demo
     app.kubernetes.io/name: chaos-demo
     app.kubernetes.io/part-of: chaos-poc
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -28,6 +30,11 @@ spec:
         app.kubernetes.io/name: chaos-target
         app.kubernetes.io/part-of: chaos-demo
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: http-echo
           image: hashicorp/http-echo:1.0.0
@@ -38,6 +45,14 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
           readinessProbe:
             httpGet:
               path: /

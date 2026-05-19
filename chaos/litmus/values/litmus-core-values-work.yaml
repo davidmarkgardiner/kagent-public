@@ -1,0 +1,40 @@
+# Litmus core values for a ring-fenced cluster.
+operatorName: chaos-operator
+replicaCount: 1
+operatorMode: namespaced
+
+operator:
+  image:
+    repository: registry.example.invalid/mirror/litmuschaos/chaos-operator
+    tag: 3.28.0
+    pullPolicy: IfNotPresent
+runner:
+  image:
+    repository: registry.example.invalid/mirror/litmuschaos/chaos-runner
+    tag: 3.28.0
+
+policies:
+  monitoring:
+    disabled: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+exporter:
+  enabled: false
+  image:
+    repository: registry.example.invalid/mirror/litmuschaos/chaos-exporter
+    tag: 3.28.0
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

@@ -1,0 +1,146 @@
+# Litmus ChaosCenter values for a ring-fenced cluster.
+# Replace registry.example.invalid/mirror with the approved private image mirror.
+# Keep secrets out of this file. Use External Secrets or create the existingSecret separately.
+
+image:
+  imageRegistryName: registry.example.invalid/mirror
+  imagePullSecrets: []
+
+allowedOrigins: "https://litmus.example.invalid"
+existingSecret: "litmus-admin-placeholder"
+adminConfig:
+  ADMIN_USERNAME: "admin"
+  ADMIN_PASSWORD: ""
+
+ingress:
+  enabled: false
+
+portal:
+  frontend:
+    replicas: 1
+    automountServiceAccountToken: false
+    securityContext:
+      runAsUser: 2000
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+      seccompProfile:
+        type: RuntimeDefault
+    resources:
+      requests:
+        cpu: 125m
+        memory: 150Mi
+        ephemeral-storage: 500Mi
+      limits:
+        cpu: 550m
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+    service:
+      type: ClusterIP
+    image:
+      repository: litmuschaos/litmusportal-frontend
+      tag: 3.28.0
+      pullPolicy: IfNotPresent
+  server:
+    waitForMongodb:
+      image:
+        repository: mongo
+        tag: "6"
+        pullPolicy: IfNotPresent
+      securityContext:
+        runAsUser: 1001
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 25m
+          memory: 150Mi
+          ephemeral-storage: 500Mi
+        limits:
+          cpu: 250m
+          memory: 512Mi
+          ephemeral-storage: 1Gi
+    graphqlServer:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 2000
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+        seccompProfile:
+          type: RuntimeDefault
+      image:
+        repository: litmuschaos/litmusportal-server
+        tag: 3.28.0
+        pullPolicy: IfNotPresent
+      imageEnv:
+        SUBSCRIBER_IMAGE: "litmuschaos/litmusportal-subscriber:3.28.0"
+        EVENT_TRACKER_IMAGE: "litmuschaos/litmusportal-event-tracker:3.28.0"
+        ARGO_WORKFLOW_CONTROLLER_IMAGE: "argoproj/workflow-controller:v3.3.1"
+        ARGO_WORKFLOW_EXECUTOR_IMAGE: "argoproj/argoexec:v3.3.1"
+        LITMUS_CHAOS_OPERATOR_IMAGE: "litmuschaos/chaos-operator:3.28.0"
+        LITMUS_CHAOS_RUNNER_IMAGE: "litmuschaos/chaos-runner:3.28.0"
+        LITMUS_CHAOS_EXPORTER_IMAGE: "litmuschaos/chaos-exporter:3.28.0"
+      resources:
+        requests:
+          cpu: 225m
+          memory: 250Mi
+          ephemeral-storage: 500Mi
+        limits:
+          cpu: 550m
+          memory: 712Mi
+          ephemeral-storage: 1Gi
+    authServer:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 2000
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+        seccompProfile:
+          type: RuntimeDefault
+      image:
+        repository: litmuschaos/litmusportal-auth-server
+        tag: 3.28.0
+        pullPolicy: IfNotPresent
+      resources:
+        requests:
+          cpu: 225m
+          memory: 250Mi
+          ephemeral-storage: 500Mi
+        limits:
+          cpu: 550m
+          memory: 712Mi
+          ephemeral-storage: 1Gi
+
+mongodb:
+  enabled: true
+  image:
+    registry: registry.example.invalid
+    repository: mirror/bitnamilegacy/mongodb
+    tag: 8.0.13-debian-12-r0
+  architecture: replicaset
+  replicaCount: 1
+  arbiter:
+    enabled: false
+  auth:
+    enabled: true
+    existingSecret: "litmus-mongodb-placeholder"
+  persistence:
+    enabled: true
+    size: 8Gi
+  volumePermissions:
+    enabled: false
+  metrics:
+    enabled: false
