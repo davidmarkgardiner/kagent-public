@@ -12,9 +12,9 @@ This POC wires LitmusChaos `ChaosResult` updates into a homelab Kubernetes Argo 
 - `manifests/sensor-litmus-triage.yaml`: Sensor that invokes `kagent/chaos-triage-agent` and writes an audit/remediation trail.
 - `manifests/modelconfig-qwen.yaml` and `manifests/agent-chaos-triage.yaml`: local Qwen/KubeAI model config and chaos triage agent definition.
 
-## Work cluster deployment
+## Ring-fenced cluster deployment
 
-For a ring-fenced work cluster, use [`WORK-INSTALL.md`](./WORK-INSTALL.md). It includes the exact Helm chart versions, internal-registry image list, values files to edit, resource limits, security contexts, RBAC review notes, and the sanitized evidence from the homelab run.
+For a ring-fenced cluster, use [`WORK-INSTALL.md`](./WORK-INSTALL.md). It includes the exact Helm chart versions, private-registry image list, values files to edit, resource limits, security contexts, RBAC review notes, and the sanitized evidence from the homelab run.
 
 ## Homelab install
 

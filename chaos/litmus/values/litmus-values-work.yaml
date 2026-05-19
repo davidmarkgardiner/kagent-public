@@ -1,13 +1,13 @@
-# Litmus ChaosCenter values for a ring-fenced work cluster.
-# Replace registry.example.com/mirror with the approved internal image mirror.
+# Litmus ChaosCenter values for a ring-fenced cluster.
+# Replace registry.example.invalid/mirror with the approved private image mirror.
 # Keep secrets out of this file. Use External Secrets or create the existingSecret separately.
 
 image:
-  imageRegistryName: registry.example.com/mirror/litmuschaos
+  imageRegistryName: registry.example.invalid/mirror
   imagePullSecrets: []
 
-allowedOrigins: "https://litmus.example.internal"
-existingSecret: "litmus-admin-existing-secret"
+allowedOrigins: "https://litmus.example.invalid"
+existingSecret: "litmus-admin-placeholder"
 adminConfig:
   ADMIN_USERNAME: "admin"
   ADMIN_PASSWORD: ""
@@ -40,7 +40,7 @@ portal:
     service:
       type: ClusterIP
     image:
-      repository: litmusportal-frontend
+      repository: litmuschaos/litmusportal-frontend
       tag: 3.28.0
       pullPolicy: IfNotPresent
   server:
@@ -79,17 +79,17 @@ portal:
         seccompProfile:
           type: RuntimeDefault
       image:
-        repository: litmusportal-server
+        repository: litmuschaos/litmusportal-server
         tag: 3.28.0
         pullPolicy: IfNotPresent
       imageEnv:
-        SUBSCRIBER_IMAGE: "registry.example.com/mirror/litmuschaos/litmusportal-subscriber:3.28.0"
-        EVENT_TRACKER_IMAGE: "registry.example.com/mirror/litmuschaos/litmusportal-event-tracker:3.28.0"
-        ARGO_WORKFLOW_CONTROLLER_IMAGE: "registry.example.com/mirror/argoproj/workflow-controller:v3.3.1"
-        ARGO_WORKFLOW_EXECUTOR_IMAGE: "registry.example.com/mirror/argoproj/argoexec:v3.3.1"
-        LITMUS_CHAOS_OPERATOR_IMAGE: "registry.example.com/mirror/litmuschaos/chaos-operator:3.28.0"
-        LITMUS_CHAOS_RUNNER_IMAGE: "registry.example.com/mirror/litmuschaos/chaos-runner:3.28.0"
-        LITMUS_CHAOS_EXPORTER_IMAGE: "registry.example.com/mirror/litmuschaos/chaos-exporter:3.28.0"
+        SUBSCRIBER_IMAGE: "litmuschaos/litmusportal-subscriber:3.28.0"
+        EVENT_TRACKER_IMAGE: "litmuschaos/litmusportal-event-tracker:3.28.0"
+        ARGO_WORKFLOW_CONTROLLER_IMAGE: "argoproj/workflow-controller:v3.3.1"
+        ARGO_WORKFLOW_EXECUTOR_IMAGE: "argoproj/argoexec:v3.3.1"
+        LITMUS_CHAOS_OPERATOR_IMAGE: "litmuschaos/chaos-operator:3.28.0"
+        LITMUS_CHAOS_RUNNER_IMAGE: "litmuschaos/chaos-runner:3.28.0"
+        LITMUS_CHAOS_EXPORTER_IMAGE: "litmuschaos/chaos-exporter:3.28.0"
       resources:
         requests:
           cpu: 225m
@@ -111,7 +111,7 @@ portal:
         seccompProfile:
           type: RuntimeDefault
       image:
-        repository: litmusportal-auth-server
+        repository: litmuschaos/litmusportal-auth-server
         tag: 3.28.0
         pullPolicy: IfNotPresent
       resources:
@@ -127,7 +127,7 @@ portal:
 mongodb:
   enabled: true
   image:
-    registry: registry.example.com
+    registry: registry.example.invalid
     repository: mirror/bitnamilegacy/mongodb
     tag: 8.0.13-debian-12-r0
   architecture: replicaset
@@ -136,7 +136,7 @@ mongodb:
     enabled: false
   auth:
     enabled: true
-    existingSecret: litmus-mongodb-existing-secret
+    existingSecret: "litmus-mongodb-placeholder"
   persistence:
     enabled: true
     size: 8Gi

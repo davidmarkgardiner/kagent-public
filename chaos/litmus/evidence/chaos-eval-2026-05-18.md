@@ -31,8 +31,8 @@
 ## Next Steps
 - [ ] Wire Phoenix LLM-as-judge (Qwen) for reasoning_quality scoring on real agent traces
 - [ ] Add network partition scenario (tc netem or Litmus)
-- [ ] Set alert: health_score < 0.7 → file Linear issue automatically
-- [ ] Schedule chaos suite weekly via Homer cron
+- [ ] Set alert: health_score < 0.7 and route it to the approved incident queue
+- [ ] Schedule the chaos suite through the approved cluster scheduler
 
 ## Public Repo Note
 

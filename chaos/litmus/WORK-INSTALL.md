@@ -1,11 +1,11 @@
-# Work Cluster Install Guide: LitmusChaos to Argo Events to kagent
+# Ring-Fenced Cluster Install Guide: LitmusChaos to Argo Events to kagent
 
-This guide is the sanitized install handoff for deploying the same chaos engineering path in a ring-fenced work cluster.
+This guide is the sanitized install handoff for deploying the same chaos engineering path in a ring-fenced cluster.
 
 It covers:
 
 - LitmusChaos Helm charts and versions used in the homelab validation.
-- Images to mirror or swap to an internal registry.
+- Images to mirror or swap to an approved private registry.
 - Security contexts and resource limits that must stay in place.
 - The kagent, Argo Events, and workflow resources needed to replicate the demo.
 - Evidence captured from the homelab run.
@@ -22,12 +22,12 @@ It covers:
 ## Prerequisites
 
 - Kubernetes cluster with Argo Events, Argo Workflows, kagent, and the kagent CRDs already installed.
-- A kagent-compatible OpenAI endpoint or internal model endpoint. The homelab used local Qwen through KubeAI. At work, replace `manifests/modelconfig-qwen.yaml` with the approved internal model endpoint and secret reference.
-- Internal image mirror access for all images listed below.
+- A kagent-compatible OpenAI endpoint or private model endpoint. The homelab used local Qwen through KubeAI. For another environment, replace `manifests/modelconfig-qwen.yaml` with the approved model endpoint and secret reference.
+- Private image mirror access for all images listed below.
 - A namespace selected for chaos experiments. The examples use `chaos-demo` only.
 - Approval from the cluster owner before enabling network or node-level chaos.
 
-## Files added for work deployment
+## Files added for ring-fenced deployment
 
 ```text
 chaos/litmus/
@@ -42,7 +42,7 @@ chaos/litmus/
 
 ## Images to mirror or swap
 
-Replace `registry.example.com/mirror` in the values files with the approved internal registry path.
+Replace `registry.example.invalid/mirror` in the values files with the approved private registry path (`{{INTERNAL_REGISTRY}}`).
 
 ### Litmus ChaosCenter
 
@@ -82,7 +82,7 @@ bitnami/kubectl:1.30.7
 
 ## Install commands
 
-Do not run the homelab `run-demo.sh` directly in a work cluster until the image registry, model endpoint, namespaces, RBAC, and experiment scope are reviewed.
+Do not run the homelab `run-demo.sh` directly in another cluster until the image registry, model endpoint, namespaces, RBAC, and experiment scope are reviewed.
 
 ```bash
 helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
@@ -109,7 +109,7 @@ helm upgrade --install litmus-kubernetes-chaos litmuschaos/kubernetes-chaos \
 
 ## Apply the kagent and Argo Events integration
 
-Review `manifests/modelconfig-qwen.yaml` first. Replace the endpoint and secret with the work-approved internal model endpoint.
+Review `manifests/modelconfig-qwen.yaml` first. Replace the endpoint and secret reference with approved environment-specific values.
 
 ```bash
 kubectl apply -f chaos/litmus/manifests/chaos-target.yaml
@@ -123,7 +123,7 @@ kubectl apply --server-side --force-conflicts -f chaos/litmus/manifests/sensor-l
 
 ## Security and resource controls
 
-The work values and manifests now include the controls that were missing from the original public repo snapshot:
+The ring-fenced values and manifests now include the controls that were missing from the original public repo snapshot:
 
 - Chart resource requests and limits for Litmus frontend, API, auth server, MongoDB wait init container, operator, and exporter.
 - Restricted container security contexts where the upstream chart exposes them:
@@ -138,13 +138,13 @@ The work values and manifests now include the controls that were missing from th
 - Restricted demo target pod security context and no service account token mount.
 - Node-level Litmus experiments disabled in `kubernetes-chaos-values-work.yaml` by default.
 
-Important caveat: some Litmus chaos jobs require elevated permissions or runtime access depending on the experiment. Keep them isolated to a dedicated namespace and do not enable node-level experiments on a staff/shared cluster without a formal change window.
+Important caveat: some Litmus chaos jobs require elevated permissions or runtime access depending on the experiment. Keep them isolated to a dedicated namespace and do not enable node-level experiments on a shared cluster without a formal change window.
 
 ## RBAC scope
 
 The example keeps `chaos-demo` as the only target namespace. The kagent chaos triage agent is instructed not to modify resources outside `chaos-demo`.
 
-Before work deployment, review:
+Before deployment, review:
 
 - `manifests/litmus-rbac.yaml`: Litmus runner permissions for the experiment namespace.
 - `manifests/argo-events-litmus-rbac.yaml`: Argo Events watch and bounded remediation permissions.

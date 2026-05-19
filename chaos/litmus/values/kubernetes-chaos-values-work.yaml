@@ -1,22 +1,22 @@
-# ChaosHub Kubernetes experiment image values for a ring-fenced work cluster.
+# ChaosHub Kubernetes experiment image values for a ring-fenced cluster.
 image:
   litmus:
-    repository: registry.example.com/mirror/litmuschaos/ansible-runner
+    repository: registry.example.invalid/mirror/litmuschaos/ansible-runner
     tag: 3.28.0
     pullPolicy: IfNotPresent
   litmusGO:
-    repository: registry.example.com/mirror/litmuschaos/go-runner
+    repository: registry.example.invalid/mirror/litmuschaos/go-runner
     tag: 3.28.0
     pullPolicy: IfNotPresent
   litmusLIBImage:
-    repository: registry.example.com/mirror/litmuschaos/go-runner
+    repository: registry.example.invalid/mirror/litmuschaos/go-runner
     tag: 3.28.0
 
 environment:
   runtime: containerd
   socketPath: /run/containerd/containerd.sock
 
-# Disable node-level experiments by default for a staff/shared cluster.
+# Disable node-level experiments by default for a shared cluster.
 experiments:
   disabled:
     - node-cpu-hog

@@ -9,6 +9,7 @@ import subprocess
 import time
 import json
 import datetime
+import os
 import sys
 
 LANGFUSE_HOST = "http://langfuse-web.kagent.svc.cluster.local:3000"
@@ -22,9 +23,9 @@ def run(cmd, timeout=60):
 def log(msg):
     print(f"[{datetime.datetime.utcnow().isoformat()}] {msg}", flush=True)
 
-# ── Scenario 1: Pod restart resilience ──────────────────────────────────────
+# Scenario 1: Pod restart resilience
 def scenario_pod_restart():
-    log("SCENARIO 1: pod restart resilience — killing k8s-agent")
+    log("SCENARIO 1: pod restart resilience - killing k8s-agent")
     t0 = time.time()
     run(f"kubectl delete pod -n {NAMESPACE} -l app=k8s-agent --force --grace-period=0 2>/dev/null || true")
     # Poll until pod is Running again
@@ -42,9 +43,9 @@ def scenario_pod_restart():
         "notes": f"k8s-agent restarted and recovered in {recovery_s:.0f}s"
     }
 
-# ── Scenario 2: Scale-to-zero resilience ────────────────────────────────────
+# Scenario 2: Scale-to-zero resilience
 def scenario_scale_zero():
-    log("SCENARIO 2: scale-to-zero — chaos-triage-agent → 0 replicas → restore")
+    log("SCENARIO 2: scale-to-zero - chaos-triage-agent to 0 replicas, then restore")
     run(f"kubectl scale deployment chaos-triage-agent -n {NAMESPACE} --replicas=0")
     time.sleep(10)
     run(f"kubectl scale deployment chaos-triage-agent -n {NAMESPACE} --replicas=1")
@@ -63,9 +64,9 @@ def scenario_scale_zero():
         "notes": f"chaos-triage-agent scaled to 0 then restored in {recovery_s:.0f}s"
     }
 
-# ── Scenario 3: ClickHouse temporary outage ──────────────────────────────────
+# Scenario 3: ClickHouse temporary outage
 def scenario_clickhouse_outage():
-    log("SCENARIO 3: ClickHouse outage — scale to 0 for 20s, restore")
+    log("SCENARIO 3: ClickHouse outage - scale to 0 for 20s, restore")
     run(f"kubectl scale deployment clickhouse -n {NAMESPACE} --replicas=0")
     time.sleep(20)
     run(f"kubectl scale deployment clickhouse -n {NAMESPACE} --replicas=1")
@@ -87,7 +88,7 @@ def scenario_clickhouse_outage():
         "notes": f"ClickHouse 20s outage, recovered in {recovery_s:.0f}s, Langfuse ok={langfuse_ok}"
     }
 
-# ── Health score ─────────────────────────────────────────────────────────────
+# Health score
 def compute_health_score(results):
     stabilities = [r["workflow_stability"] for r in results]
     avg_stability = sum(stabilities) / len(stabilities)
@@ -101,7 +102,7 @@ def compute_health_score(results):
     3)
     return score, avg_stability
 
-# ── Report ───────────────────────────────────────────────────────────────────
+# Report
 def generate_report(results, health_score, avg_stability):
     lines = [
         "# Kagent Chaos Eval Report",
@@ -132,8 +133,8 @@ def generate_report(results, health_score, avg_stability):
         "## Next Steps",
         "- [ ] Wire Phoenix LLM-as-judge (Qwen) for reasoning_quality scoring on real agent traces",
         "- [ ] Add network partition scenario (tc netem or Litmus)",
-        "- [ ] Set alert: health_score < 0.7 → file Linear issue automatically",
-        "- [ ] Schedule chaos suite weekly via Homer cron",
+        "- [ ] Set alert: health_score < 0.7 and route it to the approved incident queue",
+        "- [ ] Schedule the chaos suite through the approved cluster scheduler",
     ]
     return "\n".join(lines)
 
@@ -150,8 +151,13 @@ if __name__ == "__main__":
     log(f"Health score: {health_score}")
     print("\n" + report)
 
-    # Save report
-    report_path = f"/home/david/logs/chaos-eval-{datetime.datetime.utcnow().strftime('%Y-%m-%d')}.md"
+    # Save report to the current directory unless explicitly overridden.
+    report_dir = os.getenv("CHAOS_EVAL_REPORT_DIR", ".")
+    os.makedirs(report_dir, exist_ok=True)
+    report_path = os.path.join(
+        report_dir,
+        f"chaos-eval-{datetime.datetime.utcnow().strftime('%Y-%m-%d')}.md",
+    )
     with open(report_path, "w") as f:
         f.write(report)
     log(f"Report saved to {report_path}")
