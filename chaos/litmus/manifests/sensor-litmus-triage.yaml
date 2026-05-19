@@ -74,7 +74,25 @@ spec:
                   - name: invoke-qwen-agent
                     script:
                       image: python:3.11-slim
+                      imagePullPolicy: IfNotPresent
                       command: [python]
+                      resources:
+                        requests:
+                          cpu: 50m
+                          memory: 96Mi
+                        limits:
+                          cpu: 250m
+                          memory: 256Mi
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop:
+                            - ALL
+                        readOnlyRootFilesystem: false
+                        runAsNonRoot: true
+                        runAsUser: 1000
+                        seccompProfile:
+                          type: RuntimeDefault
                       source: |
                         import json
                         import sys
@@ -137,8 +155,26 @@ spec:
                             raise SystemExit(f"Qwen triage did not complete: {status}")
                   - name: bounded-remediation
                     script:
-                      image: bitnami/kubectl:latest
+                      image: bitnami/kubectl:1.30.7
+                      imagePullPolicy: IfNotPresent
                       command: [bash]
+                      resources:
+                        requests:
+                          cpu: 50m
+                          memory: 64Mi
+                        limits:
+                          cpu: 200m
+                          memory: 192Mi
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop:
+                            - ALL
+                        readOnlyRootFilesystem: false
+                        runAsNonRoot: true
+                        runAsUser: 1001
+                        seccompProfile:
+                          type: RuntimeDefault
                       source: |
                         set -euo pipefail
 
@@ -170,8 +206,26 @@ spec:
                         fi
                   - name: log-hive-mind
                     script:
-                      image: bitnami/kubectl:latest
+                      image: bitnami/kubectl:1.30.7
+                      imagePullPolicy: IfNotPresent
                       command: [bash]
+                      resources:
+                        requests:
+                          cpu: 50m
+                          memory: 64Mi
+                        limits:
+                          cpu: 200m
+                          memory: 192Mi
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop:
+                            - ALL
+                        readOnlyRootFilesystem: false
+                        runAsNonRoot: true
+                        runAsUser: 1001
+                        seccompProfile:
+                          type: RuntimeDefault
                       source: |
                         set -euo pipefail
 

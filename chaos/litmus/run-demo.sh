@@ -153,6 +153,7 @@ fi
 helm upgrade --install chaos litmuschaos/litmus \
   --namespace "$LITMUS_NAMESPACE" \
   --create-namespace \
+  --version 3.28.0 \
   --set 'portal.frontend.tolerations[0].key=node-role.kubernetes.io/control-plane' \
   --set 'portal.frontend.tolerations[0].operator=Exists' \
   --set 'portal.frontend.tolerations[0].effect=NoSchedule' \
@@ -164,6 +165,7 @@ helm upgrade --install chaos litmuschaos/litmus \
   --set mongodb.arbiter.enabled=false
 helm upgrade --install litmus-core litmuschaos/litmus-core \
   --namespace "$LITMUS_NAMESPACE" \
+  --version 3.28.1 \
   --set policies.monitoring.disabled=true \
   --set resources.requests.cpu=200m \
   --set resources.requests.memory=256Mi \
@@ -178,6 +180,7 @@ else
   helm install litmus-kubernetes-chaos litmuschaos/kubernetes-chaos \
     --namespace "$TARGET_NAMESPACE" \
     --create-namespace \
+    --version 3.28.1 \
     --set environment.runtime=containerd \
     --set environment.socketPath=/run/containerd/containerd.sock
 fi

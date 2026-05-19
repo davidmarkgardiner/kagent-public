@@ -1,6 +1,6 @@
 # LitmusChaos to Argo Events to kagent Triage
 
-This POC wires LitmusChaos `ChaosResult` updates into the Proxmox/home-lab Kubernetes Argo Events and kagent triage path.
+This POC wires LitmusChaos `ChaosResult` updates into a homelab Kubernetes Argo Events and kagent triage path.
 
 ## Components
 
@@ -12,7 +12,11 @@ This POC wires LitmusChaos `ChaosResult` updates into the Proxmox/home-lab Kuber
 - `manifests/sensor-litmus-triage.yaml`: Sensor that invokes `kagent/chaos-triage-agent` and writes an audit/remediation trail.
 - `manifests/modelconfig-qwen.yaml` and `manifests/agent-chaos-triage.yaml`: local Qwen/KubeAI model config and chaos triage agent definition.
 
-## Install
+## Work cluster deployment
+
+For a ring-fenced work cluster, use [`WORK-INSTALL.md`](./WORK-INSTALL.md). It includes the exact Helm chart versions, internal-registry image list, values files to edit, resource limits, security contexts, RBAC review notes, and the sanitized evidence from the homelab run.
+
+## Homelab install
 
 ```bash
 helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
