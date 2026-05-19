@@ -17,11 +17,14 @@ triage path.
 | Argo Events triage workflow trigger | `k8s/observability/k-agent-alert-triage-sensor.yaml` |
 | Managed-Loki LogQL rules | `observability/managed-lgtm-integration/alerting/03-lokirules-k-agent-agentgateway.yaml` |
 | Verification script | `scripts/observability/verify-k-agent-observability.sh` |
+| Managed Mimir/Loki rule-sync guide | `observability/managed-lgtm-integration/rule-sync/README.md` |
+| Local Mimir rule-sync proof | `k8s/observability/mimir-rule-sync-proof.yaml` |
+| Rule-sync evidence | `docs/observability/mimir-rule-sync-evidence.md` |
 
 The dashboard uses Grafana datasource variables, not fixed environment-specific UIDs:
 `datasource_prom` for Prometheus/Mimir and `datasource_loki` for Loki.
-Namespace variables default to the Proxmox names but can be changed at import
-time.
+Namespace variables default to the validation-cluster names but can be changed
+at import time.
 
 ## Install Order
 
@@ -84,11 +87,11 @@ the workflow silently.
 
 ## Notes
 
-- `agentgateway_gen_ai_client_token_usage_sum` is not present on Proxmox today;
-  the dashboard includes a LogQL token fallback from K-Agent logs.
+- `agentgateway_gen_ai_client_token_usage_sum` was not present in the validation
+  cluster; the dashboard includes a LogQL token fallback from K-Agent logs.
 - `k8s/observability/k-agent-alloy.yaml` is the local shipping agent. Managed
   rule sync is represented by
   `observability/managed-lgtm-integration/alloy-snippets/04-rule-sync.alloy`,
   which now separates Mimir and Loki rule sync by `lgtm.engine`.
-- Both `agentgateway-system` and `kgateway-system` are included intentionally;
-  Proxmox exposes live targets in both namespaces.
+- Both `agentgateway-system` and `kgateway-system` are included intentionally
+  because deployments may expose live gateway targets in either namespace.

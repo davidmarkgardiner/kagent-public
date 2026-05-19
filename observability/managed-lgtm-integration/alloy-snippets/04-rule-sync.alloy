@@ -28,6 +28,7 @@ mimir.rules.kubernetes "sync" {
       // Only sync rules explicitly opted-in. Avoids accidental sync of
       // kube-prometheus-stack defaults.
       "shipto.lgtm" = "true",
+      "lgtm.tenant" = sys.env("TENANT"),
     }
 
     match_expression {
@@ -37,12 +38,9 @@ mimir.rules.kubernetes "sync" {
     }
   }
 
-  // Limit to certain namespaces if the platform team requires per-team isolation.
-  rule_namespace_selector {
-    match_labels = {
-      "lgtm.tenant" = sys.env("TENANT"),
-    }
-  }
+  // Add a rule_namespace_selector only if the Kubernetes Namespace itself is
+  // labelled for tenant isolation. The rule selector above matches labels on
+  // PrometheusRule CRs.
 
   // Reconcile interval — rules updated in cluster appear in Mimir within this.
   sync_interval = "1m"
@@ -58,6 +56,7 @@ loki.rules.kubernetes "sync" {
   rule_selector {
     match_labels = {
       "shipto.lgtm" = "true",
+      "lgtm.tenant" = sys.env("TENANT"),
     }
 
     match_expression {
@@ -67,11 +66,9 @@ loki.rules.kubernetes "sync" {
     }
   }
 
-  rule_namespace_selector {
-    match_labels = {
-      "lgtm.tenant" = sys.env("TENANT"),
-    }
-  }
+  // Add a rule_namespace_selector only if the Kubernetes Namespace itself is
+  // labelled for tenant isolation. The rule selector above matches labels on
+  // PrometheusRule CRs.
 
   sync_interval = "1m"
 }
