@@ -1,6 +1,7 @@
 # LitmusChaos to Argo Events to kagent Triage
 
-This POC wires LitmusChaos `ChaosResult` updates into a homelab Kubernetes Argo Events and kagent triage path.
+This POC wires LitmusChaos `ChaosResult` updates into a Kubernetes Argo Events
+and kagent triage path.
 
 ## Components
 
@@ -14,9 +15,12 @@ This POC wires LitmusChaos `ChaosResult` updates into a homelab Kubernetes Argo 
 
 ## Ring-fenced cluster deployment
 
-For a ring-fenced cluster, use [`WORK-INSTALL.md`](./WORK-INSTALL.md). It includes the exact Helm chart versions, private-registry image list, values files to edit, resource limits, security contexts, RBAC review notes, and the sanitized evidence from the homelab run.
+For a ring-fenced cluster, use [`WORK-INSTALL.md`](./WORK-INSTALL.md). It
+includes the exact Helm chart versions, private-registry image list, values
+files to edit, resource limits, security contexts, RBAC review notes, and the
+sanitized evidence from the local validation run.
 
-## Homelab install
+## Local Validation Install
 
 ```bash
 helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
@@ -53,7 +57,10 @@ helm upgrade --install litmus-kubernetes-chaos litmuschaos/kubernetes-chaos \
   --set environment.socketPath=/run/containerd/containerd.sock
 ```
 
-The `litmus` chart installs ChaosCenter with a one-member MongoDB replica set to fit the Proxmox validation cluster while preserving the chart's expected database endpoint. The `litmus-core` chart installs the operator and CRDs. The `kubernetes-chaos` chart installs the ChaosHub Kubernetes experiments used here.
+The `litmus` chart installs ChaosCenter with a one-member MongoDB replica set to
+fit a small validation cluster while preserving the chart's expected database
+endpoint. The `litmus-core` chart installs the operator and CRDs. The
+`kubernetes-chaos` chart installs the ChaosHub Kubernetes experiments used here.
 
 ## Local Qwen Model
 
@@ -65,11 +72,11 @@ openAI:
   baseUrl: http://kubeai.kubeai.svc.cluster.local/openai/v1
 ```
 
-On the Proxmox/home-lab Kubernetes server, verify the model is ready before running:
+On the validation Kubernetes cluster, verify the model is ready before running:
 
 ```bash
-kubectl --context proxmox-k8s get model qwen3-14b -n kubeai
-kubectl --context proxmox-k8s get modelconfig litellm-qwen-14b -n kagent
+kubectl --context {{KUBE_CONTEXT}} get model qwen3-14b -n kubeai
+kubectl --context {{KUBE_CONTEXT}} get modelconfig litellm-qwen-14b -n kagent
 ```
 
 ## Run
@@ -78,11 +85,17 @@ kubectl --context proxmox-k8s get modelconfig litellm-qwen-14b -n kagent
 ./chaos/litmus/run-demo.sh
 ```
 
-The script defaults to `KUBECTL_CONTEXT=proxmox-k8s`. It applies the target and manifests, runs `pod-delete` and `pod-cpu-hog`, waits for each triage workflow to succeed, tails Argo Events and kagent logs, prints `ChaosResult` state, and starts a ChaosCenter UI port-forward at `http://localhost:9091`. Triage workflows are created in the `argo` namespace.
+The script uses the current kubectl context unless `KUBECTL_CONTEXT` is set. It
+applies the target and manifests, runs `pod-delete` and `pod-cpu-hog`, waits for
+each triage workflow to succeed, tails Argo Events and kagent logs, prints
+`ChaosResult` state, and starts a ChaosCenter UI port-forward at
+`http://localhost:9091`. Triage workflows are created in the `argo` namespace.
 
 If an existing Litmus install was previously created with the default three-member MongoDB replica set, the script automatically resets the Litmus MongoDB workload and PVCs while downsizing it for this POC. Set `RESET_LITMUS_MONGODB=false` to preserve an existing ChaosCenter database.
 
-If one Proxmox worker is unstable during validation, set `DEMO_AVOID_NODE=<node-name>`; the script cordons that node for the run and uncordons it on exit.
+If one worker is unstable during validation, set
+`DEMO_AVOID_NODE={{NODE_NAME}}`; the script cordons that node for the run and
+uncordons it on exit.
 
 ## Expected Evidence
 

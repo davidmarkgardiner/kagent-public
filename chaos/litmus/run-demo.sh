@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-KUBECTL_CONTEXT="${KUBECTL_CONTEXT:-proxmox-k8s}"
+KUBECTL_CONTEXT="${KUBECTL_CONTEXT:-}"
 LITMUS_NAMESPACE="${LITMUS_NAMESPACE:-litmus}"
 TARGET_NAMESPACE="${TARGET_NAMESPACE:-chaos-demo}"
 ARGO_EVENTS_NAMESPACE="${ARGO_EVENTS_NAMESPACE:-argo-events}"
@@ -114,7 +114,17 @@ require kubectl
 require helm
 require curl
 
-kubectl config use-context "$KUBECTL_CONTEXT" >/dev/null
+if [[ -n "$KUBECTL_CONTEXT" ]]; then
+  kubectl config use-context "$KUBECTL_CONTEXT" >/dev/null
+else
+  KUBECTL_CONTEXT="$(kubectl config current-context 2>/dev/null || true)"
+fi
+
+if [[ -z "$KUBECTL_CONTEXT" ]]; then
+  echo "no kubectl context selected; set KUBECTL_CONTEXT or configure a current context" >&2
+  exit 1
+fi
+
 trap cleanup EXIT
 
 echo "==> Installing or verifying LitmusChaos"

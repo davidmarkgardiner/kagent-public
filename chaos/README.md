@@ -1,6 +1,7 @@
 # Chaos Engineering POCs
 
-This directory compares two event-driven chaos engineering paths for `kind-homelab` and future AKS production use.
+This directory compares two event-driven chaos engineering paths for local
+validation clusters and future AKS production use.
 
 | Area | Chaos Mesh POC | LitmusChaos POC |
 | --- | --- | --- |
@@ -16,11 +17,20 @@ This directory compares two event-driven chaos engineering paths for `kind-homel
 ```text
 chaos/
 |-- litmus/
+|   |-- WORK-INSTALL.md
 |   |-- experiments/
 |   |-- manifests/
+|   |-- values/
 |   |-- run-demo.sh
 |   `-- README.md
 `-- README.md
 ```
+
+## Current Lift-And-Shift Path
+
+Use [`litmus/WORK-INSTALL.md`](litmus/WORK-INSTALL.md) for the ring-fenced
+cluster install handoff. It links the exact Litmus Helm chart versions, values
+files, image mirror list, RBAC review points, kagent/Argo Events integration,
+validation commands, and local evidence captured from the demo run.
 
 Add the Chaos Mesh POC under `chaos/chaos-mesh/` when MIL-143 lands in this repository.

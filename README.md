@@ -47,6 +47,7 @@ examples/           Quickstart and sample payloads
 | Deploy the kagent + agentgateway observability bundle | [`docs/observability/k-agent-agentgateway-observability.md`](docs/observability/k-agent-agentgateway-observability.md) |
 | Sync managed Mimir/Loki rules from Kubernetes | [`observability/managed-lgtm-integration/rule-sync/`](observability/managed-lgtm-integration/rule-sync/README.md) |
 | Deploy the AI gateway (LLM + MCP + A2A) | [`platform/agentgateway/`](platform/agentgateway/README.md) |
+| Deploy LitmusChaos and watch kagent triage chaos events | [`chaos/litmus/WORK-INSTALL.md`](chaos/litmus/WORK-INSTALL.md) |
 | Create a custom kagent tool | [`docs/kagent-custom-tools/`](docs/kagent-custom-tools/README.md) |
 | Prepare Azure Policy exceptions for kagent/agentgateway | [`docs/security/azure-policy-exceptions.md`](docs/security/azure-policy-exceptions.md) |
 | Run the Agentgateway MVP demo set | [`DEMOS.md#2-agentgateway-mvp-control-plane-demo-set`](DEMOS.md#2-agentgateway-mvp-control-plane-demo-set) |

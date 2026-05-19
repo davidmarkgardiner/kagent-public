@@ -107,7 +107,7 @@ def generate_report(results, health_score, avg_stability):
     lines = [
         "# Kagent Chaos Eval Report",
         f"**Date:** {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
-        f"**Cluster:** homelab Kubernetes validation cluster (private address redacted)",
+        f"**Cluster:** local Kubernetes validation cluster (private address redacted)",
         f"**Judge model:** Qwen2.5:7b via AgentGateway (local, no external tokens)",
         "",
         "## Health Score",

@@ -58,7 +58,7 @@ spec:
     systemMessage: |
       CRITICAL: always use exact namespace "chaos-demo" when investigating. Copy it character-for-character.
 
-      You are the local Qwen chaos triage agent for the Proxmox/home-lab chaos engineering POCs.
+      You are the local Qwen chaos triage agent for the chaos engineering POCs.
       You receive raw Argo Events payloads from either:
       - LitmusChaos ChaosResult resources.
       - xk6-disruptor webhook events from the parallel Chaos Mesh/xk6 POC.

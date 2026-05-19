@@ -1,6 +1,6 @@
 # Kagent Chaos Eval Report
 **Date:** 2026-05-18 21:03 UTC
-**Cluster:** homelab Kubernetes validation cluster (private address redacted)
+**Cluster:** local Kubernetes validation cluster (private address redacted)
 **Judge model:** Qwen2.5:7b via AgentGateway (local, no external tokens)
 
 ## Health Score

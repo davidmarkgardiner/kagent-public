@@ -4,11 +4,11 @@ This guide is the sanitized install handoff for deploying the same chaos enginee
 
 It covers:
 
-- LitmusChaos Helm charts and versions used in the homelab validation.
+- LitmusChaos Helm charts and versions used in the local validation run.
 - Images to mirror or swap to an approved private registry.
 - Security contexts and resource limits that must stay in place.
 - The kagent, Argo Events, and workflow resources needed to replicate the demo.
-- Evidence captured from the homelab run.
+- Evidence captured from the local validation run.
 
 ## Validated versions
 
@@ -22,7 +22,10 @@ It covers:
 ## Prerequisites
 
 - Kubernetes cluster with Argo Events, Argo Workflows, kagent, and the kagent CRDs already installed.
-- A kagent-compatible OpenAI endpoint or private model endpoint. The homelab used local Qwen through KubeAI. For another environment, replace `manifests/modelconfig-qwen.yaml` with the approved model endpoint and secret reference.
+- A kagent-compatible OpenAI endpoint or private model endpoint. The local
+  validation run used Qwen through KubeAI. For another environment, replace
+  `manifests/modelconfig-qwen.yaml` with the approved model endpoint and secret
+  reference.
 - Private image mirror access for all images listed below.
 - A namespace selected for chaos experiments. The examples use `chaos-demo` only.
 - Approval from the cluster owner before enabling network or node-level chaos.
@@ -82,7 +85,9 @@ bitnami/kubectl:1.30.7
 
 ## Install commands
 
-Do not run the homelab `run-demo.sh` directly in another cluster until the image registry, model endpoint, namespaces, RBAC, and experiment scope are reviewed.
+Do not run the local validation `run-demo.sh` directly in another cluster until
+the image registry, model endpoint, namespaces, RBAC, and experiment scope are
+reviewed.
 
 ```bash
 helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
@@ -183,7 +188,48 @@ kubectl get chaosresult -n chaos-demo -o wide
 kubectl get workflows -n argo -l app.kubernetes.io/name=kagent-triage-litmus
 ```
 
-## Homelab evidence
+## Test Scenarios And Agent Loop
+
+Start with these scenarios:
+
+1. `pod-delete`: proves the Litmus runner can disrupt the sample workload and
+   that kagent receives a `ChaosResult` event.
+2. `pod-cpu-hog`: proves sustained pressure signals still flow through Argo
+   Events and the triage workflow.
+3. `pod-network-latency`: keep disabled until network-chaos scope is approved
+   for the target namespace.
+
+The loop to observe is:
+
+```text
+Litmus ChaosEngine
+  -> ChaosResult
+  -> Argo Events EventSource
+  -> Sensor-created Argo Workflow
+  -> kagent chaos-triage-agent
+  -> deployment annotation plus chaos-triage-hive-mind ConfigMap entry
+```
+
+For self-learning experiments, keep the first iteration observe-only: write the
+agent's hypothesis, commands, and recommended remediation into the hive-mind
+ConfigMap or another approved evidence store. Only enable automated remediation
+after the recommendations have been reviewed and scoped to the `chaos-demo`
+namespace.
+
+## Tomorrow Pickup Checklist
+
+1. Replace `registry.example.invalid/mirror` in `values/*.yaml` with
+   `{{INTERNAL_REGISTRY}}`.
+2. Replace `manifests/modelconfig-qwen.yaml` with the approved model endpoint
+   and secret reference.
+3. Render all three Helm charts with the provided values files.
+4. Apply Litmus, the sample target, RBAC, EventSource, Sensor, and kagent agent
+   manifests.
+5. Run `pod-delete`, then `pod-cpu-hog`.
+6. Capture `ChaosResult`, Argo workflow phase, kagent logs, deployment
+   annotations, and `configmap/kagent/chaos-triage-hive-mind`.
+
+## Local Validation Evidence
 
 The sanitized run report is committed at:
 
