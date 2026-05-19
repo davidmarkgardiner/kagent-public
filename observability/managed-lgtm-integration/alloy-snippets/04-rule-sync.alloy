@@ -29,6 +29,12 @@ mimir.rules.kubernetes "sync" {
       // kube-prometheus-stack defaults.
       "shipto.lgtm" = "true",
     }
+
+    match_expression {
+      key      = "lgtm.engine"
+      operator = "NotIn"
+      values   = ["loki"]
+    }
   }
 
   // Limit to certain namespaces if the platform team requires per-team isolation.
@@ -52,6 +58,12 @@ loki.rules.kubernetes "sync" {
   rule_selector {
     match_labels = {
       "shipto.lgtm" = "true",
+    }
+
+    match_expression {
+      key      = "lgtm.engine"
+      operator = "In"
+      values   = ["loki"]
     }
   }
 

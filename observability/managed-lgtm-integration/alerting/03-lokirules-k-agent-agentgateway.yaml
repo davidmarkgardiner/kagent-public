@@ -1,0 +1,59 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k-agent-agentgateway-log-alerts
+  namespace: monitoring
+  labels:
+    shipto.lgtm: "true"
+    lgtm.tenant: platform
+    lgtm.engine: loki
+    route_to: triage
+spec:
+  groups:
+    - name: k-agent-agentgateway-log-signals
+      interval: 1m
+      rules:
+        - alert: KagentA2AParseErrors
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace="kagent"} |~ "(?i)((json-rpc|a2a|parse).*error|missing\\s+kind\\s+field)" [5m])
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "kagent A2A parse errors"
+            description: "kagent logged repeated A2A/JSON-RPC parse errors. Check Argo workflow payload shape and agent gateway routing."
+
+        - alert: AgentgatewayUpstreamResetBurst
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace=~"agentgateway-system|kgateway-system"} |~ "(?i)(upstream reset|connection reset|upstream timeout)" [10m])
+            ) > 20
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "agentgateway upstream reset burst"
+            description: "agentgateway logged repeated upstream resets or timeouts. Check model backend health and retry behavior."
+
+        - alert: LitmusChaosExperimentFailed
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace="chaos-demo"} |~ "(?i)(verdict.*fail|experimentStatus.*Fail|chaos.*failed)" [10m])
+            ) > 0
+          for: 1m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "Litmus chaos experiment failed"
+            description: "A chaos-demo Litmus result indicates failure. Route to the Argo Events triage path and inspect chaos-target plus the related ChaosResult."

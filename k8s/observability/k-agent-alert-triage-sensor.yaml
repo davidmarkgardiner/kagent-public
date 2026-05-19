@@ -1,0 +1,137 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: k-agent-alert-triage
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: k-agent-alert-triage
+    app.kubernetes.io/part-of: k-agent-observability
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: alertmanager-webhook
+      eventSourceName: path-b-alertmanager-webhook
+      eventName: alertmanager
+      filters:
+        data:
+          - path: body.alerts.0.labels.kagent_path
+            type: string
+            value:
+              - webhook
+          - path: body.alerts.0.labels.route_to
+            type: string
+            value:
+              - triage
+  triggers:
+    - template:
+        name: k-agent-alert-triage-workflow
+        conditions: alertmanager-webhook
+        rateLimit:
+          requestsPerUnit: 6
+          unit: Minute
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: k-agent-alert-triage-
+                namespace: argo
+                labels:
+                  app.kubernetes.io/name: k-agent-alert-triage
+                  app.kubernetes.io/part-of: k-agent-observability
+              spec:
+                serviceAccountName: argo
+                entrypoint: triage-alert
+                arguments:
+                  parameters:
+                    - name: alert-payload
+                      value: "{}"
+                templates:
+                  - name: triage-alert
+                    script:
+                      image: python:3.11-slim
+                      command:
+                        - python
+                      source: |
+                        import json
+                        import sys
+                        import socket
+                        import urllib.error
+                        import urllib.request
+
+                        raw = r'''{{workflow.parameters.alert-payload}}'''
+                        payload = json.loads(raw)
+                        alerts = payload.get("alerts", [])
+                        first = alerts[0] if alerts else {}
+                        labels = first.get("labels", {})
+                        annotations = first.get("annotations", {})
+                        alertname = labels.get("alertname", "unknown")
+                        namespace = labels.get("namespace", "")
+                        severity = labels.get("severity", "info")
+                        cluster = labels.get("cluster", "")
+                        gateway = labels.get("gateway", labels.get("pod", ""))
+                        summary = annotations.get("summary", "")
+                        description = annotations.get("description", "")
+
+                        prompt = f"""Triage this observability alert from the K-Agent / Agent Gateway monitoring path.
+
+                        Alert: {alertname}
+                        Severity: {severity}
+                        Cluster: {cluster}
+                        Namespace: {namespace}
+                        Gateway or pod: {gateway}
+                        Summary: {summary}
+                        Description: {description}
+
+                        Return:
+                        1. Likely root cause in one paragraph.
+                        2. Exact PromQL or LogQL query to confirm.
+                        3. Exact kubectl commands for safe investigation.
+                        4. Whether this should be observe_only, human_review, or safe_auto_remediate.
+
+                        Full Alertmanager payload:
+                        {json.dumps(payload, sort_keys=True)[:6000]}
+                        """
+
+                        body = json.dumps({
+                            "jsonrpc": "2.0",
+                            "id": "{{workflow.name}}",
+                            "method": "message/send",
+                            "params": {
+                                "message": {
+                                    "role": "user",
+                                    "parts": [{"kind": "text", "text": prompt}],
+                                }
+                            },
+                        }).encode()
+
+                        req = urllib.request.Request(
+                            "http://kagent-controller.kagent:8083/api/a2a/kagent/sre-triage-agent/",
+                            data=body,
+                            headers={"Content-Type": "application/json"},
+                            method="POST",
+                        )
+                        try:
+                            with urllib.request.urlopen(req, timeout=180) as response:
+                                result = json.loads(response.read().decode())
+                        except urllib.error.HTTPError as exc:
+                            print("K_AGENT_ALERT_TRIAGE_UNAVAILABLE")
+                            print(exc.read().decode(), file=sys.stderr)
+                            sys.exit(0)
+                        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+                            print("K_AGENT_ALERT_TRIAGE_UNAVAILABLE")
+                            print(f"K-Agent A2A call did not complete: {exc}", file=sys.stderr)
+                            sys.exit(0)
+
+                        print("K_AGENT_ALERT_TRIAGE_BEGIN")
+                        print(json.dumps(result, indent=2, sort_keys=True)[:12000])
+                        print("K_AGENT_ALERT_TRIAGE_END")
+          parameters:
+            - src:
+                dependencyName: alertmanager-webhook
+                dataTemplate: "{{ .Input.body | toJson }}"
+              dest: spec.arguments.parameters.0.value

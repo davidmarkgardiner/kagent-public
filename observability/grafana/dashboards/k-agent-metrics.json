@@ -10,7 +10,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "kagent-mimir"
+        "uid": "${datasource_prom}"
       },
       "fieldConfig": {
         "defaults": {
@@ -49,7 +49,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "kagent-mimir"
+        "uid": "${datasource_prom}"
       },
       "fieldConfig": {
         "defaults": {
@@ -87,7 +87,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "kagent-mimir"
+        "uid": "${datasource_prom}"
       },
       "fieldConfig": {
         "defaults": {
@@ -109,7 +109,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -118,7 +120,7 @@
       },
       "targets": [
         {
-          "expr": "count(kube_pod_status_phase{namespace=\"kagent\", phase=\"Running\"} == 1)",
+          "expr": "count(kube_pod_status_phase{namespace=~\"$kagent_namespace\", phase=\"Running\"} == 1)",
           "legendFormat": "running",
           "refId": "A"
         }
@@ -129,7 +131,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "kagent-mimir"
+        "uid": "${datasource_prom}"
       },
       "fieldConfig": {
         "defaults": {
@@ -151,7 +153,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -160,7 +164,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"kagent\"}[1h]))",
+          "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"$kagent_namespace\"}[1h]))",
           "legendFormat": "restarts",
           "refId": "A"
         }
@@ -171,7 +175,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "kagent-mimir"
+        "uid": "${datasource_prom}"
       },
       "fieldConfig": {
         "defaults": {
@@ -192,7 +196,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -212,7 +218,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "kagent-loki"
+        "uid": "${datasource_loki}"
       },
       "gridPos": {
         "h": 8,
@@ -233,7 +239,7 @@
       },
       "targets": [
         {
-          "expr": "{namespace=\"kagent\"} | json | line_format \"{{.level}} {{.logger}} {{.path}} status={{.status}} {{.msg}}\"",
+          "expr": "{namespace=~\"$kagent_namespace\"} | json | line_format \"{{.level}} {{.logger}} {{.path}} status={{.status}} {{.msg}}\"",
           "refId": "A"
         }
       ],
@@ -243,7 +249,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "kagent-loki"
+        "uid": "${datasource_loki}"
       },
       "gridPos": {
         "h": 8,
@@ -264,7 +270,7 @@
       },
       "targets": [
         {
-          "expr": "{namespace=\"kgateway-system\"} |~ \"(?i)(error|reset|timeout|token|model|upstream)\"",
+          "expr": "{namespace=~\"$gateway_namespace\"} |~ \"(?i)(error|reset|timeout|token|model|upstream)\"",
           "refId": "A"
         }
       ],
@@ -274,7 +280,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "kagent-loki"
+        "uid": "${datasource_loki}"
       },
       "fieldConfig": {
         "defaults": {
@@ -302,7 +308,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (agent, model) (sum_over_time({namespace=\"kagent\"} | json | unwrap total_tokens [5m]))",
+          "expr": "sum by (agent, model) (sum_over_time({namespace=~\"$kagent_namespace\"} | json | unwrap total_tokens [5m]))",
           "legendFormat": "{{agent}} {{model}}",
           "refId": "A"
         }
@@ -313,9 +319,128 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["kagent", "agentgateway", "lgtm"],
+  "tags": [
+    "kagent",
+    "agentgateway",
+    "lgtm"
+  ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "datasource_prom",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Prometheus / Mimir",
+        "current": {
+          "selected": false,
+          "text": "kagent-mimir",
+          "value": "kagent-mimir"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "datasource_loki",
+        "type": "datasource",
+        "query": "loki",
+        "label": "Loki",
+        "current": {
+          "selected": false,
+          "text": "kagent-loki",
+          "value": "kagent-loki"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "kagent_namespace",
+        "type": "custom",
+        "label": "K-Agent namespace",
+        "query": "kagent",
+        "current": {
+          "selected": false,
+          "text": "kagent",
+          "value": "kagent"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "kagent",
+            "value": "kagent"
+          }
+        ]
+      },
+      {
+        "name": "gateway_namespace",
+        "type": "custom",
+        "label": "Gateway namespaces",
+        "query": "agentgateway-system|kgateway-system",
+        "current": {
+          "selected": false,
+          "text": "agentgateway-system|kgateway-system",
+          "value": "agentgateway-system|kgateway-system"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "agentgateway-system|kgateway-system",
+            "value": "agentgateway-system|kgateway-system"
+          }
+        ]
+      },
+      {
+        "name": "triage_namespace",
+        "type": "custom",
+        "label": "Triage namespaces",
+        "query": "argo|argo-events|kagent-poc",
+        "current": {
+          "selected": false,
+          "text": "argo|argo-events|kagent-poc",
+          "value": "argo|argo-events|kagent-poc"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "argo|argo-events|kagent-poc",
+            "value": "argo|argo-events|kagent-poc"
+          }
+        ]
+      },
+      {
+        "name": "chaos_namespace",
+        "type": "custom",
+        "label": "Chaos namespaces",
+        "query": "chaos-demo|litmus",
+        "current": {
+          "selected": false,
+          "text": "chaos-demo|litmus",
+          "value": "chaos-demo|litmus"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "chaos-demo|litmus",
+            "value": "chaos-demo|litmus"
+          }
+        ]
+      },
+      {
+        "name": "severity",
+        "type": "custom",
+        "label": "Severity",
+        "query": ".*",
+        "current": {
+          "selected": false,
+          "text": ".*",
+          "value": ".*"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": ".*",
+            "value": ".*"
+          }
+        ]
+      }
+    ]
   },
   "time": {
     "from": "now-6h",

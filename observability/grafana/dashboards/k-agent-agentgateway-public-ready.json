@@ -1,0 +1,640 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{namespace=~\"$kagent_namespace\", phase=\"Running\"} == 1)",
+          "legendFormat": "running",
+          "refId": "A"
+        }
+      ],
+      "title": "K-Agent Running Pods",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "Down"
+                },
+                "1": {
+                  "color": "green",
+                  "text": "Up"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "min(up{namespace=~\"$gateway_namespace\"})",
+          "legendFormat": "gateway scrape",
+          "refId": "A"
+        }
+      ],
+      "title": "Gateway Metrics Scraped",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\", route_to=\"triage\"}) OR vector(0)",
+          "legendFormat": "firing",
+          "refId": "A"
+        }
+      ],
+      "title": "Triage Alerts Firing",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{namespace=\"chaos-demo\", pod=~\".*(pod-delete|pod-cpu-hog|litmus).*\", phase=\"Succeeded\"} == 1)",
+          "legendFormat": "completed",
+          "refId": "A"
+        }
+      ],
+      "title": "Chaos Runs Completed",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "sum by (namespace, pod, envoy_response_code_class) (rate(envoy_cluster_external_upstream_rq_xx{namespace=~\"$gateway_namespace\"}[5m]))",
+          "legendFormat": "{{namespace}} {{pod}} {{envoy_response_code_class}}xx",
+          "refId": "A"
+        }
+      ],
+      "title": "Agent Gateway Response Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "(sum by (namespace, pod) (rate(envoy_cluster_external_upstream_rq_xx{namespace=~\"$gateway_namespace\", envoy_response_code_class=\"5\"}[5m])) / sum by (namespace, pod) (rate(envoy_cluster_external_upstream_rq_completed{namespace=~\"$gateway_namespace\"}[5m]))) and sum by (namespace, pod) (rate(envoy_cluster_external_upstream_rq_completed{namespace=~\"$gateway_namespace\"}[5m])) > 0.01",
+          "legendFormat": "{{namespace}} {{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Agent Gateway 5xx Ratio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "id": 7,
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_request_model, gen_ai_token_type) (rate(agentgateway_gen_ai_client_token_usage_sum[5m]) * 60)",
+          "legendFormat": "{{gen_ai_request_model}} {{gen_ai_token_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Agent Gateway Tokens Per Minute",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource_loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "id": 8,
+      "targets": [
+        {
+          "expr": "sum by (agent, model) (sum_over_time({namespace=~\"$kagent_namespace\"} | json | unwrap total_tokens [5m]))",
+          "legendFormat": "{{agent}} {{model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Token Fallback From K-Agent Logs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 9,
+      "targets": [
+        {
+          "expr": "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{namespace=~\"$kagent_namespace|$gateway_namespace|$chaos_namespace\"}[1h]))",
+          "legendFormat": "{{namespace}} {{pod}} {{container}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Restarts Last Hour",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 10,
+      "targets": [
+        {
+          "expr": "sum by (alertname, severity, kagent_path) (ALERTS{alertstate=\"firing\", route_to=\"triage\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Firing Triage Alerts",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource_loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "id": 11,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{namespace=~\"$kagent_namespace\"} |~ \"(?i)(error|warn|tool|a2a|triage|token)\"",
+          "refId": "A"
+        }
+      ],
+      "title": "K-Agent Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource_loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "id": 12,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{namespace=~\"$gateway_namespace\"} |~ \"(?i)(error|reset|timeout|token|model|upstream|5xx|unauthorized|forbidden)\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Agent Gateway Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource_loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "id": 13,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{namespace=~\"$triage_namespace\"} |~ \"(?i)(alertmanager|k-agent-alert-triage|path-b-alert|K_AGENT_ALERT_TRIAGE|workflow|consumer)\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Alertmanager to Argo Triage Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource_loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "id": 14,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{namespace=~\"$chaos_namespace|argo\"} |~ \"(?i)(chaos|litmus|pod-delete|pod-cpu-hog|verdict|triage)\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Chaos and Litmus Logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "kagent",
+    "cage",
+    "agentgateway",
+    "alloy",
+    "argo-events",
+    "chaos"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource_prom",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Prometheus / Mimir",
+        "current": {
+          "selected": false,
+          "text": "kagent-mimir",
+          "value": "kagent-mimir"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "datasource_loki",
+        "type": "datasource",
+        "query": "loki",
+        "label": "Loki",
+        "current": {
+          "selected": false,
+          "text": "kagent-loki",
+          "value": "kagent-loki"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "kagent_namespace",
+        "type": "custom",
+        "label": "K-Agent namespace",
+        "query": "kagent",
+        "current": {
+          "selected": false,
+          "text": "kagent",
+          "value": "kagent"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "kagent",
+            "value": "kagent"
+          }
+        ]
+      },
+      {
+        "name": "gateway_namespace",
+        "type": "custom",
+        "label": "Gateway namespaces",
+        "query": "agentgateway-system|kgateway-system",
+        "current": {
+          "selected": false,
+          "text": "agentgateway-system|kgateway-system",
+          "value": "agentgateway-system|kgateway-system"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "agentgateway-system|kgateway-system",
+            "value": "agentgateway-system|kgateway-system"
+          }
+        ]
+      },
+      {
+        "name": "triage_namespace",
+        "type": "custom",
+        "label": "Triage namespaces",
+        "query": "argo|argo-events|kagent-poc",
+        "current": {
+          "selected": false,
+          "text": "argo|argo-events|kagent-poc",
+          "value": "argo|argo-events|kagent-poc"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "argo|argo-events|kagent-poc",
+            "value": "argo|argo-events|kagent-poc"
+          }
+        ]
+      },
+      {
+        "name": "chaos_namespace",
+        "type": "custom",
+        "label": "Chaos namespaces",
+        "query": "chaos-demo|litmus",
+        "current": {
+          "selected": false,
+          "text": "chaos-demo|litmus",
+          "value": "chaos-demo|litmus"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "chaos-demo|litmus",
+            "value": "chaos-demo|litmus"
+          }
+        ]
+      },
+      {
+        "name": "severity",
+        "type": "custom",
+        "label": "Severity",
+        "query": ".*",
+        "current": {
+          "selected": false,
+          "text": ".*",
+          "value": ".*"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": ".*",
+            "value": ".*"
+          }
+        ]
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "K-Agent and Agent Gateway Observability",
+  "uid": "k-agent-agentgateway-public-ready",
+  "version": 1,
+  "weekStart": ""
+}

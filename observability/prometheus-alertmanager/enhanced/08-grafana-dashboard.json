@@ -208,11 +208,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
       "targets": [
         {
-          "expr": "(
-            sum(argo_workflows_count{namespace=\"argo-events\",status=\"Succeeded\"}) OR vector(0)
-            /
-            sum(argo_workflows_count{namespace=\"argo-events\"}) OR vector(1)
-          ) * 100",
+          "expr": "(sum(argo_workflows_count{namespace=\"argo-events\",status=\"Succeeded\"}) OR vector(0)) / clamp_min((sum(argo_workflows_count{namespace=\"argo-events\"}) OR vector(0)), 1) * 100",
           "instant": true,
           "refId": "A"
         }

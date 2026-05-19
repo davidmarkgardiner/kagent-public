@@ -2,3 +2,8 @@
 __pycache__/
 .codex/
 CLAUDE.md
+
+# Local vector/database artifacts.
+ruvector.db
+agentdb.rvf
+agentdb.rvf.lock

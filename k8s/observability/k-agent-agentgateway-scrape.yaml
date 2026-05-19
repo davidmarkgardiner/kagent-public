@@ -1,0 +1,111 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: agentgateway-controller
+  namespace: agentgateway-system
+  labels:
+    release: kube-prom
+    app.kubernetes.io/part-of: k-agent-observability
+spec:
+  namespaceSelector:
+    matchNames:
+      - agentgateway-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway
+      app.kubernetes.io/instance: agentgateway
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: cluster
+          replacement: "{{CLUSTER_NAME}}"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kgateway-controller
+  namespace: kgateway-system
+  labels:
+    release: kube-prom
+    app.kubernetes.io/part-of: k-agent-observability
+spec:
+  namespaceSelector:
+    matchNames:
+      - kgateway-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kgateway
+      app.kubernetes.io/instance: kgateway
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: cluster
+          replacement: "{{CLUSTER_NAME}}"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: agentgateway-data-plane
+  namespace: agentgateway-system
+  labels:
+    release: kube-prom
+    app.kubernetes.io/part-of: k-agent-observability
+spec:
+  namespaceSelector:
+    matchNames:
+      - agentgateway-system
+  selector:
+    matchExpressions:
+      - key: gateway.networking.k8s.io/gateway-name
+        operator: Exists
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: cluster
+          replacement: "{{CLUSTER_NAME}}"
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_label_gateway_networking_k8s_io_gateway_name]
+          targetLabel: gateway
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kgateway-data-plane
+  namespace: kgateway-system
+  labels:
+    release: kube-prom
+    app.kubernetes.io/part-of: k-agent-observability
+spec:
+  namespaceSelector:
+    matchNames:
+      - kgateway-system
+  selector:
+    matchExpressions:
+      - key: gateway.networking.k8s.io/gateway-name
+        operator: Exists
+  podMetricsEndpoints:
+    - port: http-monitoring
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: cluster
+          replacement: "{{CLUSTER_NAME}}"
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_label_gateway_networking_k8s_io_gateway_name]
+          targetLabel: gateway

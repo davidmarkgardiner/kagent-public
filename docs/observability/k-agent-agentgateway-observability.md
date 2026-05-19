@@ -1,0 +1,94 @@
+# K-Agent and Agent Gateway Observability
+
+This package is the copy/paste-ready observability set for K-Agent,
+Agent Gateway, chaos validation, and the Alertmanager -> Argo Events -> K-Agent
+triage path.
+
+## Artifact Set
+
+| Purpose | File |
+| --- | --- |
+| Grafana dashboard import | `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json` |
+| Alloy metrics/log shipping | `k8s/observability/k-agent-alloy.yaml` |
+| Gateway ServiceMonitor/PodMonitor coverage | `k8s/observability/k-agent-agentgateway-scrape.yaml` |
+| Prometheus metric alerts | `k8s/observability/k-agent-alerts.yaml` |
+| Argo Events Alertmanager webhook | `k8s/observability/k-agent-alertmanager-eventsource.yaml` |
+| Alertmanager route to Argo Events | `k8s/observability/k-agent-alertmanager-triage-route.yaml` |
+| Argo Events triage workflow trigger | `k8s/observability/k-agent-alert-triage-sensor.yaml` |
+| Managed-Loki LogQL rules | `observability/managed-lgtm-integration/alerting/03-lokirules-k-agent-agentgateway.yaml` |
+| Verification script | `scripts/observability/verify-k-agent-observability.sh` |
+
+The dashboard uses Grafana datasource variables, not fixed environment-specific UIDs:
+`datasource_prom` for Prometheus/Mimir and `datasource_loki` for Loki.
+Namespace variables default to the Proxmox names but can be changed at import
+time.
+
+## Install Order
+
+1. Import `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json`.
+2. Apply the scrape coverage from `k8s/observability/k-agent-agentgateway-scrape.yaml`.
+3. Apply `k8s/observability/k-agent-alerts.yaml` for Prometheus/Mimir-compatible alerts.
+4. Apply `k8s/observability/k-agent-alertmanager-eventsource.yaml` in the Argo Events cluster.
+5. Apply `k8s/observability/k-agent-alertmanager-triage-route.yaml` after confirming Alertmanager can reach the Argo Events webhook service or the target webhook hub equivalent.
+6. Apply `k8s/observability/k-agent-alert-triage-sensor.yaml` in the Argo Events cluster.
+7. For log alerts, copy `observability/managed-lgtm-integration/alerting/03-lokirules-k-agent-agentgateway.yaml` into the managed LGTM rule-sync path. Do not apply it to a vanilla local Prometheus unless the Loki ruler sync convention is installed.
+
+## Verification
+
+Run static and client-side checks:
+
+```bash
+scripts/observability/verify-k-agent-observability.sh
+```
+
+Run live cluster checks:
+
+```bash
+scripts/observability/verify-k-agent-observability.sh --context {{KUBE_CONTEXT}}
+```
+
+Run the destructive-but-reversible synthetic alert route test:
+
+```bash
+scripts/observability/verify-k-agent-observability.sh --context {{KUBE_CONTEXT}} --synthetic-alert
+```
+
+The synthetic mode creates a temporary `KagentObservabilitySyntheticTest`
+PrometheusRule and deletes it on exit. It must fire with
+`kagent_path=webhook` and `route_to=triage`, reach Alertmanager, reach the
+`path-b-alertmanager-webhook` Argo EventSource, and create a
+`k-agent-alert-triage-*` workflow.
+
+## Live Evidence From Local Validation
+
+Validated on a local Kubernetes validation cluster on 2026-05-19:
+
+| Check | Result |
+| --- | --- |
+| Gateway scrape targets up | `count(up{namespace=~"agentgateway-system|kgateway-system"} == 1)` returned `8` |
+| K-Agent pods running | `count(kube_pod_status_phase{namespace="kagent",phase="Running"} == 1)` returned `21` |
+| Chaos jobs completed | chaos-demo succeeded pod query returned `5` |
+| Gateway request metric | `envoy_cluster_external_upstream_rq_xx` returned a `kgateway-system` 2xx series |
+| Loki gateway logs | `{namespace=~"agentgateway-system|kgateway-system"}` returned `1` stream |
+| Loki chaos logs | `{namespace=~"chaos-demo|litmus"}` returned `1` stream |
+| Loki triage logs | Argo/alertmanager triage LogQL returned `1` stream |
+| Alert route | synthetic alert fired and Argo Events created triage workflows |
+| K-Agent triage | after repairing the stale KubeAI model pod, `sre-triage-agent` returned HTTP 200 and the synthetic route produced `k-agent-alert-triage-7rq26` with `Succeeded` |
+
+During testing, the first triage workflow reached the K-Agent controller but
+timed out while the `qwen3-14b` model pod was stuck after an unhealthy GPU
+allocation. The stale model pod was deleted, the replacement pod became Ready,
+and the synthetic alert test was rerun successfully. The sensor now reports
+future K-Agent timeouts as `K_AGENT_ALERT_TRIAGE_UNAVAILABLE` instead of failing
+the workflow silently.
+
+## Notes
+
+- `agentgateway_gen_ai_client_token_usage_sum` is not present on Proxmox today;
+  the dashboard includes a LogQL token fallback from K-Agent logs.
+- `k8s/observability/k-agent-alloy.yaml` is the local shipping agent. Managed
+  rule sync is represented by
+  `observability/managed-lgtm-integration/alloy-snippets/04-rule-sync.alloy`,
+  which now separates Mimir and Loki rule sync by `lgtm.engine`.
+- Both `agentgateway-system` and `kgateway-system` are included intentionally;
+  Proxmox exposes live targets in both namespaces.
