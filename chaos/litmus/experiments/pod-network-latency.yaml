@@ -1,0 +1,107 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: pod-network-latency
+  namespace: chaos-demo
+  labels:
+    app: pod-network-latency
+    app.kubernetes.io/name: pod-network-latency
+    app.kubernetes.io/part-of: litmus
+    litmuschaos.io/version: 3.28.0
+description:
+  message: |
+    Injects network latency on pods belonging to an app deployment.
+spec:
+  definition:
+    scope: Namespaced
+    image: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.28.0
+    imagePullPolicy: Always
+    command: ["/bin/bash"]
+    args: ["-c", "./experiments -name pod-network-latency"]
+    labels:
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/runtime-api-usage: "true"
+      name: pod-network-latency
+    env:
+      - name: TARGET_CONTAINER
+        value: ""
+      - name: NETWORK_INTERFACE
+        value: eth0
+      - name: LIB_IMAGE
+        value: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.28.0
+      - name: NETWORK_LATENCY
+        value: "2000"
+      - name: TOTAL_CHAOS_DURATION
+        value: "60"
+      - name: RAMP_TIME
+        value: ""
+      - name: JITTER
+        value: "0"
+      - name: PODS_AFFECTED_PERC
+        value: ""
+      - name: TARGET_PODS
+        value: ""
+      - name: SEQUENCE
+        value: parallel
+      - name: DESTINATION_IPS
+        value: ""
+      - name: DESTINATION_HOSTS
+        value: ""
+      - name: SOCKET_PATH
+        value: /run/containerd/containerd.sock
+      - name: CONTAINER_RUNTIME
+        value: containerd
+    permissions:
+      - apiGroups: ["", "apps", "apps.openshift.io", "argoproj.io", "batch", "litmuschaos.io"]
+        resources:
+          - chaosengines
+          - chaosexperiments
+          - chaosresults
+          - daemonsets
+          - deploymentconfigs
+          - deployments
+          - events
+          - jobs
+          - pods
+          - pods/exec
+          - pods/log
+          - replicasets
+          - replicationcontrollers
+          - rollouts
+          - statefulsets
+        verbs: ["create", "delete", "deletecollection", "get", "list", "patch", "update"]
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: litmus-pod-network-latency
+  namespace: chaos-demo
+  labels:
+    app: litmus-pod-network-latency
+    app.kubernetes.io/name: litmus-pod-network-latency
+    app.kubernetes.io/part-of: litmus
+spec:
+  appinfo:
+    appns: chaos-demo
+    applabel: "app.kubernetes.io/name=chaos-target"
+    appkind: deployment
+  chaosServiceAccount: k8s-chaos-admin
+  engineState: active
+  jobCleanUpPolicy: retain
+  experiments:
+    - name: pod-network-latency
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "30"
+            - name: NETWORK_LATENCY
+              value: "500"
+            - name: JITTER
+              value: "50"
+            - name: PODS_AFFECTED_PERC
+              value: "50"
+            - name: CONTAINER_RUNTIME
+              value: containerd
+            - name: SOCKET_PATH
+              value: /run/containerd/containerd.sock

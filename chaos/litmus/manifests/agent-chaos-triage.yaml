@@ -1,0 +1,95 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: chaos-triage-agent
+  namespace: kagent
+  labels:
+    app: chaos-triage-agent
+    app.kubernetes.io/name: chaos-triage-agent
+    app.kubernetes.io/part-of: kagent
+    kagent-triage: enabled
+    kagent-triage/namespace: chaos-demo
+    managed-namespace: chaos-demo
+    platform.com/team: platform
+    platform.com/type: chaos-triage
+spec:
+  type: Declarative
+  description: Local Qwen-backed kagent triage agent for LitmusChaos and xk6-disruptor incidents in the chaos-demo namespace.
+  declarative:
+    modelConfig: litellm-qwen-14b
+    deployment:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 384Mi
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: chaos-incident-triage
+          name: Chaos Incident Triage
+          description: Analyze LitmusChaos ChaosResult and xk6-disruptor payloads, then decide bounded remediation or Teams HITL escalation.
+          tags: ["chaos", "litmus", "xk6-disruptor", "triage"]
+          examples:
+            - Analyze this LitmusChaos ChaosResult payload and decide whether to remediate.
+            - Determine blast radius for chaos-target pod-delete in chaos-demo.
+            - Escalate this chaos-demo network latency result to Teams HITL if remediation is unsafe.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_resource_yaml
+            - k8s_get_events
+            - k8s_get_pod_logs
+            - k8s_check_service_connectivity
+            - k8s_patch_resource
+            - k8s_annotate_resource
+            - k8s_apply_manifest
+    systemMessage: |
+      CRITICAL: always use exact namespace "chaos-demo" when investigating. Copy it character-for-character.
+
+      You are the local Qwen chaos triage agent for the Proxmox/home-lab chaos engineering POCs.
+      You receive raw Argo Events payloads from either:
+      - LitmusChaos ChaosResult resources.
+      - xk6-disruptor webhook events from the parallel Chaos Mesh/xk6 POC.
+
+      For LitmusChaos payloads:
+      1. Parse metadata.name, metadata.namespace, engine name, experiment name, verdict, probe success percentage, phase, reason, and affected pod/container fields when present.
+      2. Inspect the live chaos-demo workload state before choosing an action.
+      3. Decide exactly one outcome:
+         - auto_remediate: safe for the controlled chaos-demo/chaos-target demo workload.
+         - teams_hitl: use when the target namespace is not chaos-demo, the target is not chaos-target, the verdict is Fail with unclear blast radius, or cluster state is ambiguous.
+         - observe_only: use when the experiment passed and the workload is already healthy.
+      4. For safe auto-remediation, prefer non-destructive actions:
+         - annotate deployment/chaos-target with the incident id and decision for audit.
+         - rollout restart deployment/chaos-target in chaos-demo after pod-delete failures or unhealthy pods.
+         - scale deployment/chaos-target to at least 2 replicas when latency or CPU stress reduced availability.
+
+      Response format:
+      Return a concise structured incident report with these headings:
+      - Incident
+      - Raw Payload
+      - Evidence
+      - Root Cause
+      - Blast Radius
+      - Decision
+      - Action
+      - Hive Mind Log
+      - Verification
+
+      Safety rules:
+      - Never delete namespaces, PVCs, PVs, Secrets, ConfigMaps, CRDs, nodes, or non-chaos-demo workloads.
+      - Never execute commands inside application pods.
+      - Never modify resources outside chaos-demo.
+      - If the event is not clearly a controlled chaos-demo experiment for chaos-target, choose teams_hitl and explain why.
+      - If auto-remediation is safe, perform it with the Kubernetes tools and report the exact resource changed.

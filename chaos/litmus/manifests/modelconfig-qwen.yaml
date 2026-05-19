@@ -1,0 +1,19 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: litellm-qwen-14b
+  namespace: kagent
+  labels:
+    app: litellm-qwen-14b
+    app.kubernetes.io/name: litellm-qwen-14b
+    app.kubernetes.io/part-of: kagent
+    platform.com/provider: kubeai
+spec:
+  provider: OpenAI
+  model: qwen3-14b
+  apiKeySecret: litellm-key
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: http://kubeai.kubeai.svc.cluster.local/openai/v1
+    maxTokens: 1200
+    temperature: "0.1"

@@ -1,0 +1,230 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: kagent-triage-litmus
+  namespace: argo-events
+  labels:
+    app: kagent-triage-litmus
+    app.kubernetes.io/name: kagent-triage-litmus
+    app.kubernetes.io/part-of: litmus
+    kagent-agent: chaos-triage-agent
+    kagent-triage/namespace: chaos-demo
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: chaosresult-finished
+      eventSourceName: litmus-chaos-events
+      eventName: chaosresult-finished
+      filters:
+        data:
+          - path: body.metadata.namespace
+            type: string
+            value: [chaos-demo]
+          - path: body.status.experimentStatus.verdict
+            type: string
+            value: [Pass, Fail]
+  triggers:
+    - template:
+        name: invoke-chaos-triage-agent
+        conditions: chaosresult-finished
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: kagent-triage-litmus-
+                namespace: argo
+                labels:
+                  app: kagent-triage-litmus
+                  app.kubernetes.io/name: kagent-triage-litmus
+                  app.kubernetes.io/part-of: litmus
+                  kagent-agent: chaos-triage-agent
+              spec:
+                entrypoint: litmus-triage
+                serviceAccountName: argo
+                ttlStrategy:
+                  secondsAfterCompletion: 900
+                  secondsAfterSuccess: 900
+                  secondsAfterFailure: 1800
+                arguments:
+                  parameters:
+                    - name: raw-payload
+                      value: "{}"
+                    - name: result-name
+                      value: unknown
+                    - name: experiment-name
+                      value: unknown
+                    - name: verdict
+                      value: unknown
+                    - name: engine-name
+                      value: unknown
+                templates:
+                  - name: litmus-triage
+                    steps:
+                      - - name: invoke-qwen
+                          template: invoke-qwen-agent
+                      - - name: bounded-remediation
+                          template: bounded-remediation
+                      - - name: log-hive-mind
+                          template: log-hive-mind
+                  - name: invoke-qwen-agent
+                    script:
+                      image: python:3.11-slim
+                      command: [python]
+                      source: |
+                        import json
+                        import sys
+                        import urllib.request
+                        import urllib.error
+
+                        raw_payload = r'''{{workflow.parameters.raw-payload}}'''
+                        message = f"""Analyze this LitmusChaos ChaosResult end-to-end.
+
+                        Requirements:
+                        - Identify experiment name, verdict, probe success percentage, affected pods, and engine.
+                        - Inspect chaos-demo/chaos-target before choosing an action.
+                        - Decide auto_remediate, teams_hitl, or observe_only.
+                        - If auto_remediate is safe, perform it with Kubernetes tools.
+                        - Include a structured Hive Mind Log entry.
+
+                        Raw Argo Events payload:
+                        {raw_payload}
+                        """
+
+                        payload = json.dumps({
+                            "jsonrpc": "2.0",
+                            "id": "litmus-triage-{{workflow.name}}",
+                            "method": "message/send",
+                            "params": {
+                                "message": {
+                                    "role": "user",
+                                    "parts": [{"kind": "text", "text": message}]
+                                }
+                            }
+                        }).encode()
+
+                        req = urllib.request.Request(
+                            "http://kagent-controller.kagent:8083/api/a2a/kagent/chaos-triage-agent/",
+                            data=payload,
+                            headers={"Content-Type": "application/json"},
+                            method="POST",
+                        )
+
+                        try:
+                            with urllib.request.urlopen(req, timeout=300) as response:
+                                result = json.loads(response.read().decode())
+                        except urllib.error.HTTPError as exc:
+                            body = exc.read().decode()
+                            print(f"QWEN_TRIAGE_HTTP_ERROR status={exc.code} body={body}", file=sys.stderr)
+                            raise
+
+                        artifacts = result.get("result", {}).get("artifacts", [])
+                        text = ""
+                        for artifact in artifacts:
+                            for part in artifact.get("parts", []):
+                                text += part.get("text", "")
+
+                        status = result.get("result", {}).get("status", {}).get("state", "unknown")
+                        print(f"QWEN_TRIAGE_STATUS={status}")
+                        print("QWEN_TRIAGE_ANALYSIS_BEGIN")
+                        print(text or json.dumps(result)[:4000])
+                        print("QWEN_TRIAGE_ANALYSIS_END")
+                        if status not in {"completed", "succeeded"}:
+                            raise SystemExit(f"Qwen triage did not complete: {status}")
+                  - name: bounded-remediation
+                    script:
+                      image: bitnami/kubectl:latest
+                      command: [bash]
+                      source: |
+                        set -euo pipefail
+
+                        RESULT="{{workflow.parameters.result-name}}"
+                        EXPERIMENT="{{workflow.parameters.experiment-name}}"
+                        VERDICT="{{workflow.parameters.verdict}}"
+                        ENGINE="{{workflow.parameters.engine-name}}"
+                        TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+                        echo "LITMUS_TRIAGE_RESULT=$RESULT experiment=$EXPERIMENT verdict=$VERDICT engine=$ENGINE"
+                        kubectl get chaosresult "$RESULT" -n chaos-demo -o wide || true
+                        kubectl get deploy chaos-target -n chaos-demo -o wide
+                        kubectl get pods -n chaos-demo -l app.kubernetes.io/name=chaos-target -o wide
+
+                        kubectl annotate deployment/chaos-target -n chaos-demo \
+                          chaos.symphony.dev/last-litmus-result="$RESULT" \
+                          chaos.symphony.dev/last-litmus-experiment="$EXPERIMENT" \
+                          chaos.symphony.dev/last-litmus-verdict="$VERDICT" \
+                          chaos.symphony.dev/last-litmus-triage="$TS" \
+                          --overwrite
+
+                        if [ "$VERDICT" = "Fail" ] && [ "$EXPERIMENT" = "pod-delete" ]; then
+                          kubectl rollout restart deployment/chaos-target -n chaos-demo
+                          kubectl rollout status deployment/chaos-target -n chaos-demo --timeout=120s
+                          echo "AUTO_REMEDIATION_ACTION=rollout_restart target=deployment/chaos-target reason=litmus_pod_delete_failed"
+                        else
+                          kubectl scale deployment/chaos-target -n chaos-demo --replicas=2
+                          echo "AUTO_REMEDIATION_ACTION=audit_annotate_and_ensure_two_replicas target=deployment/chaos-target"
+                        fi
+                  - name: log-hive-mind
+                    script:
+                      image: bitnami/kubectl:latest
+                      command: [bash]
+                      source: |
+                        set -euo pipefail
+
+                        TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                        KEY="$(echo "{{workflow.name}}" | tr -c 'a-zA-Z0-9._-' '-')"
+                        cat > /tmp/litmus-hive-mind.yaml <<EOF
+                        apiVersion: v1
+                        kind: ConfigMap
+                        metadata:
+                          name: chaos-triage-hive-mind
+                          namespace: kagent
+                          labels:
+                            app: chaos-triage-hive-mind
+                            app.kubernetes.io/name: chaos-triage-hive-mind
+                            app.kubernetes.io/part-of: litmus
+                        data:
+                          ${KEY}.json: |
+                            {
+                              "timestamp": "${TS}",
+                              "workflow": "{{workflow.name}}",
+                              "agent": "kagent/chaos-triage-agent",
+                              "source": "litmuschaos",
+                              "namespace": "chaos-demo",
+                              "result": "{{workflow.parameters.result-name}}",
+                              "experiment": "{{workflow.parameters.experiment-name}}",
+                              "engine": "{{workflow.parameters.engine-name}}",
+                              "verdict": "{{workflow.parameters.verdict}}"
+                            }
+                        EOF
+
+                        kubectl apply -f /tmp/litmus-hive-mind.yaml
+                        echo "HIVE_MIND_LOG=configmap/kagent/chaos-triage-hive-mind key=${KEY}.json"
+          parameters:
+            - dest: spec.arguments.parameters.0.value
+              src:
+                dependencyName: chaosresult-finished
+                dataTemplate: "{{ .Input.body | toJson }}"
+            - dest: spec.arguments.parameters.1.value
+              src:
+                dependencyName: chaosresult-finished
+                dataKey: body.metadata.name
+            - dest: spec.arguments.parameters.2.value
+              src:
+                dependencyName: chaosresult-finished
+                dataKey: body.spec.experiment
+            - dest: spec.arguments.parameters.3.value
+              src:
+                dependencyName: chaosresult-finished
+                dataKey: body.status.experimentStatus.verdict
+            - dest: spec.arguments.parameters.4.value
+              src:
+                dependencyName: chaosresult-finished
+                dataKey: body.spec.engine
+      rateLimit:
+        unit: Minute
+        requestsPerUnit: 6
