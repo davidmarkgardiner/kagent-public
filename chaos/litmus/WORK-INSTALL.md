@@ -216,6 +216,107 @@ ConfigMap or another approved evidence store. Only enable automated remediation
 after the recommendations have been reviewed and scoped to the `chaos-demo`
 namespace.
 
+## Fire Drill Operating Model
+
+Treat each chaos run as a small incident exercise, not just a technical smoke
+test. The goal is to prove that the platform detects the failure, kagent
+produces useful first-pass triage, and the SRE team has a clear handoff path.
+
+### Drill lifecycle
+
+1. **Plan the drill in GitLab first.** Create a GitLab issue before running the
+   experiment. The issue is the durable audit record and SRE work item.
+2. **Run one bounded fault.** Start with `pod-delete` or `pod-cpu-hog` against
+   `chaos-demo/chaos-target`. Do not stack experiments until the single-fault
+   path is reliable.
+3. **Let the event path create evidence.** Confirm `ChaosResult`, Argo
+   workflow, kagent analysis, deployment annotations, and
+   `configmap/kagent/chaos-triage-hive-mind` are produced.
+4. **Route unsafe or ambiguous actions to humans.** Diagnosis stays automatic.
+   Mutations beyond the approved `chaos-demo` guardrail should use Teams HITL
+   or a GitLab issue, not automatic kubectl.
+5. **Close the loop in GitLab.** SRE adds what they observed, whether the agent
+   was useful, what was missing, and what should change before the next drill.
+
+### GitLab issue shape
+
+Use one issue per drill. Recommended labels:
+
+```text
+chaos-drill, sre-fire-drill, kagent-triage, litmus, environment/{{ENVIRONMENT}}, status/planned
+```
+
+Suggested issue template:
+
+```markdown
+## Drill
+- Experiment: pod-delete | pod-cpu-hog | pod-network-latency
+- Target: chaos-demo/chaos-target
+- Window: {{DRILL_WINDOW_UTC}}
+- Expected steady state: two ready replicas and service reachable
+- Expected signal: ChaosResult -> Argo workflow -> kagent report -> SRE pickup
+
+## Hypothesis
+If Litmus injects {{FAULT}}, kagent should identify the affected workload,
+classify blast radius, recommend the bounded action, and produce evidence for
+SRE review.
+
+## Evidence To Attach
+- ChaosResult YAML
+- Argo workflow name and phase
+- kagent incident report
+- Deployment annotations
+- Hive-mind ConfigMap key
+- SRE notes and decision
+
+## SRE Follow-up
+- Did the alert/ticket reach the right team?
+- Was the kagent diagnosis accurate?
+- Was the remediation recommendation safe?
+- What agent prompt, tool, RBAC, runbook, or alert rule should change?
+```
+
+### Automation target
+
+The next useful implementation step is to add a workflow step after
+`invoke-qwen-agent` that creates or updates the GitLab issue with the triage
+summary and evidence links. Keep this as an explicit workflow/tool step rather
+than asking the LLM to create tickets directly.
+
+Recommended flow:
+
+```text
+ChaosResult
+  -> Argo Sensor
+  -> invoke chaos-triage-agent
+  -> classify action tier
+  -> create/update GitLab issue
+  -> optional Teams HITL for unsafe mutation
+  -> bounded remediation or observe-only
+  -> verify
+  -> comment outcome back to GitLab
+```
+
+Use GitLab for durable work tracking and Teams for time-sensitive approval.
+That split avoids losing learning items in chat while still giving SRE a fast
+approval path when the workflow needs a human decision.
+
+### Faults worth adding after the demo target works
+
+Start by proving the system on `chaos-demo`. Then add controlled drills that
+exercise the agent platform itself:
+
+| Drill | Why it is useful | Guardrail |
+| --- | --- | --- |
+| Restart `chaos-triage-agent` pod during a Litmus run | Proves workflow retries and agent availability signals | One agent replica only, non-prod |
+| Break the model endpoint secret reference | Tests whether failures are reported as model/config issues instead of Kubernetes workload issues | Use a disposable ModelConfig or test namespace |
+| Deny one read-only kagent tool via RBAC | Shows whether the agent reports missing permissions clearly | Do not remove mutation safeguards |
+| Delay or fail the Teams HITL callback | Tests expiry, retry, and fallback-to-ticket behavior | Use test approval endpoint |
+| Scale `kagent-controller` down and restore | Proves session/triage dependency behavior and recovery runbook | Non-prod only; capture controller logs |
+
+Every agent-platform drill should have a rollback command in the GitLab issue
+before it is executed.
+
 ## Tomorrow Pickup Checklist
 
 1. Replace `registry.example.invalid/mirror` in `values/*.yaml` with

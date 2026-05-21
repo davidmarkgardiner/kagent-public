@@ -38,6 +38,7 @@ examples/           Quickstart and sample payloads
 | I want to… | Go to |
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
+| See what changed recently | [`CHANGELOG.md`](CHANGELOG.md) |
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
 | Onboard a namespace via PR | [`platform/argo-workflows/templates/namespace-onboarding/`](platform/argo-workflows/templates/namespace-onboarding/) |
 | Set up AI triage for a namespace | [`agents/kagent-triage/`](agents/kagent-triage/README.md) |

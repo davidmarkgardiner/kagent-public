@@ -12,6 +12,10 @@ There are three different "memory" scopes to keep separate:
 | Native long-term memory API | Vector memories stored by `agent_name` + `user_id` | Works at API/storage layer |
 | Native agent memory tools | `prefetch_memory`, `load_memory`, `save_memory`, auto-save | Not enabled on current agents; blocked by missing embedding-capable ModelConfig |
 
+There is also a fourth repo-local option: the custom
+[`memory-mcp`](../memory-integration.md) knowledge graph. It is not native
+kagent memory. It is a shared MCP tool server that agents call explicitly.
+
 The live controller is `ghcr.io/kagent-dev/kagent/controller:0.8.0-beta4`. It uses SQLite with vector support enabled:
 
 ```text
@@ -21,6 +25,49 @@ SQLITE_DATABASE_PATH=/sqlite-volume/kagent.db
 ```
 
 The SQLite volume is an `emptyDir` with `medium: Memory`, so the current red setup can preserve sessions and memories across chats while the controller pod is alive, but it is not a durable cross-controller-restart setup. For production cross-session and cross-restart memory, use PostgreSQL with vector support.
+
+## Comparison: Native kagent Memory vs Custom MCP Memory
+
+Checked against the public kagent `origin/main` source on 2026-05-21
+(`62bd3718`) and this repo's local manifests.
+
+| Option | Best for | Storage / retrieval | Sharing model | Current status in this repo |
+|---|---|---|---|---|
+| A2A session memory | Remembering one conversation thread | Raw session events in the kagent database | Scoped to one A2A `contextId` | Works on `red` while the controller pod survives |
+| Native kagent long-term memory | Per-agent, per-user preferences and facts | kagent controller memory API with 768-dim vectors; Postgres + pgvector for durable installs, SQLite/Turso for local/dev | Isolated by `agent_name` + `user_id` | API works on `red`; full agent tools still need an embedding-capable `ModelConfig` |
+| kagent external `Memory` CRD | Referencing an external memory provider | `kagent.dev/v1alpha1` `Memory`; current public CRD supports `Pinecone` | Provider/index dependent | Not wired in this repo |
+| Custom `memory-mcp` graph | Shared operational lessons, task history, incidents, and cross-agent context | MCP tools over a persistent knowledge graph (`create_entities`, `add_observations`, `search_nodes`, `open_nodes`, `read_graph`) | Shared by every agent granted the MCP tools | Deployed/wired through `platform/mcp-memory-server/` and `agents/memory-wired/`; has a known concurrent-write limitation |
+
+### Recommendation
+
+Use native kagent memory for low-friction personal or agent-local recall:
+preferences, recently learned facts, and facts that should remain isolated to
+one agent/user pair. It is the right path when you want `prefetch_memory`,
+`load_memory`, `save_memory`, and auto-save to appear automatically from the
+agent runtime.
+
+Use the custom `memory-mcp` graph for shared platform memory: incidents,
+remediation decisions, reusable findings, handoff state, and development
+pipeline outcomes that multiple agents need to see. It is explicit, auditable
+at the tool-call level, and can model entities and relationships, which native
+kagent memory intentionally does not try to provide.
+
+Do not use native kagent memory as the canonical platform knowledge base. Keep
+platform documentation in Git and expose it through the doc2vec/querydoc MCP
+pattern. Native memory is for remembered facts, not cited documentation.
+
+### Combined Pattern
+
+The two options can coexist if their responsibilities stay separate:
+
+1. Native kagent memory recalls per-user and per-agent preferences.
+2. `memory-mcp` stores shared lessons and entities that other agents may reuse.
+3. Querydoc/RAG stores durable platform documentation with source citations.
+
+For production, enable native memory only after the controller uses durable
+PostgreSQL with pgvector and an embedding-capable `ModelConfig` exists. Keep
+`memory-mcp` writes serialized or add a write queue before high-concurrency use,
+because the current implementation can lose concurrent writes.
 
 ## Scenario Results
 
@@ -168,4 +215,3 @@ Current upstream source paths:
 - `python/packages/kagent-adk/src/kagent/adk/tools/prefetch_memory_tool.py`
 - `python/packages/kagent-adk/src/kagent/adk/_session_service.py`
 - `python/packages/kagent-adk/src/kagent/adk/converters/request_converter.py`
-

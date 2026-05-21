@@ -1,5 +1,19 @@
 # Changelog
 
+## [2026-05-21] - K-Agent memory, BYO agents, chaos drills, observability roadmap
+
+High-level handoff entry for the latest public-safe K-Agent platform materials.
+
+### Added
+- `infra/byo-kagent/SHOWCASE-DEMO.md` - presenter path for Bring Your Own Agent onboarding, including demo agents, model configuration, skills, tools, memory, and Agent Gateway control points.
+- `observability/managed-lgtm-integration/GITLAB-ISSUE-KAGENT-AGENTIC-OBSERVABILITY-ROADMAP.md` - GitLab-ready issue body for kagent, Agent Gateway, agentic workflow, LGTM dashboard, rule, alert, and evidence gaps.
+
+### Changed
+- `docs/kagent-memory/README.md` and `docs/memory-integration.md` now compare native kagent memory with the custom MCP memory option and call out when to use each pattern.
+- `chaos/litmus/WORK-INSTALL.md` now includes a fire-drill operating model for LitmusChaos events, agent triage, GitLab issue creation, SRE response tracking, and agent-platform fault drills.
+- `DEMOS.md` now points the memory demo at live evidence plus the native-vs-custom-MCP guide, and links the BYO Agent showcase as the starting point for presenter walkthroughs.
+- `README.md` now links this changelog from Quick Navigation so recent committed scope is easy to find after a pause.
+
 ## [Unreleased] — refresh/platform-monorepo
 
 Complete repo refresh: narrow Alertmanager→Redpanda PoC → full platform monorepo.

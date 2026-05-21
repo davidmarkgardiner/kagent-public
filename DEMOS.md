@@ -109,6 +109,7 @@ agent lands live with the right ModelConfig wired through agentgateway.
 **Replicable artefacts**
 
 - Architecture + bootstrap — [`infra/byo-kagent/README.md`](infra/byo-kagent/README.md)
+- Presenter showcase path — [`infra/byo-kagent/SHOWCASE-DEMO.md`](infra/byo-kagent/SHOWCASE-DEMO.md)
 - Sandbox walkthrough (manual setup with NetworkPolicy + tool verification) — [`infra/byo-kagent/SANDBOX-ONBOARDING.md`](infra/byo-kagent/SANDBOX-ONBOARDING.md)
 - Tool catalog (6 verified entries) — [`infra/byo-kagent/bootstrap-catalog/`](infra/byo-kagent/bootstrap-catalog/)
 - Kyverno enforcement policies (6) — [`infra/byo-kagent/kyverno-policies/`](infra/byo-kagent/kyverno-policies/)
@@ -116,9 +117,10 @@ agent lands live with the right ModelConfig wired through agentgateway.
 - Skill scaffold for building new agents — [`agents/skills/byoa-agent-builder/SKILL.md`](agents/skills/byoa-agent-builder/SKILL.md)
   Includes `references/tool-catalog.md`, `references/system-prompt-patterns.md`, `assets/agent-template.yaml`.
 
-**What to show.** Open the BYO-kagent README architecture diagram. Walk
-through one Kyverno policy. Open the `byoa-agent-builder` SKILL.md and the
-filled `agent-template.yaml` for one of the existing demo agents.
+**What to show.** Open the showcase path first. Then walk the BYO-kagent
+architecture diagram, one Kyverno policy, the `byoa-agent-builder` skill, and
+the Agent Gateway MCP authorization demo that projects `ToolGrant` into runtime
+tool enforcement.
 
 ---
 
@@ -208,7 +210,7 @@ embedding-capable ModelConfig.
 **Replicable artefacts**
 
 - Authoritative reference (Helm enablement, CRD schema, tools, gotchas) — [`a2a/memory-reference.md`](a2a/memory-reference.md)
-- Live evidence from `red` (2026-05-13 — what works, what's blocked, build plan to enable) — [`docs/kagent-memory/README.md`](docs/kagent-memory/README.md)
+- Live evidence from `red` plus native-vs-custom-MCP memory guide — [`docs/kagent-memory/README.md`](docs/kagent-memory/README.md)
 - Smoke test (controller config, native API, A2A session continuity) — [`a2a/scripts/kagent-memory-smoke.sh`](a2a/scripts/kagent-memory-smoke.sh)
 
 **What to show.** Run `bash a2a/scripts/kagent-memory-smoke.sh` with your
