@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kagent-openai
+  namespace: team-alpha
+type: Opaque
+stringData:
+  OPENAI_API_KEY: local-kubeai-placeholder
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: a2a-agent-token
+  namespace: team-alpha
+type: Opaque
+stringData:
+  token: alpha-to-beta-demo-token
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: local-qwen
+  namespace: team-alpha
+spec:
+  provider: OpenAI
+  model: qwen3-14b
+  apiKeySecret: kagent-openai
+  apiKeySecretKey: OPENAI_API_KEY
+  openAI:
+    baseUrl: http://kubeai.kubeai.svc.cluster.local/openai/v1
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: orchestrator
+  namespace: team-alpha
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/part-of: cross-namespace-a2a
+spec:
+  description: Orchestrator in team-alpha that delegates to team-beta/specialist through a cross-namespace kagent Agent tool.
+  type: Declarative
+  declarative:
+    modelConfig: local-qwen
+    deployment:
+      labels:
+        app.kubernetes.io/name: orchestrator
+        app.kubernetes.io/part-of: cross-namespace-a2a
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+    a2aConfig:
+      skills:
+        - id: delegate-to-beta
+          name: Delegate to Beta
+          description: Delegates a request to team-beta/specialist and returns its marker.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [a2a, cross-namespace, team-alpha]
+          examples:
+            - "Ask the beta specialist to prove cross namespace A2A"
+    systemMessage: |
+      You are team-alpha/orchestrator.
+      You have a remote agent tool named team_beta_specialist.
+      For every user request, you MUST call team-beta/specialist once.
+      Then respond in this exact concise shape:
+      ORCHESTRATOR: team-alpha/orchestrator
+      SPECIALIST_REPLY: <verbatim useful content returned by team-beta/specialist>
+      PATH: Agentgateway /a2a/team-alpha/orchestrator/ -> kagent controller -> team-alpha/orchestrator -> team-beta/specialist
+    tools:
+      - type: Agent
+        agent:
+          name: specialist
+          namespace: team-beta
+        headersFrom:
+          - name: X-Agent-Token
+            valueFrom:
+              type: Secret
+              name: a2a-agent-token
+              key: token

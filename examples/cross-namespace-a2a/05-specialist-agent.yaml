@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kagent-openai
+  namespace: team-beta
+type: Opaque
+stringData:
+  OPENAI_API_KEY: local-kubeai-placeholder
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: beta-private-token
+  namespace: team-beta
+type: Opaque
+stringData:
+  token: beta-secret-must-not-be-readable-by-alpha
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: local-qwen
+  namespace: team-beta
+spec:
+  provider: OpenAI
+  model: qwen3-14b
+  apiKeySecret: kagent-openai
+  apiKeySecretKey: OPENAI_API_KEY
+  openAI:
+    baseUrl: http://kubeai.kubeai.svc.cluster.local/openai/v1
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: specialist
+  namespace: team-beta
+  labels:
+    app.kubernetes.io/name: specialist
+    app.kubernetes.io/part-of: cross-namespace-a2a
+spec:
+  description: Specialist agent in team-beta that only accepts agent-tool references from alpha-labelled namespaces.
+  type: Declarative
+  allowedNamespaces:
+    from: Selector
+    selector:
+      matchLabels:
+        team: alpha
+  declarative:
+    modelConfig: local-qwen
+    deployment:
+      labels:
+        app.kubernetes.io/name: specialist
+        app.kubernetes.io/part-of: cross-namespace-a2a
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+    a2aConfig:
+      skills:
+        - id: beta-specialist-analysis
+          name: Beta Specialist Analysis
+          description: Returns a deterministic marker proving the beta specialist handled the delegated request.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [a2a, cross-namespace, team-beta]
+          examples:
+            - "Analyze case CROSS_NS_PROOF_001"
+    systemMessage: |
+      You are team-beta/specialist.
+      For every request, return exactly this concise shape:
+      SPECIALIST_REPLY: team-beta/specialist received "<short summary of user request>"
+      SECURITY_NOTE: allowedNamespaces permits team-alpha only.

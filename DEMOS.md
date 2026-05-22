@@ -15,6 +15,7 @@ clean clone can replicate every pillar without hunting.
 | 6 | Teams human-in-the-loop (HITL) | [`platform/teams-hitl/README.md`](platform/teams-hitl/README.md) |
 | 7 | Kagent memory | [`docs/kagent-memory/README.md`](docs/kagent-memory/README.md) |
 | 8 | Kagent knowledge base (RAG) | [`ai-platform/kagent-knowledge-base/README.md`](ai-platform/kagent-knowledge-base/README.md) |
+| 9 | Cross-namespace A2A through Agentgateway | [`examples/cross-namespace-a2a/00-README.md`](examples/cross-namespace-a2a/00-README.md) |
 
 ---
 
