@@ -58,6 +58,12 @@ Run the Grafana MCP smoke when the cluster has a `kagent-grafana-mcp`
 scripts/observability/smoke-grafana-mcp.sh --context {{KUBE_CONTEXT}}
 ```
 
+For a work-computer replication of the Grafana MCP enrichment path, use
+[`grafana-mcp-home-lab.md`](grafana-mcp-home-lab.md). It covers the safe
+service-account shape, Secret-backed Helm install, `RemoteMCPServer`
+registration, read-only agent tool selection, and the Alertmanager/Grafana
+contact-point -> Argo Events -> `observability-agent` enrichment flow.
+
 Run live cluster checks:
 
 ```bash
