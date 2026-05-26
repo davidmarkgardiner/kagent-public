@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kagent Workgroup</title>
+  <style>
+    :root {
+      --primary: #e60000;
+      --accent: #427c99;
+      --background: #ffffff;
+      --text: #1c1c1c;
+      --muted: #555555;
+      --border: #dedede;
+      --surface: #f5f5f5;
+      --selected: #fff4f4;
+      --base: 4px;
+      --font: Frutiger, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.45;
+      letter-spacing: 0;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(280px, 344px) minmax(0, 1fr);
+    }
+
+    aside {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: calc(var(--base) * 4);
+      padding: calc(var(--base) * 5);
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--background);
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1,
+    h2 {
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .brand {
+      display: grid;
+      gap: calc(var(--base) * 2);
+      padding-left: calc(var(--base) * 3);
+      border-left: calc(var(--base) * 2) solid var(--primary);
+    }
+
+    .brand strong {
+      color: var(--primary);
+      text-transform: uppercase;
+    }
+
+    .brand p,
+    .meta,
+    .tab small {
+      color: var(--muted);
+    }
+
+    .meta {
+      display: grid;
+      gap: calc(var(--base) * 2);
+      padding: calc(var(--base) * 3);
+      border: 1px solid var(--border);
+      background: var(--background);
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: calc(var(--base) * 3);
+    }
+
+    .tabs {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+      gap: calc(var(--base) * 2);
+      overflow: auto;
+      padding-right: var(--base);
+    }
+
+    .tab {
+      width: 100%;
+      min-height: calc(var(--base) * 16);
+      display: grid;
+      gap: var(--base);
+      align-content: center;
+      padding: calc(var(--base) * 3);
+      border: 1px solid var(--border);
+      background: var(--background);
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .tab:hover,
+    .tab[aria-current="page"] {
+      border-color: var(--primary);
+      background: var(--selected);
+    }
+
+    .tab span {
+      font-weight: 700;
+    }
+
+    header {
+      min-height: calc(var(--base) * 16);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: calc(var(--base) * 4);
+      padding: calc(var(--base) * 4) calc(var(--base) * 5);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .actions {
+      display: flex;
+      gap: calc(var(--base) * 2);
+      align-items: center;
+    }
+
+    a.button {
+      min-height: calc(var(--base) * 10);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 calc(var(--base) * 3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: var(--surface);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    iframe {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      border: 0;
+      background: var(--background);
+    }
+
+    @media (max-width: 880px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        max-height: 42vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      iframe {
+        min-height: 72vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <section class="brand" aria-labelledby="portal-title">
+        <strong>kagent Workgroup</strong>
+        <h1 id="portal-title">HTML handover portal</h1>
+        <p>Static front page for the repo's checked-in HTML artifacts.</p>
+      </section>
+
+      <section class="meta" aria-label="Portal status">
+        <div class="row"><span>Pages</span><b id="page-count">0</b></div>
+        <div class="row"><span>Mode</span><b>Repo static</b></div>
+      </section>
+
+      <nav class="tabs" id="tabs" aria-label="HTML pages"></nav>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <h2 id="page-title">Loading</h2>
+          <p class="meta-text" id="page-path"></p>
+        </div>
+        <div class="actions">
+          <a class="button" id="open-link" href="#" target="_blank" rel="noopener">Open page</a>
+        </div>
+      </header>
+      <iframe id="frame" title="Selected kagent workgroup page"></iframe>
+    </main>
+  </div>
+
+  <script>
+    const pages = [
+      {
+        title: "K-Agent Knowledge UI",
+        group: "Agents",
+        path: "agents/kagent-knowledge-ui/app/static/index.html"
+      },
+      {
+        title: "Platform Knowledge Base POC Presentation",
+        group: "AI Platform",
+        path: "ai-platform/kagent-knowledge-base/platform-kb-poc-presentation.html"
+      },
+      {
+        title: "A2A Auth Options",
+        group: "A2A",
+        path: "docs/a2a-auth/a2a-auth-options.html"
+      },
+      {
+        title: "MCP Tool Auth Discovery Explainer",
+        group: "Agent Gateway",
+        path: "docs/agentgateway-mcp-tool-auth/mcp-tool-auth-discovery-explainer.html"
+      },
+      {
+        title: "K-Agent Observability Playbook",
+        group: "Observability",
+        path: "docs/observability/k-agent-observability-playbook.html"
+      },
+      {
+        title: "Governed Agent Runtime Epic",
+        group: "Security",
+        path: "docs/security/governed-agent-runtime-epic.html"
+      },
+      {
+        title: "Pod Sandboxing",
+        group: "Security",
+        path: "docs/security/pod-sandboxing.html"
+      }
+    ];
+
+    const tabs = document.getElementById("tabs");
+    const frame = document.getElementById("frame");
+    const pageTitle = document.getElementById("page-title");
+    const pagePath = document.getElementById("page-path");
+    const openLink = document.getElementById("open-link");
+    const pageCount = document.getElementById("page-count");
+
+    function flattened(path) {
+      return path.replaceAll("/", "__");
+    }
+
+    function sourcePathFromHash() {
+      const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (!raw) return "";
+      return raw.includes("/") ? raw : raw.replaceAll("__", "/");
+    }
+
+    function selectPage(path, updateHash = true) {
+      const page = pages.find((item) => item.path === path) || pages[0];
+      if (!page) return;
+
+      frame.src = page.path;
+      pageTitle.textContent = page.title;
+      pagePath.textContent = `${page.group} / ${page.path}`;
+      openLink.href = page.path;
+
+      for (const button of tabs.querySelectorAll("button")) {
+        button.setAttribute("aria-current", button.dataset.path === page.path ? "page" : "false");
+      }
+
+      if (updateHash) {
+        window.history.replaceState(null, "", `#${flattened(page.path)}`);
+      }
+    }
+
+    pageCount.textContent = String(pages.length);
+
+    for (const page of pages) {
+      const button = document.createElement("button");
+      button.className = "tab";
+      button.type = "button";
+      button.dataset.path = page.path;
+      button.innerHTML = `<span>${page.title}</span><small>${page.group} / ${page.path}</small>`;
+      button.addEventListener("click", () => selectPage(page.path));
+      tabs.appendChild(button);
+    }
+
+    window.addEventListener("hashchange", () => selectPage(sourcePathFromHash(), false));
+    selectPage(sourcePathFromHash() || pages[0].path, false);
+  </script>
+</body>
+</html>

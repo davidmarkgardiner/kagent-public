@@ -3,6 +3,10 @@
 The kagent workgroup HTML portal collects standalone HTML artifacts from this
 repository into one click-through surface.
 
+Checked-in front page:
+
+- `index.html`
+
 Primary URL:
 
 - <https://{{KAGENT_PORTAL_PRIMARY_HOSTNAME}}/>
@@ -28,6 +32,11 @@ The publisher:
 - copies the portal to `{{KAGENT_PORTAL_REMOTE_DIR}}`
 - restarts `{{KAGENT_PORTAL_SYSTEMD_SERVICE}}` on the configured portal host
 - refreshes the `kagent-workgroup` Kubernetes namespace and Traefik ingress
+
+For a simple work-environment handoff, serving the repository root with nginx is
+enough. The checked-in `index.html` links to the source HTML files in place and
+supports the same flattened hash format as the generated portal, for example
+`#docs__security__pod-sandboxing.html`.
 
 Related portals:
 
