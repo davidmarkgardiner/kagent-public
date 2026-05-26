@@ -79,6 +79,12 @@ spec:
 
                         prompt = f"""Triage this observability alert from the K-Agent / Agent Gateway monitoring path.
 
+                        Use the Grafana MCP tools before giving the final answer:
+                        - list_datasources if you need datasource UIDs.
+                        - query_prometheus for metric confirmation.
+                        - query_loki_logs for recent kagent, agentgateway, Argo, or Alertmanager logs.
+                        - search_dashboards, get_dashboard_summary, get_dashboard_panel_queries, or generate_deeplink if a dashboard would help the operator.
+
                         Alert: {alertname}
                         Severity: {severity}
                         Cluster: {cluster}
@@ -89,9 +95,10 @@ spec:
 
                         Return:
                         1. Likely root cause in one paragraph.
-                        2. Exact PromQL or LogQL query to confirm.
+                        2. Grafana MCP evidence gathered, including datasource UID and PromQL or LogQL used.
                         3. Exact kubectl commands for safe investigation.
-                        4. Whether this should be observe_only, human_review, or safe_auto_remediate.
+                        4. Grafana dashboard or Explore deeplink if available.
+                        5. Whether this should be observe_only, human_review, or safe_auto_remediate.
 
                         Full Alertmanager payload:
                         {json.dumps(payload, sort_keys=True)[:6000]}
@@ -110,7 +117,7 @@ spec:
                         }).encode()
 
                         req = urllib.request.Request(
-                            "http://kagent-controller.kagent:8083/api/a2a/kagent/sre-triage-agent/",
+                            "http://kagent-controller.kagent:8083/api/a2a/kagent/observability-agent/",
                             data=body,
                             headers={"Content-Type": "application/json"},
                             method="POST",

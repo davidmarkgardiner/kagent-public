@@ -46,6 +46,9 @@ examples/           Quickstart and sample payloads
 | Wire K8s events → EventHub → AI diagnosis | [`observability/alloy-eventhub-pipeline/`](observability/alloy-eventhub-pipeline/) |
 | Monitor kagent + agentgateway with Alloy/Grafana | [`docs/observability/k-agent-alloy-grafana.md`](docs/observability/k-agent-alloy-grafana.md) |
 | Deploy the kagent + agentgateway observability bundle | [`docs/observability/k-agent-agentgateway-observability.md`](docs/observability/k-agent-agentgateway-observability.md) |
+| Test Grafana MCP with kagent observability | [`docs/observability/grafana-mcp-home-lab.md`](docs/observability/grafana-mcp-home-lab.md) |
+| Adapt AI + Grafana triage ideas to this stack | [`docs/ai-grafana/README.md`](docs/ai-grafana/README.md) |
+| Hand over the CAF-style Grafana/alerts/Argo flow | [`docs/observability/caf-style-observability-handoff.md`](docs/observability/caf-style-observability-handoff.md) |
 | Sync managed Mimir/Loki rules from Kubernetes | [`observability/managed-lgtm-integration/rule-sync/`](observability/managed-lgtm-integration/rule-sync/README.md) |
 | Deploy the AI gateway (LLM + MCP + A2A) | [`platform/agentgateway/`](platform/agentgateway/README.md) |
 | Deploy LitmusChaos and watch kagent triage chaos events | [`chaos/litmus/WORK-INSTALL.md`](chaos/litmus/WORK-INSTALL.md) |

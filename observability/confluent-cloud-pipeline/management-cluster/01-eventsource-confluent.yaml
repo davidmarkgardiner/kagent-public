@@ -1,0 +1,60 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: confluent-kafka
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: confluent-cloud-pipeline
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+    container:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+  kafka:
+    k8s-events:
+      url: "{{CONFLUENT_BOOTSTRAP}}"
+      topic: "k8s-events"
+      consumerGroup:
+        groupName: "kagent-critical-proxmox"
+      tls:
+        caCertSecret:
+          name: confluent-public-ca
+          key: ca.pem
+      sasl:
+        mechanism: "PLAIN"
+        userSecret:
+          name: confluent-credentials
+          key: key
+        passwordSecret:
+          name: confluent-credentials
+          key: secret
+      jsonBody: true
+      partition: ""
+      version: "2.5.0"
+    alertmanager-events:
+      url: "{{CONFLUENT_BOOTSTRAP}}"
+      topic: "alertmanager-events"
+      consumerGroup:
+        groupName: "kagent-alertmanager-proxmox"
+      tls:
+        caCertSecret:
+          name: confluent-public-ca
+          key: ca.pem
+      sasl:
+        mechanism: "PLAIN"
+        userSecret:
+          name: confluent-credentials
+          key: key
+        passwordSecret:
+          name: confluent-credentials
+          key: secret
+      jsonBody: true
+      partition: ""
+      version: "2.5.0"

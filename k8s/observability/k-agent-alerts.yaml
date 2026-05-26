@@ -57,12 +57,86 @@ spec:
             route_to: triage
             kagent_path: webhook
           annotations:
-            summary: "agentgateway token metrics are missing"
-            description: "The gateway is not emitting agentgateway_gen_ai_client_token_usage_count. Token dashboards and token-budget alerts are blind unless the structured-log fallback is available."
+            summary: "agentgateway token samples are missing"
+            description: "Prometheus has no agentgateway_gen_ai_client_token_usage_count series. The gateway endpoint may still register the GenAI metric family; check whether LLM traffic is actually routed through Agent Gateway or whether K-Agent ModelConfig calls LiteLLM/KubeAI/OpenAI directly."
 
     - name: k-agent-agentgateway-runtime
       interval: 30s
       rules:
+        - alert: AgentgatewayRouteHighErrorRate
+          expr: |
+            (
+              sum by (cluster, namespace, gateway, route, backend) (
+                max without(job, container, endpoint, exported_gateway) (
+                  rate(agentgateway_requests_total{status=~"5.."}[5m])
+                )
+              )
+              /
+              sum by (cluster, namespace, gateway, route, backend) (
+                max without(job, container, endpoint, exported_gateway) (
+                  rate(agentgateway_requests_total[5m])
+                )
+              )
+            ) > 0.05
+            and
+            sum by (cluster, namespace, gateway, route, backend) (
+              max without(job, container, endpoint, exported_gateway) (
+                rate(agentgateway_requests_total[5m])
+              )
+            ) > 0.01
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "agentgateway route 5xx rate > 5%"
+            description: "{{ $labels.namespace }}/{{ $labels.gateway }} route {{ $labels.route }} backend {{ $labels.backend }} is returning elevated 5xx responses."
+
+        - alert: AgentgatewayRouteTimeouts
+          expr: |
+            sum by (cluster, namespace, gateway, route, backend, status, reason) (
+              max without(job, container, endpoint, exported_gateway) (
+                increase(agentgateway_requests_total{reason=~"Timeout|DeadlineExceeded|Canceled"}[10m])
+              )
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "agentgateway route is timing out"
+            description: "{{ $labels.namespace }}/{{ $labels.gateway }} route {{ $labels.route }} backend {{ $labels.backend }} returned {{ $labels.status }} / {{ $labels.reason }} in the last 10m."
+
+        - alert: AgentgatewayRouteSlowP95
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (cluster, namespace, gateway, route, backend, le) (
+                max without(job, container, endpoint, exported_gateway) (
+                  rate(agentgateway_request_duration_seconds_bucket[5m])
+                )
+              )
+            ) > 60
+            and
+            sum by (cluster, namespace, gateway, route, backend) (
+              max without(job, container, endpoint, exported_gateway) (
+                rate(agentgateway_request_duration_seconds_count[5m])
+              )
+            ) > 0.01
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "agentgateway route p95 latency is above 60s"
+            description: "{{ $labels.namespace }}/{{ $labels.gateway }} route {{ $labels.route }} backend {{ $labels.backend }} has p95 latency above 60 seconds. Check for long LLM calls, stuck tool calls, or retries without final agent output."
+
         - alert: AgentgatewayHigh5xxRate
           expr: |
             (

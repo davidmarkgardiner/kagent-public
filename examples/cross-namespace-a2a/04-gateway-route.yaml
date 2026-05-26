@@ -1,0 +1,64 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-agentgateway-cross-namespace-a2a
+  namespace: kagent
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: agentgateway-system
+  to:
+    - group: ""
+      kind: Service
+      name: kagent-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: cross-namespace-a2a-orchestrator
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    demo: cross-namespace-a2a
+spec:
+  parentRefs:
+    - name: agent-gw
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /a2a/team-alpha/orchestrator/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /api/a2a/team-alpha/orchestrator/
+      backendRefs:
+        - name: kagent-controller
+          namespace: kagent
+          port: 8083
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: cross-namespace-a2a-policy
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    demo: cross-namespace-a2a
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: cross-namespace-a2a-orchestrator
+  traffic:
+    rateLimit:
+      local:
+        - requests: 2
+          unit: Seconds
+          burst: 5
+    timeouts:
+      request: "600s"

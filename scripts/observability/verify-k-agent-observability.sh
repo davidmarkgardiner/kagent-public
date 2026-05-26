@@ -55,6 +55,7 @@ need jq
 
 DASHBOARDS=(
   "${ROOT_DIR}/observability/grafana/dashboards/k-agent-agentgateway-public-ready.json"
+  "${ROOT_DIR}/observability/grafana/dashboards/agentgateway-traffic-quality.json"
   "${ROOT_DIR}/observability/grafana/dashboards/k-agent-metrics.json"
   "${ROOT_DIR}/observability/prometheus-alertmanager/enhanced/08-grafana-dashboard.json"
 )
@@ -81,10 +82,12 @@ done
 
 echo "==> Static contract checks"
 grep -q 'agentgateway_gen_ai_client_token_usage_sum' "${ROOT_DIR}/k8s/observability/k-agent-alerts.yaml"
+grep -q 'AgentgatewayRouteTimeouts' "${ROOT_DIR}/k8s/observability/k-agent-alerts.yaml"
+grep -q 'AgentgatewayRouteSlowP95' "${ROOT_DIR}/k8s/observability/k-agent-alerts.yaml"
 grep -q 'kagent_path: webhook' "${ROOT_DIR}/k8s/observability/k-agent-alerts.yaml"
 grep -q 'name: path-b-alertmanager-webhook' "${ROOT_DIR}/k8s/observability/k-agent-alertmanager-eventsource.yaml"
 grep -q 'path-b-alertmanager-webhook-eventsource-svc.argo-events.svc' "${ROOT_DIR}/k8s/observability/k-agent-alertmanager-triage-route.yaml"
-grep -q 'sre-triage-agent' "${ROOT_DIR}/k8s/observability/k-agent-alert-triage-sensor.yaml"
+grep -q 'observability-agent' "${ROOT_DIR}/k8s/observability/k-agent-alert-triage-sensor.yaml"
 grep -q 'agentgateway-system' "${ROOT_DIR}/k8s/observability/k-agent-alloy.yaml"
 grep -q 'kgateway-system' "${ROOT_DIR}/k8s/observability/k-agent-alloy.yaml"
 grep -q 'PROMETHEUS_REMOTE_WRITE_URL' "${ROOT_DIR}/k8s/observability/k-agent-alloy.yaml"
@@ -95,9 +98,12 @@ grep -q 'match_expression' "${ROOT_DIR}/observability/managed-lgtm-integration/a
 
 for file in \
   "${ROOT_DIR}/observability/grafana/dashboards/k-agent-agentgateway-public-ready.json" \
+  "${ROOT_DIR}/observability/grafana/dashboards/agentgateway-traffic-quality.json" \
   "${ROOT_DIR}/observability/grafana/dashboards/k-agent-metrics.json"; do
   jq -e '.templating.list[] | select(.name == "datasource_prom" and .type == "datasource")' "${file}" >/dev/null
-  jq -e '.templating.list[] | select(.name == "datasource_loki" and .type == "datasource")' "${file}" >/dev/null
+  if [[ "${file}" != *"/agentgateway-traffic-quality.json" ]]; then
+    jq -e '.templating.list[] | select(.name == "datasource_loki" and .type == "datasource")' "${file}" >/dev/null
+  fi
   if jq -e '.. | objects | select(.datasource?.uid == "kagent-mimir" or .datasource?.uid == "kagent-loki")' "${file}" >/dev/null; then
     echo "hardcoded dashboard datasource UID remains in ${file}" >&2
     exit 1

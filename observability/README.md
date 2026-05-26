@@ -1,8 +1,55 @@
-# K8s Event Triage - Production Architecture
+# Observability
 
 ## Overview
 
-Multi-cluster K8s event triage system using Grafana Alloy and Argo Events.
+This area contains the observability patterns for platform and AI SRE workflows:
+
+- Grafana Alloy collection from workload clusters.
+- Managed LGTM integration for Mimir, Loki, dashboards, and rules.
+- Alertmanager or Grafana Alerting delivery into Argo Events.
+- kagent triage workflows for K-Agent, Agent Gateway, and platform alerts.
+- Grafana MCP enrichment so agents can query dashboards, Prometheus/Mimir, Loki,
+  and alerting metadata during triage.
+
+Start with these documents for the current K-Agent / Agent Gateway path:
+
+| Goal | File |
+| --- | --- |
+| Install and verify the observability bundle | [`../docs/observability/k-agent-agentgateway-observability.md`](../docs/observability/k-agent-agentgateway-observability.md) |
+| Replicate Grafana MCP enrichment on another cluster | [`../docs/observability/grafana-mcp-home-lab.md`](../docs/observability/grafana-mcp-home-lab.md) |
+| Understand the AI + Grafana triage pattern | [`../docs/ai-grafana/README.md`](../docs/ai-grafana/README.md) |
+| Run the Grafana MCP smoke test | [`../scripts/observability/smoke-grafana-mcp.sh`](../scripts/observability/smoke-grafana-mcp.sh) |
+| Maintain managed LGTM rule sync | [`managed-lgtm-integration/rule-sync/README.md`](managed-lgtm-integration/rule-sync/README.md) |
+| Route Alertmanager alerts to kagent triage | [`../k8s/observability/k-agent-alert-triage-sensor.yaml`](../k8s/observability/k-agent-alert-triage-sensor.yaml) |
+
+## Grafana MCP Triage Enrichment
+
+The current alert enrichment path is:
+
+```text
+Grafana Alerting or Prometheus Alertmanager
+  -> Argo Events EventSource
+  -> Argo Sensor
+  -> Argo Workflow
+  -> kagent observability-agent
+  -> Grafana MCP
+  -> Prometheus/Mimir, Loki, dashboards, alerting metadata
+```
+
+The contact point is only the front door. It sends the original alert payload to
+Argo Events. The workflow asks `observability-agent` to use Grafana MCP tools
+such as `list_datasources`, `query_prometheus`, `query_loki_logs`,
+`get_dashboard_summary`, `get_dashboard_panel_queries`, and `generate_deeplink`
+before returning an operator verdict.
+
+Keep the default agent read-oriented. Do not add dashboard mutation, plugin
+install, annotation write, or incident creation tools unless the workflow has an
+explicit human approval path.
+
+## Legacy Event Hub Pattern
+
+The older multi-cluster Kubernetes event triage pattern is still useful for
+Event Hub backed ingestion:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -84,7 +131,7 @@ kubectl apply -f .
 | `{{AZURE_REGION}}` | Azure region | `uksouth` |
 | `{{EVENTHUB_NAMESPACE}}` | Event Hub namespace | `evh-platform-prod` |
 | `{{EVENTHUB_NAME}}` | Event Hub name | `k8s-events` |
-| `{{EVENTHUB_CONNECTION_STRING}}` | Shared Access Key connection string | `Endpoint=sb://...` |
+| `{{EVENTHUB_CONNECTION_STRING}}` | Shared Access Key connection string | `{{EVENTHUB_CONNECTION_STRING}}` |
 
 ### Placeholders - Management Cluster
 

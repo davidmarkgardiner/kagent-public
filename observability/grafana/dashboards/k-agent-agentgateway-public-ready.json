@@ -270,12 +270,12 @@
       "id": 6,
       "targets": [
         {
-          "expr": "(sum by (namespace, pod) (rate(envoy_cluster_external_upstream_rq_xx{namespace=~\"$gateway_namespace\", envoy_response_code_class=\"5\"}[5m])) / sum by (namespace, pod) (rate(envoy_cluster_external_upstream_rq_completed{namespace=~\"$gateway_namespace\"}[5m]))) and sum by (namespace, pod) (rate(envoy_cluster_external_upstream_rq_completed{namespace=~\"$gateway_namespace\"}[5m])) > 0.01",
-          "legendFormat": "{{namespace}} {{pod}}",
+          "expr": "(sum(rate(envoy_cluster_external_upstream_rq_xx{namespace=~\"$gateway_namespace\", envoy_response_code_class=\"5\"}[5m])) / clamp_min(sum(rate(envoy_cluster_external_upstream_rq_completed{namespace=~\"$gateway_namespace\"}[5m])), 1)) OR vector(0)",
+          "legendFormat": "5xx ratio",
           "refId": "A"
         }
       ],
-      "title": "Agent Gateway 5xx Ratio",
+      "title": "Agent Gateway 5xx Ratio (0 is healthy)",
       "type": "timeseries"
     },
     {
@@ -285,6 +285,17 @@
       },
       "fieldConfig": {
         "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "yellow",
+                  "text": "not emitted"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "unit": "short"
         },
         "overrides": []
@@ -298,18 +309,24 @@
       "id": 7,
       "targets": [
         {
-          "expr": "sum by (gen_ai_request_model, gen_ai_token_type) (rate(agentgateway_gen_ai_client_token_usage_sum[5m]) * 60)",
-          "legendFormat": "{{gen_ai_request_model}} {{gen_ai_token_type}}",
+          "expr": "count(agentgateway_gen_ai_client_token_usage_sum) OR vector(0)",
+          "legendFormat": "series",
           "refId": "A"
         }
       ],
-      "title": "Agent Gateway Tokens Per Minute",
-      "type": "timeseries"
+      "title": "Agent Gateway Token Metrics Available",
+      "type": "stat"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "${datasource_loki}"
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -320,12 +337,12 @@
       "id": 8,
       "targets": [
         {
-          "expr": "sum by (agent, model) (sum_over_time({namespace=~\"$kagent_namespace\"} | json | unwrap total_tokens [5m]))",
-          "legendFormat": "{{agent}} {{model}}",
+          "expr": "sum by (namespace, pod, envoy_response_code_class) (rate(envoy_cluster_external_upstream_rq_xx{namespace=~\"$gateway_namespace\"}[5m]))",
+          "legendFormat": "{{namespace}} {{pod}} {{envoy_response_code_class}}xx",
           "refId": "A"
         }
       ],
-      "title": "Token Fallback From K-Agent Logs",
+      "title": "Agent Gateway Response Rate by Pod",
       "type": "timeseries"
     },
     {
@@ -370,19 +387,40 @@
       "id": 10,
       "targets": [
         {
-          "expr": "sum by (alertname, severity, kagent_path) (ALERTS{alertstate=\"firing\", route_to=\"triage\"})",
+          "expr": "round(max by (phase) (increase(argo_workflows_total_count{exported_namespace=\"argo\"}[24h])))",
           "format": "table",
           "instant": true,
           "refId": "A"
         }
       ],
-      "title": "Firing Triage Alerts",
+      "title": "Argo Workflow Outcomes Last 24h",
       "type": "table"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "${datasource_loki}"
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "not ready"
+                },
+                "1": {
+                  "color": "green",
+                  "text": "ready"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "unit": "none"
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -391,28 +429,41 @@
         "y": 28
       },
       "id": 11,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
-      },
       "targets": [
         {
-          "expr": "{namespace=~\"$kagent_namespace\"} |~ \"(?i)(error|warn|tool|a2a|triage|token)\"",
+          "expr": "max(kube_pod_status_ready{namespace=\"monitoring\",pod=\"loki-0\",condition=\"true\"}) OR vector(0)",
+          "legendFormat": "loki-0",
           "refId": "A"
         }
       ],
-      "title": "K-Agent Logs",
-      "type": "logs"
+      "title": "Loki Backend Ready",
+      "type": "stat"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "${datasource_loki}"
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "not ready"
+                },
+                "1": {
+                  "color": "green",
+                  "text": "ready"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "unit": "none"
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -421,28 +472,26 @@
         "y": 28
       },
       "id": 12,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
-      },
       "targets": [
         {
-          "expr": "{namespace=~\"$gateway_namespace\"} |~ \"(?i)(error|reset|timeout|token|model|upstream|5xx|unauthorized|forbidden)\"",
+          "expr": "max(kube_pod_status_ready{namespace=\"monitoring\",pod=~\"loki-gateway-.*\",condition=\"true\"}) OR vector(0)",
+          "legendFormat": "loki-gateway",
           "refId": "A"
         }
       ],
-      "title": "Agent Gateway Logs",
-      "type": "logs"
+      "title": "Loki Gateway Ready",
+      "type": "stat"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "${datasource_loki}"
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -451,28 +500,26 @@
         "y": 36
       },
       "id": 13,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
-      },
       "targets": [
         {
-          "expr": "{namespace=~\"$triage_namespace\"} |~ \"(?i)(alertmanager|k-agent-alert-triage|path-b-alert|K_AGENT_ALERT_TRIAGE|workflow|consumer)\"",
+          "expr": "kube_pod_status_ready{namespace=\"monitoring\",pod=~\"loki.*\",condition=\"true\"}",
+          "legendFormat": "{{pod}}",
           "refId": "A"
         }
       ],
-      "title": "Alertmanager to Argo Triage Logs",
-      "type": "logs"
+      "title": "Loki Pod Readiness",
+      "type": "timeseries"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "${datasource_loki}"
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -481,23 +528,71 @@
         "y": 36
       },
       "id": 14,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
-      },
       "targets": [
         {
-          "expr": "{namespace=~\"$chaos_namespace|argo\"} |~ \"(?i)(chaos|litmus|pod-delete|pod-cpu-hog|verdict|triage)\"",
+          "expr": "max by (node) (kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
+          "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
-      "title": "Chaos and Litmus Logs",
-      "type": "logs"
+      "title": "Cluster Node Readiness",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 44
+      },
+      "id": 15,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, namespace, pod, envoy_cluster_name) (rate(envoy_cluster_external_upstream_rq_time_bucket{namespace=~\"$gateway_namespace\"}[5m])))",
+          "legendFormat": "{{namespace}} {{pod}} {{envoy_cluster_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Agent Gateway Upstream Latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      },
+      "id": 16,
+      "targets": [
+        {
+          "expr": "round(max by (phase) (increase(argo_workflows_total_count{exported_namespace=\"argo\"}[24h])))",
+          "legendFormat": "{{phase}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Argo Workflow Outcomes Last 24h",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
@@ -629,7 +724,7 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-24h",
     "to": "now"
   },
   "timezone": "browser",

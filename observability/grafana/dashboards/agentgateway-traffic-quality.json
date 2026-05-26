@@ -1,0 +1,828 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(max without(job, container, endpoint, exported_gateway) (rate(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\"}[5m]))) OR vector(0)",
+          "legendFormat": "requests/sec",
+          "refId": "A"
+        }
+      ],
+      "title": "Gateway Request Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(max without(job, container, endpoint, exported_gateway) (increase(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"5..\", reason=~\"$reason\"}[1h]))) OR vector(0)",
+          "legendFormat": "5xx last hour",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed Gateway Calls Last Hour",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(max without(job, container, endpoint, exported_gateway) (increase(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", reason=~\"Timeout|DeadlineExceeded|Canceled\"}[1h]))) OR vector(0)",
+          "legendFormat": "timeouts last hour",
+          "refId": "A"
+        }
+      ],
+      "title": "Timed Out Calls Last Hour",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "description": "Non-zero means Prometheus has observed Agent Gateway GenAI token samples. Zero means the metrics endpoint may be registered, but no LLM traffic has produced token samples through this gateway path.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "orange",
+                  "text": "No samples"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "from": 1,
+                "result": {
+                  "color": "green",
+                  "text": "Available"
+                },
+                "to": 1000000
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "count(agentgateway_gen_ai_client_token_usage_count) OR vector(0)",
+          "legendFormat": "token metric series",
+          "refId": "A"
+        }
+      ],
+      "title": "Token Samples",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (route, status, reason) (max without(job, container, endpoint, exported_gateway) (rate(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\"}[5m]))) OR vector(0)",
+          "legendFormat": "{{route}} {{status}} {{reason}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Request Rate by Route / Status / Reason",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (route, backend, status, reason) (max without(job, container, endpoint, exported_gateway) (rate(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"5..\", reason=~\"$reason\"}[5m]))) OR vector(0)",
+          "legendFormat": "{{route}} {{backend}} {{status}} {{reason}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (route, backend, status, reason) (max without(job, container, endpoint, exported_gateway) (rate(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", reason=~\"Timeout|DeadlineExceeded|Canceled\"}[5m]))) OR vector(0)",
+          "legendFormat": "{{route}} {{backend}} {{status}} {{reason}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Failed or Timed Out Call Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, route) (max without(job, container, endpoint, exported_gateway) (rate(agentgateway_request_duration_seconds_bucket{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\"}[5m])))) OR vector(0)",
+          "legendFormat": "p50 {{route}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, route) (max without(job, container, endpoint, exported_gateway) (rate(agentgateway_request_duration_seconds_bucket{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\"}[5m])))) OR vector(0)",
+          "legendFormat": "p95 {{route}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, route) (max without(job, container, endpoint, exported_gateway) (rate(agentgateway_request_duration_seconds_bucket{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\"}[5m])))) OR vector(0)",
+          "legendFormat": "p99 {{route}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Gateway Latency by Route",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (namespace, gateway) (envoy_http_downstream_rq_active{namespace=~\"$gateway_namespace\"}) OR vector(0)",
+          "legendFormat": "downstream {{namespace}}/{{gateway}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (namespace, envoy_cluster_name) (envoy_cluster_upstream_rq_active{namespace=~\"$gateway_namespace\"}) OR vector(0)",
+          "legendFormat": "upstream {{namespace}}/{{envoy_cluster_name}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Active Gateway Requests",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 9,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "expr": "topk(20, sum by (route, backend, status, reason) (max without(job, container, endpoint, exported_gateway) (increase(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"5..\", reason=~\"$reason\"}[24h]))))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Failed Routes Last 24h",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 10,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "expr": "topk(20, (sum by (route, backend, status, reason) (max without(job, container, endpoint, exported_gateway) (increase(agentgateway_request_duration_seconds_count{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\"}[24h])))) - (sum by (route, backend, status, reason) (max without(job, container, endpoint, exported_gateway) (increase(agentgateway_request_duration_seconds_bucket{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\", le=\"30.0\"}[24h])))))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Calls Slower Than 30s Last 24h",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (route, backend, status) (max without(job, container, endpoint, exported_gateway) (rate(agentgateway_response_bytes_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"$status\", reason=~\"$reason\"}[5m]))) OR vector(0)",
+          "legendFormat": "{{route}} {{backend}} {{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Gateway Response Bytes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "description": "This panel remains empty until the gateway emits agentgateway_gen_ai_client_token_usage_* metrics.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_request_model, gen_ai_token_type) (rate(agentgateway_gen_ai_client_token_usage_sum[5m]) * 60) OR vector(0)",
+          "legendFormat": "{{gen_ai_request_model}} {{gen_ai_token_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Token Usage Per Minute",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "expr": "topk(20, (sum by (route, backend) (max without(job, container, endpoint, exported_gateway) (increase(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\", status=~\"5..\"}[24h])))) / (sum by (route, backend) (max without(job, container, endpoint, exported_gateway) (increase(agentgateway_requests_total{namespace=~\"$gateway_namespace\", route=~\"$route\", backend=~\"$backend\"}[24h])))))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Route Failure Ratio Last 24h",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prom}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "id": 14,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "expr": "topk(20, sum by (gen_ai_request_model, gen_ai_token_type) (increase(agentgateway_gen_ai_client_token_usage_sum[24h])))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{gen_ai_request_model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Token Users Last 24h",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "kagent",
+    "agentgateway",
+    "llm",
+    "tokens",
+    "traffic-quality"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "kagent-mimir",
+          "value": "kagent-mimir"
+        },
+        "label": "Prometheus / Mimir",
+        "name": "datasource_prom",
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "agentgateway-system|kgateway-system",
+          "value": "agentgateway-system|kgateway-system"
+        },
+        "label": "Gateway namespaces",
+        "name": "gateway_namespace",
+        "options": [
+          {
+            "selected": true,
+            "text": "agentgateway-system|kgateway-system",
+            "value": "agentgateway-system|kgateway-system"
+          }
+        ],
+        "query": "agentgateway-system|kgateway-system",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": ".*",
+          "value": ".*"
+        },
+        "label": "Route regex",
+        "name": "route",
+        "options": [
+          {
+            "selected": true,
+            "text": ".*",
+            "value": ".*"
+          }
+        ],
+        "query": ".*",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": ".*",
+          "value": ".*"
+        },
+        "label": "Backend regex",
+        "name": "backend",
+        "options": [
+          {
+            "selected": true,
+            "text": ".*",
+            "value": ".*"
+          }
+        ],
+        "query": ".*",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": ".*",
+          "value": ".*"
+        },
+        "label": "Status regex",
+        "name": "status",
+        "options": [
+          {
+            "selected": true,
+            "text": ".*",
+            "value": ".*"
+          }
+        ],
+        "query": ".*",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": ".*",
+          "value": ".*"
+        },
+        "label": "Reason regex",
+        "name": "reason",
+        "options": [
+          {
+            "selected": true,
+            "text": ".*",
+            "value": ".*"
+          }
+        ],
+        "query": ".*",
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Agent Gateway Traffic Quality",
+  "uid": "agentgateway-traffic-quality",
+  "version": 1,
+  "weekStart": ""
+}

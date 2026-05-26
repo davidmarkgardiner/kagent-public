@@ -15,6 +15,7 @@ clean clone can replicate every pillar without hunting.
 | 6 | Teams human-in-the-loop (HITL) | [`platform/teams-hitl/README.md`](platform/teams-hitl/README.md) |
 | 7 | Kagent memory | [`docs/kagent-memory/README.md`](docs/kagent-memory/README.md) |
 | 8 | Kagent knowledge base (RAG) | [`ai-platform/kagent-knowledge-base/README.md`](ai-platform/kagent-knowledge-base/README.md) |
+| 9 | Cross-namespace A2A through Agentgateway | [`examples/cross-namespace-a2a/00-README.md`](examples/cross-namespace-a2a/00-README.md) |
 
 ---
 
@@ -30,11 +31,13 @@ and suspicious log patterns.
 
 - Authoritative runbook (start here) — [`docs/observability/k-agent-alloy-grafana.md`](docs/observability/k-agent-alloy-grafana.md)
   Sections: Preconditions · Files · Deployment Plan · Proof Queries (PromQL + LogQL) · Work Verification Checklist · Live Lab Findings
+- CAF-style handoff for the work Grafana/alerts/Argo flow — [`docs/observability/caf-style-observability-handoff.md`](docs/observability/caf-style-observability-handoff.md)
 - Visual walkthrough — [`docs/observability/k-agent-observability-playbook.html`](docs/observability/k-agent-observability-playbook.html)
 - POC evidence (real run output) — [`docs/observability/MIL-124-POC-EVIDENCE.md`](docs/observability/MIL-124-POC-EVIDENCE.md)
 - Alloy collector (DaemonSet, RBAC, scrape + log pipeline, `remote_write`) — [`k8s/observability/k-agent-alloy.yaml`](k8s/observability/k-agent-alloy.yaml)
 - Alert rules (PrometheusRule, 9 alert groups) — [`k8s/observability/k-agent-alerts.yaml`](k8s/observability/k-agent-alerts.yaml)
-- Kagent dashboard JSON (8 panels — tokens, requests, restarts, logs, CPU/mem) — [`observability/grafana/dashboards/k-agent-metrics.json`](observability/grafana/dashboards/k-agent-metrics.json)
+- Public-ready dashboard JSON (16 panels — availability, gateway rate/error/latency, token metrics and fallback, alert/workflow loop, logs) — [`observability/grafana/dashboards/k-agent-agentgateway-public-ready.json`](observability/grafana/dashboards/k-agent-agentgateway-public-ready.json)
+- Legacy kagent dashboard JSON (8 panels) — [`observability/grafana/dashboards/k-agent-metrics.json`](observability/grafana/dashboards/k-agent-metrics.json)
 - Grafana provisioning (drop into a vanilla Grafana to auto-load the dashboard against your LGTM):
   - Datasources, UIDs `kagent-mimir` / `kagent-loki` — [`observability/grafana/provisioning/datasources/`](observability/grafana/provisioning/datasources/)
   - Dashboard sidecar — [`observability/grafana/provisioning/dashboards/`](observability/grafana/provisioning/dashboards/)
@@ -47,10 +50,11 @@ and suspicious log patterns.
 - Dashboard + alerts depend on **kube-state-metrics** being installed.
 - Loki stream labels include high-cardinality fields (`path`, `status`, `agent`, `model`); consider moving to structured metadata under load.
 
-**What to show.** Apply the two manifests, port-forward Grafana, open the
-kagent dashboard, then walk through three PromQL queries from §Proof Queries
-and one LogQL query. Trigger one alert (e.g. force a kagent pod restart) and
-show it firing.
+**What to show.** Open the public-ready dashboard over `Last 24 hours`, confirm
+K-Agent pods, gateway scrape targets, gateway request rate, p95 latency, and
+the Alertmanager-to-Argo log panel. Then trigger the synthetic alert route with
+`scripts/observability/verify-k-agent-observability.sh --context {{KUBE_CONTEXT}} --synthetic-alert`
+in an approved test window and show the `k-agent-alert-triage-*` workflow.
 
 ---
 

@@ -7,3 +7,9 @@ CLAUDE.md
 ruvector.db
 agentdb.rvf
 agentdb.rvf.lock
+
+# Local Confluent Cloud credentials and bootstrap output.
+confluent.io/
+
+# Local downloaded CLIs.
+bin/confluent

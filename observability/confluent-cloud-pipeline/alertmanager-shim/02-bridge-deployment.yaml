@@ -1,0 +1,101 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager-confluent-bridge
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager-confluent-bridge
+    app.kubernetes.io/part-of: confluent-cloud-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager-confluent-bridge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alertmanager-confluent-bridge
+        app.kubernetes.io/part-of: confluent-cloud-pipeline
+    spec:
+      containers:
+        - name: bridge
+          image: python:3.12-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ceu
+            - |
+              pip install --no-cache-dir kafka-python==2.3.1
+              python /app/bridge.py
+          env:
+            - name: CLUSTER_NAME
+              value: "{{MGMT_KUBE_CONTEXT}}"
+            - name: PORT
+              value: "8080"
+            - name: CONFLUENT_BOOTSTRAP
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-confluent
+                  key: bootstrap
+            - name: CONFLUENT_TOPIC
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-confluent
+                  key: topic
+            - name: CONFLUENT_SA_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-confluent
+                  key: key
+            - name: CONFLUENT_SA_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-confluent
+                  key: secret
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: bridge
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: bridge
+          configMap:
+            name: alertmanager-confluent-bridge
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-confluent-bridge
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager-confluent-bridge
+    app.kubernetes.io/part-of: confluent-cloud-pipeline
+spec:
+  selector:
+    app.kubernetes.io/name: alertmanager-confluent-bridge
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
