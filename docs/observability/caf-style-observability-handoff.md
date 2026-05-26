@@ -119,7 +119,7 @@ Use `Agent Gateway Traffic Quality` when you need the gateway-specific view:
 | Are A2A or LLM-facing calls failing? | `Failed Gateway Calls Last Hour`, `Failed or Timed Out Call Rate`, `Top Failed Routes Last 24h` |
 | Are calls timing out before an agent produces a final result? | `Timed Out Calls Last Hour`, `Calls Slower Than 30s Last 24h`, `Gateway Latency by Route` |
 | Which route/backend is responsible? | route, backend, status, and reason labels on the traffic panels and tables |
-| Is token burn available from this gateway build? | `Token Metrics`, `Token Usage Per Minute`, `Top Token Users Last 24h` |
+| Is token burn available from this gateway path? | `Token Samples`, `Token Usage Per Minute`, `Top Token Users Last 24h` |
 | Are requests piling up? | `Active Gateway Requests` |
 
 For demos and handover, use a `Last 24 hours` time range. The working path can
@@ -188,7 +188,7 @@ showed:
 | K-Agent running pods | `count(kube_pod_status_phase{namespace="kagent",phase="Running"} == 1)` returned `21` |
 | Gateway request metric | `envoy_cluster_external_upstream_rq_xx` returned a live `kgateway-system` 2xx series |
 | Agent Gateway route labels | `agentgateway_requests_total` exposed `route`, `backend`, `status`, and `reason` labels for the cross-namespace A2A route |
-| Token metric | `agentgateway_gen_ai_client_token_usage_sum` returned no series, so the dashboard shows token metric availability explicitly |
+| Token metric | the Agent Gateway data-plane `/metrics` endpoint advertised `agentgateway_gen_ai_client_token_usage`, but Prometheus had no token samples because the current K-Agent `ModelConfig` resources call LiteLLM/KubeAI directly instead of sending model traffic through Agent Gateway |
 | Triage alert count | `ALERTS{route_to="triage", alertstate="firing"}` returned `0` at check time |
 | Loki labels | `kagent`, `agentgateway-system`, `kgateway-system`, `argo`, `argo-events`, `kagent-poc`, `chaos-demo`, and `litmus` were present |
 | Alert workflow history | Multiple `k-agent-alert-triage-*` workflows had succeeded from the prior route proof |

@@ -109,8 +109,10 @@ the workflow silently.
 
 ## Notes
 
-- `agentgateway_gen_ai_client_token_usage_sum` was not present in the validation
-  cluster; the dashboard includes a LogQL token fallback from K-Agent logs.
+- The Agent Gateway data-plane `/metrics` endpoint advertised the GenAI token
+  histogram family, but Prometheus had no token samples because the current
+  K-Agent `ModelConfig` resources call LiteLLM/KubeAI directly instead of
+  sending model traffic through Agent Gateway.
 - `Agent Gateway Traffic Quality` is metric-first and focuses on route/backend
   request rate, 5xx and timeout rate, p50/p95/p99 latency, calls slower than
   30s, active Envoy requests, response bytes, and token panels that activate

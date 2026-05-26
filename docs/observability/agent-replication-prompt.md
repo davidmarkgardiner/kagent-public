@@ -120,9 +120,12 @@ Rules:
 7. If Loki is not healthy, do not hide that with empty log panels. Show Loki
    health as a first-class finding and keep the dashboard metric-first until
    the Loki backend is repaired.
-8. If `agentgateway_gen_ai_client_token_usage_*` metrics are absent, keep the
-   dashboard's explicit token-metric availability panel and document that token
-   burn cannot be measured from metrics in this gateway build.
+8. If `agentgateway_gen_ai_client_token_usage_*` samples are absent, inspect the
+   raw Agent Gateway `/metrics` endpoint. If the HELP/TYPE lines are present but
+   Prometheus has no series, document that no LLM traffic is producing token
+   samples through this gateway path. Also check whether K-Agent `ModelConfig`
+   resources send model calls directly to LiteLLM/KubeAI/OpenAI instead of
+   routing them through Agent Gateway.
 9. Use `Agent Gateway Traffic Quality` to report route/backend/status/reason
    for failed calls, 504/timeouts, calls slower than 30s, p95/p99 latency, and
    active request buildup. Treat those as the signal for agent runs that may

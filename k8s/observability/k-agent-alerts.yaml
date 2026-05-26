@@ -57,8 +57,8 @@ spec:
             route_to: triage
             kagent_path: webhook
           annotations:
-            summary: "agentgateway token metrics are missing"
-            description: "The gateway is not emitting agentgateway_gen_ai_client_token_usage_count. Token dashboards and token-budget alerts are blind unless the structured-log fallback is available."
+            summary: "agentgateway token samples are missing"
+            description: "Prometheus has no agentgateway_gen_ai_client_token_usage_count series. The gateway endpoint may still register the GenAI metric family; check whether LLM traffic is actually routed through Agent Gateway or whether K-Agent ModelConfig calls LiteLLM/KubeAI/OpenAI directly."
 
     - name: k-agent-agentgateway-runtime
       interval: 30s

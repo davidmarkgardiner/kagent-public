@@ -186,7 +186,7 @@
         "type": "prometheus",
         "uid": "${datasource_prom}"
       },
-      "description": "Non-zero means the gateway build is emitting token metrics. Zero means token burn cannot be measured from Prometheus for this build.",
+      "description": "Non-zero means Prometheus has observed Agent Gateway GenAI token samples. Zero means the metrics endpoint may be registered, but no LLM traffic has produced token samples through this gateway path.",
       "fieldConfig": {
         "defaults": {
           "mappings": [
@@ -194,7 +194,7 @@
               "options": {
                 "0": {
                   "color": "orange",
-                  "text": "Missing"
+                  "text": "No samples"
                 }
               },
               "type": "value"
@@ -256,7 +256,7 @@
           "refId": "A"
         }
       ],
-      "title": "Token Metrics",
+      "title": "Token Samples",
       "type": "stat"
     },
     {
