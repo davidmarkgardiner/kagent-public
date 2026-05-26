@@ -1,0 +1,25 @@
+---
+# Helm values overlay for kube-prometheus-stack.
+# Adds a Confluent bridge receiver while preserving the default receiver.
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: default-receiver
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: confluent-shim
+          matchers:
+            - severity =~ "critical|warning"
+          continue: true
+    receivers:
+      - name: default-receiver
+      - name: confluent-shim
+        webhook_configs:
+          - url: http://alertmanager-confluent-bridge.monitoring.svc.cluster.local:8080/alertmanager
+            send_resolved: true
+            max_alerts: 10

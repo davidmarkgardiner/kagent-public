@@ -1,0 +1,32 @@
+{
+  "version": "4",
+  "groupKey": "{}:{alertname=\"TestAlert\"}",
+  "status": "firing",
+  "receiver": "confluent-shim",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "TestAlert",
+        "severity": "warning",
+        "namespace": "default",
+        "pod": "test-pod-123"
+      },
+      "annotations": {
+        "summary": "Test alert for Confluent Cloud pipeline",
+        "description": "This is a pipeline validation test alert"
+      },
+      "startsAt": "2026-01-01T00:00:00.000Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus.example.invalid/graph"
+    }
+  ],
+  "commonLabels": {
+    "alertname": "TestAlert",
+    "severity": "warning"
+  },
+  "commonAnnotations": {
+    "summary": "Test alert for Confluent Cloud pipeline"
+  },
+  "externalURL": "http://alertmanager.example.invalid"
+}

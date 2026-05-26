@@ -1,0 +1,114 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-confluent-bridge
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager-confluent-bridge
+    app.kubernetes.io/part-of: confluent-cloud-pipeline
+data:
+  bridge.py: | # pragma: allowlist secret
+    import datetime
+    import json
+    import os
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from kafka import KafkaProducer
+
+    BROKERS = os.environ["CONFLUENT_BOOTSTRAP"]
+    TOPIC = os.environ.get("CONFLUENT_TOPIC", "alertmanager-events")
+    API_KEY = os.environ["CONFLUENT_SA_KEY"]
+    API_SECRET = os.environ["CONFLUENT_SA_SECRET"]
+    PORT = int(os.environ.get("PORT", "8080"))
+    CLUSTER_NAME = os.environ.get("CLUSTER_NAME", "{{MGMT_KUBE_CONTEXT}}")
+
+    producer = KafkaProducer(
+        bootstrap_servers=[broker.strip() for broker in BROKERS.split(",") if broker.strip()],
+        security_protocol="SASL_SSL",
+        sasl_mechanism="PLAIN",
+        sasl_plain_username=API_KEY,
+        sasl_plain_password=API_SECRET,
+        value_serializer=lambda value: json.dumps(value, separators=(",", ":")).encode("utf-8"),
+        acks="all",
+        retries=5,
+    )
+
+    def extract_pod_name(payload):
+        alerts = payload.get("alerts") or []
+        for alert in alerts:
+            labels = alert.get("labels") or {}
+            annotations = alert.get("annotations") or {}
+            for candidate in (
+                labels.get("pod"),
+                labels.get("pod_name"),
+                labels.get("kubernetes_pod_name"),
+                annotations.get("pod"),
+            ):
+                if candidate:
+                    return candidate
+        common = payload.get("commonLabels") or {}
+        return common.get("pod") or common.get("pod_name") or "unknown-pod"
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/healthz":
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+                return
+            self.send_response(404)
+            self.end_headers()
+
+        def do_POST(self):
+            if self.path != "/alertmanager":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            length = int(self.headers.get("content-length", "0"))
+            raw_body = self.rfile.read(length)
+            try:
+                alertmanager_payload = json.loads(raw_body.decode("utf-8"))
+            except json.JSONDecodeError as exc:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(f"invalid json: {exc}\n".encode("utf-8"))
+                return
+
+            message = {
+                "source": "alertmanager",
+                "cluster": CLUSTER_NAME,
+                "pipeline": "confluent-cloud-pipeline",
+                "payload_type": "alertmanager-webhook",
+                "pod_name": extract_pod_name(alertmanager_payload),
+                "received_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "alertmanager": alertmanager_payload,
+            }
+
+            try:
+                metadata = producer.send(TOPIC, message).get(timeout=15)
+                producer.flush(timeout=15)
+            except Exception as exc:
+                self.send_response(502)
+                self.end_headers()
+                self.wfile.write(f"kafka publish failed: {exc}\n".encode("utf-8"))
+                return
+
+            self.send_response(202)
+            self.end_headers()
+            response = {
+                "topic": metadata.topic,
+                "partition": metadata.partition,
+                "offset": metadata.offset,
+                "pod_name": message["pod_name"],
+            }
+            self.wfile.write(json.dumps(response, sort_keys=True).encode("utf-8"))
+            self.wfile.write(b"\n")
+
+        def log_message(self, fmt, *args):
+            print("%s - %s" % (self.address_string(), fmt % args), flush=True)
+
+    if __name__ == "__main__":
+        print(f"starting bridge on :{PORT}, brokers={BROKERS}, topic={TOPIC}", flush=True)
+        HTTPServer(("", PORT), Handler).serve_forever()

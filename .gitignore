@@ -9,6 +9,7 @@ agentdb.rvf
 agentdb.rvf.lock
 
 # Local Confluent Cloud credentials and bootstrap output.
-confluent.io/.env
-confluent.io/.bootstrap.env
-confluent.io/.kafka-key
+confluent.io/
+
+# Local downloaded CLIs.
+bin/confluent
