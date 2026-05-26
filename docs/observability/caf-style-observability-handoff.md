@@ -33,6 +33,7 @@ Use placeholders in Git and inject real values through the target environment.
 | Alloy metrics and logs | `k8s/observability/k-agent-alloy.yaml` |
 | Gateway scrape coverage | `k8s/observability/k-agent-agentgateway-scrape.yaml` |
 | Grafana dashboard JSON | `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json` |
+| Gateway traffic-quality dashboard | `observability/grafana/dashboards/agentgateway-traffic-quality.json` |
 | Prometheus alerts | `k8s/observability/k-agent-alerts.yaml` |
 | Loki log alerts | `observability/managed-lgtm-integration/alerting/03-lokirules-k-agent-agentgateway.yaml` |
 | Alertmanager webhook EventSource | `k8s/observability/k-agent-alertmanager-eventsource.yaml` |
@@ -75,10 +76,12 @@ replay, or fan-out between Grafana Alerting and Argo Events.
 
    ```text
    observability/grafana/dashboards/k-agent-agentgateway-public-ready.json
+   observability/grafana/dashboards/agentgateway-traffic-quality.json
    ```
 
    Set the `datasource_prom` and `datasource_loki` variables to the work
-   stack datasource names at import time.
+   stack datasource names at import time. The traffic-quality dashboard only
+   needs `datasource_prom`.
 
 5. Wire alert delivery back into Argo:
 
@@ -109,6 +112,16 @@ between tools:
 | Is alert triage closed-loop? | `Triage Alerts Firing`, `Argo Workflow Outcomes Last 24h` |
 | Is Loki healthy enough for logs? | `Loki Backend Ready`, `Loki Gateway Ready`, `Loki Pod Readiness`, `Cluster Node Readiness` |
 
+Use `Agent Gateway Traffic Quality` when you need the gateway-specific view:
+
+| Question | Panels |
+| --- | --- |
+| Are A2A or LLM-facing calls failing? | `Failed Gateway Calls Last Hour`, `Failed or Timed Out Call Rate`, `Top Failed Routes Last 24h` |
+| Are calls timing out before an agent produces a final result? | `Timed Out Calls Last Hour`, `Calls Slower Than 30s Last 24h`, `Gateway Latency by Route` |
+| Which route/backend is responsible? | route, backend, status, and reason labels on the traffic panels and tables |
+| Is token burn available from this gateway build? | `Token Metrics`, `Token Usage Per Minute`, `Top Token Users Last 24h` |
+| Are requests piling up? | `Active Gateway Requests` |
+
 For demos and handover, use a `Last 24 hours` time range. The working path can
 have sparse event/log traffic, and a one-hour default makes useful panels look
 blank even when the pipeline is healthy.
@@ -123,7 +136,7 @@ Use the simplest path that meets the reliability requirement.
 | AlertmanagerConfig | Prometheus Operator Alertmanager -> Argo EventSource webhook | Alerts originate from kube-prometheus-stack and stay Kubernetes-native |
 | Broker-backed | Grafana or Alertmanager -> bridge/contact point -> Kafka/Event Hub -> Argo Events | Need buffering, replay, fan-out, or network decoupling |
 
-The Argo-triggered workflow should call the read-only `sre-triage-agent`.
+The Argo-triggered workflow should call the read-only `observability-agent`.
 Agents do not get resource-changing permissions; workflows hold the execution
 service account.
 
@@ -174,6 +187,7 @@ showed:
 | Gateway scrape targets | `count(up{namespace=~"agentgateway-system|kgateway-system"} == 1)` returned `8` |
 | K-Agent running pods | `count(kube_pod_status_phase{namespace="kagent",phase="Running"} == 1)` returned `21` |
 | Gateway request metric | `envoy_cluster_external_upstream_rq_xx` returned a live `kgateway-system` 2xx series |
+| Agent Gateway route labels | `agentgateway_requests_total` exposed `route`, `backend`, `status`, and `reason` labels for the cross-namespace A2A route |
 | Token metric | `agentgateway_gen_ai_client_token_usage_sum` returned no series, so the dashboard shows token metric availability explicitly |
 | Triage alert count | `ALERTS{route_to="triage", alertstate="firing"}` returned `0` at check time |
 | Loki labels | `kagent`, `agentgateway-system`, `kgateway-system`, `argo`, `argo-events`, `kagent-poc`, `chaos-demo`, and `litmus` were present |
@@ -184,3 +198,8 @@ historically, but they do not prove the Agent Gateway path. For handover, use
 `K-Agent and Agent Gateway Observability` from this repo because it tracks the
 current gateway namespaces, the Alertmanager-to-Argo path, and the token metric
 fallback.
+
+The current gateway metrics do not expose per-tool-call or per-agent token
+labels. To get exact attribution later, add structured gateway or agent spans
+with agent name, tool name, model, token counts, and a trace/request ID. Until
+then, route/backend/status/reason is the reliable public-safe breakdown.

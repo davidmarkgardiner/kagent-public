@@ -11,7 +11,7 @@ Grafana Alerting or Prometheus Alertmanager
   -> Argo Events webhook EventSource
   -> k-agent-alert-triage Sensor
   -> Argo Workflow
-  -> K-Agent sre-triage-agent
+  -> K-Agent observability-agent
 ```
 
 ## Use These Files

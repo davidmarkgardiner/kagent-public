@@ -16,10 +16,11 @@ fillable environment template.
 Give the agent these paths, not only this `docs/observability/` folder:
 
 ```text
-docs/observability/caf-style-observability-handoff.mdhtmml
+docs/observability/caf-style-observability-handoff.md
 docs/observability/agent-replication.env.example
 k8s/observability/
 observability/grafana/dashboards/k-agent-agentgateway-public-ready.json
+observability/grafana/dashboards/agentgateway-traffic-quality.json
 observability/grafana/provisioning/
 observability/managed-lgtm-integration/rule-sync/
 observability/managed-lgtm-integration/alerting/03-lokirules-k-agent-agentgateway.yaml
@@ -72,7 +73,7 @@ Goal:
 Build a working, evidence-backed observability path:
 
 Alloy -> Prometheus/Mimir and Loki -> Grafana dashboard -> alert rules/contact
-point -> Argo Events -> Argo Workflow -> K-Agent sre-triage-agent.
+point -> Argo Events -> Argo Workflow -> K-Agent observability-agent.
 
 Use these values:
 
@@ -112,18 +113,28 @@ Rules:
    - `k8s/observability/k-agent-alertmanager-eventsource.yaml`
    - `k8s/observability/k-agent-alertmanager-triage-route.yaml`
    - `k8s/observability/k-agent-alert-triage-sensor.yaml`
-6. Import `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json`
-   into Grafana and set its datasource variables to the target datasource UIDs.
+6. Import both dashboards into Grafana and set their datasource variables to
+   the target datasource UIDs:
+   - `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json`
+   - `observability/grafana/dashboards/agentgateway-traffic-quality.json`
 7. If Loki is not healthy, do not hide that with empty log panels. Show Loki
    health as a first-class finding and keep the dashboard metric-first until
    the Loki backend is repaired.
 8. If `agentgateway_gen_ai_client_token_usage_*` metrics are absent, keep the
    dashboard's explicit token-metric availability panel and document that token
    burn cannot be measured from metrics in this gateway build.
-9. For log alert rules, use the managed LGTM rule-sync path only if the target
+9. Use `Agent Gateway Traffic Quality` to report route/backend/status/reason
+   for failed calls, 504/timeouts, calls slower than 30s, p95/p99 latency, and
+   active request buildup. Treat those as the signal for agent runs that may
+   have called an LLM or tool but never produced a final triage result.
+10. Do not claim per-agent, per-tool, or per-model attribution unless the target
+    gateway or agent runtime emits labels/spans/logs with those fields. If
+    those labels are missing, report route/backend/status/reason as the current
+    evidence and list the missing instrumentation.
+11. For log alert rules, use the managed LGTM rule-sync path only if the target
    environment supports Mimir/Loki ruler sync. Do not apply LogQL rules to a
    vanilla Prometheus rule selector.
-10. For the alert-to-triage loop, prefer the direct Argo Events webhook when
+12. For the alert-to-triage loop, prefer the direct Argo Events webhook when
     Grafana Alerting or Alertmanager can reach it. Use the optional broker
     bundle only when direct routing is not possible or when replay/fan-out is
     required.
