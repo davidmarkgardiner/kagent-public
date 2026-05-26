@@ -5,13 +5,13 @@ description: Monitor agent gateways, detect failures, attempt safe remediation, 
 
 # Fleet Health Monitor
 
-Monitors all agent gateways, detects failures, auto-remediates where possible, and escalates to David when human action is needed.
+Monitors all agent gateways, detects failures, auto-remediates where possible, and escalates to the operator when human action is needed.
 
 ## When to Use
 - Heartbeat checks (automatic, every cycle)
 - When an agent stops responding
 - After cluster reboots
-- When David asks about fleet status
+- When the operator asks about fleet status
 
 ## Quick Check
 ```bash
@@ -20,7 +20,7 @@ Monitors all agent gateways, detects failures, auto-remediates where possible, a
 
 ## What It Monitors
 
-| Check | Auto-Fix | Needs David |
+| Check | Auto-Fix | Needs Operator |
 |-------|----------|-------------|
 | Gateway process down | ✅ Restart via systemd | ❌ |
 | Wrong model configured | ✅ Update config + restart | ❌ |
@@ -31,7 +31,7 @@ Monitors all agent gateways, detects failures, auto-remediates where possible, a
 | Heartbeat model wrong | ✅ Fix config | ❌ |
 | Service not enabled | ✅ Enable + start | ❌ |
 
-## Expected Models (DO NOT CHANGE without David's approval)
+## Expected Models (DO NOT CHANGE without operator approval)
 
 | Agent | Primary Model | Heartbeat Model |
 |-------|--------------|-----------------|
