@@ -4,10 +4,15 @@ This package is the copy/paste-ready observability set for K-Agent,
 Agent Gateway, chaos validation, and the Alertmanager -> Argo Events -> K-Agent
 triage path.
 
+For the work-environment handoff and demo script, start with
+[`caf-style-observability-handoff.md`](caf-style-observability-handoff.md).
+
 ## Artifact Set
 
 | Purpose | File |
 | --- | --- |
+| CAF-style work handoff | `docs/observability/caf-style-observability-handoff.md` |
+| Grafana MCP home-lab smoke | `docs/observability/grafana-mcp-home-lab.md` |
 | Grafana dashboard import | `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json` |
 | Alloy metrics/log shipping | `k8s/observability/k-agent-alloy.yaml` |
 | Gateway ServiceMonitor/PodMonitor coverage | `k8s/observability/k-agent-agentgateway-scrape.yaml` |
@@ -29,12 +34,14 @@ at import time.
 ## Install Order
 
 1. Import `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json`.
-2. Apply the scrape coverage from `k8s/observability/k-agent-agentgateway-scrape.yaml`.
-3. Apply `k8s/observability/k-agent-alerts.yaml` for Prometheus/Mimir-compatible alerts.
-4. Apply `k8s/observability/k-agent-alertmanager-eventsource.yaml` in the Argo Events cluster.
-5. Apply `k8s/observability/k-agent-alertmanager-triage-route.yaml` after confirming Alertmanager can reach the Argo Events webhook service or the target webhook hub equivalent.
-6. Apply `k8s/observability/k-agent-alert-triage-sensor.yaml` in the Argo Events cluster.
-7. For log alerts, copy `observability/managed-lgtm-integration/alerting/03-lokirules-k-agent-agentgateway.yaml` into the managed LGTM rule-sync path. Do not apply it to a vanilla local Prometheus unless the Loki ruler sync convention is installed.
+2. Apply or reconcile `k8s/observability/k-agent-alloy.yaml` with the target
+   Loki and Prometheus/Mimir endpoints.
+3. Apply the scrape coverage from `k8s/observability/k-agent-agentgateway-scrape.yaml`.
+4. Apply `k8s/observability/k-agent-alerts.yaml` for Prometheus/Mimir-compatible alerts.
+5. Apply `k8s/observability/k-agent-alertmanager-eventsource.yaml` in the Argo Events cluster.
+6. Apply `k8s/observability/k-agent-alertmanager-triage-route.yaml` after confirming Alertmanager can reach the Argo Events webhook service or the target webhook hub equivalent.
+7. Apply `k8s/observability/k-agent-alert-triage-sensor.yaml` in the Argo Events cluster.
+8. For log alerts, copy `observability/managed-lgtm-integration/alerting/03-lokirules-k-agent-agentgateway.yaml` into the managed LGTM rule-sync path. Do not apply it to a vanilla local Prometheus unless the Loki ruler sync convention is installed.
 
 ## Verification
 
@@ -42,6 +49,13 @@ Run static and client-side checks:
 
 ```bash
 scripts/observability/verify-k-agent-observability.sh
+```
+
+Run the Grafana MCP smoke when the cluster has a `kagent-grafana-mcp`
+`RemoteMCPServer`:
+
+```bash
+scripts/observability/smoke-grafana-mcp.sh --context {{KUBE_CONTEXT}}
 ```
 
 Run live cluster checks:
@@ -89,6 +103,9 @@ the workflow silently.
 
 - `agentgateway_gen_ai_client_token_usage_sum` was not present in the validation
   cluster; the dashboard includes a LogQL token fallback from K-Agent logs.
+- The dashboard defaults to `Last 24 hours` so sparse alert/log flows are visible
+  during handover; switch to `Last 1 hour` once the work cluster is producing
+  steady traffic.
 - `k8s/observability/k-agent-alloy.yaml` is the local shipping agent. Managed
   rule sync is represented by
   `observability/managed-lgtm-integration/alloy-snippets/04-rule-sync.alloy`,
