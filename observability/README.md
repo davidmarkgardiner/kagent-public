@@ -17,6 +17,7 @@ Start with these documents for the current K-Agent / Agent Gateway path:
 | --- | --- |
 | Install and verify the observability bundle | [`../docs/observability/k-agent-agentgateway-observability.md`](../docs/observability/k-agent-agentgateway-observability.md) |
 | Replicate Grafana MCP enrichment on another cluster | [`../docs/observability/grafana-mcp-home-lab.md`](../docs/observability/grafana-mcp-home-lab.md) |
+| Understand the AI + Grafana triage pattern | [`../docs/ai-grafana/README.md`](../docs/ai-grafana/README.md) |
 | Run the Grafana MCP smoke test | [`../scripts/observability/smoke-grafana-mcp.sh`](../scripts/observability/smoke-grafana-mcp.sh) |
 | Maintain managed LGTM rule sync | [`managed-lgtm-integration/rule-sync/README.md`](managed-lgtm-integration/rule-sync/README.md) |
 | Route Alertmanager alerts to kagent triage | [`../k8s/observability/k-agent-alert-triage-sensor.yaml`](../k8s/observability/k-agent-alert-triage-sensor.yaml) |

@@ -5,6 +5,9 @@ Use it to let agents inspect Grafana dashboards, datasources, Prometheus/Mimir
 metrics, Loki logs, and alerting state without giving the agent direct
 Kubernetes write permissions.
 
+For the AI observability workflow adapted from the Grafana video transcript, see
+[`../ai-grafana/README.md`](../ai-grafana/README.md).
+
 ## Why It Helps
 
 Grafana MCP gives the SRE agents a single read path over the LGTM stack:
@@ -170,6 +173,11 @@ tools:
         - alerting_manage_routing
         - generate_deeplink
 ```
+
+Only include the `alerting_manage_*` tools on a default triage agent when the
+Grafana service account is constrained to read-only alert inspection. If the
+tool can mutate alert rules or contact point routing in the target Grafana org,
+move it to a separate approved workflow.
 
 Keep write-capable tools such as `update_dashboard`, `create_folder`,
 `create_annotation`, `install_plugin`, and `create_incident` out of default SRE
