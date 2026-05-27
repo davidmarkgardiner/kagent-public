@@ -42,7 +42,7 @@ images used by `manifests/sensor-litmus-triage.yaml`:
 
 ```text
 python:3.11-slim
-bitnami/kubectl:1.30.7
+bitnamilegacy/kubectl:1.30.7
 ```
 
 The larger ChaosCenter image set in `WORK-INSTALL.md` is only needed when you

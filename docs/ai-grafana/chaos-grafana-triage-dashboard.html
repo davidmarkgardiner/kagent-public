@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chaos + Grafana MCP Triage</title>
+  <style>
+    :root {
+      --ink: #18212f;
+      --muted: #5d6878;
+      --line: #d8dee8;
+      --soft: #f5f7fa;
+      --blue: #245c9f;
+      --green: #21745b;
+      --amber: #946313;
+      --red: #b83a3a;
+      --violet: #6750a4;
+      --panel: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--soft);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 650;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero {
+      min-height: 360px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(340px, .9fr);
+      gap: 32px;
+      align-items: center;
+      padding: 44px 0 38px;
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 14px;
+      max-width: 760px;
+      font-size: clamp(34px, 6vw, 70px);
+      line-height: .96;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 710px;
+      color: var(--muted);
+      font-size: 19px;
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 30px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .summary-strip div {
+      min-height: 100px;
+      padding: 17px;
+      background: #ffffff;
+    }
+
+    .summary-strip strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 23px;
+    }
+
+    .summary-strip span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .flow {
+      background: #0f1723;
+      color: #f8fafc;
+      padding: 24px;
+      min-height: 278px;
+      border: 1px solid #202b3a;
+    }
+
+    .flow h2 {
+      margin: 0 0 18px;
+      font-size: 16px;
+    }
+
+    .flow ol {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: flow;
+    }
+
+    .flow li {
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 12px;
+      align-items: start;
+      color: #dce4ef;
+      line-height: 1.45;
+    }
+
+    .flow li::before {
+      counter-increment: flow;
+      content: counter(flow);
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      background: #d6ecff;
+      color: #143656;
+      font-weight: 800;
+    }
+
+    main {
+      padding: 34px 0 56px;
+    }
+
+    .band {
+      margin-top: 26px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      max-width: 620px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .tile {
+      min-height: 180px;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    .tile h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .tile p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .status {
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 4px 9px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .done { background: var(--green); }
+    .partial { background: var(--amber); }
+    .blocked { background: var(--red); }
+    .planned { background: var(--violet); }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: 1fr;
+      background: #ffffff;
+      border: 1px solid var(--line);
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 190px 1fr 190px;
+      gap: 18px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .step:last-child {
+      border-bottom: 0;
+    }
+
+    .step strong {
+      color: var(--ink);
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    pre {
+      overflow: auto;
+      margin: 0;
+      padding: 16px;
+      background: #101722;
+      color: #e9eef7;
+      border: 1px solid #202b3a;
+      font-size: 13px;
+    }
+
+    .queries {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .links {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .links a {
+      display: block;
+      min-height: 48px;
+      padding: 12px 14px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+    }
+
+    footer {
+      padding: 24px 0 40px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid-3,
+      .queries,
+      .links,
+      .summary-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .step {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell hero">
+      <div>
+        <div class="eyebrow">kagent-public observability pattern</div>
+        <h1>Chaos fault to Grafana MCP evidence</h1>
+        <p class="lead">
+          This page joins the implemented LitmusChaos drill path with the
+          implemented Grafana MCP alert-enrichment path, then shows the missing
+          approval boundary for dynamic dashboard writes.
+        </p>
+        <div class="summary-strip" aria-label="Current implementation status">
+          <div>
+            <strong>Yes</strong>
+            <span>Chaos drills can inject bounded faults and route ChaosResult events to kagent.</span>
+          </div>
+          <div>
+            <strong>Yes</strong>
+            <span>Alerts can call observability-agent and ask it to use Grafana MCP evidence.</span>
+          </div>
+          <div>
+            <strong>Partial</strong>
+            <span>Full agent-mediated A2A depends on the model backend being healthy.</span>
+          </div>
+          <div>
+            <strong>Guarded</strong>
+            <span>Grafana dashboard writes need a separate approved workflow and service account.</span>
+          </div>
+        </div>
+      </div>
+      <aside class="flow" aria-label="End to end flow">
+        <h2>Operator flow</h2>
+        <ol>
+          <li>Inject one approved fault against chaos-demo / chaos-target.</li>
+          <li>Let Litmus publish the ChaosResult and Argo start the workflow.</li>
+          <li>Have kagent inspect live state and classify the action tier.</li>
+          <li>When an alert fires, use Grafana MCP for metrics, logs, dashboards, and deeplinks.</li>
+          <li>Return an SRE-ready evidence pack plus this human-readable visual handoff.</li>
+        </ol>
+      </aside>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="band">
+      <div class="section-head">
+        <h2>What Exists Now</h2>
+        <p>These repo artifacts are the current proof points. They are sanitized and portable; live cluster state still has to be rechecked when Proxmox is back online.</p>
+      </div>
+      <div class="grid-3">
+        <article class="tile">
+          <span class="status done">Implemented</span>
+          <h3>Litmus chaos path</h3>
+          <p><a href="../../chaos/litmus/WORK-INSTALL.md">chaos/litmus/WORK-INSTALL.md</a> documents install, faults, fire-drill workflow, and SRE evidence capture.</p>
+        </article>
+        <article class="tile">
+          <span class="status done">Implemented</span>
+          <h3>Chaos agent workflow</h3>
+          <p><a href="../../chaos/litmus/manifests/sensor-litmus-triage.yaml">sensor-litmus-triage.yaml</a> creates an Argo Workflow that invokes <code>chaos-triage-agent</code>.</p>
+        </article>
+        <article class="tile">
+          <span class="status done">Implemented</span>
+          <h3>Grafana MCP triage</h3>
+          <p><a href="../../k8s/observability/k-agent-alert-triage-sensor.yaml">k-agent-alert-triage-sensor.yaml</a> calls <code>observability-agent</code> and asks for Prometheus, Loki, dashboard, and deeplink evidence.</p>
+        </article>
+        <article class="tile">
+          <span class="status done">Implemented</span>
+          <h3>Smoke test</h3>
+          <p><a href="../../scripts/observability/smoke-grafana-mcp.sh">smoke-grafana-mcp.sh</a> proves direct MCP initialize, tool discovery, datasource discovery, and Prometheus query access.</p>
+        </article>
+        <article class="tile">
+          <span class="status partial">Partial</span>
+          <h3>Full A2A answer</h3>
+          <p><a href="../observability/grafana-mcp-home-lab.md">grafana-mcp-home-lab.md</a> records that direct MCP worked, but model backend health blocked the final mediated answer path.</p>
+        </article>
+        <article class="tile">
+          <span class="status planned">New skill</span>
+          <h3>Reusable playbook</h3>
+          <p><a href="../../agents/skills/grafana-chaos-incident-triage/SKILL.md">grafana-chaos-incident-triage</a> defines how the agent should query, reason, visualize, and escalate.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="section-head">
+        <h2>Incident Timeline</h2>
+        <p>Use this as the evidence shape for a drill, a real alert, or a combined chaos-and-alert demo.</p>
+      </div>
+      <div class="timeline">
+        <div class="step">
+          <strong>1. Fault injected</strong>
+          <p>Run one approved Litmus experiment: <code>pod-delete</code> or <code>pod-cpu-hog</code> against <code>chaos-demo/chaos-target</code>.</p>
+          <p>Evidence: ChaosEngine, ChaosResult, target deployment state.</p>
+        </div>
+        <div class="step">
+          <strong>2. Event captured</strong>
+          <p>Argo Events watches completed ChaosResult objects and starts <code>kagent-triage-litmus-*</code>.</p>
+          <p>Evidence: EventSource, Sensor, Workflow phase.</p>
+        </div>
+        <div class="step">
+          <strong>3. Agent investigates</strong>
+          <p><code>chaos-triage-agent</code> checks the target workload and writes bounded remediation or observe-only evidence.</p>
+          <p>Evidence: agent output, deployment annotations, hive-mind ConfigMap.</p>
+        </div>
+        <div class="step">
+          <strong>4. Alert enriched</strong>
+          <p>Alertmanager or Grafana Alerting routes to Argo; <code>observability-agent</code> queries Grafana MCP.</p>
+          <p>Evidence: datasource UID, PromQL, LogQL, dashboard panel queries.</p>
+        </div>
+        <div class="step">
+          <strong>5. SRE handoff</strong>
+          <p>Return the verdict, blast radius, uncertainty, next actions, Grafana deeplinks, and local visual dashboard.</p>
+          <p>Evidence: SRE issue, generated HTML, optional approved Grafana dashboard UID.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="section-head">
+        <h2>Queries To Run</h2>
+        <p>The agent should adapt these to the alert labels and always report the exact query it used.</p>
+      </div>
+      <div class="queries">
+        <pre><code># Prometheus or Mimir
+sum by (pod) (
+  increase(kube_pod_container_status_restarts_total{
+    namespace="{{NAMESPACE}}"
+  }[30m])
+)
+
+histogram_quantile(
+  0.95,
+  sum by (le, route) (
+    rate(agentgateway_request_duration_seconds_bucket[5m])
+  )
+)</code></pre>
+        <pre><code># Loki
+{namespace="{{NAMESPACE}}"}
+  |~ "error|fail|timeout|panic|denied|unavailable"
+
+{namespace="kagent"}
+  |~ "tool|mcp|error|timeout|model|a2a"
+
+{namespace="argo-events"}
+  |~ "sensor|eventsource|Failed|Error"</code></pre>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="section-head">
+        <h2>Decision Boundary</h2>
+        <p>This keeps analysis fast without giving the default agent unsafe write access.</p>
+      </div>
+      <div class="grid-3">
+        <article class="tile">
+          <span class="status done">Observe only</span>
+          <h3>Expected chaos result</h3>
+          <p>The experiment is bounded, the workload recovered, and metrics/logs confirm no wider impact.</p>
+        </article>
+        <article class="tile">
+          <span class="status partial">Human review</span>
+          <h3>Ambiguous or unsafe</h3>
+          <p>The namespace is not approved, the blast radius is unclear, Grafana data is incomplete, or the model route is unhealthy.</p>
+        </article>
+        <article class="tile">
+          <span class="status blocked">Write approval</span>
+          <h3>Dashboard or remediation writes</h3>
+          <p>Use a separate workflow, scoped service account, review step, and durable issue before changing Grafana or Kubernetes resources.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="section-head">
+        <h2>Open The Evidence</h2>
+        <p>These links are the fastest way to inspect or extend this implementation from the repo.</p>
+      </div>
+      <div class="links">
+        <a href="README.md">AI + Grafana adaptation README</a>
+        <a href="kagent-grafana-mcp-demo.md">kagent Grafana MCP demo</a>
+        <a href="../observability/grafana-mcp-home-lab.md">Grafana MCP home-lab smoke test</a>
+        <a href="../../observability/README.md">Observability area overview</a>
+        <a href="../../chaos/litmus/WORK-INSTALL.md">Litmus fire-drill handoff</a>
+        <a href="../../agents/skills/grafana-chaos-incident-triage/SKILL.md">Grafana chaos triage skill</a>
+        <a href="end-to-end-hitl-demo.md">End-to-end HITL demo runbook</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">
+      Use placeholders for environment-specific values. Do not commit private
+      Grafana URLs, service account tokens, cluster names, subscription IDs, or
+      internal hostnames.
+    </div>
+  </footer>
+</body>
+</html>

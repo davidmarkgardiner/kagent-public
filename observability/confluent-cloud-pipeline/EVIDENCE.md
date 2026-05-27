@@ -363,3 +363,45 @@ post-delete rule read-back: HTTP 404
 temporary notification policy route removed
 native contact point retained: confluent-kafka-rest-alerts
 ```
+
+## Proof 7 - Standalone Confluent REST v3 JSON Produce Smoke
+
+Validated on 2026-05-27 from the local machine using
+`observability/confluent-cloud-pipeline/02-confluent-rest-smoke.sh`.
+
+Purpose:
+
+```text
+Prove Confluent REST endpoint reachability, basic authentication, topic write
+permission, and JSON produce shape before Grafana, Alertmanager, or Argo Events
+are involved.
+```
+
+Command:
+
+```bash
+SMOKE_SOURCE=home-manual-rest-smoke \
+SMOKE_MESSAGE='Confluent REST v3 home connectivity smoke for work handoff' \
+observability/confluent-cloud-pipeline/02-confluent-rest-smoke.sh
+```
+
+Evidence:
+
+```text
+http_status: 200
+error_code: 200
+cluster_id: redacted
+topic_name: alertmanager-events
+partition_id: 0
+offset: 0
+run_id: rest-smoke-20260527T094757Z
+value_size: 226
+```
+
+Conclusion:
+
+```text
+The simple REST JSON produce path is sound. A work environment can repeat this
+same test with its Dev Confluent REST endpoint, service-principal-derived Kafka
+API credentials, cluster ID, and target topic before integrating Alertmanager.
+```

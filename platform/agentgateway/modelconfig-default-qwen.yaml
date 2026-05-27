@@ -1,0 +1,27 @@
+# kagent default ModelConfig - route through agentgateway to local Qwen
+#
+# DEPLOY ON: cluster where kagent runs.
+#
+# This intentionally updates `default-model-config` so existing agents that
+# already reference the platform default move onto the local model path without
+# editing every Agent CR.
+#
+# Home-lab proved URL:
+#   http://agent-gw.agentgateway-system.svc.cluster.local:8081/qwen/v1
+#
+# Work clusters should use the equivalent internal agentgateway service URL.
+# Keep the `model` value aligned with the AgentgatewayBackend and the served
+# model name exposed by KubeAI/vLLM.
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: default-model-config
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: qwen3-14b
+  apiKeySecret: kagent-openai
+  apiKeySecretKey: OPENAI_API_KEY
+  openAI:
+    baseUrl: http://agent-gw.agentgateway-system.svc.cluster.local:8081/qwen/v1

@@ -1,0 +1,77 @@
+# AgentgatewayBackend - KubeAI-hosted Qwen via /qwen/v1
+#
+# DEPLOY ON: management cluster, or the same cluster when kagent, agentgateway,
+# and KubeAI are co-located.
+#
+# This mirrors the home-lab/work target shape:
+#   kagent -> agentgateway /qwen/v1 -> KubeAI /openai/v1 -> qwen3-14b
+#
+# Replace the parentRef Gateway name if your cluster uses a different
+# agentgateway Gateway. The Proxmox home-lab cluster uses `agent-gw`; the repo
+# aligned examples often use `ai-gateway`.
+#
+# Verify:
+#   kubectl get agentgatewaybackend kubeai-qwen-backend -n agentgateway-system
+#   kubectl get httproute kubeai-qwen-route -n agentgateway-system
+#   kubectl port-forward -n agentgateway-system svc/agent-gw 8081:8081
+#   curl -s http://127.0.0.1:8081/qwen/v1/chat/completions \
+#     -H 'content-type: application/json' \
+#     -d '{"model":"qwen3-14b","messages":[{"role":"user","content":"reply ok"}],"max_tokens":8}'
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubeai-qwen-dummy-key
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  Authorization: "Bearer not-required"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: kubeai-qwen-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: kubeai
+spec:
+  ai:
+    provider:
+      openai:
+        model: qwen3-14b
+      host: kubeai.kubeai.svc.cluster.local
+      port: 80
+  policies:
+    auth:
+      secretRef:
+        name: kubeai-qwen-dummy-key
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kubeai-qwen-route
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: kubeai
+spec:
+  parentRefs:
+    - name: agent-gw
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /qwen/v1
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /openai/v1
+      backendRefs:
+        - name: kubeai-qwen-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend

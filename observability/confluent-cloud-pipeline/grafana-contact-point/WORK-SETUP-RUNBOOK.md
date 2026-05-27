@@ -104,7 +104,51 @@ debugging Kafka transport.
 
 ## Validate Transport
 
-First verify Grafana is reachable:
+Before Grafana or Alertmanager are involved, prove the Confluent REST endpoint,
+authentication, topic write permission, and JSON produce shape:
+
+```bash
+set -a
+. {{LOCAL_SECRET_DIR}}/grafana-confluent.env
+set +a
+
+observability/confluent-cloud-pipeline/02-confluent-rest-smoke.sh
+```
+
+Expected redacted output:
+
+```json
+{
+  "http_status": 200,
+  "error_code": 200,
+  "cluster_id": "<redacted>",
+  "topic_name": "{{CONFLUENT_ALERTS_TOPIC}}",
+  "partition_id": 0,
+  "offset": 0,
+  "run_id": "rest-smoke-{{TIMESTAMP}}",
+  "value_size": 160
+}
+```
+
+For a work-specific payload, create a JSON file and pass it through the same
+script:
+
+```bash
+cat > /tmp/work-confluent-smoke-payload.json <<'EOF'
+{
+  "source": "work-manual-rest-smoke",
+  "status": "firing",
+  "message": "Confluent REST v3 work connectivity smoke",
+  "environment": "{{WORK_ENVIRONMENT}}"
+}
+EOF
+
+SMOKE_PAYLOAD_FILE=/tmp/work-confluent-smoke-payload.json \
+SMOKE_KEY="work-rest-smoke-$(date -u +%Y%m%dT%H%M%SZ)" \
+observability/confluent-cloud-pipeline/02-confluent-rest-smoke.sh
+```
+
+Then verify Grafana is reachable:
 
 ```bash
 curl -fsS -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
@@ -143,8 +187,7 @@ hasUsername: true
 hasPassword: true
 ```
 
-Optionally prove Confluent REST v3 directly with the same endpoint and
-credentials:
+The raw curl equivalent, useful when testing from a locked-down work host, is:
 
 ```bash
 REST_BASE="${CONFLUENT_REST_ENDPOINT%/}/kafka/v3/clusters/${CONFLUENT_CLUSTER_ID}/topics/${CONFLUENT_ALERTS_TOPIC}/records"

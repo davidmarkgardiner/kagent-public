@@ -18,6 +18,7 @@ This keeps the proof honest. The existing `k8s-triage-critical` workflow expects
 observability/confluent-cloud-pipeline/
 ├── 00-cluster-bootstrap.sh
 ├── 01-shared-secrets.yaml
+├── 02-confluent-rest-smoke.sh
 ├── EVIDENCE.md
 ├── REVIEW-NOTES.md
 ├── README.md
@@ -97,14 +98,23 @@ git check-ignore -v confluent.io/.env confluent.io/.bootstrap.env confluent.io/.
      --dry-run=client -o yaml | kubectl --context {{MGMT_KUBE_CONTEXT}} apply -f -
    ```
 
-3. Apply workload Alloy config on `{{WORKLOAD_KUBE_CONTEXT}}`:
+3. Prove Confluent REST v3 credentials before wiring Grafana or Alertmanager:
+
+   ```bash
+   observability/confluent-cloud-pipeline/02-confluent-rest-smoke.sh
+   ```
+
+   Expected result is HTTP `200`, Confluent `error_code` `200`, plus a Kafka
+   partition and offset for `alertmanager-events`.
+
+4. Apply workload Alloy config on `{{WORKLOAD_KUBE_CONTEXT}}`:
 
    ```bash
    kubectl --context {{WORKLOAD_KUBE_CONTEXT}} apply -f observability/confluent-cloud-pipeline/workload-cluster/02-alloy-config.yaml
    kubectl --context {{WORKLOAD_KUBE_CONTEXT}} apply -f observability/confluent-cloud-pipeline/workload-cluster/03-alloy-deployment.patch.yaml
    ```
 
-4. Apply management EventSource and Sensors on `{{MGMT_KUBE_CONTEXT}}`:
+5. Apply management EventSource and Sensors on `{{MGMT_KUBE_CONTEXT}}`:
 
    ```bash
    source confluent.io/.bootstrap.env
@@ -114,7 +124,7 @@ git check-ignore -v confluent.io/.env confluent.io/.bootstrap.env confluent.io/.
    kubectl --context {{MGMT_KUBE_CONTEXT}} apply -f "$tmpdir/"
    ```
 
-5. Apply the Alertmanager bridge and Helm values overlay:
+6. Apply the Alertmanager bridge and Helm values overlay:
 
    ```bash
    kubectl --context {{MGMT_KUBE_CONTEXT}} apply -f observability/confluent-cloud-pipeline/alertmanager-shim/01-bridge-configmap.yaml
@@ -126,7 +136,7 @@ git check-ignore -v confluent.io/.env confluent.io/.bootstrap.env confluent.io/.
      -f observability/confluent-cloud-pipeline/alertmanager-shim/03-alertmanager-values.yaml
    ```
 
-6. Optional: configure Grafana's native Kafka REST Proxy contact point for Confluent Cloud.
+7. Optional: configure Grafana's native Kafka REST Proxy contact point for Confluent Cloud.
 
    This bypasses the local Alertmanager bridge and lets Grafana Alerting publish
    directly to Confluent Cloud's Kafka REST API v3. It is useful when the goal is
@@ -151,7 +161,7 @@ git check-ignore -v confluent.io/.env confluent.io/.bootstrap.env confluent.io/.
    For the work-environment handoff, follow
    `observability/confluent-cloud-pipeline/grafana-contact-point/WORK-SETUP-RUNBOOK.md`.
 
-7. Run verification:
+8. Run verification:
 
    ```bash
    observability/confluent-cloud-pipeline/verify.sh

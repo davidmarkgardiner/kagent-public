@@ -14,6 +14,6 @@ spec:
   apiKeySecret: litellm-key
   apiKeySecretKey: api-key
   openAI:
-    baseUrl: http://kubeai.kubeai.svc.cluster.local/openai/v1
+    baseUrl: http://agent-gw.agentgateway-system.svc.cluster.local:8081/qwen/v1
     maxTokens: 1200
     temperature: "0.1"

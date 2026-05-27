@@ -155,7 +155,7 @@ spec:
                             raise SystemExit(f"Qwen triage did not complete: {status}")
                   - name: bounded-remediation
                     script:
-                      image: bitnami/kubectl:1.30.7
+                      image: bitnamilegacy/kubectl:1.30.7
                       imagePullPolicy: IfNotPresent
                       command: [bash]
                       resources:
@@ -206,7 +206,7 @@ spec:
                         fi
                   - name: log-hive-mind
                     script:
-                      image: bitnami/kubectl:1.30.7
+                      image: bitnamilegacy/kubectl:1.30.7
                       imagePullPolicy: IfNotPresent
                       command: [bash]
                       resources:

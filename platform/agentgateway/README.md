@@ -68,7 +68,16 @@ secret-rotation-safe UAMI custom-scope workflow.
 | File | Use when |
 |---|---|
 | `backend-kubeai.yaml` | KubeAI local model server available |
+| `backend-kubeai-qwen.yaml` | KubeAI serves `qwen3-14b` and kagent should call it through `/qwen/v1` on agentgateway |
 | `backend-vllm-qwen.yaml` | vLLM-hosted Qwen model — HTTPRoute at `/qwen/v1` with URL rewrite |
+
+### Worker cluster — kagent model configs
+
+| File | Use when |
+|---|---|
+| `modelconfig-default-qwen.yaml` | Existing agents use `default-model-config` and should route through agentgateway to local Qwen |
+| `modelconfig-kubeai.yaml` | You want a separate `agentgateway-kubeai` ModelConfig |
+| `modelconfig-qwen.yaml` | You want a separate `agentgateway-qwen` ModelConfig |
 
 ### Management cluster — optional infrastructure
 

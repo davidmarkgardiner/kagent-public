@@ -136,6 +136,36 @@ Keep these out of default agents unless a human approval path exists:
 The dashboard generation idea is useful, but dashboard writes should be a
 separate workflow with a different service account and review gate.
 
+## Chaos And Alert Evidence Loop
+
+The chaos-testing path and Grafana MCP path are implemented as adjacent pieces:
+
+- LitmusChaos can inject bounded faults against `chaos-demo/chaos-target`.
+- `chaos/litmus/manifests/sensor-litmus-triage.yaml` routes completed
+  `ChaosResult` events into an Argo Workflow that invokes `chaos-triage-agent`.
+- `k8s/observability/k-agent-alert-triage-sensor.yaml` routes observability
+  alerts into `observability-agent` and asks it to use Grafana MCP evidence.
+- `scripts/observability/smoke-grafana-mcp.sh` proves the direct Grafana MCP
+  path independently of model backend health.
+
+What is not the default path is letting the triage agent mutate Grafana
+dashboards directly. A terminal agent can create a local HTML dashboard for the
+human, and a separate approved workflow can publish Grafana dashboard JSON with
+a write-capable service account.
+
+Use the new reusable skill for this workflow:
+
+- [Grafana chaos incident triage skill](../../agents/skills/grafana-chaos-incident-triage/SKILL.md)
+
+For a human-facing map of what is implemented and where to click, open:
+
+- [Chaos + Grafana MCP triage dashboard](chaos-grafana-triage-dashboard.html)
+
+For the work-cluster proof sequence with Teams HITL, Argo resume, scoped
+remediation, and GitLab closeout, use:
+
+- [End-to-end HITL demo runbook](end-to-end-hitl-demo.md)
+
 ## Demonstrations
 
 Use the local runbook to demonstrate this pattern end to end:
