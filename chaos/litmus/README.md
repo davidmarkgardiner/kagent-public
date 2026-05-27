@@ -20,6 +20,35 @@ includes the exact Helm chart versions, private-registry image list, values
 files to edit, resource limits, security contexts, RBAC review notes, and the
 sanitized evidence from the local validation run.
 
+## Image Mirror Scope
+
+For the smallest useful LitmusChaos deployment, mirror only the core operator,
+runner, and experiment image:
+
+```text
+litmuschaos/chaos-operator:3.28.0
+litmuschaos/chaos-runner:3.28.0
+litmuschaos/go-runner:3.28.0
+```
+
+If you deploy the sample workload from this repo, also mirror:
+
+```text
+hashicorp/http-echo:1.0.0
+```
+
+If you enable the Argo Events and kagent triage workflow, also mirror the helper
+images used by `manifests/sensor-litmus-triage.yaml`:
+
+```text
+python:3.11-slim
+bitnami/kubectl:1.30.7
+```
+
+The larger ChaosCenter image set in `WORK-INSTALL.md` is only needed when you
+deploy the Litmus portal/UI. A base command-line or GitOps-run experiment path
+can start with `litmus-core`, `kubernetes-chaos`, and one approved experiment.
+
 ## Local Validation Install
 
 ```bash

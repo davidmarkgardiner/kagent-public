@@ -33,4 +33,10 @@ cluster install handoff. It links the exact Litmus Helm chart versions, values
 files, image mirror list, RBAC review points, kagent/Argo Events integration,
 validation commands, and local evidence captured from the demo run.
 
+For a minimal work deployment, start with the `litmus-core` and
+`kubernetes-chaos` images only: `chaos-operator`, `chaos-runner`, and
+`go-runner`. Add the sample target image only if you use the repo demo workload,
+add the Python and kubectl helper images only if you enable Argo/kagent triage,
+and add the ChaosCenter/MongoDB image set only if the Litmus UI is required.
+
 Add the Chaos Mesh POC under `chaos/chaos-mesh/` when MIL-143 lands in this repository.
