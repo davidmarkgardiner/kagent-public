@@ -31,6 +31,11 @@ The SQLite volume is an `emptyDir` with `medium: Memory`, so the current red set
 Checked against the public kagent `origin/main` source on 2026-05-21
 (`62bd3718`) and this repo's local manifests.
 
+For a platform-level implementation guide that covers working memory, A2A
+thread continuity, native kagent memory, shared episodic memory, procedural
+memory, and Microsoft-aligned AKS deployment guidance, see
+[`platform-memory/README.md`](platform-memory/README.md).
+
 | Option | Best for | Storage / retrieval | Sharing model | Current status in this repo |
 |---|---|---|---|---|
 | A2A session memory | Remembering one conversation thread | Raw session events in the kagent database | Scoped to one A2A `contextId` | Works on `red` while the controller pod survives |
