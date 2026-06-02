@@ -49,6 +49,7 @@ examples/           Quickstart and sample payloads
 | Score whether agents are doing the right job | [`observability/agent-evals/`](observability/agent-evals/README.md) |
 | Lift the agent eval pattern into another environment | [`KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md`](KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md) |
 | Deploy the kagent + agentgateway observability bundle | [`docs/observability/k-agent-agentgateway-observability.md`](docs/observability/k-agent-agentgateway-observability.md) |
+| Decide whether Alloy should use VPA auto mode | [`docs/observability/alloy-vpa/`](docs/observability/alloy-vpa/) |
 | Test Grafana MCP with kagent observability | [`docs/observability/grafana-mcp-home-lab.md`](docs/observability/grafana-mcp-home-lab.md) |
 | Adapt AI + Grafana triage ideas to this stack | [`docs/ai-grafana/README.md`](docs/ai-grafana/README.md) |
 | Hand over the CAF-style Grafana/alerts/Argo flow | [`docs/observability/caf-style-observability-handoff.md`](docs/observability/caf-style-observability-handoff.md) |
