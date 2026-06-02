@@ -39,6 +39,7 @@ examples/           Quickstart and sample payloads
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
 | Hand this zip to a work agent for lift-and-shift | [`WORK-ZIP-AGENT-HANDOFF.md`](WORK-ZIP-AGENT-HANDOFF.md) |
+| Verify the work-side triage/remediation integration | [`WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md`](WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md) |
 | See what changed recently | [`CHANGELOG.md`](CHANGELOG.md) |
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
 | Onboard a namespace via PR | [`platform/argo-workflows/templates/namespace-onboarding/`](platform/argo-workflows/templates/namespace-onboarding/) |
