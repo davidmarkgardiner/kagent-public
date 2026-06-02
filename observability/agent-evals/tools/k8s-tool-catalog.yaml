@@ -1,0 +1,45 @@
+# Canonical Kubernetes tool names used by this repo's kagent agents.
+# Source: agents/kagent-triage/API-REFERENCE.md and deployed Agent manifests.
+schemaVersion: agent-evals.kagent-public/v1alpha1
+kind: ToolCatalog
+metadata:
+  name: k8s-tool-catalog
+spec:
+  readOnlyTools:
+    - name: k8s_get_resources
+      description: List Kubernetes resources.
+    - name: k8s_get_pod_logs
+      description: Get container logs.
+    - name: k8s_describe_resource
+      description: Describe a Kubernetes resource.
+    - name: k8s_get_resource_yaml
+      description: Get resource YAML.
+    - name: k8s_get_events
+      description: Get Kubernetes events.
+    - name: k8s_check_service_connectivity
+      description: Check service connectivity.
+    - name: k8s_get_available_api_resources
+      description: List available API resources.
+    - name: k8s_get_cluster_configuration
+      description: Get cluster configuration.
+  writeOrHighRiskTools:
+    - name: k8s_apply_manifest
+      description: Apply a manifest.
+    - name: k8s_create_resource
+      description: Create a resource.
+    - name: k8s_create_resource_from_url
+      description: Create a resource from a URL.
+    - name: k8s_delete_resource
+      description: Delete a resource.
+    - name: k8s_patch_resource
+      description: Patch a resource.
+    - name: k8s_execute_command
+      description: Execute a command in a pod.
+    - name: k8s_label_resource
+      description: Add labels.
+    - name: k8s_remove_label
+      description: Remove labels.
+    - name: k8s_annotate_resource
+      description: Add annotations.
+    - name: k8s_remove_annotation
+      description: Remove annotations.

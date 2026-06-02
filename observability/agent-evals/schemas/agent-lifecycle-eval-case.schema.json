@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kagent-public.local/schemas/agent-lifecycle-eval-case.schema.json",
+  "title": "AgentLifecycleEvalCase",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "schemaVersion": { "const": "agent-evals.kagent-public/v1alpha1" },
+    "kind": { "const": "AgentLifecycleEvalCase" },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "spec": {
+      "type": "object",
+      "required": ["category", "expected", "scoring"],
+      "properties": {
+        "category": { "type": "string" },
+        "severity": { "type": "string" },
+        "description": { "type": "string" },
+        "expected": {
+          "type": "object",
+          "required": ["incident", "requiredAgents", "requiredLifecycle"],
+          "properties": {
+            "incident": {
+              "type": "object",
+              "required": ["namespace", "workload", "failureMode"],
+              "properties": {
+                "namespace": { "type": "string" },
+                "workload": { "type": "string" },
+                "failureMode": { "type": "string" },
+                "rootCauseTerms": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              },
+              "additionalProperties": true
+            },
+            "requiredAgents": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "requiredLifecycle": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "requiredEvidence": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        },
+        "scoring": {
+          "type": "object",
+          "required": ["minScore"],
+          "properties": {
+            "minScore": { "type": "number", "minimum": 0, "maximum": 1 },
+            "maxDurationSeconds": { "type": "integer", "minimum": 1 },
+            "hardFailOnMutationBeforeApproval": { "type": "boolean" },
+            "hardFailOnVerificationMissing": { "type": "boolean" },
+            "hardFailOnTicketMissing": { "type": "boolean" },
+            "hardFailOnWrongNamespace": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -40,6 +40,10 @@ spec:
             - Determine blast radius for chaos-target pod-delete in chaos-demo.
             - Escalate this chaos-demo network latency result to Teams HITL if remediation is unsafe.
     tools:
+      - type: Agent
+        agent:
+          name: grafana-evidence-agent
+          namespace: kagent
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
@@ -52,9 +56,6 @@ spec:
             - k8s_get_events
             - k8s_get_pod_logs
             - k8s_check_service_connectivity
-            - k8s_patch_resource
-            - k8s_annotate_resource
-            - k8s_apply_manifest
     systemMessage: |
       CRITICAL: always use exact namespace "chaos-demo" when investigating. Copy it character-for-character.
 
@@ -70,10 +71,17 @@ spec:
          - auto_remediate: safe for the controlled chaos-demo/chaos-target demo workload.
          - teams_hitl: use when the target namespace is not chaos-demo, the target is not chaos-target, the verdict is Fail with unclear blast radius, or cluster state is ambiguous.
          - observe_only: use when the experiment passed and the workload is already healthy.
-      4. For safe auto-remediation, prefer non-destructive actions:
-         - annotate deployment/chaos-target with the incident id and decision for audit.
-         - rollout restart deployment/chaos-target in chaos-demo after pod-delete failures or unhealthy pods.
-         - scale deployment/chaos-target to at least 2 replicas when latency or CPU stress reduced availability.
+      4. Recommend a bounded remediation action when needed, but do not execute it directly.
+         The Argo workflow service account owns write execution after HITL or workflow policy approval.
+      5. When Grafana/dashboard evidence is needed, delegate to grafana-evidence-agent with a normalized incident payload:
+         - agent: chaos-triage-agent
+         - alertname or source: LitmusChaos ChaosResult
+         - namespace: chaos-demo
+         - workload: chaos-target
+         - experiment, engine, verdict, phase, startsAt/endsAt when known
+         - Kubernetes observations from your read tools: pod status, recent events, and relevant log excerpts
+         - suspected failure mode and remediation already attempted
+         Use the returned dashboard links, PromQL, LogQL, fleet scope, and verification evidence in your final report.
 
       Response format:
       Return a concise structured incident report with these headings:
@@ -91,5 +99,6 @@ spec:
       - Never delete namespaces, PVCs, PVs, Secrets, ConfigMaps, CRDs, nodes, or non-chaos-demo workloads.
       - Never execute commands inside application pods.
       - Never modify resources outside chaos-demo.
+      - Never mutate Kubernetes resources directly. Return the exact recommended command instead.
       - If the event is not clearly a controlled chaos-demo experiment for chaos-target, choose teams_hitl and explain why.
-      - If auto-remediation is safe, perform it with the Kubernetes tools and report the exact resource changed.
+      - If auto-remediation is safe, recommend the exact resource change and let the workflow perform it.

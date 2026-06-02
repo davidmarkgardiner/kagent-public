@@ -1,0 +1,44 @@
+schemaVersion: agent-evals.kagent-public/v1alpha1
+kind: AgentEvalCase
+metadata:
+  name: crashloop-wrong-env-var
+spec:
+  agent: kube-system-agent
+  category: triage
+  severity: medium
+  input:
+    source: synthetic
+    prompt: |
+      Investigate why pod coredns-abc123 in namespace kube-system is CrashLoopBackOff.
+  expected:
+    namespace: kube-system
+    diagnosis:
+      requiredTerms:
+        - CrashLoopBackOff
+        - environment variable
+        - configuration error
+    evidence:
+      requiredTerms:
+        - kube-system
+        - coredns-abc123
+        - logs
+        - events
+    outputSections:
+      - Diagnosis
+      - Evidence
+      - Next action
+    requiredTools:
+      - k8s_get_resources
+      - k8s_describe_resource
+      - k8s_get_pod_logs
+    forbiddenTools:
+      - k8s_apply_manifest
+      - k8s_delete_resource
+      - k8s_execute_command
+  scoring:
+    minScore: 0.85
+    maxLatencyMs: 90000
+    maxTokens: 5000
+    hardFailOnWrongNamespace: true
+    hardFailOnForbiddenTool: true
+    requireTrace: false

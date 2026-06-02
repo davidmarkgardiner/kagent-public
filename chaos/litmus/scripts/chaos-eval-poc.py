@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
 Kagent Chaos Eval POC
-Runs chaos scenarios, scores agent resilience via Phoenix/Qwen, reports findings.
+Runs chaos scenarios, scores infrastructure recovery, reports findings.
 No embedded credentials in code. Sensitive values come from environment variables or Kubernetes objects.
 """
 
 import subprocess
 import time
-import json
 import datetime
 import os
 import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+REPORTING_DIR = REPO_ROOT / "observability" / "agent-evals" / "scripts"
+sys.path.insert(0, str(REPORTING_DIR))
+
+from reporting import render_chaos_recovery_markdown, utc_now_iso, write_json, write_markdown
 
 LANGFUSE_HOST = "http://langfuse-web.kagent.svc.cluster.local:3000"
-PHOENIX_HOST  = "http://arize-phoenix.kagent.svc.cluster.local:6006"
 NAMESPACE     = "kagent"
 
 def run(cmd, timeout=60):
@@ -88,55 +93,28 @@ def scenario_clickhouse_outage():
         "notes": f"ClickHouse 20s outage, recovered in {recovery_s:.0f}s, Langfuse ok={langfuse_ok}"
     }
 
-# Health score
-def compute_health_score(results):
+# Recovery score
+def compute_recovery_score(results):
     stabilities = [r["workflow_stability"] for r in results]
     avg_stability = sum(stabilities) / len(stabilities)
-    # Simplified score for chaos-only run (workflow_stability weighted heavily)
-    score = round(
-        0.30 * 1.0             # task_success: all scenarios completed
-      + 0.25 * 1.0             # reasoning_quality: N/A for infra chaos, assume 1.0
-      + 0.20 * 1.0             # tool_efficiency: N/A, assume 1.0
-      + 0.15 * avg_stability   # workflow_stability: measured
-      + 0.10 * 1.0,            # cost_efficiency: local Qwen = free
-    3)
+    score = round(avg_stability, 3)
     return score, avg_stability
 
-# Report
-def generate_report(results, health_score, avg_stability):
-    lines = [
-        "# Kagent Chaos Eval Report",
-        f"**Date:** {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
-        f"**Cluster:** local Kubernetes validation cluster (private address redacted)",
-        f"**Judge model:** Qwen2.5:7b via AgentGateway (local, no external tokens)",
-        "",
-        "## Health Score",
-        f"**{health_score}** / 1.0  (workflow_stability avg: {avg_stability:.2f})",
-        "",
-        "| Score | Meaning |",
-        "|-------|---------|",
-        "| >0.9  | Healthy production |",
-        "| >0.7  | Usable, monitor |",
-        "| <0.5  | Needs attention |",
-        "",
-        "## Scenarios",
-    ]
-    for r in results:
-        lines += [
-            f"### {r['scenario']}",
-            f"- Recovery: **{r['recovery_seconds']}s**",
-            f"- Stability score: **{r['workflow_stability']}**",
-            f"- Notes: {r['notes']}",
-            "",
-        ]
-    lines += [
-        "## Next Steps",
-        "- [ ] Wire Phoenix LLM-as-judge (Qwen) for reasoning_quality scoring on real agent traces",
-        "- [ ] Add network partition scenario (tc netem or Litmus)",
-        "- [ ] Set alert: health_score < 0.7 and route it to the approved incident queue",
-        "- [ ] Schedule the chaos suite through the approved cluster scheduler",
-    ]
-    return "\n".join(lines)
+def build_recovery_result(results, recovery_score, avg_stability):
+    return {
+        "schemaVersion": "agent-evals.kagent-public/v1alpha1",
+        "kind": "ChaosRecoveryEvalResult",
+        "completed_at": utc_now_iso(),
+        "namespace": NAMESPACE,
+        "recovery_score": recovery_score,
+        "workflow_stability_avg": round(avg_stability, 3),
+        "passed": recovery_score >= 0.7,
+        "scenarios": results,
+        "notes": [
+            "This score measures infrastructure recovery only.",
+            "Agent diagnosis quality is scored separately by observability/agent-evals.",
+        ],
+    }
 
 if __name__ == "__main__":
     log("Starting chaos eval POC")
@@ -145,22 +123,26 @@ if __name__ == "__main__":
     results.append(scenario_scale_zero())
     results.append(scenario_clickhouse_outage())
 
-    health_score, avg_stability = compute_health_score(results)
-    report = generate_report(results, health_score, avg_stability)
+    recovery_score, avg_stability = compute_recovery_score(results)
+    result = build_recovery_result(results, recovery_score, avg_stability)
+    report = render_chaos_recovery_markdown(result)
 
-    log(f"Health score: {health_score}")
+    log(f"Recovery score: {recovery_score}")
     print("\n" + report)
 
     # Save report to the current directory unless explicitly overridden.
     report_dir = os.getenv("CHAOS_EVAL_REPORT_DIR", ".")
     os.makedirs(report_dir, exist_ok=True)
+    report_stem = f"chaos-recovery-eval-{datetime.datetime.utcnow().strftime('%Y-%m-%d')}"
     report_path = os.path.join(
         report_dir,
-        f"chaos-eval-{datetime.datetime.utcnow().strftime('%Y-%m-%d')}.md",
+        f"{report_stem}.md",
     )
-    with open(report_path, "w") as f:
-        f.write(report)
-    log(f"Report saved to {report_path}")
+    json_path = os.path.join(report_dir, f"{report_stem}.json")
+    write_markdown(report_path, report)
+    write_json(json_path, result)
+    log(f"Markdown report saved to {report_path}")
+    log(f"JSON report saved to {json_path}")
 
     # Exit non-zero if unhealthy
-    sys.exit(0 if health_score >= 0.7 else 1)
+    sys.exit(0 if result["passed"] else 1)

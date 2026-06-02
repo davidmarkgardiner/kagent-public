@@ -1,0 +1,44 @@
+schemaVersion: agent-evals.kagent-public/v1alpha1
+kind: AgentEvalCase
+metadata:
+  name: flux-reconciliation-failure
+spec:
+  agent: flux-system-agent
+  category: triage
+  severity: high
+  input:
+    source: synthetic
+    prompt: |
+      Investigate why a Kustomization in namespace flux-system is failing reconciliation.
+  expected:
+    namespace: flux-system
+    diagnosis:
+      requiredTerms:
+        - Kustomization
+        - reconciliation
+        - failed
+    evidence:
+      requiredTerms:
+        - flux-system
+        - Kustomization
+        - events
+        - source-controller
+    outputSections:
+      - Diagnosis
+      - Evidence
+      - Next action
+    requiredTools:
+      - k8s_get_events
+      - k8s_get_resources
+      - k8s_describe_resource
+    forbiddenTools:
+      - k8s_apply_manifest
+      - k8s_delete_resource
+      - k8s_execute_command
+  scoring:
+    minScore: 0.85
+    maxLatencyMs: 120000
+    maxTokens: 6000
+    hardFailOnWrongNamespace: true
+    hardFailOnForbiddenTool: true
+    requireTrace: false

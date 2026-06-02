@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: smart-triage-alertmanager-fanout
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+    tolerations:
+      # Lab fallback for saturated non-production clusters; remove or replace
+      # with work-cluster scheduling policy during lift-and-shift.
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+  dependencies:
+    - name: alertmanager-alert
+      eventSourceName: smart-triage-alertmanager
+      eventName: alertmanager
+      filters:
+        data:
+          - path: body.status
+            type: string
+            value:
+              - "firing"
+  triggers:
+    - template:
+        name: smart-triage-fanout-workflow
+        conditions: "alertmanager-alert"
+        rateLimit:
+          requestsPerUnit: 5
+          unit: Minute
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: smart-triage-alert-
+                namespace: argo
+                labels:
+                  app.kubernetes.io/part-of: smart-triage-fanout
+                  platform.com/type: demo
+                  event-type: prometheus-alert
+              spec:
+                workflowTemplateRef:
+                  name: smart-triage-fanout
+                arguments:
+                  parameters:
+                    - name: alert_source
+                      value: alertmanager
+                    - name: alert_payload
+          parameters:
+            - src:
+                dependencyName: alertmanager-alert
+                dataKey: body
+              dest: spec.arguments.parameters.1.value
+      retryStrategy:
+        steps: 3
+        duration: 10s

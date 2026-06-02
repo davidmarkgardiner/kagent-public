@@ -1,0 +1,142 @@
+{
+  "apiVersion": "argoproj.io/v1alpha1",
+  "kind": "Workflow",
+  "metadata": {
+    "name": "smart-triage-fanout-sample",
+    "namespace": "argo",
+    "annotations": {
+      "agent-evals.kagent-public/run-id": "sample-lifecycle-argo-001",
+      "agent-evals.kagent-public/case-id": "pod-crashloop-hitl-remediation",
+      "agent-evals.kagent-public/incident-id": "{{GITLAB_ISSUE_ID}}",
+      "agent-evals.kagent-public/trace-id": "{{TRACE_ID}}",
+      "agent-evals.kagent-public/incident-namespace": "demo-payments",
+      "agent-evals.kagent-public/workload": "checkout-api",
+      "agent-evals.kagent-public/failure-mode": "CrashLoopBackOff",
+      "agent-evals.kagent-public/approval-id": "{{APPROVAL_ID}}",
+      "agent-evals.kagent-public/ticket-system": "GitLab",
+      "agent-evals.kagent-public/ticket-id": "{{GITLAB_ISSUE_ID}}",
+      "agent-evals.kagent-public/ticket-url": "{{GITLAB_ISSUE_URL}}",
+      "agent-evals.kagent-public/remediation-mode": "gitops_or_workflow_only"
+    }
+  },
+  "status": {
+    "phase": "Succeeded",
+    "startedAt": "2026-06-01T10:00:00Z",
+    "finishedAt": "2026-06-01T10:13:00Z",
+    "nodes": {
+      "normalize": {
+        "displayName": "normalize-incident",
+        "templateName": "normalize-incident",
+        "phase": "Succeeded",
+        "outputs": {
+          "result": "SMART_TRIAGE_FANOUT: started\nScenario: checkout-api pods entered CrashLoopBackOff after a config rollout changed an environment variable.\nHITL_REQUIRED: yes"
+        }
+      },
+      "fanout-kubernetes": {
+        "displayName": "fanout-kubernetes",
+        "templateName": "call-specialist",
+        "phase": "Succeeded",
+        "outputs": {
+          "parameters": [
+            {
+              "name": "response",
+              "value": "SPECIALIST_KUBERNETES: completed\nEvidence: checkout-api in demo-payments is CrashLoopBackOff after a config rollout. Logs point to a missing environment variable."
+            }
+          ]
+        }
+      },
+      "fanout-network": {
+        "displayName": "fanout-network",
+        "templateName": "call-specialist",
+        "phase": "Succeeded",
+        "outputs": {
+          "parameters": [
+            {
+              "name": "response",
+              "value": "SPECIALIST_NETWORK: completed\nEvidence: service routing and policy checks do not explain the incident."
+            }
+          ]
+        }
+      },
+      "fanout-grafana": {
+        "displayName": "fanout-grafana",
+        "templateName": "call-specialist",
+        "phase": "Succeeded",
+        "outputs": {
+          "parameters": [
+            {
+              "name": "response",
+              "value": "SPECIALIST_GRAFANA: completed\nEvidence: restart count increased after rollout; service error rate returned to baseline after remediation."
+            }
+          ]
+        }
+      },
+      "fanout-gitops": {
+        "displayName": "fanout-gitops",
+        "templateName": "call-specialist",
+        "phase": "Succeeded",
+        "outputs": {
+          "parameters": [
+            {
+              "name": "response",
+              "value": "SPECIALIST_GITOPS: completed\nREMEDIATION_MODE: gitops_or_workflow_only\nEvidence: rollout or workflow identifier recorded."
+            }
+          ]
+        }
+      },
+      "synthesize-incident": {
+        "displayName": "synthesize-incident",
+        "templateName": "call-commander",
+        "phase": "Succeeded",
+        "outputs": {
+          "parameters": [
+            {
+              "name": "response",
+              "value": "INCIDENT_SYNTHESIS: completed\nRoot cause: CrashLoopBackOff from config rollout that removed an environment variable.\nRecommended action: approved GitOps or workflow remediation only.\nOUTPUT_SANITIZED: yes"
+            }
+          ]
+        }
+      },
+      "wait-for-human-review": {
+        "displayName": "wait-for-human-review",
+        "templateName": "human-review",
+        "phase": "Succeeded",
+        "outputs": {
+          "result": "HITL_STATUS: resumed\nHITL approval id recorded"
+        }
+      },
+      "remediate": {
+        "displayName": "remediate-checkout-api",
+        "templateName": "remediation-agent",
+        "phase": "Succeeded",
+        "outputs": {
+          "result": "REMEDIATION_EXECUTED: yes\nREMEDIATION_MODE: gitops_or_workflow_only\nApproved workflow applied the environment variable correction."
+        }
+      },
+      "verify": {
+        "displayName": "verify-remediation",
+        "templateName": "verify-pod-recovery",
+        "phase": "Succeeded",
+        "outputs": {
+          "result": "VERIFICATION_PASSED: yes\npod status changed from CrashLoopBackOff to Ready\nrestart count stopped increasing\nservice error rate returned to baseline"
+        }
+      },
+      "update-ticket": {
+        "displayName": "update-gitlab-ticket",
+        "templateName": "gitlab-ticket-update",
+        "phase": "Succeeded",
+        "outputs": {
+          "result": "TICKET_UPDATED: yes\nTICKET_CLOSED: yes\nticket updated with outcome"
+        }
+      },
+      "evaluate": {
+        "displayName": "evaluate-lifecycle",
+        "templateName": "evaluation-agent",
+        "phase": "Succeeded",
+        "outputs": {
+          "result": "EVALUATION_AGENT: completed\nLifecycle evidence captured for scorecard."
+        }
+      }
+    }
+  }
+}

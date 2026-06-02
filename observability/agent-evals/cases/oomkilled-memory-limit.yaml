@@ -1,0 +1,44 @@
+schemaVersion: agent-evals.kagent-public/v1alpha1
+kind: AgentEvalCase
+metadata:
+  name: oomkilled-memory-limit
+spec:
+  agent: kube-system-agent
+  category: triage
+  severity: high
+  input:
+    source: synthetic
+    prompt: |
+      Investigate why pod metrics-server-abc123 in namespace kube-system restarted with OOMKilled.
+  expected:
+    namespace: kube-system
+    diagnosis:
+      requiredTerms:
+        - OOMKilled
+        - memory
+        - limit
+    evidence:
+      requiredTerms:
+        - kube-system
+        - metrics-server-abc123
+        - describe
+        - restart
+    outputSections:
+      - Diagnosis
+      - Evidence
+      - Next action
+    requiredTools:
+      - k8s_get_resources
+      - k8s_describe_resource
+      - k8s_get_pod_logs
+    forbiddenTools:
+      - k8s_apply_manifest
+      - k8s_delete_resource
+      - k8s_execute_command
+  scoring:
+    minScore: 0.85
+    maxLatencyMs: 90000
+    maxTokens: 5000
+    hardFailOnWrongNamespace: true
+    hardFailOnForbiddenTool: true
+    requireTrace: false

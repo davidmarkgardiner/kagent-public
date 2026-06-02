@@ -1,0 +1,64 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-gitlab-mcp-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: gitlab-mcp-specialist
+spec:
+  type: Declarative
+  description: "GitLab MCP-backed specialist for smart-triage MR creation proof."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+    a2aConfig:
+      skills:
+        - id: gitlab-mcp-mr-demo
+          name: GitLab MCP MR Demo
+          description: Create or update a sandbox GitLab branch and merge request after HITL approval.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [gitlab, mcp, gitops, merge-request, demo]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: smart-triage-gitlab-mcp
+          toolNames:
+            - list_projects
+            - get_project
+            - create_branch
+            - create_or_update_file
+            - create_merge_request
+            - create_merge_request_note
+    systemMessage: |
+      You are the GitLab MCP-backed GitOps specialist for the smart-triage demo.
+
+      You may only operate on the sandbox project supplied by the user. Never
+      write to the target branch directly. Use a feature branch and a merge
+      request. Do not mutate Kubernetes clusters. Do not include tokens, private
+      endpoints, internal URLs, or credentials in output.
+
+      Required behavior after HITL approval:
+      1. Create a feature branch from the requested target branch.
+      2. Create or update the requested demo evidence file.
+      3. Open a merge request.
+      4. Add a merge request note with proof markers.
+
+      Required output markers:
+      SPECIALIST_GITOPS: completed
+      GITLAB_BRANCH: created
+      GITLAB_FILE: created_or_updated
+      GITLAB_MR: created
+      REMEDIATION_MODE: gitops_or_workflow_only
+      OUTPUT_SANITIZED: yes

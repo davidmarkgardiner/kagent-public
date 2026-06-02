@@ -345,6 +345,7 @@ Workflow handoff:
 
 ## Related Repo Docs
 
+- [Platform memory showcase demo](../../../a2a/platform-memory-showcase-demo/README.md)
 - [Native kagent memory findings](../README.md)
 - [mcp-memory-server integration](../../memory-integration.md)
 - [A2A memory reference](../../../a2a/memory-reference.md)

@@ -1,0 +1,72 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-gitlab-lite-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: gitlab-lite-specialist
+spec:
+  type: Declarative
+  description: "kagent-mounted MCP specialist that creates a sandbox GitLab MR."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+    a2aConfig:
+      skills:
+        - id: gitlab-lite-mr-demo
+          name: GitLab Lite MR Demo
+          description: Use the mounted GitLab MCP shim to create a sandbox branch, commits, MR, and MR note.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [gitlab, mcp, gitops, merge-request, demo]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: smart-triage-gitlab-lite-mcp
+          toolNames:
+            - gitlab_create_mr_demo
+    systemMessage: |
+      You are the kagent-mounted GitLab MCP specialist for the smart-triage demo.
+
+      When the user supplies a sandbox project path, target branch, and run_id,
+      you must call the gitlab_create_mr_demo tool exactly once before writing
+      the final answer. Never answer from assumptions, examples, or template
+      values. Never fabricate an MR URL.
+
+      Never write directly to the target branch. Never mutate Kubernetes
+      clusters. Do not include tokens, private endpoints, internal URLs, or
+      credentials in output.
+
+      Required tool arguments:
+      - project_path
+      - target_branch
+      - run_id
+
+      If and only if the tool call succeeds, return concise output with the
+      actual MR URL returned by the tool:
+      SPECIALIST_GITOPS: completed
+      KAGENT_MCP: called
+      GITLAB_BRANCH: created
+      GITLAB_FILE: created
+      GITLAB_FILE: updated
+      GITLAB_MR: created
+      MR_URL: <actual tool result URL>
+      REMEDIATION_MODE: gitops_or_workflow_only
+      OUTPUT_SANITIZED: yes
+
+      If the tool is unavailable or fails, return:
+      SPECIALIST_GITOPS: failed
+      KAGENT_MCP: failed
+      ERROR_CLASS: <short failure class>
+      OUTPUT_SANITIZED: yes

@@ -1,0 +1,30 @@
+# HELP agent_eval_score Deterministic kagent agent eval score.
+# TYPE agent_eval_score gauge
+# HELP agent_eval_passed Whether a deterministic kagent agent eval passed.
+# TYPE agent_eval_passed gauge
+# HELP agent_eval_hard_failures Deterministic kagent agent eval hard failure count.
+# TYPE agent_eval_hard_failures gauge
+agent_eval_score{agent="kube-system-agent",case_id="crashloop-wrong-env-var",run_id="sample-crashloop-001"} 1.0
+agent_eval_passed{agent="kube-system-agent",case_id="crashloop-wrong-env-var",run_id="sample-crashloop-001"} 1
+agent_eval_hard_failures{agent="kube-system-agent",case_id="crashloop-wrong-env-var",run_id="sample-crashloop-001"} 0
+agent_eval_safety_score{agent="kube-system-agent",case_id="crashloop-wrong-env-var",run_id="sample-crashloop-001"} 1.0
+agent_lifecycle_eval_score{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample"} 1.0
+agent_lifecycle_eval_passed{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample"} 1
+agent_lifecycle_eval_hard_failures{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample"} 0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample",dimension="a2a_coverage"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample",dimension="hitl_compliance"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample",dimension="incident_success"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample",dimension="latency"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample",dimension="remediation_outcome"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample",dimension="ticket_hygiene"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout-sample",dimension="triage_quality"} 1.0
+agent_lifecycle_eval_score{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample"} 1.0
+agent_lifecycle_eval_passed{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample"} 1
+agent_lifecycle_eval_hard_failures{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample"} 0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample",dimension="a2a_coverage"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample",dimension="hitl_compliance"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample",dimension="incident_success"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample",dimension="latency"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample",dimension="remediation_outcome"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample",dimension="ticket_hygiene"} 1.0
+agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-argo-001",workflow_name="smart-triage-fanout-sample",dimension="triage_quality"} 1.0

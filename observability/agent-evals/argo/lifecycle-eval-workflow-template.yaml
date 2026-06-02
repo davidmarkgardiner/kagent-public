@@ -1,0 +1,152 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: agent-lifecycle-eval
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: kagent-agent-evals
+    platform.com/team: platform
+    platform.com/type: evaluation
+spec:
+  entrypoint: evaluate-lifecycle
+  arguments:
+    parameters:
+      - name: runtime_image
+        value: "alpine:3.19"
+      - name: agent_eval_root
+        value: /opt/agent-evals
+      - name: case_id
+        value: pod-crashloop-hitl-remediation
+      - name: run_id
+        value: "{{workflow.name}}"
+      - name: workflow_name
+        value: "{{workflow.name}}"
+      - name: incident_id
+        value: "{{GITLAB_ISSUE_ID}}"
+      - name: incident_namespace
+        value: demo-payments
+      - name: workload
+        value: checkout-api
+      - name: failure_mode
+        value: CrashLoopBackOff
+      - name: ticket_system
+        value: GitLab
+      - name: ticket_id
+        value: "{{GITLAB_ISSUE_ID}}"
+      - name: ticket_url
+        value: "{{GITLAB_ISSUE_URL}}"
+      - name: ticket_closed
+        value: "false"
+      - name: remediation_mode
+        value: gitops_or_workflow_only
+      - name: workflow_json
+        value: "{}"
+      - name: marker_evidence
+        value: ""
+  volumes:
+    - name: agent-eval-runtime
+      configMap:
+        name: agent-eval-runtime-files
+        defaultMode: 0755
+        items:
+          - key: reporting.py
+            path: scripts/reporting.py
+          - key: collect-lifecycle-evidence.py
+            path: scripts/collect-lifecycle-evidence.py
+          - key: score-lifecycle-run.py
+            path: scripts/score-lifecycle-run.py
+          - key: summarize-agent-scores.py
+            path: scripts/summarize-agent-scores.py
+          - key: pod-crashloop-hitl-remediation.yaml
+            path: lifecycle-cases/pod-crashloop-hitl-remediation.yaml
+  templates:
+    - name: evaluate-lifecycle
+      inputs:
+        parameters:
+          - name: runtime_image
+          - name: agent_eval_root
+          - name: case_id
+          - name: run_id
+          - name: workflow_name
+          - name: incident_id
+          - name: incident_namespace
+          - name: workload
+          - name: failure_mode
+          - name: ticket_system
+          - name: ticket_id
+          - name: ticket_url
+          - name: ticket_closed
+          - name: remediation_mode
+          - name: workflow_json
+          - name: marker_evidence
+      script:
+        image: "{{inputs.parameters.runtime_image}}"
+        command: [sh]
+        volumeMounts:
+          - name: agent-eval-runtime
+            mountPath: /opt/agent-evals
+            readOnly: true
+        source: |
+          set -eu
+
+          apk add --no-cache python3 py3-yaml >/dev/null
+
+          eval_root="{{inputs.parameters.agent_eval_root}}"
+          output_dir=/work/output
+          mkdir -p "${output_dir}" /work/evidence
+
+          cat > /work/evidence/workflow.json <<'WORKFLOW_JSON'
+          {{inputs.parameters.workflow_json}}
+          WORKFLOW_JSON
+
+          cat > /work/evidence/markers.txt <<'MARKER_EVIDENCE'
+          {{inputs.parameters.marker_evidence}}
+          MARKER_EVIDENCE
+          printf '\nEVALUATION_AGENT: completed\n' >> /work/evidence/markers.txt
+
+          collect_args="
+            --output ${output_dir}/lifecycle-run.json
+            --case-id {{inputs.parameters.case_id}}
+            --run-id {{inputs.parameters.run_id}}
+            --workflow-name {{inputs.parameters.workflow_name}}
+            --incident-id {{inputs.parameters.incident_id}}
+            --namespace {{inputs.parameters.incident_namespace}}
+            --workload {{inputs.parameters.workload}}
+            --failure-mode {{inputs.parameters.failure_mode}}
+            --ticket-system {{inputs.parameters.ticket_system}}
+            --ticket-id {{inputs.parameters.ticket_id}}
+            --ticket-url {{inputs.parameters.ticket_url}}
+            --remediation-mode {{inputs.parameters.remediation_mode}}
+          "
+
+          if [ -s /work/evidence/workflow.json ]; then
+            collect_args="${collect_args} --argo-workflow /work/evidence/workflow.json"
+          fi
+          if [ -s /work/evidence/markers.txt ]; then
+            collect_args="${collect_args} --evidence /work/evidence/markers.txt"
+          fi
+          if [ "{{inputs.parameters.ticket_closed}}" = "true" ]; then
+            collect_args="${collect_args} --ticket-closed"
+          fi
+
+          python3 "${eval_root}/scripts/collect-lifecycle-evidence.py" ${collect_args}
+          python3 "${eval_root}/scripts/score-lifecycle-run.py" \
+            --case "${eval_root}/lifecycle-cases/{{inputs.parameters.case_id}}.yaml" \
+            --run "${output_dir}/lifecycle-run.json" \
+            --output-dir "${output_dir}"
+
+          python3 "${eval_root}/scripts/summarize-agent-scores.py" \
+            --results-dir "${output_dir}" \
+            --summary-md "${output_dir}/summary.md" \
+            --metrics "${output_dir}/agent-eval.prom"
+      outputs:
+        parameters:
+          - name: lifecycle-run
+            valueFrom:
+              path: /work/output/lifecycle-run.json
+          - name: lifecycle-summary
+            valueFrom:
+              path: /work/output/summary.md
+          - name: lifecycle-metrics
+            valueFrom:
+              path: /work/output/agent-eval.prom

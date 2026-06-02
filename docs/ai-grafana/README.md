@@ -39,6 +39,26 @@ agent should use them as evidence and generate deeplinks, but the default triage
 path should return a concise diagnosis grounded in metrics, logs, and alert
 metadata.
 
+Use two dashboard types:
+
+- agent home dashboards for domain-wide health and fleet blast-radius checks
+- incident evidence dashboards for the exact pod, workload, service, cluster,
+  logs, metrics, and recovery signal shown to the SRE
+
+Use a shared `grafana-evidence-agent` for Grafana dashboard selection and SRE
+evidence packs. Domain agents keep Kubernetes/AKS inspection and pass a
+normalized incident payload plus their Kubernetes observations; the evidence
+agent returns focused dashboard links, PromQL, LogQL, fleet scope, and
+verification queries. This keeps dashboard logic consistent instead of copying
+it into every domain agent.
+
+The routing contract is now captured in
+[`../../observability/grafana/dashboard-registry.yaml`](../../observability/grafana/dashboard-registry.yaml).
+The first reusable incident template is
+[`../../observability/grafana/dashboards/k8s-pod-crash-evidence.json`](../../observability/grafana/dashboards/k8s-pod-crash-evidence.json).
+For a paste-ready handoff to another implementation agent, use
+[`work-agent-implementation-prompt.md`](work-agent-implementation-prompt.md).
+
 ## How It Maps To This Stack
 
 | Video concept | This repo's implementation |
@@ -63,15 +83,17 @@ The direct MCP data path has been validated in the local lab:
 - `list_datasources` returns Alertmanager, Loki, Mimir/Prometheus-compatible,
   and Prometheus datasources.
 - `query_prometheus` succeeds with `count(up)`.
-- `query_loki_logs` succeeds for recent `kagent` namespace logs.
+- `query_loki_logs` succeeds for recent `kagent` and Argo workflow logs.
 - `observability-agent` is wired to current Grafana MCP tool names.
 - The alert triage sensor calls `observability-agent` so the first AI hop can
   use Grafana MCP evidence.
+- The chaos iteration review path completed after the Qwen model pod was
+  repaired: Litmus passed, the A2A call returned `QWEN_TRIAGE_STATUS=completed`,
+  and the workflow wrote Hive Mind evidence.
 
-The remaining blocker is model backend health for the full agent-mediated A2A
-answer path. Until that is repaired, use the direct MCP smoke test as proof that
-Grafana data access works, and treat the full AI response path as pending model
-backend recovery.
+If the model backend regresses, use the direct MCP smoke test as proof that
+Grafana data access still works, then repair the model route before trusting the
+full agent-mediated answer path.
 
 ## Triage Pattern
 
@@ -156,10 +178,14 @@ a write-capable service account.
 Use the new reusable skill for this workflow:
 
 - [Grafana chaos incident triage skill](../../agents/skills/grafana-chaos-incident-triage/SKILL.md)
+- [Grafana incident evidence pack skill](../../agents/skills/grafana-incident-evidence-pack/SKILL.md)
 
 For a human-facing map of what is implemented and where to click, open:
 
+- [Agent dashboards and incident evidence packs](agent-dashboard-evidence-pattern.md)
+- [Shared Grafana evidence agent](shared-grafana-evidence-agent.md)
 - [Chaos + Grafana MCP triage dashboard](chaos-grafana-triage-dashboard.html)
+- [Iteration review chaos agent demo](iteration-review-chaos-agent-demo.html)
 
 For the work-cluster proof sequence with Teams HITL, Argo resume, scoped
 remediation, and GitLab closeout, use:

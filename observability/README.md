@@ -18,6 +18,14 @@ Start with these documents for the current K-Agent / Agent Gateway path:
 | Install and verify the observability bundle | [`../docs/observability/k-agent-agentgateway-observability.md`](../docs/observability/k-agent-agentgateway-observability.md) |
 | Replicate Grafana MCP enrichment on another cluster | [`../docs/observability/grafana-mcp-home-lab.md`](../docs/observability/grafana-mcp-home-lab.md) |
 | Understand the AI + Grafana triage pattern | [`../docs/ai-grafana/README.md`](../docs/ai-grafana/README.md) |
+| Score whether kagent agents are doing the right job | [`agent-evals/README.md`](agent-evals/README.md) |
+| Audit full incident workflows after A2A, HITL, remediation, and ticket updates | [`agent-evals/LIFECYCLE-EVALUATION.md`](agent-evals/LIFECYCLE-EVALUATION.md) |
+| Wire lifecycle scoring as an Argo post-run audit step | [`agent-evals/ARGO-RUNTIME.md`](agent-evals/ARGO-RUNTIME.md) |
+| Review the agent eval visual walkthrough | [`agent-evals/agent-eval-scorecard-demo.html`](agent-evals/agent-eval-scorecard-demo.html) |
+| Lift the pattern into a work environment | [`../KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md`](../KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md) |
+| Route agents to home dashboards and incident evidence dashboards | [`grafana/dashboard-registry.yaml`](grafana/dashboard-registry.yaml) |
+| Generate SRE-focused pod crash evidence | [`grafana/dashboards/k8s-pod-crash-evidence.json`](grafana/dashboards/k8s-pod-crash-evidence.json) |
+| Deploy the shared Grafana evidence agent | [`../agents/grafana-evidence-agent/agent.yaml`](../agents/grafana-evidence-agent/agent.yaml) |
 | Run the Grafana MCP smoke test | [`../scripts/observability/smoke-grafana-mcp.sh`](../scripts/observability/smoke-grafana-mcp.sh) |
 | Maintain managed LGTM rule sync | [`managed-lgtm-integration/rule-sync/README.md`](managed-lgtm-integration/rule-sync/README.md) |
 | Route Alertmanager alerts to kagent triage | [`../k8s/observability/k-agent-alert-triage-sensor.yaml`](../k8s/observability/k-agent-alert-triage-sensor.yaml) |
@@ -45,6 +53,27 @@ before returning an operator verdict.
 Keep the default agent read-oriented. Do not add dashboard mutation, plugin
 install, annotation write, or incident creation tools unless the workflow has an
 explicit human approval path.
+
+## Agent Dashboard Registry
+
+Use [`grafana/dashboard-registry.yaml`](grafana/dashboard-registry.yaml) to map
+each agent to:
+
+- stable home dashboards for domain health and fleet-wide context
+- focused incident evidence dashboards for SRE ticket handoff
+- required labels such as `cluster`, `namespace`, `pod`, `container`,
+  `service`, `agent`, and `workflow`
+- dashboard follow-up labels for post-incident learning
+
+The first focused evidence dashboard is
+[`grafana/dashboards/k8s-pod-crash-evidence.json`](grafana/dashboards/k8s-pod-crash-evidence.json).
+It is intended for CrashLoopBackOff, OOMKilled, failed probes, and restart
+incidents. Link it to tickets only with variables set to the affected object.
+
+The shared agent that owns this evidence path is
+[`../agents/grafana-evidence-agent/agent.yaml`](../agents/grafana-evidence-agent/agent.yaml).
+Domain agents should pass it normalized incident payloads instead of embedding
+the full dashboard registry and Grafana query logic in every prompt.
 
 ## Legacy Event Hub Pattern
 

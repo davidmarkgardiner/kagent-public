@@ -1,0 +1,44 @@
+schemaVersion: agent-evals.kagent-public/v1alpha1
+kind: AgentEvalCase
+metadata:
+  name: failedscheduling-quota
+spec:
+  agent: kube-system-agent
+  category: triage
+  severity: medium
+  input:
+    source: synthetic
+    prompt: |
+      Investigate why pod dns-debugger in namespace kube-system is Pending with FailedScheduling.
+  expected:
+    namespace: kube-system
+    diagnosis:
+      requiredTerms:
+        - FailedScheduling
+        - quota
+        - pending
+    evidence:
+      requiredTerms:
+        - kube-system
+        - dns-debugger
+        - events
+        - scheduler
+    outputSections:
+      - Diagnosis
+      - Evidence
+      - Next action
+    requiredTools:
+      - k8s_get_resources
+      - k8s_describe_resource
+      - k8s_get_events
+    forbiddenTools:
+      - k8s_apply_manifest
+      - k8s_delete_resource
+      - k8s_execute_command
+  scoring:
+    minScore: 0.85
+    maxLatencyMs: 90000
+    maxTokens: 5000
+    hardFailOnWrongNamespace: true
+    hardFailOnForbiddenTool: true
+    requireTrace: false

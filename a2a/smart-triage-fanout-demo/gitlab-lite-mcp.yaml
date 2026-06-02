@@ -1,0 +1,333 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smart-triage-gitlab-lite-mcp
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+data:
+  server.py: |
+    import base64
+    import json
+    import os
+    import sys
+    import time
+    import urllib.parse
+    import urllib.request
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    GITLAB_HOST = os.environ.get("GITLAB_HOST", "gitlab.com")
+    GITLAB_TOKEN = os.environ["GITLAB_TOKEN"]
+    API = f"https://{GITLAB_HOST}/api/v4"
+
+    def api(method, path, payload=None):
+      data = None
+      headers = {"Authorization": f"Bearer {GITLAB_TOKEN}"}
+      if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+      req = urllib.request.Request(f"{API}{path}", data=data, headers=headers, method=method)
+      with urllib.request.urlopen(req, timeout=30) as resp:
+        body = resp.read().decode("utf-8")
+        return json.loads(body) if body else {}
+
+    def create_mr_demo(args):
+      project_path = args["project_path"]
+      project_enc = urllib.parse.quote(project_path, safe="")
+      run_id = args.get("run_id") or time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+      target_branch = args.get("target_branch") or "main"
+      source_branch = args.get("source_branch") or f"smart-triage/kagent-mcp-demo-{run_id}"
+      file_path = args.get("file_path") or f"docs/smart-triage/kagent-mcp-live-demo-{run_id}.md"
+      title = args.get("title") or "Smart triage kagent MCP live write demo"
+
+      api("POST", f"/projects/{project_enc}/repository/branches", {
+        "branch": source_branch,
+        "ref": target_branch,
+      })
+
+      content_v1 = "\n".join([
+        "# Smart Triage kagent MCP Live Demo",
+        "",
+        f"Run ID: `{run_id}`",
+        "",
+        "This file was created by a kagent-mounted MCP tool to prove an Agent can drive",
+        "GitLab branch, commit, merge request, and note creation through MCP.",
+        "",
+        "Proof markers:",
+        "",
+        "- `KAGENT_MCP: called`",
+        "- `GITLAB_BRANCH: created`",
+        "- `GITLAB_FILE: created`",
+        "- `GITLAB_MR: pending`",
+        "",
+        "Safety posture:",
+        "",
+        "- Non-production demo branch.",
+        "- No cluster mutation.",
+        "- No secrets or private endpoints committed.",
+        "",
+      ])
+
+      create_commit = api("POST", f"/projects/{project_enc}/repository/commits", {
+        "branch": source_branch,
+        "commit_message": "Add smart-triage kagent MCP live demo evidence",
+        "actions": [{
+          "action": "create",
+          "file_path": file_path,
+          "content": content_v1,
+        }],
+      })
+
+      content_v2 = "\n".join([
+        "# Smart Triage kagent MCP Live Demo",
+        "",
+        f"Run ID: `{run_id}`",
+        "",
+        "This file was created and then updated by a kagent-mounted MCP tool. The second",
+        "commit proves the Agent can iterate on a GitOps remediation branch before review.",
+        "",
+        "Proof markers:",
+        "",
+        "- `KAGENT_MCP: called`",
+        "- `GITLAB_BRANCH: created`",
+        "- `GITLAB_FILE: created`",
+        "- `GITLAB_FILE: updated`",
+        "- `GITLAB_MR: pending`",
+        "",
+        "Safety posture:",
+        "",
+        "- Non-production demo branch.",
+        "- No cluster mutation.",
+        "- No secrets or private endpoints committed.",
+        "",
+      ])
+
+      update_commit = api("POST", f"/projects/{project_enc}/repository/commits", {
+        "branch": source_branch,
+        "commit_message": "Update smart-triage kagent MCP live demo evidence",
+        "actions": [{
+          "action": "update",
+          "file_path": file_path,
+          "content": content_v2,
+        }],
+      })
+
+      mr_description = "\n".join([
+        "This MR was created by a kagent-mounted MCP tool.",
+        "",
+        "What happened:",
+        "",
+        f"- Created branch `{source_branch}`.",
+        f"- Created `{file_path}`.",
+        f"- Updated `{file_path}` in a second commit.",
+        "- Posted this proof as an MR note.",
+        "",
+        "This is the concrete GitOps behavior needed after HITL approval: write to a",
+        "feature branch and open a reviewable MR instead of mutating a cluster directly.",
+      ])
+
+      mr = api("POST", f"/projects/{project_enc}/merge_requests", {
+        "source_branch": source_branch,
+        "target_branch": target_branch,
+        "title": title,
+        "description": mr_description,
+        "remove_source_branch": True,
+      })
+
+      note_body = "\n".join([
+        "Smart-triage kagent MCP live demo follow-up:",
+        "",
+        "- `KAGENT_MCP: called`",
+        "- `GITLAB_BRANCH: created`",
+        "- `GITLAB_FILE: created`",
+        "- `GITLAB_FILE: updated`",
+        "- `GITLAB_MR: created`",
+        "",
+        "Next integration step: gate this tool behind HITL in the smart-triage workflow.",
+      ])
+      api("POST", f"/projects/{project_enc}/merge_requests/{mr['iid']}/notes", {
+        "body": note_body,
+      })
+
+      return {
+        "project_path": project_path,
+        "source_branch": source_branch,
+        "target_branch": target_branch,
+        "file_path": file_path,
+        "mr_iid": mr["iid"],
+        "mr_url": mr["web_url"],
+        "create_commit": create_commit.get("short_id"),
+        "update_commit": update_commit.get("short_id"),
+        "markers": [
+          "KAGENT_MCP: called",
+          "GITLAB_BRANCH: created",
+          "GITLAB_FILE: created",
+          "GITLAB_FILE: updated",
+          "GITLAB_MR: created",
+        ],
+      }
+
+    TOOL_SCHEMA = {
+      "type": "object",
+      "properties": {
+        "project_path": {"type": "string"},
+        "target_branch": {"type": "string"},
+        "source_branch": {"type": "string"},
+        "file_path": {"type": "string"},
+        "title": {"type": "string"},
+        "run_id": {"type": "string"},
+      },
+      "required": ["project_path", "target_branch", "run_id"],
+    }
+
+    class Handler(BaseHTTPRequestHandler):
+      def do_GET(self):
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "keep-alive")
+        self.end_headers()
+        self.wfile.write(b": smart-triage-gitlab-lite-mcp\n\n")
+        self.wfile.flush()
+        try:
+          for _ in range(300):
+            time.sleep(1)
+            self.wfile.write(b": keepalive\n\n")
+            self.wfile.flush()
+        except BrokenPipeError:
+          return
+
+      def do_DELETE(self):
+        self.send_response(202)
+        self.end_headers()
+
+      def do_POST(self):
+        length = int(self.headers.get("content-length", "0"))
+        body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+        method = body.get("method")
+        req_id = body.get("id")
+        try:
+          if method == "initialize":
+            result = {
+              "protocolVersion": "2025-06-18",
+              "capabilities": {"tools": {}},
+              "serverInfo": {"name": "smart-triage-gitlab-lite-mcp", "version": "0.1.0"},
+            }
+          elif method == "notifications/initialized":
+            self.send_response(202)
+            self.end_headers()
+            return
+          elif method == "tools/list":
+            result = {"tools": [{
+              "name": "gitlab_create_mr_demo",
+              "description": "Create a sandbox GitLab branch, commit a file, update it, open an MR, and post a note.",
+              "inputSchema": TOOL_SCHEMA,
+            }]}
+          elif method == "tools/call":
+            params = body.get("params") or {}
+            name = params.get("name")
+            args = params.get("arguments") or {}
+            if name != "gitlab_create_mr_demo":
+              raise ValueError(f"unknown tool: {name}")
+            result_obj = create_mr_demo(args)
+            result = {"content": [{"type": "text", "text": json.dumps(result_obj, indent=2)}]}
+          else:
+            raise ValueError(f"unsupported method: {method}")
+          response = {"jsonrpc": "2.0", "id": req_id, "result": result}
+        except Exception as exc:
+          print(f"error handling {method}: {exc}", file=sys.stderr, flush=True)
+          response = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32000, "message": str(exc)}}
+
+        payload = json.dumps(response).encode("utf-8")
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+      def log_message(self, fmt, *args):
+        print(fmt % args, flush=True)
+
+    if __name__ == "__main__":
+      ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smart-triage-gitlab-lite-mcp
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: smart-triage-gitlab-lite-mcp
+    app.kubernetes.io/part-of: smart-triage-fanout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smart-triage-gitlab-lite-mcp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smart-triage-gitlab-lite-mcp
+        app.kubernetes.io/part-of: smart-triage-fanout
+    spec:
+      containers:
+        - name: mcp
+          image: python:3.12-alpine
+          command: ["python", "/app/server.py"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GITLAB_HOST
+              value: gitlab.com
+            - name: GITLAB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: smart-triage-gitlab-token
+                  key: token
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          volumeMounts:
+            - name: app
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: app
+          configMap:
+            name: smart-triage-gitlab-lite-mcp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smart-triage-gitlab-lite-mcp
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: smart-triage-gitlab-lite-mcp
+    app.kubernetes.io/part-of: smart-triage-fanout
+spec:
+  selector:
+    app.kubernetes.io/name: smart-triage-gitlab-lite-mcp
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: smart-triage-gitlab-lite-mcp
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+spec:
+  description: "Minimal GitLab MCP shim for smart-triage kagent MR proof."
+  protocol: STREAMABLE_HTTP
+  timeout: 120s
+  sseReadTimeout: 10m0s
+  url: http://smart-triage-gitlab-lite-mcp.kagent:8080/mcp

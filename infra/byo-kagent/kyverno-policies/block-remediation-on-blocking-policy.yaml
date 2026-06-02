@@ -1,0 +1,48 @@
+apiVersion: kyverno.io/v2
+kind: ClusterPolicy
+metadata:
+  name: block-remediation-on-blocking-policy
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+  annotations:
+    policies.kyverno.io/title: "Audit Remediation With Blocking Policy"
+    policies.kyverno.io/category: "BYO-KAgent Security"
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Audit-mode guardrail for smart-triage remediation workflows. Write-capable
+      remediation requires an explicit policy-reviewed annotation when policy
+      context says the target workload is blocked.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-policy-review-for-blocked-remediation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Workflow
+              apiGroups:
+                - argoproj.io
+              operations:
+                - CREATE
+                - UPDATE
+      preconditions:
+        all:
+          - key: "{{ request.object.metadata.labels.\"smart-triage.kagent-public/remediation\" || 'false' }}"
+            operator: Equals
+            value: "true"
+          - key: "{{ request.object.metadata.labels.\"smart-triage.kagent-public/policy-blocked\" || 'false' }}"
+            operator: Equals
+            value: "true"
+      validate:
+        message: >-
+          Smart-triage remediation for a policy-blocked workload requires
+          annotation platform.kagent.dev/policy-reviewed=true. This policy ships
+          in Audit mode for review before enforcement.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.metadata.annotations.\"platform.kagent.dev/policy-reviewed\" || 'false' }}"
+                operator: NotEquals
+                value: "true"

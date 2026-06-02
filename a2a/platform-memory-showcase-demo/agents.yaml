@@ -1,0 +1,116 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: demo-memory-seeder-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: platform-memory-showcase
+    platform.com/team: platform-memory-showcase
+    platform.com/type: demo
+    role: memory-seeder
+spec:
+  description: "Demo agent that seeds a synthetic known incident into shared memory-mcp."
+  type: Declarative
+  declarative:
+    modelConfig: default-model-config
+    a2aConfig:
+      skills:
+        - id: seed-shared-memory
+          name: Seed Shared Memory
+          description: Store a synthetic known incident in the shared memory graph.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [memory, mcp, incident, demo]
+    systemMessage: |
+      You seed synthetic shared memory for the platform-memory showcase.
+
+      Use the memory-mcp tools to create or update an entity named:
+      incident/demo-checkout-api-crashloop
+
+      Add an observation with this content:
+      fingerprint=demo-checkout-api-crashloop;
+      status=known-benign;
+      reason=CrashLoopBackOff;
+      namespace=demo-payments;
+      root_cause=config reload during demo rollout;
+      recommendation=do not remediate unless current restarts continue for more than 10 minutes;
+      evidence=synthetic demo memory.
+
+      After the tool call, return these exact markers:
+      MEMORY_WRITE: stored
+      MEMORY_ENTITY: incident/demo-checkout-api-crashloop
+      FINGERPRINT: demo-checkout-api-crashloop
+
+      This is a public demo. Do not include secrets, real cluster names,
+      private hostnames, subscription ids, tenant ids, or tokens.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - create_entities
+            - create_relations
+            - add_observations
+            - search_nodes
+            - open_nodes
+            - read_graph
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: demo-memory-triage-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: platform-memory-showcase
+    platform.com/team: platform-memory-showcase
+    platform.com/type: demo
+    role: memory-triage
+spec:
+  description: "Demo triage agent that searches shared memory before recommending action."
+  type: Declarative
+  declarative:
+    modelConfig: default-model-config
+    a2aConfig:
+      skills:
+        - id: memory-assisted-triage
+          name: Memory Assisted Triage
+          description: Search shared memory for a prior incident fingerprint before investigating.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [memory, triage, a2a, demo]
+    systemMessage: |
+      You are the read-only triage agent for the platform-memory showcase.
+
+      At the start of every request:
+      1. Search memory-mcp for demo-checkout-api-crashloop.
+      2. If found, open the matching node.
+      3. Treat memory as a hint, not proof. Say current-state verification is
+         still required before any remediation decision.
+
+      If the user says human decision: approved or HITL_STATUS: resumed, keep
+      the same memory finding and add that the workflow was resumed.
+
+      Return these exact markers whenever the known incident is found:
+      MEMORY_LOOKUP: hit
+      MEMORY_ENTITY: incident/demo-checkout-api-crashloop
+      FINGERPRINT: demo-checkout-api-crashloop
+      RECOMMENDATION: known-benign unless current restarts continue for more than 10 minutes
+
+      If the user says HITL_STATUS: resumed, also return:
+      HITL_STATUS: resumed
+
+      Do not create, modify, or delete cluster resources. Do not write memory.
+      This is a public demo. Do not include secrets, real cluster names,
+      private hostnames, subscription ids, tenant ids, or tokens.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph

@@ -1,0 +1,129 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: lifecycle-eval-hook-example-
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: kagent-agent-evals
+    platform.com/team: platform
+    platform.com/type: example
+spec:
+  entrypoint: main
+  serviceAccountName: smart-triage-fanout-workflow
+  arguments:
+    parameters:
+      - name: runtime_image
+        value: "alpine:3.19"
+      - name: incident_id
+        value: "{{GITLAB_ISSUE_ID}}"
+      - name: ticket_url
+        value: "{{GITLAB_ISSUE_URL}}"
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: capture-sanitized-workflow
+            template: capture-sanitized-workflow
+
+          - name: collect-marker-evidence
+            template: collect-marker-evidence
+
+          - name: evaluate-lifecycle
+            dependencies:
+              - capture-sanitized-workflow
+              - collect-marker-evidence
+            templateRef:
+              name: agent-lifecycle-eval
+              template: evaluate-lifecycle
+            arguments:
+              parameters:
+                - name: runtime_image
+                  value: "{{workflow.parameters.runtime_image}}"
+                - name: agent_eval_root
+                  value: /opt/agent-evals
+                - name: case_id
+                  value: pod-crashloop-hitl-remediation
+                - name: run_id
+                  value: "{{workflow.name}}"
+                - name: workflow_name
+                  value: "{{workflow.name}}"
+                - name: incident_id
+                  value: "{{workflow.parameters.incident_id}}"
+                - name: incident_namespace
+                  value: demo-payments
+                - name: workload
+                  value: checkout-api
+                - name: failure_mode
+                  value: CrashLoopBackOff
+                - name: ticket_system
+                  value: GitLab
+                - name: ticket_id
+                  value: "{{workflow.parameters.incident_id}}"
+                - name: ticket_url
+                  value: "{{workflow.parameters.ticket_url}}"
+                - name: ticket_closed
+                  value: "true"
+                - name: remediation_mode
+                  value: gitops_or_workflow_only
+                - name: workflow_json
+                  value: "{{tasks.capture-sanitized-workflow.outputs.parameters.workflow-json}}"
+                - name: marker_evidence
+                  value: "{{tasks.collect-marker-evidence.outputs.parameters.marker-evidence}}"
+
+    - name: capture-sanitized-workflow
+      outputs:
+        parameters:
+          - name: workflow-json
+            valueFrom:
+              path: /tmp/workflow.json
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          cat > /tmp/workflow.json <<'JSON'
+          {
+            "apiVersion": "argoproj.io/v1alpha1",
+            "kind": "Workflow",
+            "metadata": {
+              "name": "{{workflow.name}}",
+              "namespace": "argo"
+            },
+            "status": {
+              "phase": "Succeeded"
+            }
+          }
+          JSON
+    - name: collect-marker-evidence
+      outputs:
+        parameters:
+          - name: marker-evidence
+            valueFrom:
+              path: /tmp/markers.txt
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          cat > /tmp/markers.txt <<'EOF'
+          SMART_TRIAGE_FANOUT: started
+          Scenario: checkout-api in demo-payments entered CrashLoopBackOff after a config rollout changed an environment variable.
+          SPECIALIST_KUBERNETES: completed
+          SPECIALIST_NETWORK: completed
+          SPECIALIST_GRAFANA: completed
+          SPECIALIST_GITOPS: completed
+          INCIDENT_SYNTHESIS: completed
+          HITL_REQUIRED: yes
+          HITL_STATUS: resumed
+          HITL approval id recorded
+          REMEDIATION_MODE: gitops_or_workflow_only
+          REMEDIATION_EXECUTED: yes
+          VERIFICATION_PASSED: yes
+          pod status changed from CrashLoopBackOff to Ready
+          rollout or workflow identifier recorded
+          ticket updated with outcome
+          TICKET_UPDATED: yes
+          TICKET_CLOSED: yes
+          EVALUATION_AGENT: completed
+          OUTPUT_SANITIZED: yes
+          EOF

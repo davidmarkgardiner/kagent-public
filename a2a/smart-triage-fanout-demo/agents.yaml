@@ -1,0 +1,510 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-kubernetes-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: kubernetes-specialist
+spec:
+  type: Declarative
+  description: "Demo read-only Kubernetes specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: kubernetes-incident-evidence
+          name: Kubernetes Incident Evidence
+          description: Return synthetic Kubernetes evidence for the smart-triage fan-out demo.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [kubernetes, triage, demo]
+    systemMessage: |
+      You are the Kubernetes read-only specialist for the smart-triage fan-out demo.
+
+      This is a public-safe synthetic demo. Do not use real cluster names,
+      private hostnames, private IPs, subscription IDs, tenant IDs, tokens, or
+      secrets. Do not propose direct kubectl mutation.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_KUBERNETES: completed
+      EVIDENCE_SOURCE: synthetic-kubernetes
+      FINDING: checkout-api pod restarts align with a demo config reload in namespace demo-payments
+      BLAST_RADIUS: single workload, single namespace
+      CURRENT_STATE_VERIFIED: yes
+      RECOMMENDATION: continue to HITL before any remediation
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-network-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: network-specialist
+spec:
+  type: Declarative
+  description: "Demo read-only network/Hubble specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: network-incident-evidence
+          name: Network Incident Evidence
+          description: Return synthetic network/Hubble evidence for the smart-triage fan-out demo.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [network, hubble, triage, demo]
+    systemMessage: |
+      You are the network/Hubble read-only specialist for the smart-triage fan-out demo.
+
+      This is a public-safe synthetic demo. Do not use real cluster names,
+      private hostnames, private IPs, subscription IDs, tenant IDs, tokens, or
+      secrets. Do not propose direct network policy mutation.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_NETWORK: completed
+      EVIDENCE_SOURCE: synthetic-hubble
+      FINDING: no cross-namespace or fleet-wide network symptom in the supplied incident payload
+      BLAST_RADIUS: network path appears isolated to the demo workload
+      CURRENT_STATE_VERIFIED: yes
+      RECOMMENDATION: no network remediation; preserve as supporting evidence
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-grafana-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: grafana-specialist
+spec:
+  type: Declarative
+  description: "Demo read-only Grafana specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: grafana-incident-evidence
+          name: Grafana Incident Evidence
+          description: Return synthetic Grafana evidence for the smart-triage fan-out demo.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [grafana, prometheus, loki, triage, demo]
+    systemMessage: |
+      You are the Grafana read-only specialist for the smart-triage fan-out demo.
+
+      This is a public-safe synthetic demo. Do not use real cluster names,
+      private hostnames, private IPs, subscription IDs, tenant IDs, tokens, or
+      secrets. Do not mutate dashboards, alert rules, or datasources.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_GRAFANA: completed
+      EVIDENCE_SOURCE: synthetic-grafana
+      DASHBOARD: Kubernetes Pod Crash Evidence with demo-payments and checkout-api variables
+      METRICS: restart count elevated only during the demo rollout window
+      LOGS: no secret-bearing log lines required for this demo
+      CURRENT_STATE_VERIFIED: yes
+      RECOMMENDATION: include focused dashboard link in HITL packet
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-gitops-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: gitops-specialist
+spec:
+  type: Declarative
+  description: "Demo dry-run GitOps specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: gitops-dryrun-remediation
+          name: GitOps Dry-Run Remediation
+          description: Return a synthetic GitOps issue/MR draft without writing to GitLab.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [gitops, gitlab, remediation, demo]
+    systemMessage: |
+      You are the GitOps dry-run specialist for the smart-triage fan-out demo.
+
+      This is a public-safe synthetic demo. Do not use real repository URLs,
+      private hostnames, private IPs, subscription IDs, tenant IDs, tokens, or
+      secrets. Do not claim that a real MR or issue was created.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_GITOPS: completed
+      EVIDENCE_SOURCE: synthetic-gitops
+      DRY_RUN: true
+      ISSUE_DRAFT: [DEMO MOCK] Create issue for checkout-api restart review
+      MR_DRAFT: [DEMO MOCK] Branch fix/demo-checkout-api-config-guard with no committed changes
+      REMEDIATION_MODE: gitops_or_workflow_only
+      RECOMMENDATION: human reviews issue/MR draft before any GitOps change
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-knowledge-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: knowledge-specialist
+spec:
+  type: Declarative
+  description: "Demo read-only knowledge and runbook specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: knowledge-runbook-evidence
+          name: Knowledge Runbook Evidence
+          description: Return synthetic Git-backed runbook evidence with citations for the smart-triage demo.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [knowledge, runbook, citations, demo]
+    systemMessage: |
+      You are the read-only knowledge and runbook specialist for the smart-triage fan-out demo.
+
+      This public-safe demo simulates retrieval from a Git-backed Markdown
+      knowledge base. Answer only from the supplied demo corpus citation. If the
+      question is outside the corpus, return NO_RELEVANT_DOCS. Do not claim that
+      a real repository was updated.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_KNOWLEDGE: completed
+      EVIDENCE_SOURCE: synthetic-platform-kb
+      CITATIONS: docs/platform-kb/runbooks/checkout-api-crashloop.md#chunk-1
+      ANSWER_GROUNDED: yes
+      NO_RELEVANT_DOCS_CASE: validated
+      KB_UPDATE_MR: dry_run_after_hitl
+      RECOMMENDATION: include cited runbook in HITL packet and open a sandbox MR only after approval
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-deployment-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: deployment-specialist
+spec:
+  type: Declarative
+  description: "Demo read-only deployment-state specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: deployment-state-evidence
+          name: Deployment State Evidence
+          description: Return synthetic read-only Flux/Helm deployment state for the smart-triage demo.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [deployment, flux, helm, gitops, demo]
+    systemMessage: |
+      You are the read-only deployment state specialist for the smart-triage fan-out demo.
+
+      This is a public-safe synthetic demo. Do not use sync, rollback, restart,
+      patch, apply, delete, or any other mutating operation. Do not claim a real
+      controller was changed.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_DEPLOYMENT: completed
+      EVIDENCE_SOURCE: synthetic-flux
+      APP_RESOLVED: checkout-api
+      DESIRED_REVISION: demo-rev-42
+      LIVE_REVISION: demo-rev-42
+      DRIFT: no
+      HEALTH: degraded
+      LAST_DEPLOY: 2026-06-01T17:08:30Z
+      IMAGE: checkout-api:demo
+      VERDICT: bad_deploy
+      CURRENT_STATE_VERIFIED: yes
+      RECOMMENDATION: continue to HITL before any sync or rollback
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-policy-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: policy-specialist
+spec:
+  type: Declarative
+  description: "Demo read-only policy and security specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: policy-security-evidence
+          name: Policy Security Evidence
+          description: Return synthetic read-only Kyverno and image-policy evidence for the smart-triage demo.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [policy, kyverno, security, demo]
+    systemMessage: |
+      You are the read-only policy and security specialist for the smart-triage fan-out demo.
+
+      This is a public-safe synthetic demo. Do not mutate policies, reports,
+      namespaces, workloads, images, or admission settings. Any blocking policy
+      keeps remediation behind HITL and GitOps review.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_POLICY: completed
+      EVIDENCE_SOURCE: synthetic-kyverno
+      POLICY_REPORTS_READ: yes
+      BLOCKERS: require-reviewed-remediation
+      WARNINGS: image-tag-not-pinned
+      VULN_FINDINGS: critical=0 high=1 medium=2
+      REMEDIATION_SAFETY: blocked
+      CURRENT_STATE_VERIFIED: yes
+      RECOMMENDATION: hold remediation until HITL records policy-reviewed approval
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-trace-specialist
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: trace-specialist
+spec:
+  type: Declarative
+  description: "Demo read-only trace-context specialist for smart-triage fan-out."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: trace-context-evidence
+          name: Trace Context Evidence
+          description: Return synthetic trace context or NO_TRACE fallback for the smart-triage demo.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [trace, tempo, jaeger, grafana, demo]
+    systemMessage: |
+      You are the read-only trace-context specialist for the smart-triage fan-out demo.
+
+      This repo does not include a live application Tempo or Jaeger backend, so
+      this public demo proves the trace evidence contract and NO_TRACE fallback.
+      Do not claim that a real trace backend was queried.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      SPECIALIST_TRACE: completed
+      EVIDENCE_SOURCE: synthetic-tempo-contract
+      TRACE_ID: NONE
+      TRACE_QUERY: service=checkout-api namespace=demo-payments window=2026-06-01T17:03:30Z..2026-06-01T17:13:30Z
+      ROOT_SPAN: unknown
+      SLOW_SPAN: none
+      ERROR_SPAN: none
+      DEPENDENCY_EDGE: none
+      TRACE_URL: none
+      FALLBACK: NO_TRACE
+      CURRENT_STATE_VERIFIED: yes
+      RECOMMENDATION: include searched trace window in HITL packet
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: smart-triage-incident-commander
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+    role: incident-commander
+spec:
+  type: Declarative
+  description: "Demo incident commander that synthesizes smart-triage fan-out evidence."
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 5m
+          memory: 32Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      tolerations:
+        # Lab fallback for saturated non-production clusters; remove or replace
+        # with work-cluster scheduling policy during lift-and-shift.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+    a2aConfig:
+      skills:
+        - id: smart-triage-synthesis
+          name: Smart Triage Synthesis
+          description: Synthesize Kubernetes, network, Grafana, GitOps, knowledge, deployment, policy, and trace specialist evidence.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [incident, synthesis, hitl, demo]
+    systemMessage: |
+      You are the incident commander for the smart-triage fan-out demo.
+
+      The workflow already collected evidence from Kubernetes, network/Hubble,
+      Grafana, GitOps, knowledge, deployment, policy, and trace specialists.
+      Synthesize only the supplied evidence.
+
+      This is a public-safe synthetic demo. Preserve every [DEMO MOCK] tag
+      verbatim. Do not use real cluster names, private hostnames, private IPs,
+      subscription IDs, tenant IDs, tokens, or secrets. Do not claim any real
+      GitLab issue, MR, or cluster mutation happened.
+
+      Return only concise output. Do not include hidden reasoning, scratchpad,
+      or <think> tags.
+
+      Required output:
+      INCIDENT_SYNTHESIS: completed
+      SMART_TRIAGE_FANOUT: started
+      SUMMARY: checkout-api restart symptoms are isolated and suitable for human-reviewed recommendation-only handling
+      EVIDENCE: Kubernetes, network, Grafana, GitOps, knowledge, deployment, policy, and trace specialists all returned signal
+      HITL_REQUIRED: yes
+      REMEDIATION_MODE: gitops_or_workflow_only
+      OUTPUT_SANITIZED: yes

@@ -1,0 +1,37 @@
+{
+  "run_id": "sample-crashloop-001",
+  "case_id": "crashloop-wrong-env-var",
+  "agent": "kube-system-agent",
+  "trace_id": "{{TRACE_ID}}",
+  "model": "{{MODEL_NAME}}",
+  "latency_ms": 42000,
+  "input_tokens": 1200,
+  "output_tokens": 850,
+  "final_response": "## Diagnosis\nPod coredns-abc123 in namespace kube-system is in CrashLoopBackOff because the container exits during startup after reading an invalid environment variable. The failure is a configuration error, not a node or scheduling issue.\n\n## Evidence\nk8s_get_resources showed coredns-abc123 in kube-system with repeated restarts. k8s_describe_resource showed restart-loop events. k8s_get_pod_logs showed the process exits after loading the bad environment variable.\n\n## Next action\nFix the environment variable in the owning workload manifest through the GitOps path, then let Flux reconcile the change. Do not patch the live pod directly.",
+  "tool_calls": [
+    {
+      "name": "k8s_get_resources",
+      "arguments": {
+        "namespace": "kube-system",
+        "kind": "Pod",
+        "name": "coredns-abc123"
+      }
+    },
+    {
+      "name": "k8s_describe_resource",
+      "arguments": {
+        "namespace": "kube-system",
+        "kind": "Pod",
+        "name": "coredns-abc123"
+      }
+    },
+    {
+      "name": "k8s_get_pod_logs",
+      "arguments": {
+        "namespace": "kube-system",
+        "pod": "coredns-abc123",
+        "container": "coredns"
+      }
+    }
+  ]
+}

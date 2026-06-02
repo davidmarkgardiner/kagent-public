@@ -1,0 +1,1506 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iteration Review: Chaos Agent + Grafana MCP</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --paper: #ffffff;
+      --ink: #151a21;
+      --muted: #5b6470;
+      --line: #d9d2c6;
+      --blue: #1f5f99;
+      --green: #2e7a5f;
+      --amber: #a46419;
+      --red: #b23b3b;
+      --violet: #5d5393;
+      --steel: #253342;
+      --soft-blue: #e7f0f8;
+      --soft-green: #e8f4ee;
+      --soft-amber: #f7ebd7;
+      --soft-red: #f7e4e4;
+      --shadow: 0 18px 44px rgba(30, 28, 23, .08);
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--blue);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .wrap {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(360px, .9fr);
+      gap: 34px;
+      align-items: end;
+      padding: 42px 0 26px;
+    }
+
+    .eyebrow {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 3px;
+      background: var(--green);
+    }
+
+    h1 {
+      max-width: 780px;
+      margin: 14px 0 16px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7vw, 78px);
+      line-height: 1.02;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    h1 em {
+      color: var(--blue);
+      font-style: italic;
+      font-weight: 500;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 19px;
+    }
+
+    .hero-card {
+      background: #101722;
+      color: #f7fbff;
+      border: 1px solid #263448;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #263448;
+      color: #c7d7ea;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .hero-card-body {
+      padding: 18px;
+    }
+
+    .agent-verdict {
+      margin: 0 0 12px;
+      font-size: 19px;
+      font-weight: 760;
+    }
+
+    .agent-verdict span { color: #88d6b1; }
+
+    .agent-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .agent-meta div {
+      min-height: 72px;
+      padding: 12px;
+      background: #172235;
+      border: 1px solid #2b3c56;
+      border-radius: 6px;
+    }
+
+    .agent-meta strong {
+      display: block;
+      color: #eaf2ff;
+      font-size: 18px;
+    }
+
+    .agent-meta span {
+      color: #aebdd0;
+      font-size: 12px;
+    }
+
+    main { padding: 30px 0 56px; }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin: 0 auto 22px;
+      padding: 10px;
+      background: rgba(247, 244, 238, .94);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      backdrop-filter: blur(8px);
+    }
+
+    .toolbar-inner {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .step-btn {
+      min-height: 52px;
+      padding: 8px 10px;
+      background: var(--paper);
+      border-color: var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+      text-align: left;
+    }
+
+    .step-btn.active {
+      background: var(--steel);
+      border-color: var(--steel);
+      color: #fff;
+    }
+
+    .step-btn.done {
+      background: var(--soft-green);
+      border-color: #bbdbc9;
+      color: #184b39;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, .84fr) minmax(380px, 1.16fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel h2,
+    .panel h3 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: start;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head p {
+      max-width: 620px;
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 5px;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .badge.alert { background: var(--red); }
+    .badge.agent { background: var(--blue); }
+    .badge.approve { background: var(--amber); }
+    .badge.fix { background: var(--green); }
+    .badge.verify { background: var(--violet); }
+
+    .story {
+      min-height: 366px;
+      padding: 20px;
+    }
+
+    .story-title {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .story-title h2 { font-size: 28px; }
+
+    .story p {
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .story-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .mini {
+      min-height: 116px;
+      padding: 13px;
+      background: #fbfaf7;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .mini strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .mini span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .commands {
+      padding: 18px;
+    }
+
+    pre {
+      overflow: auto;
+      margin: 0;
+      padding: 15px;
+      background: #101722;
+      color: #e9eef7;
+      border-radius: 7px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    code { font-family: var(--mono); }
+
+    .dashboard {
+      margin-top: 18px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .metric {
+      min-height: 104px;
+      padding: 15px;
+      background: var(--paper);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .chart-area {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, .72fr);
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .chart {
+      min-height: 260px;
+      padding: 14px;
+      background: #fbfaf7;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .chart h3 {
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+
+    svg { display: block; width: 100%; height: auto; }
+
+    .ticket {
+      padding: 14px;
+      background: #fbfaf7;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .ticket h3 { font-size: 15px; }
+
+    .ticket dl {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 8px;
+      margin: 12px 0 0;
+      font-size: 13px;
+    }
+
+    .ticket dt {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .ticket dd { margin: 0; }
+
+    .live-run {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .live-run .panel {
+      box-shadow: none;
+    }
+
+    .live-run-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .live-cell {
+      min-height: 120px;
+      padding: 13px;
+      background: #fbfaf7;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .live-cell strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .live-cell code {
+      display: block;
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .approval-card {
+      margin-top: 14px;
+      padding: 14px;
+      background: var(--soft-amber);
+      border: 1px solid #e3cda8;
+      border-radius: 7px;
+    }
+
+    .approval-card h3 { font-size: 16px; }
+
+    .approval-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .evidence-console {
+      margin-top: 18px;
+    }
+
+    .console-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .console-card {
+      min-height: 210px;
+      padding: 14px;
+      background: #fbfaf7;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .console-card h3 {
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+
+    .terminal {
+      min-height: 148px;
+      white-space: pre-wrap;
+      background: #101722;
+      color: #e9eef7;
+      border-radius: 7px;
+      padding: 13px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .agent-box {
+      background: #eef6f1;
+      border-color: #bfdac9;
+    }
+
+    .agent-box .terminal {
+      background: #102119;
+      color: #dcf6e8;
+    }
+
+    .grafana-box {
+      background: #edf4fb;
+      border-color: #bfd4e8;
+    }
+
+    .grafana-box .terminal {
+      background: #0f1d2c;
+      color: #e2f0ff;
+    }
+
+    .aks-box {
+      background: #f6f2ff;
+      border-color: #d3c8ef;
+    }
+
+    .aks-box .terminal {
+      background: #171327;
+      color: #f0ebff;
+    }
+
+    .fix-box {
+      background: #fff6e8;
+      border-color: #ead2a8;
+    }
+
+    .fix-box .terminal {
+      background: #24190b;
+      color: #fff2d9;
+    }
+
+    .talk-track {
+      padding: 16px;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .talk-track h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .talk-track p {
+      max-width: 980px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .primary {
+      padding: 10px 13px;
+      background: var(--steel);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .secondary {
+      padding: 10px 13px;
+      background: var(--paper);
+      border-color: var(--line);
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .command-strip {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .command-strip span {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .flowline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .flow-node {
+      min-height: 112px;
+      padding: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      position: relative;
+    }
+
+    .flow-node.active {
+      border-color: var(--blue);
+      box-shadow: inset 0 0 0 2px rgba(31, 95, 153, .16);
+    }
+
+    .flow-node strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .flow-node span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .references {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .ref {
+      min-height: 90px;
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .ref span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    footer {
+      padding: 26px 0 38px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .layout,
+      .chart-area,
+      .console-grid,
+      .live-run,
+      .references {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar-inner,
+      .flowline,
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 620px) {
+      .wrap { width: min(100% - 20px, 1240px); }
+      .hero { padding-top: 28px; }
+      .story-grid,
+      .toolbar-inner,
+      .flowline,
+      .metrics-grid,
+      .agent-meta {
+        grid-template-columns: 1fr;
+      }
+      h1 { font-size: 39px; }
+      .ticket dl { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap hero">
+      <div>
+        <div class="eyebrow">Iteration review demo</div>
+        <h1>Chaos alert to <em>SRE approval</em> to verified recovery</h1>
+        <p class="lead">
+          A presenter-ready walkthrough of the operating model: the agent
+          investigates with Grafana MCP, points the SRE to evidence, proposes a
+          bounded command set, waits for approval, remediates through workflow
+          permissions, and verifies the dashboard recovers over time.
+        </p>
+      </div>
+      <aside class="hero-card" aria-label="Agent verdict preview">
+        <div class="hero-card-header">
+          <span>chaos-triage-agent</span>
+          <span>decision: human_review</span>
+        </div>
+        <div class="hero-card-body">
+          <p class="agent-verdict">
+            <span>Likely cause:</span> the demo workload lost one replica during
+            a controlled Litmus pod-delete drill. Blast radius is limited to
+            <code>chaos-demo/chaos-target</code>.
+          </p>
+          <p>
+            Open the generated Grafana view, confirm the restart spike and
+            recovery slope, then approve the scoped remediation workflow.
+          </p>
+          <div class="agent-meta">
+            <div>
+              <strong>3</strong>
+              <span>queries attached to the evidence pack</span>
+            </div>
+            <div>
+              <strong>1</strong>
+              <span>approved target namespace</span>
+            </div>
+            <div>
+              <strong>0</strong>
+              <span>direct writes from the read-only analysis agent</span>
+            </div>
+            <div>
+              <strong>2m</strong>
+              <span>verification window after approval</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav class="toolbar" aria-label="Demo stages">
+      <div class="toolbar-inner">
+        <button class="step-btn active" data-step="0">1. Inject chaos</button>
+        <button class="step-btn" data-step="1">2. Alert + workflow</button>
+        <button class="step-btn" data-step="2">3. Agent analyzes</button>
+        <button class="step-btn" data-step="3">4. Evidence review</button>
+        <button class="step-btn" data-step="4">5. Approve + fix</button>
+        <button class="step-btn" data-step="5">6. Verify / retry</button>
+      </div>
+    </nav>
+
+    <section class="layout" aria-label="Interactive demo">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2 id="storyHeading">Alert fires</h2>
+            <p id="storySubhead">The demo begins with a bounded chaos fault or a replayed Alertmanager payload.</p>
+          </div>
+          <span id="storyBadge" class="badge alert">alert</span>
+        </div>
+        <div class="story">
+          <div class="story-title">
+            <h2 id="storyTitle">Controlled fault detected</h2>
+          </div>
+          <p id="storyBody">
+            Litmus deletes or stresses a pod in <code>chaos-demo/chaos-target</code>.
+            Grafana Alerting or Alertmanager emits a payload with namespace,
+            workload, severity, generator URL, and time window. Argo Events
+            receives the payload and starts the triage workflow.
+          </p>
+          <div class="story-grid">
+            <div class="mini">
+              <strong id="miniOneTitle">Input</strong>
+              <span id="miniOneBody">Alert payload or ChaosResult, preserved as workflow evidence.</span>
+            </div>
+            <div class="mini">
+              <strong id="miniTwoTitle">Guardrail</strong>
+              <span id="miniTwoBody">Only <code>chaos-demo/chaos-target</code> is eligible for demo remediation.</span>
+            </div>
+            <div class="mini">
+              <strong id="miniThreeTitle">What to show</strong>
+              <span id="miniThreeBody">Argo workflow appears with the alert payload and labels.</span>
+            </div>
+            <div class="mini">
+              <strong id="miniFourTitle">What not to claim</strong>
+              <span id="miniFourBody">No production write has happened yet; this is still read-side triage.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Live Command Block</h2>
+            <p>Copy the current-stage commands when there is time to show code in action.</p>
+          </div>
+          <button id="copyStage" class="secondary">Copy commands</button>
+        </div>
+        <div class="commands">
+          <div class="command-strip">
+            <span id="commandLabel">stage 1 commands</span>
+            <button id="copyRunbook" class="primary">Copy presenter runbook</button>
+          </div>
+          <pre><code id="commandBlock">kubectl --context {{KUBE_CONTEXT}} get eventsource -n argo-events
+kubectl --context {{KUBE_CONTEXT}} get sensor -n argo-events
+kubectl --context {{KUBE_CONTEXT}} get workflow -n argo \
+  -l app.kubernetes.io/name=k-agent-alert-triage</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel dashboard" aria-label="Demo dashboard">
+      <div class="panel-head">
+        <div>
+          <h2>Demo Evidence Dashboard</h2>
+          <p>This is a static review artifact that mirrors what the agent should generate or link to through Grafana MCP.</p>
+        </div>
+        <span id="dashboardState" class="badge alert">firing</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <strong id="readyMetric">1/2</strong>
+          <span>ready replicas</span>
+        </div>
+        <div class="metric">
+          <strong id="restartMetric">+1</strong>
+          <span>restart increase over 30m</span>
+        </div>
+        <div class="metric">
+          <strong id="latencyMetric">480ms</strong>
+          <span>p95 request latency</span>
+        </div>
+        <div class="metric">
+          <strong id="statusMetric">firing</strong>
+          <span>alert state</span>
+        </div>
+      </div>
+      <div class="chart-area">
+        <div class="chart">
+          <h3>Recovery trend</h3>
+          <svg viewBox="0 0 720 270" role="img" aria-labelledby="chartTitle chartDesc">
+            <title id="chartTitle">Readiness and alert timeline</title>
+            <desc id="chartDesc">A line chart showing readiness drop, approval, remediation, and recovery.</desc>
+            <rect x="0" y="0" width="720" height="270" rx="8" fill="#fbfaf7"></rect>
+            <g stroke="#ddd5c9" stroke-width="1">
+              <line x1="48" y1="40" x2="680" y2="40"></line>
+              <line x1="48" y1="90" x2="680" y2="90"></line>
+              <line x1="48" y1="140" x2="680" y2="140"></line>
+              <line x1="48" y1="190" x2="680" y2="190"></line>
+              <line x1="48" y1="240" x2="680" y2="240"></line>
+            </g>
+            <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas" font-size="11" fill="#66717f">
+              <text x="46" y="258">alert</text>
+              <text x="210" y="258">analysis</text>
+              <text x="360" y="258">approval</text>
+              <text x="510" y="258">fix</text>
+              <text x="636" y="258">verify</text>
+            </g>
+            <path id="readyPath" d="M55 60 L180 60 L260 176 L360 176 L470 176 L560 98 L665 58" fill="none" stroke="#2e7a5f" stroke-width="5" stroke-linecap="round"></path>
+            <path id="latencyPath" d="M55 188 L180 188 L260 75 L360 86 L470 108 L560 142 L665 184" fill="none" stroke="#a46419" stroke-width="4" stroke-linecap="round"></path>
+            <line id="stageCursor" x1="55" y1="28" x2="55" y2="240" stroke="#1f5f99" stroke-width="3"></line>
+            <g id="cursorDot">
+              <circle cx="55" cy="60" r="8" fill="#1f5f99"></circle>
+              <circle cx="55" cy="60" r="4" fill="#ffffff"></circle>
+            </g>
+            <g font-family="Inter, system-ui, sans-serif" font-size="12" fill="#151a21">
+              <rect x="500" y="26" width="166" height="54" rx="6" fill="#ffffff" stroke="#d9d2c6"></rect>
+              <circle cx="518" cy="45" r="5" fill="#2e7a5f"></circle>
+              <text x="530" y="49">ready replicas</text>
+              <circle cx="518" cy="64" r="5" fill="#a46419"></circle>
+              <text x="530" y="68">latency</text>
+            </g>
+          </svg>
+        </div>
+        <aside class="ticket">
+          <h3>GitLab issue evidence pack</h3>
+          <dl>
+            <dt>Alert</dt>
+            <dd><code>KAgentChaosTargetUnavailable</code></dd>
+            <dt>Target</dt>
+            <dd><code>chaos-demo/chaos-target</code></dd>
+            <dt>Workflow</dt>
+            <dd><code>k-agent-alert-triage-{{ID}}</code></dd>
+            <dt>Grafana</dt>
+            <dd>Explore metrics, Explore logs, dashboard deeplink</dd>
+            <dt>Decision</dt>
+            <dd id="ticketDecision">waiting for analysis</dd>
+          </dl>
+          <div class="approval-card">
+            <h3>Teams HITL approval card</h3>
+            <p id="approvalText">
+              Pending. The workflow has not proposed a write action yet.
+            </p>
+            <div class="approval-actions">
+              <button id="approveBtn" class="primary">Approve demo action</button>
+              <button id="rejectBtn" class="secondary">Reject</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="live-run" aria-label="Live run snapshot">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Live Run Snapshot</h2>
+            <p>Captured from the local demo cluster after running the bounded Litmus drill.</p>
+          </div>
+          <span class="badge verify">2026-05-28</span>
+        </div>
+        <div class="live-run-grid">
+          <div class="live-cell">
+            <strong>Chaos result</strong>
+            <code>ChaosEngine litmus-pod-delete rerun after fix<br>experiment=pod-delete verdict=Pass<br>probeSuccessPercentage=100</code>
+          </div>
+          <div class="live-cell">
+            <strong>Workload recovery</strong>
+            <code>chaos-demo/chaos-target pods Running 1/1<br>ready pods from Grafana MCP Prometheus query = 2<br>available deployment replicas = 2</code>
+          </div>
+          <div class="live-cell">
+            <strong>Kubernetes events</strong>
+            <code>Normal Killing chaos-target-674c6b5dc-gfv2m<br>Normal ChaosInject pod-delete<br>Normal Pass litmus-pod-delete-pod-delete</code>
+          </div>
+          <div class="live-cell">
+            <strong>Agent handoff</strong>
+            <code>Argo workflow kagent-triage-litmus-cn8vs succeeded<br>Qwen returned a completed incident report<br>decision=observe_only because target recovered 2/2</code>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Presenter Verdict</h2>
+            <p>The incident recovered and the repaired agent path completed.</p>
+          </div>
+          <span class="badge approve">review</span>
+        </div>
+        <div class="commands">
+          <pre><code>What I think the problem is:
+- The workload behaved as expected for a pod-delete drill.
+- Litmus passed and Kubernetes restored two ready replicas.
+- Grafana MCP read-side evidence works for Prometheus and Loki.
+- The original agent-mediated workflow failed because the Qwen
+  model pod was stuck in ContainerStatusUnknown.
+
+Demo close:
+Show recovery on the dashboard, then show the fixed workflow:
+kagent-triage-litmus-cn8vs completed with QWEN_TRIAGE_STATUS=completed,
+decision=observe_only, and Hive Mind evidence written.</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel evidence-console" aria-label="Agent investigation evidence">
+      <div class="panel-head">
+        <div>
+          <h2>Presenter Walkthrough</h2>
+          <p>Use this as the spoken demo: it shows the agent looking at Grafana, AKS/Kubernetes evidence, and the proposed remediation path.</p>
+        </div>
+        <button id="copyTalkTrack" class="secondary">Copy talk track</button>
+      </div>
+      <div class="console-grid">
+        <article class="console-card agent-box">
+          <h3>Agent analysis</h3>
+          <div id="agentConsole" class="terminal"></div>
+        </article>
+        <article class="console-card grafana-box">
+          <h3>Grafana MCP evidence</h3>
+          <div id="grafanaConsole" class="terminal"></div>
+        </article>
+        <article class="console-card aks-box">
+          <h3>AKS / Kubernetes evidence</h3>
+          <div id="aksConsole" class="terminal"></div>
+        </article>
+        <article class="console-card fix-box">
+          <h3>Proposed action</h3>
+          <div id="fixConsole" class="terminal"></div>
+        </article>
+      </div>
+      <div class="talk-track">
+        <h3>What I would say here</h3>
+        <p id="talkTrack"></p>
+      </div>
+    </section>
+
+    <section class="flowline" aria-label="End to end flow">
+      <div class="flow-node active" data-node="0">
+        <strong>Chaos</strong>
+        <span>Inject one approved Litmus fault into the demo target.</span>
+      </div>
+      <div class="flow-node" data-node="1">
+        <strong>Alert</strong>
+        <span>Grafana or Alertmanager payload reaches Argo Events.</span>
+      </div>
+      <div class="flow-node" data-node="2">
+        <strong>Analyze</strong>
+        <span>Agent queries Grafana MCP, Loki, Prometheus, dashboards.</span>
+      </div>
+      <div class="flow-node" data-node="3">
+        <strong>Review</strong>
+        <span>SRE checks Grafana and Kubernetes evidence before action.</span>
+      </div>
+      <div class="flow-node" data-node="4">
+        <strong>Approve + fix</strong>
+        <span>HITL resumes a scoped remediation workflow.</span>
+      </div>
+      <div class="flow-node" data-node="5">
+        <strong>Verify</strong>
+        <span>Grafana and Kubernetes confirm recovery or suggest a retry.</span>
+      </div>
+    </section>
+
+    <section class="references" aria-label="Repo references">
+      <div class="ref">
+        <a href="chaos-grafana-triage-dashboard.html">Detailed chaos + Grafana map</a>
+        <span>Current implementation status and artifact links.</span>
+      </div>
+      <div class="ref">
+        <a href="end-to-end-hitl-demo.md">End-to-end HITL runbook</a>
+        <span>Proof sequence for Alertmanager, Grafana MCP, Teams, Argo, and GitLab.</span>
+      </div>
+      <div class="ref">
+        <a href="../../agents/skills/grafana-chaos-incident-triage/SKILL.md">Grafana chaos triage skill</a>
+        <span>Reusable agent behavior for evidence gathering and escalation.</span>
+      </div>
+      <div class="ref">
+        <a href="../../chaos/litmus/WORK-INSTALL.md">Litmus install handoff</a>
+        <span>Bounded chaos drill setup and fire-drill operating model.</span>
+      </div>
+      <div class="ref">
+        <a href="kagent-grafana-mcp-demo.md">Grafana MCP demo notes</a>
+        <span>Direct MCP smoke and tool discovery checks.</span>
+      </div>
+      <div class="ref">
+        <a href="../observability/grafana-mcp-home-lab.md">Home-lab evidence</a>
+        <span>What was verified and what needs re-checking on the target cluster.</span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      This page is a sanitized demo artifact. Replace all placeholders at runtime
+      and keep production writes behind HITL, GitOps, or an approved Argo
+      workflow service account.
+    </div>
+  </footer>
+
+  <script>
+    const stages = [
+      {
+        heading: "Inject chaos",
+        subhead: "The demo starts with one bounded Litmus fault against the approved target.",
+        badge: ["alert", "alert"],
+        title: "Controlled pod-delete begins",
+        body: "I inject a single Litmus pod-delete fault into chaos-demo/chaos-target. This gives us a real signal without touching any production namespace or changing unrelated workloads.",
+        minis: [
+          ["Command", "Apply the pod-delete ChaosEngine or run the approved drill workflow."],
+          ["Guardrail", "Only chaos-demo/chaos-target is eligible for demo remediation."],
+          ["What to show", "The ChaosResult starts and the target drops from two ready replicas."],
+          ["What not to claim", "No remediation has happened yet; we are creating a controlled fault."]
+        ],
+        commands: `kubectl --context {{KUBE_CONTEXT}} apply -f chaos/litmus/experiments/pod-delete.yaml
+kubectl --context {{KUBE_CONTEXT}} get chaosengine,chaosresult -n chaos-demo
+kubectl --context {{KUBE_CONTEXT}} get deploy chaos-target -n chaos-demo -o wide`,
+        metrics: ["1/2", "+1", "480ms", "firing"],
+        decision: "waiting for analysis",
+        approval: "Pending. The workflow has not proposed a write action yet.",
+        state: ["firing", "alert"],
+        cursorX: 55,
+        cursorY: 60
+      },
+      {
+        heading: "Alert + workflow",
+        subhead: "The fault produces an alert and Argo starts the investigation.",
+        badge: ["agent", "agent"],
+        title: "Workflow captures the incident",
+        body: "Grafana Alerting or Alertmanager sends the alert payload into Argo Events. Argo creates a workflow so we have a durable run record before the agent starts looking at telemetry.",
+        minis: [
+          ["Input", "Alert payload plus the Litmus ChaosResult."],
+          ["Workflow", "Argo workflow k-agent-alert-triage-* starts."],
+          ["Evidence", "Payload labels are preserved for the issue and dashboard links."],
+          ["Boundary", "The workflow starts in read-only analysis mode."]
+        ],
+        commands: `kubectl --context {{KUBE_CONTEXT}} get eventsource -n argo-events
+kubectl --context {{KUBE_CONTEXT}} get sensor -n argo-events
+kubectl --context {{KUBE_CONTEXT}} get workflow -n argo \\
+  -l app.kubernetes.io/name=k-agent-alert-triage`,
+        metrics: ["1/2", "+1", "430ms", "triaging"],
+        decision: "human_review: evidence points to bounded target fault",
+        approval: "Pending. Agent has proposed a safe action but workflow is suspended for SRE review.",
+        state: ["triaging", "agent"],
+        cursorX: 210,
+        cursorY: 176
+      },
+      {
+        heading: "Agent analyzes",
+        subhead: "The agent uses Grafana MCP and Kubernetes read tools before proposing action.",
+        badge: ["agent", "agent"],
+        title: "Telemetry and cluster evidence gathered",
+        body: "The agent lists Grafana datasources, runs PromQL and LogQL, inspects dashboard panels, then uses AKS/Kubernetes tools to check events, pods, deployment state, and the ChaosResult.",
+        minis: [
+          ["Grafana MCP", "Queries Prometheus/Mimir and Loki."],
+          ["Kubernetes tools", "Checks pods, events, deployment, and ChaosResult."],
+          ["Output", "Returns root cause, blast radius, queries, and uncertainty."],
+          ["Boundary", "Still no write. This is evidence and recommendation only."]
+        ],
+        commands: `scripts/observability/smoke-grafana-mcp.sh --context {{KUBE_CONTEXT}}
+kubectl --context {{KUBE_CONTEXT}} -n kagent get remotemcpserver kagent-grafana-mcp \\
+  -o jsonpath='{range .status.discoveredTools[*]}{.name}{"\\n"}{end}' | sort
+kubectl --context {{KUBE_CONTEXT}} get events -n chaos-demo --sort-by=.lastTimestamp`,
+        metrics: ["1/2", "+1", "390ms", "evidence"],
+        decision: "human_review: SRE should approve or reject bounded remediation",
+        approval: "Review requested. Proposed action: scale chaos-demo/chaos-target to 2 replicas and verify readiness.",
+        state: ["evidence", "agent"],
+        cursorX: 345,
+        cursorY: 176
+      },
+      {
+        heading: "Evidence review",
+        subhead: "The SRE sees the dashboard, issue evidence, logs, and proposed command set.",
+        badge: ["approve", "approve"],
+        title: "Here is what I think the problem is",
+        body: "The agent verdict is that this is a controlled pod-delete incident isolated to chaos-demo/chaos-target. The dashboard shows readiness dropped to one replica, restarts increased by one, and logs/events line up with the Litmus drill window.",
+        minis: [
+          ["Dashboard", "Readiness, restart, latency, and alert state are visible."],
+          ["Ticket", "Evidence pack includes queries, events, and links."],
+          ["Ask", "Approve scale/restart of only chaos-demo/chaos-target."],
+          ["Alternative", "Reject or request another check if the evidence is not enough."]
+        ],
+        commands: `# Evidence shown to SRE
+sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace="chaos-demo"}[30m]))
+sum by (pod) (kube_pod_status_ready{namespace="chaos-demo",condition="true"})
+{namespace="chaos-demo"} |~ "chaos-target|pod-delete|killing|Started|Deleted"`,
+        metrics: ["1/2", "+1", "350ms", "waiting"],
+        decision: "awaiting HITL approval",
+        approval: "Approve: scale deployment/chaos-target in chaos-demo to 2 replicas, then verify for 2 minutes.",
+        state: ["waiting", "approve"],
+        cursorX: 465,
+        cursorY: 176
+      },
+      {
+        heading: "Approve + fix",
+        subhead: "The pretend HITL approval resumes the bounded remediation workflow.",
+        badge: ["fix", "fix"],
+        title: "Scoped remediation runs",
+        body: "We pretend the SRE approval was granted. The workflow service account runs the approved scale or restart command, annotates the deployment for audit, and records the command output in the workflow logs.",
+        minis: [
+          ["Action", "Scale or restart chaos-demo/chaos-target."],
+          ["Scope", "No namespaces, PVCs, CRDs, nodes, secrets, or unrelated workloads."],
+          ["Audit", "Workflow logs and deployment annotations capture the action."],
+          ["Rollback", "Rollback command is already in the issue before execution."]
+        ],
+        commands: `kubectl --context {{KUBE_CONTEXT}} scale deployment/chaos-target \\
+  -n chaos-demo --replicas=2
+kubectl --context {{KUBE_CONTEXT}} rollout status deployment/chaos-target \\
+  -n chaos-demo --timeout=120s
+kubectl --context {{KUBE_CONTEXT}} annotate deployment/chaos-target -n chaos-demo \\
+  sre.demo/last-approved-remediation="{{WORKFLOW_NAME}}" --overwrite`,
+        metrics: ["2/2", "+1", "210ms", "recovering"],
+        decision: "safe_auto_remediate: approved scoped action running",
+        approval: "Approved. Workflow resumed and remediation is running under the workflow service account.",
+        state: ["recovering", "fix"],
+        cursorX: 560,
+        cursorY: 98
+      },
+      {
+        heading: "Verify / retry",
+        subhead: "The dashboard proves recovery, or the agent suggests the next bounded fix.",
+        badge: ["verify", "verify"],
+        title: "Evidence confirms recovery",
+        body: "The agent re-runs the same PromQL, LogQL, and Kubernetes checks. If the target is back to two ready replicas and the alert resolves, it closes the loop. If not, it proposes the next safe diagnostic or asks for human review again.",
+        minis: [
+          ["Readiness", "Two ready replicas over the verification window."],
+          ["Alert", "Firing becomes resolved or expected chaos window ends."],
+          ["Logs", "No continuing error pattern after remediation."],
+          ["Closeout", "Issue includes commands, links, outcome, and follow-up items."]
+        ],
+        commands: `kubectl --context {{KUBE_CONTEXT}} get deploy chaos-target -n chaos-demo -o wide
+kubectl --context {{KUBE_CONTEXT}} get pods -n chaos-demo \\
+  -l app.kubernetes.io/name=chaos-target -o wide
+kubectl --context {{KUBE_CONTEXT}} get workflows -n argo \\
+  -l app.kubernetes.io/name=k-agent-alert-triage`,
+        metrics: ["2/2", "+0", "95ms", "resolved"],
+        decision: "observe_only: remediation verified and alert recovered",
+        approval: "Complete. Verification passed; update the GitLab issue with outcome and next drill items.",
+        state: ["resolved", "verify"],
+        cursorX: 665,
+        cursorY: 58
+      }
+    ];
+
+    const evidence = [
+      {
+        agent: `I am starting a bounded drill.
+Scope: chaos-demo/chaos-target only.
+Expected symptom: one pod deleted, readiness drops briefly.
+I will not run remediation until the SRE approval step.`,
+        grafana: `Dashboard: kagent chaos / workload health
+ready replicas: 1/2
+restart increase: +1 over 30m
+p95 latency: 480ms during the fault window
+alert state: firing`,
+        aks: `kubectl get chaosresult -n chaos-demo
+litmus-pod-delete-pod-delete  Running
+
+kubectl get deploy chaos-target -n chaos-demo
+READY  UP-TO-DATE  AVAILABLE
+1/2    2           1`,
+        fix: `No fix yet.
+The point of this stage is to create the signal safely.
+Next: wait for Alertmanager / Argo Events to start triage.`,
+        talk: `I would start by saying: I am deliberately creating a small controlled fault. This is not the agent changing production. It is a bounded Litmus pod-delete against the demo target so we can see the detection, evidence, approval, and recovery loop end to end.`
+      },
+      {
+        agent: `I received the alert payload.
+Alert: KAgentChaosTargetUnavailable
+Namespace: chaos-demo
+Workload: chaos-target
+Status: firing
+Next: gather telemetry from Grafana MCP and cluster state from Kubernetes.`,
+        grafana: `Alert labels:
+namespace=chaos-demo
+deployment=chaos-target
+severity=warning
+
+generatorURL={{GRAFANA_ALERT_RULE_URL}}
+dashboard={{GRAFANA_DASHBOARD_URL}}`,
+        aks: `kubectl get workflow -n argo
+k-agent-alert-triage-x7m4p  Running
+
+kubectl get sensor -n argo-events
+k-agent-alert-triage  Deployed`,
+        fix: `No mutation approved.
+Workflow records the alert and starts read-only analysis.
+If the model or MCP path fails, the issue still contains the raw alert evidence.`,
+        talk: `Here I would point out the handoff: the alert does not ask the agent to fix anything directly. Alertmanager hands the payload to Argo, Argo creates a durable workflow, and that workflow starts the read-only investigation.`
+      },
+      {
+        agent: `Initial verdict:
+Likely controlled pod-delete impact.
+Confidence: medium-high.
+Reason: readiness dropped at the same time as Litmus events; no wider namespace or gateway failure found.
+Need SRE review before remediation.`,
+        grafana: `PromQL:
+sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace="chaos-demo"}[30m])) = 1
+
+LogQL:
+{namespace="chaos-demo"} |~ "chaos-target|pod-delete|Deleted|Started"
+
+Dashboard panel:
+chaos target readiness dropped from 2 to 1 at T+00:40`,
+        aks: `kubectl get events -n chaos-demo --sort-by=.lastTimestamp
+Normal Killing  Pod chaos-target-... Stopping container http-echo
+Normal Started  Pod chaos-target-... Started container http-echo
+
+kubectl get pods -n chaos-demo
+chaos-target-abc  Running  1/1
+chaos-target-def  Pending  0/1`,
+        fix: `Proposed action tier: human_review
+Action:
+1. scale deployment/chaos-target to 2 replicas
+2. wait for rollout
+3. verify readiness and alert state
+Do not touch any other namespace.`,
+        talk: `This is the main agent moment. I would say: the agent is not guessing from the alert text. It looked at Grafana metrics, Loki logs, and Kubernetes events. The signals line up: a pod was deleted, one replacement is not ready yet, and the blast radius is the approved demo workload.`
+      },
+      {
+        agent: `Here is what I think the problem is:
+The pod-delete drill removed one chaos-target pod.
+Kubernetes recreated it, but readiness has not returned to 2/2 yet.
+No evidence of node-wide, gateway-wide, or model-backend failure.`,
+        grafana: `Evidence dashboard:
+- readiness: 1/2
+- restart increase: +1
+- latency spike: bounded to drill window
+- logs: no persistent application errors after pod recreation
+
+Open:
+{{GRAFANA_EXPLORE_METRICS_URL}}
+{{GRAFANA_EXPLORE_LOGS_URL}}`,
+        aks: `kubectl describe deploy chaos-target -n chaos-demo
+Replicas: 2 desired | 1 available | 1 unavailable
+
+kubectl get chaosresult litmus-pod-delete-pod-delete -n chaos-demo
+phase=Completed verdict=Pass`,
+        fix: `Approval request:
+Allow workflow to run:
+kubectl scale deployment/chaos-target -n chaos-demo --replicas=2
+kubectl rollout status deployment/chaos-target -n chaos-demo --timeout=120s
+
+Risk: low, scoped to demo target.`,
+        talk: `This is where I would turn to the audience and ask for approval. The SRE has a dashboard, exact queries, Kubernetes events, and the proposed command. The agent has done the looking; the human owns the decision to move from analysis to write.`
+      },
+      {
+        agent: `Approval received.
+Executing only the approved workflow step.
+Mutation scope: apps/deployment chaos-demo/chaos-target.
+Audit: annotate deployment with workflow id and approval id.`,
+        grafana: `During remediation:
+ready replicas: 2/2
+latency: trending down
+alert state: still firing until evaluation window closes
+
+Verification query scheduled for T+2m.`,
+        aks: `kubectl scale deployment/chaos-target -n chaos-demo --replicas=2
+deployment.apps/chaos-target scaled
+
+kubectl rollout status deployment/chaos-target -n chaos-demo
+deployment "chaos-target" successfully rolled out`,
+        fix: `Executed:
+scale deployment/chaos-target --replicas=2
+annotate deployment/chaos-target sre.demo/last-approved-remediation={{WORKFLOW_NAME}}
+
+Next: re-run Grafana and Kubernetes verification.`,
+        talk: `Now I would say: this is the controlled write boundary. The analysis agent did not mutate anything. The workflow service account did, after approval, and only against the target we agreed in advance.`
+      },
+      {
+        agent: `Verification result: passed.
+Ready replicas: 2/2.
+Restart count stable after remediation.
+Alert state: resolved.
+Recommendation: close the drill issue and record follow-up to automate the evidence pack.`,
+        grafana: `Post-fix dashboard:
+ready replicas: 2/2 for verification window
+restart increase: +0 since fix
+p95 latency: 95ms
+alert state: resolved
+
+If this had not recovered, next safe action would be inspect pod events and logs, not broaden remediation.`,
+        aks: `kubectl get deploy chaos-target -n chaos-demo
+READY  UP-TO-DATE  AVAILABLE
+2/2    2           2
+
+kubectl get pods -n chaos-demo -l app.kubernetes.io/name=chaos-target
+2 pods Running 1/1`,
+        fix: `Closeout:
+1. comment outcome on GitLab issue
+2. attach Grafana links and workflow id
+3. note approval id
+4. add follow-up if evidence was missing
+
+If failed: keep issue open and propose next bounded diagnostic.`,
+        talk: `I would close by showing the same dashboard again. The important thing is that we verify with the same sources we used for diagnosis. If the fix does not work, the agent should not keep guessing; it should return to evidence and propose the next bounded check.`
+      }
+    ];
+
+    const buttons = Array.from(document.querySelectorAll(".step-btn"));
+    const nodes = Array.from(document.querySelectorAll(".flow-node"));
+    const els = {
+      heading: document.getElementById("storyHeading"),
+      subhead: document.getElementById("storySubhead"),
+      badge: document.getElementById("storyBadge"),
+      title: document.getElementById("storyTitle"),
+      body: document.getElementById("storyBody"),
+      miniOneTitle: document.getElementById("miniOneTitle"),
+      miniOneBody: document.getElementById("miniOneBody"),
+      miniTwoTitle: document.getElementById("miniTwoTitle"),
+      miniTwoBody: document.getElementById("miniTwoBody"),
+      miniThreeTitle: document.getElementById("miniThreeTitle"),
+      miniThreeBody: document.getElementById("miniThreeBody"),
+      miniFourTitle: document.getElementById("miniFourTitle"),
+      miniFourBody: document.getElementById("miniFourBody"),
+      commandBlock: document.getElementById("commandBlock"),
+      commandLabel: document.getElementById("commandLabel"),
+      readyMetric: document.getElementById("readyMetric"),
+      restartMetric: document.getElementById("restartMetric"),
+      latencyMetric: document.getElementById("latencyMetric"),
+      statusMetric: document.getElementById("statusMetric"),
+      ticketDecision: document.getElementById("ticketDecision"),
+      approvalText: document.getElementById("approvalText"),
+      dashboardState: document.getElementById("dashboardState"),
+      stageCursor: document.getElementById("stageCursor"),
+      cursorDot: document.getElementById("cursorDot"),
+      agentConsole: document.getElementById("agentConsole"),
+      grafanaConsole: document.getElementById("grafanaConsole"),
+      aksConsole: document.getElementById("aksConsole"),
+      fixConsole: document.getElementById("fixConsole"),
+      talkTrack: document.getElementById("talkTrack"),
+      copyStage: document.getElementById("copyStage"),
+      copyRunbook: document.getElementById("copyRunbook"),
+      copyTalkTrack: document.getElementById("copyTalkTrack"),
+      approveBtn: document.getElementById("approveBtn"),
+      rejectBtn: document.getElementById("rejectBtn")
+    };
+
+    let activeStep = 0;
+
+    function setText(el, value) {
+      el.textContent = value;
+    }
+
+    function setStage(index) {
+      activeStep = Number(index);
+      const stage = stages[activeStep];
+      setText(els.heading, stage.heading);
+      setText(els.subhead, stage.subhead);
+      els.badge.className = `badge ${stage.badge[1]}`;
+      setText(els.badge, stage.badge[0]);
+      setText(els.title, stage.title);
+      setText(els.body, stage.body);
+      const miniTargets = [
+        [els.miniOneTitle, els.miniOneBody],
+        [els.miniTwoTitle, els.miniTwoBody],
+        [els.miniThreeTitle, els.miniThreeBody],
+        [els.miniFourTitle, els.miniFourBody]
+      ];
+      stage.minis.forEach((mini, miniIndex) => {
+        setText(miniTargets[miniIndex][0], mini[0]);
+        setText(miniTargets[miniIndex][1], mini[1]);
+      });
+      setText(els.commandBlock, stage.commands);
+      setText(els.commandLabel, `stage ${activeStep + 1} commands`);
+      setText(els.readyMetric, stage.metrics[0]);
+      setText(els.restartMetric, stage.metrics[1]);
+      setText(els.latencyMetric, stage.metrics[2]);
+      setText(els.statusMetric, stage.metrics[3]);
+      setText(els.ticketDecision, stage.decision);
+      setText(els.approvalText, stage.approval);
+      setText(els.dashboardState, stage.state[0]);
+      els.dashboardState.className = `badge ${stage.state[1]}`;
+      els.stageCursor.setAttribute("x1", stage.cursorX);
+      els.stageCursor.setAttribute("x2", stage.cursorX);
+      els.cursorDot.setAttribute("transform", `translate(${stage.cursorX - 55} ${stage.cursorY - 60})`);
+      setText(els.agentConsole, evidence[activeStep].agent);
+      setText(els.grafanaConsole, evidence[activeStep].grafana);
+      setText(els.aksConsole, evidence[activeStep].aks);
+      setText(els.fixConsole, evidence[activeStep].fix);
+      setText(els.talkTrack, evidence[activeStep].talk);
+
+      buttons.forEach((button, buttonIndex) => {
+        button.classList.toggle("active", buttonIndex === activeStep);
+        button.classList.toggle("done", buttonIndex < activeStep);
+      });
+      nodes.forEach((node, nodeIndex) => {
+        node.classList.toggle("active", nodeIndex === activeStep);
+      });
+    }
+
+    function buildRunbook() {
+      return `# Iteration review demo runbook
+
+Goal: show chaos injection -> alert -> Grafana MCP evidence -> AKS/Kubernetes evidence -> SRE approval -> scoped remediation -> verification.
+
+1. Open docs/ai-grafana/iteration-review-chaos-agent-demo.html.
+2. Walk stages 1-6 using the top controls.
+3. If live cluster time is available, run:
+
+${stages.map((stage, index) => `## Stage ${index + 1}: ${stage.heading}\n${stage.commands}`).join("\n\n")}
+
+Guardrails:
+- Keep analysis read-only.
+- Use Teams or approved HITL before writes.
+- Remediate only chaos-demo/chaos-target for the demo.
+- Put the evidence pack and outcome in the GitLab issue.`;
+    }
+
+    function buildTalkTrack() {
+      return evidence.map((item, index) => `## Stage ${index + 1}: ${stages[index].heading}
+${item.talk}
+
+Agent:
+${item.agent}
+
+Grafana:
+${item.grafana}
+
+AKS/Kubernetes:
+${item.aks}
+
+Action:
+${item.fix}`).join("\n\n");
+    }
+
+    function copyText(text, button, label) {
+      navigator.clipboard.writeText(text).then(() => {
+        const original = button.textContent;
+        button.textContent = "Copied";
+        setTimeout(() => {
+          button.textContent = original || label;
+        }, 1500);
+      });
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => setStage(button.dataset.step));
+    });
+
+    els.copyStage.addEventListener("click", () => {
+      copyText(stages[activeStep].commands, els.copyStage, "Copy commands");
+    });
+
+    els.copyRunbook.addEventListener("click", () => {
+      copyText(buildRunbook(), els.copyRunbook, "Copy presenter runbook");
+    });
+
+    els.copyTalkTrack.addEventListener("click", () => {
+      copyText(buildTalkTrack(), els.copyTalkTrack, "Copy talk track");
+    });
+
+    els.approveBtn.addEventListener("click", () => setStage(4));
+    els.rejectBtn.addEventListener("click", () => {
+      setStage(3);
+      setText(els.ticketDecision, "human_review: rejected by SRE; no mutation executed");
+      setText(els.approvalText, "Rejected. Workflow records the decision and exits without remediation.");
+      setText(els.fixConsole, "Rejected by SRE. Workflow exits without mutation and records the reason in the issue.");
+    });
+
+    setStage(0);
+  </script>
+</body>
+</html>

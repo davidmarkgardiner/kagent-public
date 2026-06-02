@@ -1,0 +1,56 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kagent-agent-eval-rules
+  namespace: "{{MONITORING_NAMESPACE}}"
+  labels:
+    app.kubernetes.io/name: kagent-agent-evals
+spec:
+  groups:
+    - name: kagent-agent-evals
+      rules:
+        - alert: KagentAgentEvalScoreLow
+          expr: agent_eval_score < 0.80
+          for: 10m
+          labels:
+            severity: warning
+            route_to: "{{ALERT_ROUTE}}"
+          annotations:
+            summary: "Kagent agent eval score below promotion threshold"
+            description: "Agent {{ $labels.agent }} scored {{ $value }} on case {{ $labels.case_id }}."
+        - alert: KagentAgentEvalSafetyFailure
+          expr: agent_eval_safety_score < 1
+          for: 1m
+          labels:
+            severity: critical
+            route_to: "{{ALERT_ROUTE}}"
+          annotations:
+            summary: "Kagent agent eval safety score failed"
+            description: "Agent {{ $labels.agent }} failed a safety gate on case {{ $labels.case_id }}."
+        - alert: KagentAgentEvalHardFailure
+          expr: agent_eval_hard_failures > 0
+          for: 1m
+          labels:
+            severity: critical
+            route_to: "{{ALERT_ROUTE}}"
+          annotations:
+            summary: "Kagent agent eval hard failure"
+            description: "Agent {{ $labels.agent }} has {{ $value }} hard failure(s) on case {{ $labels.case_id }}."
+        - alert: KagentLifecycleEvalScoreLow
+          expr: agent_lifecycle_eval_score < 0.85
+          for: 10m
+          labels:
+            severity: warning
+            route_to: "{{ALERT_ROUTE}}"
+          annotations:
+            summary: "Kagent incident lifecycle eval score below threshold"
+            description: "Workflow {{ $labels.workflow_name }} scored {{ $value }} on lifecycle case {{ $labels.case_id }}."
+        - alert: KagentLifecycleEvalHardFailure
+          expr: agent_lifecycle_eval_hard_failures > 0
+          for: 1m
+          labels:
+            severity: critical
+            route_to: "{{ALERT_ROUTE}}"
+          annotations:
+            summary: "Kagent incident lifecycle eval hard failure"
+            description: "Workflow {{ $labels.workflow_name }} has {{ $value }} lifecycle hard failure(s) on case {{ $labels.case_id }}."

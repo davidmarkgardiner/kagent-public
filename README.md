@@ -38,6 +38,7 @@ examples/           Quickstart and sample payloads
 | I want to… | Go to |
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
+| Hand this zip to a work agent for lift-and-shift | [`WORK-ZIP-AGENT-HANDOFF.md`](WORK-ZIP-AGENT-HANDOFF.md) |
 | See what changed recently | [`CHANGELOG.md`](CHANGELOG.md) |
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
 | Onboard a namespace via PR | [`platform/argo-workflows/templates/namespace-onboarding/`](platform/argo-workflows/templates/namespace-onboarding/) |
@@ -45,6 +46,8 @@ examples/           Quickstart and sample payloads
 | Try the K-Agent knowledge-base UI POC | [`agents/kagent-knowledge-ui/`](agents/kagent-knowledge-ui/README.md) |
 | Wire K8s events → EventHub → AI diagnosis | [`observability/alloy-eventhub-pipeline/`](observability/alloy-eventhub-pipeline/) |
 | Monitor kagent + agentgateway with Alloy/Grafana | [`docs/observability/k-agent-alloy-grafana.md`](docs/observability/k-agent-alloy-grafana.md) |
+| Score whether agents are doing the right job | [`observability/agent-evals/`](observability/agent-evals/README.md) |
+| Lift the agent eval pattern into another environment | [`KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md`](KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md) |
 | Deploy the kagent + agentgateway observability bundle | [`docs/observability/k-agent-agentgateway-observability.md`](docs/observability/k-agent-agentgateway-observability.md) |
 | Test Grafana MCP with kagent observability | [`docs/observability/grafana-mcp-home-lab.md`](docs/observability/grafana-mcp-home-lab.md) |
 | Adapt AI + Grafana triage ideas to this stack | [`docs/ai-grafana/README.md`](docs/ai-grafana/README.md) |

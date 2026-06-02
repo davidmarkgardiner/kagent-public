@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kagent-public.local/schemas/agent-eval-result.schema.json",
+  "title": "AgentEvalResult",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "run_id", "case_id", "agent", "score", "passed", "hard_failures", "subscores"],
+  "properties": {
+    "schemaVersion": {
+      "const": "agent-evals.kagent-public/v1alpha1"
+    },
+    "kind": {
+      "const": "AgentEvalResult"
+    },
+    "run_id": { "type": "string" },
+    "case_id": { "type": "string" },
+    "agent": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "model": { "type": "string" },
+    "score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "min_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "passed": { "type": "boolean" },
+    "hard_failures": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "subscores": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status", "weight"],
+        "properties": {
+          "status": { "enum": ["scored", "not_scored"] },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "arguments": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

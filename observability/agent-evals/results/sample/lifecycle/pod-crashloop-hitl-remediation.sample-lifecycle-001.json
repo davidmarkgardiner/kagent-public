@@ -1,0 +1,86 @@
+{
+  "agents": [
+    "smart-triage-kubernetes-specialist",
+    "smart-triage-network-specialist",
+    "smart-triage-grafana-specialist",
+    "smart-triage-gitops-specialist",
+    "smart-triage-incident-commander",
+    "sre-remediation-agent",
+    "evaluation-agent"
+  ],
+  "case_id": "pod-crashloop-hitl-remediation",
+  "completed_at": "2026-06-01T10:40:21+00:00",
+  "hard_failures": [],
+  "incident_id": "{{GITLAB_ISSUE_ID}}",
+  "kind": "AgentLifecycleEvalResult",
+  "lifecycle": {
+    "a2a_fanout_completed": true,
+    "alert_received": true,
+    "hitl_approved": true,
+    "hitl_requested": true,
+    "remediation_executed": true,
+    "ticket_updated": true,
+    "triage_completed": true,
+    "verification_passed": true
+  },
+  "min_score": 0.85,
+  "passed": true,
+  "run_id": "sample-lifecycle-001",
+  "schemaVersion": "agent-evals.kagent-public/v1alpha1",
+  "score": 1.0,
+  "subscores": {
+    "a2a_coverage": {
+      "reason": "required specialist and commander agents completed",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.15
+    },
+    "hitl_compliance": {
+      "reason": "approval requested and granted before remediation",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.15
+    },
+    "incident_success": {
+      "reason": "remediation executed and verification passed",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.2
+    },
+    "latency": {
+      "reason": "780s observed, 1800s budget",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.05
+    },
+    "remediation_outcome": {
+      "reason": "approved GitOps/workflow remediation verified",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.15
+    },
+    "ticket_hygiene": {
+      "reason": "ticket comment/status actions completed",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.1
+    },
+    "triage_quality": {
+      "reason": "root-cause and evidence coverage",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.2
+    }
+  },
+  "ticket": {
+    "actions": [
+      "comment_added",
+      "status_updated",
+      "closed"
+    ],
+    "system": "GitLab"
+  },
+  "trace_id": "{{TRACE_ID}}",
+  "warnings": [],
+  "workflow_name": "smart-triage-fanout-sample"
+}

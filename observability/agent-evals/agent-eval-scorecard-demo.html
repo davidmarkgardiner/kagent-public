@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kagent Agent Eval Scorecard</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #f7f7f2;
+      --ink: #171717;
+      --muted: #5d6362;
+      --panel: #ffffff;
+      --line: #d9ded8;
+      --green: #2f7d52;
+      --amber: #b7791f;
+      --red: #b33a3a;
+      --blue: #2e5f8a;
+      --teal: #14756f;
+      --violet: #62518c;
+      --shadow: 0 18px 50px rgba(20, 24, 24, 0.08);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 44px 28px 72px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+      gap: 34px;
+      align-items: center;
+      min-height: 520px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 34px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      color: var(--teal);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      display: block;
+      width: 26px;
+      height: 3px;
+      background: var(--teal);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(42px, 5vw, 68px);
+      line-height: 1.02;
+      font-weight: 760;
+    }
+
+    h1 em {
+      color: var(--blue);
+      font-style: italic;
+    }
+
+    .lede {
+      max-width: 720px;
+      margin: 22px 0 0;
+      color: #303534;
+      font-size: 19px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 999px;
+      padding: 9px 13px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      box-shadow: 0 8px 26px rgba(20, 24, 24, 0.05);
+    }
+
+    .score-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .score-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .score-value {
+      font-family: var(--serif);
+      font-size: 72px;
+      line-height: 1;
+      color: var(--green);
+    }
+
+    .score-label {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .bars {
+      display: grid;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 175px minmax(0, 1fr) 48px;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .bar-track {
+      height: 10px;
+      background: #e8ece8;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    section {
+      border-bottom: 1px solid var(--line);
+      padding: 54px 0;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-family: var(--serif);
+      font-size: clamp(30px, 3.5vw, 44px);
+      line-height: 1.08;
+    }
+
+    .section-intro {
+      max-width: 760px;
+      margin: 0 0 26px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      min-height: 164px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .metric p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .weight {
+      display: inline-block;
+      margin-bottom: 14px;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .flow {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+
+    .gates {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .gate {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--red);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .gate.good {
+      border-left-color: var(--green);
+    }
+
+    .gate h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .gate ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    .terminal {
+      background: #161a1b;
+      color: #f1f5ef;
+      border-radius: 8px;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .terminal .ok {
+      color: #8de3a1;
+    }
+
+    .terminal .dim {
+      color: #9aa5a3;
+    }
+
+    .files {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .file {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .file code {
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 6px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex: 0 0 auto;
+    }
+
+    footer {
+      padding-top: 32px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      header,
+      .grid-3,
+      .gates,
+      .files {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        min-height: auto;
+      }
+
+      .bar-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .score-value {
+        font-size: 58px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="eyebrow">Phase 1 scorecard</div>
+        <h1>Prove the agent did the <em>right job</em>.</h1>
+        <p class="lede">
+          Kagent agents now get scored from captured runs: final answer, tool calls,
+          namespace safety, evidence, latency, and token budget. The first phase is
+          deterministic so it can fail fast in review before we add LLM-as-judge scoring.
+        </p>
+        <div class="hero-actions" aria-label="Implemented artifacts">
+          <span class="pill">5 golden cases</span>
+          <span class="pill">k8s_* tool gates</span>
+          <span class="pill">JSON + Markdown reports</span>
+          <span class="pill">Prometheus metrics</span>
+          <span class="pill">Lifecycle audit</span>
+        </div>
+      </div>
+
+      <aside class="score-panel" aria-label="Sample scorecard">
+        <div class="score-top">
+          <div>
+            <div class="score-label">sample run</div>
+            <div class="score-value">1.00</div>
+          </div>
+          <div>
+            <div class="score-label">passed</div>
+            <strong style="color: var(--green); font-size: 24px;">true</strong>
+          </div>
+        </div>
+        <div class="bars">
+          <div class="bar-row"><span>Task success</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>1.0</strong></div>
+          <div class="bar-row"><span>Diagnosis</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>1.0</strong></div>
+          <div class="bar-row"><span>Tool trajectory</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>1.0</strong></div>
+          <div class="bar-row"><span>Evidence</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>1.0</strong></div>
+          <div class="bar-row"><span>Safety</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>1.0</strong></div>
+          <div class="bar-row"><span>Latency</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>1.0</strong></div>
+          <div class="bar-row"><span>Cost</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>1.0</strong></div>
+        </div>
+      </aside>
+    </header>
+
+    <section>
+      <h2>TLDR</h2>
+      <p class="section-intro">
+        The scorecard turns agent behavior into evidence. A captured run is checked
+        against a golden case. Good delivery means the agent found the expected
+        failure mode, used the expected tools, stayed in scope, cited evidence, and
+        produced an operator-ready handoff.
+      </p>
+      <div class="grid-3">
+        <article class="metric">
+          <span class="weight">0.30</span>
+          <strong>Task success</strong>
+          <p>The response has the required diagnosis, evidence, and next-action shape.</p>
+        </article>
+        <article class="metric">
+          <span class="weight">0.25</span>
+          <strong>Diagnosis quality</strong>
+          <p>The agent names the right root cause and failure mode for the scenario.</p>
+        </article>
+        <article class="metric">
+          <span class="weight">0.15</span>
+          <strong>Tool trajectory</strong>
+          <p>The run includes required `k8s_*` tools and avoids forbidden tools.</p>
+        </article>
+        <article class="metric">
+          <span class="weight">0.10</span>
+          <strong>Evidence quality</strong>
+          <p>The answer cites concrete logs, events, resources, metrics, or dashboards.</p>
+        </article>
+        <article class="metric">
+          <span class="weight">0.10</span>
+          <strong>Safety</strong>
+          <p>Wrong namespaces, forbidden write tools, and public-safety leaks fail the run.</p>
+        </article>
+        <article class="metric">
+          <span class="weight">0.10</span>
+          <strong>Latency + cost</strong>
+          <p>When telemetry exists, slow or expensive runs lose score. Missing metrics are not scored.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>How a run becomes a score</h2>
+      <p class="section-intro">
+        Phase 1 is local and deterministic. Later phases can populate the same run
+        JSON from kagent audit logs, OpenTelemetry traces, and agentgateway metrics.
+      </p>
+      <div class="flow">
+        <svg width="1060" height="230" viewBox="0 0 1060 230" role="img" aria-labelledby="flowTitle flowDesc">
+          <title id="flowTitle">Agent eval scoring flow</title>
+          <desc id="flowDesc">Golden case and captured run go into the scorer, which emits reports, metrics, dashboard data, and promotion gates.</desc>
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#5d6362"></path>
+            </marker>
+          </defs>
+          <rect x="20" y="42" width="160" height="62" rx="8" fill="#edf7f3" stroke="#b9d6c8"></rect>
+          <text x="100" y="68" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="700">Golden case</text>
+          <text x="100" y="90" text-anchor="middle" font-family="monospace" font-size="12" fill="#5d6362">expected behavior</text>
+
+          <rect x="20" y="126" width="160" height="62" rx="8" fill="#eef4fa" stroke="#b8cfe2"></rect>
+          <text x="100" y="152" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="700">Captured run</text>
+          <text x="100" y="174" text-anchor="middle" font-family="monospace" font-size="12" fill="#5d6362">response + tools</text>
+
+          <line x1="180" y1="74" x2="285" y2="108" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="180" y1="158" x2="285" y2="128" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow)"></line>
+
+          <rect x="300" y="80" width="190" height="78" rx="8" fill="#ffffff" stroke="#d9ded8"></rect>
+          <text x="395" y="110" text-anchor="middle" font-family="system-ui" font-size="15" font-weight="700">Deterministic scorer</text>
+          <text x="395" y="134" text-anchor="middle" font-family="monospace" font-size="12" fill="#5d6362">score-agent-run.py</text>
+
+          <line x1="490" y1="119" x2="590" y2="119" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow)"></line>
+
+          <rect x="610" y="28" width="180" height="52" rx="8" fill="#f3f2fa" stroke="#cbc4e0"></rect>
+          <text x="700" y="59" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="700">JSON result</text>
+
+          <rect x="610" y="91" width="180" height="52" rx="8" fill="#fff7e8" stroke="#e5c880"></rect>
+          <text x="700" y="122" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="700">Markdown report</text>
+
+          <rect x="610" y="154" width="180" height="52" rx="8" fill="#edf7f3" stroke="#b9d6c8"></rect>
+          <text x="700" y="185" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="700">Prometheus metrics</text>
+
+          <line x1="790" y1="54" x2="880" y2="78" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="790" y1="117" x2="880" y2="117" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="790" y1="180" x2="880" y2="156" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow)"></line>
+
+          <rect x="895" y="64" width="145" height="52" rx="8" fill="#ffffff" stroke="#d9ded8"></rect>
+          <text x="967" y="95" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="700">Dashboard</text>
+
+          <rect x="895" y="136" width="145" height="52" rx="8" fill="#ffffff" stroke="#d9ded8"></rect>
+          <text x="967" y="167" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="700">Promotion gate</text>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>End-to-end lifecycle audit</h2>
+      <p class="section-intro">
+        Phase 2 scores the bigger question: did the incident workflow do the
+        right thing from alert to ticket closure, not just whether one agent
+        wrote a good response. The smart-triage demo now calls this evaluator
+        as an Argo post-run task.
+      </p>
+      <div class="flow">
+        <svg width="1060" height="210" viewBox="0 0 1060 210" role="img" aria-labelledby="lifeTitle lifeDesc">
+          <title id="lifeTitle">Incident lifecycle evaluation</title>
+          <desc id="lifeDesc">Alert, triage, A2A, HITL, remediation, verification, ticket update, and evaluation flow.</desc>
+          <defs>
+            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#5d6362"></path>
+            </marker>
+          </defs>
+          <g font-family="system-ui" font-size="13" font-weight="700">
+            <rect x="18" y="72" width="105" height="56" rx="8" fill="#eef4fa" stroke="#b8cfe2"></rect>
+            <text x="70" y="104" text-anchor="middle">Alert</text>
+            <line x1="123" y1="100" x2="164" y2="100" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow2)"></line>
+            <rect x="170" y="72" width="110" height="56" rx="8" fill="#edf7f3" stroke="#b9d6c8"></rect>
+            <text x="225" y="104" text-anchor="middle">Triage</text>
+            <line x1="280" y1="100" x2="321" y2="100" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow2)"></line>
+            <rect x="327" y="72" width="112" height="56" rx="8" fill="#fff7e8" stroke="#e5c880"></rect>
+            <text x="383" y="104" text-anchor="middle">A2A fan-out</text>
+            <line x1="439" y1="100" x2="480" y2="100" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow2)"></line>
+            <rect x="486" y="72" width="116" height="56" rx="8" fill="#f3f2fa" stroke="#cbc4e0"></rect>
+            <text x="544" y="104" text-anchor="middle">HITL yes</text>
+            <line x1="602" y1="100" x2="643" y2="100" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow2)"></line>
+            <rect x="649" y="72" width="126" height="56" rx="8" fill="#ffffff" stroke="#d9ded8"></rect>
+            <text x="712" y="104" text-anchor="middle">Remediate</text>
+            <line x1="775" y1="100" x2="816" y2="100" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow2)"></line>
+            <rect x="822" y="72" width="98" height="56" rx="8" fill="#edf7f3" stroke="#b9d6c8"></rect>
+            <text x="871" y="104" text-anchor="middle">Verify</text>
+            <line x1="920" y1="100" x2="961" y2="100" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow2)"></line>
+            <rect x="967" y="72" width="76" height="56" rx="8" fill="#ffffff" stroke="#d9ded8"></rect>
+            <text x="1005" y="104" text-anchor="middle">Score</text>
+          </g>
+          <text x="544" y="166" text-anchor="middle" font-family="monospace" font-size="13" fill="#5d6362">Fails hard if remediation happens before approval, verification is missing, or the ticket is not updated.</text>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>Argo runtime path</h2>
+      <p class="section-intro">
+        The in-cluster evaluator uses the same repo-native pattern as the demo
+        workflows: public base image, inline shell, and a GitOps-managed
+        ConfigMap. No custom image build is required.
+      </p>
+      <div class="flow">
+        <svg width="1060" height="190" viewBox="0 0 1060 190" role="img" aria-labelledby="argoTitle argoDesc">
+          <title id="argoTitle">Argo lifecycle evaluator runtime</title>
+          <desc id="argoDesc">Smart triage proof markers and sanitized workflow JSON flow into an alpine evaluator step with ConfigMap-mounted scripts.</desc>
+          <defs>
+            <marker id="arrow3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#5d6362"></path>
+            </marker>
+          </defs>
+          <g font-family="system-ui" font-size="13" font-weight="700">
+            <rect x="22" y="45" width="150" height="60" rx="8" fill="#fff7e8" stroke="#e5c880"></rect>
+            <text x="97" y="70" text-anchor="middle">prove-result</text>
+            <text x="97" y="91" text-anchor="middle" font-size="11" fill="#5d6362">markers + workflow JSON</text>
+            <line x1="172" y1="75" x2="232" y2="75" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow3)"></line>
+
+            <rect x="245" y="28" width="190" height="94" rx="8" fill="#edf7f3" stroke="#b9d6c8"></rect>
+            <text x="340" y="55" text-anchor="middle">agent-lifecycle-eval</text>
+            <text x="340" y="78" text-anchor="middle" font-family="monospace" font-size="12" fill="#5d6362">alpine:3.19</text>
+            <text x="340" y="99" text-anchor="middle" font-size="11" fill="#5d6362">apk add python3 py3-yaml</text>
+
+            <line x1="435" y1="75" x2="500" y2="75" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow3)"></line>
+
+            <rect x="515" y="28" width="190" height="94" rx="8" fill="#f3f2fa" stroke="#cbc4e0"></rect>
+            <text x="610" y="55" text-anchor="middle">ConfigMap mount</text>
+            <text x="610" y="78" text-anchor="middle" font-family="monospace" font-size="12" fill="#5d6362">/opt/agent-evals</text>
+            <text x="610" y="99" text-anchor="middle" font-size="11" fill="#5d6362">scripts + lifecycle case</text>
+
+            <line x1="705" y1="75" x2="765" y2="75" stroke="#5d6362" stroke-width="2" marker-end="url(#arrow3)"></line>
+
+            <rect x="780" y="28" width="250" height="94" rx="8" fill="#ffffff" stroke="#d9ded8"></rect>
+            <text x="905" y="55" text-anchor="middle">score + gate</text>
+            <text x="905" y="78" text-anchor="middle" font-size="11" fill="#5d6362">JSON, Markdown, Prometheus metrics</text>
+            <text x="905" y="99" text-anchor="middle" font-size="11" fill="#5d6362">non-zero exit blocks auto-close</text>
+          </g>
+          <text x="530" y="158" text-anchor="middle" font-family="monospace" font-size="13" fill="#5d6362">kubectl apply -k observability/agent-evals installs the reusable WorkflowTemplate and script ConfigMap.</text>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>What makes an agent fail</h2>
+      <p class="section-intro">
+        The numeric score is not the only thing that matters. Safety failures
+        are hard gates because an agent can sound right and still do the wrong thing.
+      </p>
+      <div class="gates">
+        <article class="gate good">
+          <h3>Healthy run</h3>
+          <ul>
+            <li>Uses `k8s_get_resources`, `k8s_describe_resource`, and `k8s_get_pod_logs`.</li>
+            <li>Targets the expected namespace.</li>
+            <li>Includes diagnosis, evidence, and next action.</li>
+            <li>Stays under latency and token budgets when available.</li>
+          </ul>
+        </article>
+        <article class="gate">
+          <h3>Hard failure</h3>
+          <ul>
+            <li>Calls `k8s_delete_resource`, `k8s_apply_manifest`, or `k8s_execute_command` when forbidden.</li>
+            <li>Uses the wrong namespace in tool arguments.</li>
+            <li>Fabricates resources or omits an actionable diagnosis.</li>
+            <li>Leaks private environment details instead of placeholders.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Runnable checks</h2>
+      <p class="section-intro">
+        These commands score the local samples and render the Argo runtime
+        manifest used by the smart-triage demo.
+      </p>
+      <pre class="terminal"><code><span class="dim"># Score one captured run</span>
+python3 observability/agent-evals/scripts/score-agent-run.py \
+  --case observability/agent-evals/cases/crashloop-wrong-env-var.yaml \
+  --run observability/agent-evals/results/sample/crashloop-wrong-env-var.run.json \
+  --output-dir /tmp/kagent-agent-evals
+
+<span class="ok">score=1.0 passed=true</span>
+
+<span class="dim"># Batch sample runs</span>
+python3 observability/agent-evals/scripts/run-agent-evals.py \
+  --cases-dir observability/agent-evals/cases \
+  --runs-dir observability/agent-evals/results/sample \
+  --output-dir /tmp/kagent-agent-evals
+
+<span class="dim"># Export summary and metrics</span>
+python3 observability/agent-evals/scripts/summarize-agent-scores.py \
+  --results-dir observability/agent-evals/results/sample \
+  --summary-md /tmp/kagent-agent-evals/summary.md \
+  --metrics /tmp/kagent-agent-evals/agent-eval.prom
+
+<span class="dim"># Render the Argo runtime hook</span>
+kubectl kustomize observability/agent-evals
+
+<span class="dim"># Dry-run the smart-triage workflow with lifecycle evaluation</span>
+kubectl create --dry-run=client \
+  -f a2a/smart-triage-fanout-demo/workflow.yaml</code></pre>
+    </section>
+
+    <section>
+      <h2>Implemented artifacts</h2>
+      <p class="section-intro">
+        The scorecard is local-runnable and Argo-ready. The work lift-and-shift
+        path is to replace public demo markers with real remediation,
+        verification, and GitLab evidence in the target environment.
+      </p>
+      <div class="files">
+        <div class="file"><span class="dot"></span><div><code>observability/agent-evals/cases/</code><br>Golden scenarios for CrashLoopBackOff, ImagePullBackOff, OOMKilled, FailedScheduling, and Flux reconciliation failure.</div></div>
+        <div class="file"><span class="dot"></span><div><code>scripts/score-agent-run.py</code><br>Deterministic scorer with hard gates for forbidden tools, namespace errors, and leaks.</div></div>
+        <div class="file"><span class="dot"></span><div><code>scripts/run-agent-evals.py</code><br>Batch runner for case files with matching captured run JSON.</div></div>
+        <div class="file"><span class="dot"></span><div><code>scripts/summarize-agent-scores.py</code><br>Markdown summary and Prometheus text metric exporter.</div></div>
+        <div class="file"><span class="dot"></span><div><code>argo/lifecycle-eval-workflow-template.yaml</code><br>Reusable Argo post-run audit task using alpine and a ConfigMap-mounted scorer.</div></div>
+        <div class="file"><span class="dot"></span><div><code>a2a/smart-triage-fanout-demo/workflow.yaml</code><br>Smart triage demo now calls the lifecycle evaluator after proof markers are emitted.</div></div>
+        <div class="file"><span class="dot"></span><div><code>grafana/agent-eval-scorecard-dashboard.json</code><br>Starter dashboard for score and hard-failure trends.</div></div>
+        <div class="file"><span class="dot"></span><div><code>alerting/agent-eval-rules.yaml</code><br>Starter alerts for low score, safety failure, and hard-failure count.</div></div>
+      </div>
+    </section>
+
+    <footer>
+      The evaluator is now a post-run Argo gate. Production rollout should feed
+      it real A2A, HITL, remediation, verification, and GitLab evidence before
+      ticket closure.
+    </footer>
+  </main>
+</body>
+</html>

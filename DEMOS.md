@@ -16,6 +16,41 @@ clean clone can replicate every pillar without hunting.
 | 7 | Kagent memory | [`docs/kagent-memory/README.md`](docs/kagent-memory/README.md) |
 | 8 | Kagent knowledge base (RAG) | [`ai-platform/kagent-knowledge-base/README.md`](ai-platform/kagent-knowledge-base/README.md) |
 | 9 | Cross-namespace A2A through Agentgateway | [`examples/cross-namespace-a2a/00-README.md`](examples/cross-namespace-a2a/00-README.md) |
+| 10 | Smart triage fan-out | [`a2a/smart-triage-fanout-demo/README.md`](a2a/smart-triage-fanout-demo/README.md) |
+| 11 | Kagent agent eval scorecard | [`observability/agent-evals/agent-eval-scorecard-demo.html`](observability/agent-evals/agent-eval-scorecard-demo.html) |
+
+---
+
+## 11. Kagent Agent Eval Scorecard
+
+**Story.** Agents need a promotion gate: not "the reply sounded good", but a
+repeatable score that checks diagnosis quality, evidence, tool use, namespace
+safety, HITL compliance, remediation outcome, ticket hygiene, latency, and
+cost. The eval path scores captured agent runs and full incident lifecycles so
+prompt/tool/workflow regressions can fail before an agent is promoted.
+
+**Replicable artefacts**
+
+- TLDR and run commands — [`observability/agent-evals/README.md`](observability/agent-evals/README.md)
+- Lifecycle scoring design — [`observability/agent-evals/LIFECYCLE-EVALUATION.md`](observability/agent-evals/LIFECYCLE-EVALUATION.md)
+- Argo runtime hook — [`observability/agent-evals/ARGO-RUNTIME.md`](observability/agent-evals/ARGO-RUNTIME.md)
+- Lift-and-shift handoff — [`KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md`](KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md)
+- Local PR review request — [`KAGENT-EVAL-PR-REVIEW.md`](KAGENT-EVAL-PR-REVIEW.md)
+- Visual walkthrough — [`observability/agent-evals/agent-eval-scorecard-demo.html`](observability/agent-evals/agent-eval-scorecard-demo.html)
+- Golden cases — [`observability/agent-evals/cases/`](observability/agent-evals/cases/)
+- Lifecycle case and sanitized Argo sample — [`observability/agent-evals/results/sample/lifecycle/`](observability/agent-evals/results/sample/lifecycle/)
+- Deterministic scorer — [`observability/agent-evals/scripts/score-agent-run.py`](observability/agent-evals/scripts/score-agent-run.py)
+- Lifecycle collector/scorer — [`observability/agent-evals/scripts/collect-lifecycle-evidence.py`](observability/agent-evals/scripts/collect-lifecycle-evidence.py)
+- Batch runner — [`observability/agent-evals/scripts/run-agent-evals.py`](observability/agent-evals/scripts/run-agent-evals.py)
+- Summary/Prometheus exporter — [`observability/agent-evals/scripts/summarize-agent-scores.py`](observability/agent-evals/scripts/summarize-agent-scores.py)
+- Starter Grafana dashboard — [`observability/agent-evals/grafana/agent-eval-scorecard-dashboard.json`](observability/agent-evals/grafana/agent-eval-scorecard-dashboard.json)
+- Starter alert rules — [`observability/agent-evals/alerting/agent-eval-rules.yaml`](observability/agent-evals/alerting/agent-eval-rules.yaml)
+
+**What to show.** Open the visual walkthrough first, then run the sample score
+commands from the README. Show the Argo workflow export becoming a normalized
+lifecycle run, then show that missing HITL, missing verification, wrong
+namespace, and forbidden `k8s_*` tools are hard failures regardless of the
+numeric score.
 
 ---
 
@@ -55,6 +90,10 @@ K-Agent pods, gateway scrape targets, gateway request rate, p95 latency, and
 the Alertmanager-to-Argo log panel. Then trigger the synthetic alert route with
 `scripts/observability/verify-k-agent-observability.sh --context {{KUBE_CONTEXT}} --synthetic-alert`
 in an approved test window and show the `k-agent-alert-triage-*` workflow.
+For the chaos/SRE operating model, open the presenter page
+[`docs/ai-grafana/iteration-review-chaos-agent-demo.html`](docs/ai-grafana/iteration-review-chaos-agent-demo.html)
+and walk the alert, Grafana MCP evidence, HITL approval, remediation, and
+verification stages before running live commands.
 
 ---
 
@@ -80,7 +119,7 @@ cross-cluster A2A escalation path through the gateway.
 - PR 4 plan-B routing manifests — [`platform/agentgateway/service-a2a-fleet-agent.yaml`](platform/agentgateway/service-a2a-fleet-agent.yaml), [`platform/agentgateway/route-a2a-fleet-agent.yaml`](platform/agentgateway/route-a2a-fleet-agent.yaml), [`platform/agentgateway/policy-a2a-fleet-agent.yaml`](platform/agentgateway/policy-a2a-fleet-agent.yaml)
 - Ingress allowlist carrying the demo paths — [`platform/agentgateway/istio-authorization-policy.yaml`](platform/agentgateway/istio-authorization-policy.yaml)
 
-**Current verdicts from `proxmox-k8s` on 2026-05-14**
+**Current verdicts from an approved non-production demo cluster on 2026-05-14**
 
 - PR 1 is green after route-name inventory is aligned: `AgentgatewayPolicy.spec.backend.ai.prompt.prepend[]` exists and injects an org-wide SRE prompt at the gateway.
 - PR 2 is green with auth-shape caveats: `spec.ai.groups[]` supports mixed providers, but per-provider Azure auth is API-key `secretRef`; UAMI requires the two-backend route-level pattern in the runbook.
@@ -208,7 +247,7 @@ callbacks to demonstrate each path.
 memory, the native long-term memory API (vector store keyed by
 `agent_name` + `user_id`), and the agent-facing memory tools
 (`prefetch_memory`, `load_memory`, `save_memory`, auto-save). The first two
-work on the homelab `red` cluster today; the third is gated on an
+work on the captured non-production demo cluster today; the third is gated on an
 embedding-capable ModelConfig.
 
 **Replicable artefacts**

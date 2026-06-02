@@ -1,0 +1,226 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: demo-platform-memory-
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: platform-memory-showcase
+    platform.com/team: platform-memory-showcase
+    platform.com/type: demo
+spec:
+  entrypoint: main
+  serviceAccountName: demo-platform-memory-workflow
+  activeDeadlineSeconds: 900
+  ttlStrategy:
+    secondsAfterCompletion: 900
+    secondsAfterSuccess: 600
+    secondsAfterFailure: 900
+  arguments:
+    parameters:
+      - name: seeder_url
+        value: "http://demo-memory-seeder-agent.kagent:8080/"
+      - name: triage_url
+        value: "http://demo-memory-triage-agent.kagent:8080/"
+      - name: scenario
+        value: "CrashLoopBackOff for deployment checkout-api in namespace demo-payments after a demo config rollout"
+      - name: fingerprint
+        value: "demo-checkout-api-crashloop"
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: seed-known-incident
+            template: call-seeder
+
+          - name: triage-before-approval
+            template: call-triage
+            dependencies: [seed-known-incident]
+            arguments:
+              parameters:
+                - name: phase
+                  value: before-approval
+                - name: context_id
+                  value: ""
+                - name: prompt
+                  value: |
+                    Scenario: {{workflow.parameters.scenario}}
+                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    Human decision: not approved yet.
+                    Search shared memory before recommending action.
+
+          - name: wait-for-human-review
+            template: human-review
+            dependencies: [triage-before-approval]
+
+          - name: triage-after-approval
+            template: call-triage
+            dependencies: [wait-for-human-review]
+            arguments:
+              parameters:
+                - name: phase
+                  value: after-approval
+                - name: context_id
+                  value: "{{tasks.triage-before-approval.outputs.parameters.context_id}}"
+                - name: prompt
+                  value: |
+                    Scenario: {{workflow.parameters.scenario}}
+                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    Human decision: approved.
+                    HITL_STATUS: resumed
+                    Continue in the same A2A context and restate the memory-assisted recommendation.
+
+          - name: prove-result
+            template: prove-result
+            dependencies: [triage-after-approval]
+            arguments:
+              parameters:
+                - name: before_context_id
+                  value: "{{tasks.triage-before-approval.outputs.parameters.context_id}}"
+                - name: after_context_id
+                  value: "{{tasks.triage-after-approval.outputs.parameters.context_id}}"
+
+    - name: human-review
+      suspend: {}
+
+    - name: call-seeder
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl jq >/dev/null
+
+          jq -n \
+            --arg id "platform-memory-{{workflow.name}}-seed" \
+            --arg message_id "msg-{{workflow.name}}-seed" \
+            --arg text "Seed shared memory for fingerprint {{workflow.parameters.fingerprint}} using only synthetic public-safe data." \
+            '{
+              jsonrpc: "2.0",
+              id: $id,
+              method: "message/send",
+              params: {
+                message: {
+                  messageId: $message_id,
+                  role: "user",
+                  parts: [{kind: "text", text: $text}]
+                }
+              }
+            }' > /tmp/request.json
+
+          curl -sS -m 180 -X POST "{{workflow.parameters.seeder_url}}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/request.json \
+            -o /tmp/response.json
+
+          jq -r '.result.status.state // "unknown"' /tmp/response.json > /tmp/state.txt
+          jq -r 'if (.result.artifacts // [] | length) > 0 then [.result.artifacts[]?.parts[]?.text] | join("\n") else [.result.status.message.parts[]?.text] | join("\n") end' /tmp/response.json > /tmp/agent_response.txt
+          sed 's/[*`]//g' /tmp/agent_response.txt > /tmp/agent_response.normalized.txt
+
+          echo "A2A phase: seed-known-incident"
+          echo "A2A state: $(cat /tmp/state.txt)"
+          cat /tmp/agent_response.txt
+
+          test "$(cat /tmp/state.txt)" = "completed"
+          grep -Eq 'MEMORY_WRITE: stored' /tmp/agent_response.normalized.txt
+          grep -Eq 'FINGERPRINT: demo-checkout-api-crashloop' /tmp/agent_response.normalized.txt
+
+    - name: call-triage
+      inputs:
+        parameters:
+          - name: phase
+          - name: context_id
+          - name: prompt
+      outputs:
+        parameters:
+          - name: context_id
+            valueFrom:
+              path: /tmp/context_id.txt
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl jq >/dev/null
+
+          if [ -n "{{inputs.parameters.context_id}}" ]; then
+            jq -n \
+              --arg id "platform-memory-{{workflow.name}}-{{inputs.parameters.phase}}" \
+              --arg message_id "msg-{{workflow.name}}-{{inputs.parameters.phase}}" \
+              --arg ctx "{{inputs.parameters.context_id}}" \
+              --arg text "{{inputs.parameters.prompt}}" \
+              '{
+                jsonrpc: "2.0",
+                id: $id,
+                method: "message/send",
+                params: {
+                  message: {
+                    messageId: $message_id,
+                    role: "user",
+                    contextId: $ctx,
+                    parts: [{kind: "text", text: $text}]
+                  }
+                }
+              }' > /tmp/request.json
+          else
+            jq -n \
+              --arg id "platform-memory-{{workflow.name}}-{{inputs.parameters.phase}}" \
+              --arg message_id "msg-{{workflow.name}}-{{inputs.parameters.phase}}" \
+              --arg text "{{inputs.parameters.prompt}}" \
+              '{
+                jsonrpc: "2.0",
+                id: $id,
+                method: "message/send",
+                params: {
+                  message: {
+                    messageId: $message_id,
+                    role: "user",
+                    parts: [{kind: "text", text: $text}]
+                  }
+                }
+              }' > /tmp/request.json
+          fi
+
+          curl -sS -m 180 -X POST "{{workflow.parameters.triage_url}}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/request.json \
+            -o /tmp/response.json
+
+          jq -r '.result.contextId // ""' /tmp/response.json > /tmp/context_id.txt
+          jq -r '.result.status.state // "unknown"' /tmp/response.json > /tmp/state.txt
+          jq -r 'if (.result.artifacts // [] | length) > 0 then [.result.artifacts[]?.parts[]?.text] | join("\n") else [.result.status.message.parts[]?.text] | join("\n") end' /tmp/response.json > /tmp/agent_response.txt
+          sed 's/[*`]//g' /tmp/agent_response.txt > /tmp/agent_response.normalized.txt
+
+          echo "A2A phase: {{inputs.parameters.phase}}"
+          echo "A2A state: $(cat /tmp/state.txt)"
+          echo "A2A context: $(cat /tmp/context_id.txt)"
+          cat /tmp/agent_response.txt
+
+          test "$(cat /tmp/state.txt)" = "completed"
+          test -s /tmp/context_id.txt
+          grep -Eq 'MEMORY_LOOKUP: hit' /tmp/agent_response.normalized.txt
+          grep -Eq 'FINGERPRINT: demo-checkout-api-crashloop' /tmp/agent_response.normalized.txt
+          if [ "{{inputs.parameters.phase}}" = "after-approval" ]; then
+            grep -Eq 'HITL_STATUS: resumed' /tmp/agent_response.normalized.txt
+          fi
+
+    - name: prove-result
+      inputs:
+        parameters:
+          - name: before_context_id
+          - name: after_context_id
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          if [ "{{inputs.parameters.before_context_id}}" != "{{inputs.parameters.after_context_id}}" ]; then
+            echo "A2A context changed unexpectedly" >&2
+            echo "before={{inputs.parameters.before_context_id}}" >&2
+            echo "after={{inputs.parameters.after_context_id}}" >&2
+            exit 1
+          fi
+
+          echo "MEMORY_LOOKUP: hit"
+          echo "A2A_CONTEXT_REUSED: yes"
+          echo "HITL_STATUS: resumed"
+          echo "WORKFLOW_MEMORY_PATTERN: proven"

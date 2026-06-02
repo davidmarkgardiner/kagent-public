@@ -6,3 +6,4 @@ resources:
   - agent-tenant-defaults.yaml
   - protect-catalog-status.yaml
   - validate-agent-cluster-target.yaml
+  - block-remediation-on-blocking-policy.yaml

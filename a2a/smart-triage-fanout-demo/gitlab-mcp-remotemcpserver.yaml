@@ -1,0 +1,20 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: smart-triage-gitlab-mcp
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/type: demo
+spec:
+  description: "GitLab MCP server for smart-triage GitOps MR demo."
+  protocol: STREAMABLE_HTTP
+  timeout: 120s
+  sseReadTimeout: 10m0s
+  url: https://gitlab.com/api/v4/mcp
+  headersFrom:
+    - name: Authorization
+      valueFrom:
+        type: Secret
+        name: smart-triage-gitlab-mcp-auth
+        key: authorization

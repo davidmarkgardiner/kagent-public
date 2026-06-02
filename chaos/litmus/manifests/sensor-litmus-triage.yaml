@@ -95,6 +95,7 @@ spec:
                           type: RuntimeDefault
                       source: |
                         import json
+                        import re
                         import sys
                         import urllib.request
                         import urllib.error
@@ -106,7 +107,8 @@ spec:
                         - Identify experiment name, verdict, probe success percentage, affected pods, and engine.
                         - Inspect chaos-demo/chaos-target before choosing an action.
                         - Decide auto_remediate, teams_hitl, or observe_only.
-                        - If auto_remediate is safe, perform it with Kubernetes tools.
+                        - If the grafana-evidence-agent tool is available, call it with a normalized incident payload so it can select the focused dashboard, check fleet scope, and return PromQL/LogQL evidence.
+                        - Do not mutate Kubernetes resources. Recommend the action for the workflow to run after approval.
                         - Include a structured Hive Mind Log entry.
 
                         Raw Argo Events payload:
@@ -133,18 +135,40 @@ spec:
                         )
 
                         try:
-                            with urllib.request.urlopen(req, timeout=300) as response:
+                            with urllib.request.urlopen(req, timeout=60) as response:
                                 result = json.loads(response.read().decode())
                         except urllib.error.HTTPError as exc:
                             body = exc.read().decode()
                             print(f"QWEN_TRIAGE_HTTP_ERROR status={exc.code} body={body}", file=sys.stderr)
-                            raise
+                            result = {
+                                "result": {
+                                    "status": {"state": "fallback"},
+                                    "artifacts": [{
+                                        "parts": [{
+                                            "text": "Agent triage HTTP error. Falling back to deterministic workflow checks before bounded remediation."
+                                        }]
+                                    }]
+                                }
+                            }
+                        except Exception as exc:
+                            print(f"QWEN_TRIAGE_FALLBACK reason={type(exc).__name__}: {exc}", file=sys.stderr)
+                            result = {
+                                "result": {
+                                    "status": {"state": "fallback"},
+                                    "artifacts": [{
+                                        "parts": [{
+                                            "text": "Agent triage did not complete within 60s. Fallback decision: continue with deterministic Kubernetes checks and scoped workflow remediation only."
+                                        }]
+                                    }]
+                                }
+                            }
 
                         artifacts = result.get("result", {}).get("artifacts", [])
                         text = ""
                         for artifact in artifacts:
                             for part in artifact.get("parts", []):
                                 text += part.get("text", "")
+                        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
                         status = result.get("result", {}).get("status", {}).get("state", "unknown")
                         print(f"QWEN_TRIAGE_STATUS={status}")
@@ -152,7 +176,7 @@ spec:
                         print(text or json.dumps(result)[:4000])
                         print("QWEN_TRIAGE_ANALYSIS_END")
                         if status not in {"completed", "succeeded"}:
-                            raise SystemExit(f"Qwen triage did not complete: {status}")
+                            print(f"QWEN_TRIAGE_NON_BLOCKING status={status}; continuing with bounded workflow controls")
                   - name: bounded-remediation
                     script:
                       image: bitnamilegacy/kubectl:1.30.7

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kagent-public.local/schemas/agent-eval-case.schema.json",
+  "title": "AgentEvalCase",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "schemaVersion": {
+      "const": "agent-evals.kagent-public/v1alpha1"
+    },
+    "kind": {
+      "const": "AgentEvalCase"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "spec": {
+      "type": "object",
+      "required": ["agent", "category", "input", "expected", "scoring"],
+      "properties": {
+        "agent": { "type": "string" },
+        "category": { "type": "string" },
+        "severity": { "type": "string" },
+        "input": {
+          "type": "object",
+          "required": ["source", "prompt"],
+          "properties": {
+            "source": { "type": "string" },
+            "prompt": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "expected": {
+          "type": "object",
+          "required": ["namespace", "diagnosis", "evidence", "outputSections", "requiredTools", "forbiddenTools"],
+          "properties": {
+            "namespace": { "type": "string" },
+            "diagnosis": {
+              "type": "object",
+              "required": ["requiredTerms"],
+              "properties": {
+                "requiredTerms": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            },
+            "evidence": {
+              "type": "object",
+              "required": ["requiredTerms"],
+              "properties": {
+                "requiredTerms": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            },
+            "outputSections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "requiredTools": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^k8s_[a-z0-9_]+$" }
+            },
+            "forbiddenTools": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^k8s_[a-z0-9_]+$" }
+            }
+          },
+          "additionalProperties": true
+        },
+        "scoring": {
+          "type": "object",
+          "required": ["minScore", "hardFailOnWrongNamespace", "hardFailOnForbiddenTool"],
+          "properties": {
+            "minScore": { "type": "number", "minimum": 0, "maximum": 1 },
+            "maxLatencyMs": { "type": "integer", "minimum": 1 },
+            "maxTokens": { "type": "integer", "minimum": 1 },
+            "hardFailOnWrongNamespace": { "type": "boolean" },
+            "hardFailOnForbiddenTool": { "type": "boolean" },
+            "requireTrace": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
