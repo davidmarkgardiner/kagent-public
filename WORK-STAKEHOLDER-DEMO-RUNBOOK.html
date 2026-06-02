@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stakeholder Demo Runbook - AI SRE Triage And Remediation</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #f4f4f4;
+      --panel: #ffffff;
+      --panel-soft: #eeeeee;
+      --ink: #1f1f1f;
+      --muted: #666666;
+      --line: #d7d7d7;
+      --red: #b42318;
+      --red-dark: #82180f;
+      --red-soft: #fde8e5;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 34px 24px 64px;
+    }
+
+    header {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-top: 8px solid var(--red);
+      border-radius: 8px;
+      padding: 30px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .eyebrow {
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 44px;
+      line-height: 1.05;
+      margin: 0 0 16px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 26px;
+      margin: 0 0 14px;
+    }
+
+    h3 {
+      font-size: 17px;
+      margin: 0 0 8px;
+    }
+
+    p {
+      margin: 0 0 13px;
+      color: var(--muted);
+    }
+
+    .lead {
+      color: #333333;
+      font-size: 17px;
+      max-width: 780px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-card,
+    .section,
+    .command-card,
+    .check-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .summary-card {
+      padding: 16px;
+      min-height: 112px;
+    }
+
+    .summary-card strong {
+      display: block;
+      color: var(--red);
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .section {
+      margin-top: 22px;
+      padding: 24px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .flow-step {
+      background: var(--panel-soft);
+      border-left: 5px solid var(--red);
+      border-radius: 8px;
+      padding: 13px;
+      min-height: 112px;
+    }
+
+    .flow-step .num {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--red);
+      color: white;
+      font-family: var(--mono);
+      font-size: 12px;
+      margin-bottom: 9px;
+    }
+
+    .command-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .command-card {
+      overflow: hidden;
+    }
+
+    .command-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--panel-soft);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+
+    .command-title {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    button.copy {
+      border: 1px solid var(--red);
+      background: var(--red);
+      color: white;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-weight: 700;
+      cursor: pointer;
+      min-width: 88px;
+    }
+
+    button.copy:hover {
+      background: var(--red-dark);
+      border-color: var(--red-dark);
+    }
+
+    pre {
+      margin: 0;
+      padding: 15px;
+      overflow-x: auto;
+      background: #242424;
+      color: #f6f6f6;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      min-height: 92px;
+    }
+
+    code {
+      font-family: var(--mono);
+    }
+
+    .callout {
+      background: var(--red-soft);
+      border: 1px solid #f3b7b0;
+      border-left: 6px solid var(--red);
+      border-radius: 8px;
+      padding: 16px;
+      color: #3b1a17;
+      margin-top: 14px;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .check-card {
+      padding: 15px;
+    }
+
+    .check-card strong {
+      color: var(--red);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .markers {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 18px;
+      margin-top: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #333333;
+    }
+
+    .marker {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+
+    footer {
+      color: var(--muted);
+      padding: 28px 4px 0;
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      header,
+      .command-grid,
+      .check-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-grid,
+      .markers {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="eyebrow">Stakeholder demo runbook</div>
+        <h1>Prove the AI SRE triage and remediation loop.</h1>
+        <p class="lead">
+          This is the meeting flow for showing what was built on the home system
+          and what the work-side agent should reproduce: inject a controlled
+          issue, trigger smart triage, gather evidence, pause for HITL, route
+          remediation through GitOps or workflow controls, verify recovery, and
+          score the lifecycle.
+        </p>
+        <div class="callout">
+          Presenter line: "This proves the operating model. We are not asking an
+          agent to mutate production directly; we are proving controlled
+          detection, evidence gathering, approval, remediation routing,
+          verification, and evaluation."
+        </div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <strong>Visual First</strong>
+          <p>Open the presenter HTML and explain the fan-out, HITL, GitOps, and eval gates.</p>
+        </div>
+        <div class="summary-card">
+          <strong>Live Objects</strong>
+          <p>Show kagent Agents, RemoteMCPServers, Argo workflows, sensors, and model configs.</p>
+        </div>
+        <div class="summary-card">
+          <strong>Controlled Proof</strong>
+          <p>Run or replay one non-production alert or chaos scenario and inspect markers.</p>
+        </div>
+        <div class="summary-card">
+          <strong>Quality Gate</strong>
+          <p>Run lifecycle eval and show pass/fail plus hard failures.</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>15-20 Minute Demo Flow</h2>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="num">1</div>
+          <h3>Open Visuals</h3>
+          <p>Show the smart-triage presenter and verification README.</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">2</div>
+          <h3>Show Wiring</h3>
+          <p>Display deployed agents, MCP servers, workflow templates, and sensors.</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">3</div>
+          <h3>Run Proof</h3>
+          <p>Replay a controlled alert or chaos scenario and inspect Argo nodes.</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">4</div>
+          <h3>Show Evidence</h3>
+          <p>Pull proof markers from workflow logs and specialist outputs.</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">5</div>
+          <h3>Run Eval</h3>
+          <p>Score the lifecycle and explain hard gates.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Copyable Commands</h2>
+      <p>Replace placeholders before running in the work environment. For the home demo, use the matching local namespaces and workflow names.</p>
+      <div class="command-grid">
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">1. Open Visual Artifacts</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>open SMART-TRIAGE-FANOUT-PRESENTER.html
+open WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md
+open WORK-ZIP-AGENT-HANDOFF.md</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">2. Show Latest Repo Work</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>git log --oneline -5
+ls a2a/smart-triage-fanout-demo
+ls observability/agent-evals
+ls agents/grafana-evidence-agent</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">3. Set Environment Variables</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>export KUBE_CONTEXT="{{KUBE_CONTEXT}}"
+export KAGENT_NS="{{KAGENT_NAMESPACE}}"
+export ARGO_NS="{{ARGO_NAMESPACE}}"
+export ARGO_EVENTS_NS="{{ARGO_EVENTS_NAMESPACE}}"
+export CHAOS_NS="{{CHAOS_NAMESPACE}}"
+export TARGET_NS="{{TARGET_NAMESPACE}}"
+export TARGET_WORKLOAD="{{TARGET_WORKLOAD}}"
+export WORKFLOW="{{WORKFLOW_NAME}}"</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">4. Show Cluster Wiring</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>kubectl --context "$KUBE_CONTEXT" get agents -n "$KAGENT_NS" | rg 'smart-triage|grafana|gitlab|chaos'
+kubectl --context "$KUBE_CONTEXT" get remotemcpserver -n "$KAGENT_NS"
+kubectl --context "$KUBE_CONTEXT" get modelconfig -n "$KAGENT_NS"
+kubectl --context "$KUBE_CONTEXT" get workflowtemplate -n "$ARGO_NS"
+kubectl --context "$KUBE_CONTEXT" get eventsource,sensor -n "$ARGO_EVENTS_NS"</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">5. Start A2A Port Forward</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>kubectl --context "$KUBE_CONTEXT" -n "$KAGENT_NS" port-forward svc/kagent-controller 18083:8083</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">6. Ping Grafana Evidence Agent</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>export GRAFANA_AGENT="{{GRAFANA_EVIDENCE_AGENT_NAME}}"
+
+jq -cn --arg ns "$TARGET_NS" --arg workload "$TARGET_WORKLOAD" '{
+  jsonrpc: "2.0",
+  id: "grafana-demo",
+  method: "message/send",
+  params: {
+    message: {
+      role: "user",
+      parts: [{
+        kind: "text",
+        text: (
+          "Build an evidence pack for namespace " + $ns +
+          ", workload " + $workload +
+          ", time window now-30m to now. Include dashboard, PromQL, LogQL, health, verification queries, and return SPECIALIST_GRAFANA: completed."
+        )
+      }]
+    }
+  }
+}' | curl -fsS -X POST \
+  "http://127.0.0.1:18083/api/a2a/kagent/${GRAFANA_AGENT}/" \
+  -H 'Content-Type: application/json' \
+  --data-binary @-</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">7. Ping GitLab MCP Specialist</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>export GITLAB_AGENT="{{GITLAB_SPECIALIST_AGENT_NAME}}"
+export GITLAB_SANDBOX_PROJECT="{{GITLAB_SANDBOX_PROJECT}}"
+export GITLAB_TARGET_BRANCH="{{GITLAB_TARGET_BRANCH}}"
+export RUN_ID="manual-confidence-$(date -u +%Y%m%dT%H%M%SZ)"
+
+jq -cn \
+  --arg project "$GITLAB_SANDBOX_PROJECT" \
+  --arg branch "$GITLAB_TARGET_BRANCH" \
+  --arg run_id "$RUN_ID" '{
+  jsonrpc: "2.0",
+  id: "gitlab-mcp-smoke",
+  method: "message/send",
+  params: {
+    message: {
+      role: "user",
+      parts: [{
+        kind: "text",
+        text: (
+          "Use only sandbox project " + $project +
+          " and target branch " + $branch +
+          ". Run id: " + $run_id +
+          ". Create a demo branch, evidence file, MR, and MR note only if sandbox writes are approved. Otherwise return a dry-run branch/MR plan. Return GitLab proof markers and do not touch production."
+        )
+      }]
+    }
+  }
+}' | curl -fsS -X POST \
+  "http://127.0.0.1:18083/api/a2a/kagent/${GITLAB_AGENT}/" \
+  -H 'Content-Type: application/json' \
+  --data-binary @-</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">8. Find Latest Workflow</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>argo -n "$ARGO_NS" list | head -20
+kubectl --context "$KUBE_CONTEXT" get wf -n "$ARGO_NS" --sort-by=.metadata.creationTimestamp</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">9. Inspect Workflow Nodes</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>argo -n "$ARGO_NS" get "$WORKFLOW"
+kubectl --context "$KUBE_CONTEXT" get wf -n "$ARGO_NS" "$WORKFLOW"
+kubectl --context "$KUBE_CONTEXT" get pods -n "$ARGO_NS" \
+  -l workflows.argoproj.io/workflow="$WORKFLOW" -o name</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">10. Pull Proof Markers</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>kubectl --context "$KUBE_CONTEXT" logs -n "$ARGO_NS" \
+  -l workflows.argoproj.io/workflow="$WORKFLOW" \
+  --all-containers=true --tail=500 | rg \
+  'SMART_TRIAGE|SPECIALIST_|HITL|GITLAB_|REMEDIATION|VERIFICATION|OUTPUT_SANITIZED|score=|passed='</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">11. Check Chaos Evidence</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>kubectl --context "$KUBE_CONTEXT" get pods -n "$CHAOS_NS"
+kubectl --context "$KUBE_CONTEXT" api-resources | rg -i 'chaos|litmus'
+kubectl --context "$KUBE_CONTEXT" get chaosengine,chaosresult,chaosworkflow -A 2>/dev/null || true
+kubectl --context "$KUBE_CONTEXT" get events -n "$TARGET_NS" --sort-by=.lastTimestamp | tail -40</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">12. Run Sample Lifecycle Eval</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>python3 observability/agent-evals/scripts/score-lifecycle-run.py \
+  --case observability/agent-evals/lifecycle-cases/pod-crashloop-hitl-remediation.yaml \
+  --run observability/agent-evals/results/sample/lifecycle/pod-crashloop-hitl-remediation.lifecycle-run.json \
+  --output-dir /tmp/kagent-agent-evals
+
+cat /tmp/kagent-agent-evals/*.md</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">13. Eval A Live Workflow Export</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>argo -n "$ARGO_NS" get "$WORKFLOW" -o json > /tmp/live-smart-triage-workflow.json
+
+python3 observability/agent-evals/scripts/collect-lifecycle-evidence.py \
+  --argo-workflow /tmp/live-smart-triage-workflow.json \
+  --output /tmp/live-lifecycle-run.json \
+  --ticket-closed
+
+python3 observability/agent-evals/scripts/score-lifecycle-run.py \
+  --case observability/agent-evals/lifecycle-cases/pod-crashloop-hitl-remediation.yaml \
+  --run /tmp/live-lifecycle-run.json \
+  --output-dir /tmp/kagent-live-evals</code></pre>
+        </article>
+
+        <article class="command-card">
+          <div class="command-head">
+            <span class="command-title">14. Public-Safety Sweep</span>
+            <button class="copy">Copy</button>
+          </div>
+          <pre><code>rg -n '(subscriptionId|tenantId|clientId|password|token|secret|https?://[^\\{\\s\\)]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})' \
+  /tmp/kagent-agent-evals \
+  /tmp/kagent-live-evals \
+  /tmp/live-lifecycle-run.json \
+  /tmp/live-smart-triage-workflow.json</code></pre>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Markers To Show On Screen</h2>
+      <p>These are the proof markers stakeholders should see in the workflow logs or evidence report.</p>
+      <div class="markers">
+        <div class="marker">SMART_TRIAGE_FANOUT: started</div>
+        <div class="marker">ALERT_INGESTED: yes</div>
+        <div class="marker">SPECIALIST_KUBERNETES: completed</div>
+        <div class="marker">SPECIALIST_NETWORK: completed</div>
+        <div class="marker">SPECIALIST_GRAFANA: completed</div>
+        <div class="marker">SPECIALIST_GITOPS: completed</div>
+        <div class="marker">SPECIALIST_KNOWLEDGE: completed</div>
+        <div class="marker">SPECIALIST_DEPLOYMENT: completed</div>
+        <div class="marker">SPECIALIST_POLICY: completed</div>
+        <div class="marker">SPECIALIST_TRACE: completed</div>
+        <div class="marker">INCIDENT_SYNTHESIS: completed</div>
+        <div class="marker">HITL_STATUS: resumed</div>
+        <div class="marker">REMEDIATION_MODE: gitops_or_workflow_only</div>
+        <div class="marker">VERIFICATION_PASSED: yes</div>
+        <div class="marker">OUTPUT_SANITIZED: yes</div>
+        <div class="marker">SMART_TRIAGE_PATTERN: proven</div>
+        <div class="marker">score=1.0 passed=true</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Stakeholder Acceptance Bar</h2>
+      <div class="check-grid">
+        <div class="check-card">
+          <strong>Demo-Ready</strong>
+          <p>One controlled incident or chaos run triggers smart triage, fan-out, HITL, remediation routing, verification, and lifecycle eval.</p>
+        </div>
+        <div class="check-card">
+          <strong>Evidence-Ready</strong>
+          <p>Workflow name, Argo node table, pod logs, proof markers, Grafana response, GitLab/GitOps evidence, and eval output are captured.</p>
+        </div>
+        <div class="check-card">
+          <strong>Safety-Ready</strong>
+          <p>No production mutation, no direct protected-branch write, no broad GitLab write tools on general triage agents, and no leaked private values.</p>
+        </div>
+        <div class="check-card">
+          <strong>Work-Ready</strong>
+          <p>The other agent can run the same checks in the work environment and produce a matching execution report.</p>
+        </div>
+      </div>
+      <div class="callout">
+        Close with: "The value is not that an agent writes YAML on its own. The
+        value is that we can turn a real incident signal into structured
+        evidence, approved remediation, verified recovery, and an auditable
+        quality score."
+      </div>
+    </section>
+
+    <footer>
+      This static HTML contains no secrets. Replace placeholders before running
+      commands in a real environment.
+    </footer>
+  </main>
+
+  <script>
+    document.querySelectorAll(".command-card").forEach((card) => {
+      const button = card.querySelector("button.copy");
+      const code = card.querySelector("code");
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(code.textContent);
+          const old = button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => {
+            button.textContent = old;
+          }, 1400);
+        } catch (error) {
+          button.textContent = "Select text";
+          setTimeout(() => {
+            button.textContent = "Copy";
+          }, 1600);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

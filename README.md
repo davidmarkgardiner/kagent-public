@@ -19,6 +19,25 @@ A complete platform stack for production Kubernetes on Azure:
 
 ---
 
+## Kagent v2 TL;DR
+
+The first iteration was a basic specialist agent focused on namespace-level triage. This iteration evolves it into a connected AI SRE system with triage, evidence gathering, remediation planning, governance, and evaluation.
+
+- **Moved beyond a single namespace triage agent** — v1 could inspect and reason about one area; v2 coordinates multiple connected specialists.
+- **Smart triage fan-out** — incidents can be routed across Kubernetes, networking, Grafana/observability, and GitOps/remediation specialists.
+- **Grafana integration** — agents can pull observability evidence instead of relying only on Kubernetes state.
+- **GitLab MCP integration** — agents can interact with GitLab workflows, creating a path to proposed code changes and merge-request based remediation.
+- **Human-in-the-loop control** — production-impacting changes remain governed through approval and GitOps rather than uncontrolled direct writes.
+- **Agent-to-agent workflows** — A2A patterns let agents collaborate, hand off context, and combine specialist findings into one incident summary.
+- **Chaos-driven validation** — controlled failure scenarios can prove the system can detect, triage, and support remediation of realistic cluster issues.
+- **Evaluation layer** — agent output can be scored for evidence quality, correctness, safety, and remediation usefulness.
+- **Workplace lift-and-shift package** — work-specific endpoints, secrets, namespaces, GitLab/Grafana config, and cluster details are parameterized with placeholders.
+- **Stakeholder demo assets** — HTML visualizations and runbooks explain the architecture and provide copyable proof commands for demos.
+
+Bottom line: v2 turns the original single-purpose triage agent into the foundation for a connected, observability-aware, GitOps-aware, human-governed, testable AI SRE system.
+
+---
+
 ## Repository Layout
 
 ```
@@ -38,6 +57,7 @@ examples/           Quickstart and sample payloads
 | I want to… | Go to |
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
+| Present the Kagent v2 stakeholder demo | [`WORK-STAKEHOLDER-DEMO-RUNBOOK.html`](WORK-STAKEHOLDER-DEMO-RUNBOOK.html) |
 | Hand this zip to a work agent for lift-and-shift | [`WORK-ZIP-AGENT-HANDOFF.md`](WORK-ZIP-AGENT-HANDOFF.md) |
 | Verify the work-side triage/remediation integration | [`WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md`](WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md) |
 | See what changed recently | [`CHANGELOG.md`](CHANGELOG.md) |
