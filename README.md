@@ -60,6 +60,7 @@ examples/           Quickstart and sample payloads
 | Present the Kagent v2 stakeholder demo | [`WORK-STAKEHOLDER-DEMO-RUNBOOK.html`](WORK-STAKEHOLDER-DEMO-RUNBOOK.html) |
 | Hand this zip to a work agent for lift-and-shift | [`WORK-ZIP-AGENT-HANDOFF.md`](WORK-ZIP-AGENT-HANDOFF.md) |
 | Replicate memory and knowledge-base features at work | [`WORK-MEMORY-KB-NEXT-HANDOFF-README.md`](WORK-MEMORY-KB-NEXT-HANDOFF-README.md) |
+| Verify memory, doc2vec, and GitLab MCP evidence | [`WORK-MEMORY-KB-VERIFY-PROMPT.md`](WORK-MEMORY-KB-VERIFY-PROMPT.md) |
 | Verify the work-side triage/remediation integration | [`WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md`](WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md) |
 | See what changed recently | [`CHANGELOG.md`](CHANGELOG.md) |
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
