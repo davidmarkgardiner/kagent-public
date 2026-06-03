@@ -1,0 +1,111 @@
+# Agentgateway route and backend for Qwen primary -> GPT-4 secondary.
+#
+# DEPLOY ON: management cluster where agentgateway runs.
+#
+# This file assumes both providers authenticate through Secrets containing an
+# Authorization key. The token refreshers in 10-token-refreshers.yaml maintain
+# those Secrets.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: work-llm-failover-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    app.kubernetes.io/component: llm-failover
+spec:
+  ai:
+    groups:
+      - providers:
+          - name: qwen-primary
+            openai:
+              model: "{{QWEN_MODEL}}"
+            host: "{{QWEN_OPENAI_HOST}}"
+            port: 443
+            policies:
+              auth:
+                secretRef:
+                  name: qwen-primary-token
+              tls:
+                sni: "{{QWEN_OPENAI_HOST}}"
+      - providers:
+          - name: gpt4-secondary
+            azureopenai:
+              endpoint: "{{GPT4_OPENAI_RESOURCE}}.openai.azure.com"
+              deploymentName: "{{GPT4_DEPLOYMENT_NAME}}"
+              apiVersion: "{{GPT4_AZURE_OPENAI_API_VERSION}}"
+            policies:
+              auth:
+                secretRef:
+                  name: gpt4-secondary-token
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: work-llm-failover-route
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    app.kubernetes.io/component: llm-failover
+spec:
+  parentRefs:
+    - name: "{{AGENTGATEWAY_GATEWAY_NAME}}"
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /llm/v1
+      backendRefs:
+        - name: work-llm-failover-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: work-llm-failover-policy
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: work-llm-failover-route
+  traffic:
+    timeouts:
+      request: "150s"
+    retry:
+      attempts: 2
+      backoff: "1s"
+      codes:
+        - 429
+        - 500
+        - 502
+        - 503
+        - 504
+    rateLimit:
+      local:
+        - requests: 20
+          unit: Seconds
+          burst: 60
+  backend:
+    ai:
+      promptGuard:
+        request:
+          - regex:
+              builtins:
+                - CreditCard
+                - Ssn
+              action: Reject
+            response:
+              message: "Request blocked: contains sensitive data."
+        response:
+          - regex:
+              builtins:
+                - CreditCard
+                - Ssn
+                - Email
+                - PhoneNumber
+              action: Mask

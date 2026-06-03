@@ -5,7 +5,9 @@
 #
 # Demonstrates "cost control + resilience" in one place: kagent points at
 # `/llm/v1`, the gateway prefers a local model (KubeAI primary group), and
-# only falls back to Azure OpenAI when the local group fails.
+# falls back to Azure OpenAI when the local group fails. The route policy retries
+# upstream 429/5xx responses; verify on the installed agentgateway version that
+# retry selection reaches the fallback group before calling 429 failover proven.
 #
 # SCHEMA GATE: depends on `AgentgatewayBackend.spec.ai.groups[]` allowing a
 # mix of provider types in one backend (KubeAI `openai` + Azure
@@ -26,7 +28,7 @@
 #     per-provider `azureAuth` is unsupported and top-level azureAuth
 #     applies to every provider in every group, which doesn't work
 #     for a mixed KubeAI + Azure backend. For UAMI failover, see the
-#     two-backend route-level pattern in FAILOVER-DEMO.md §4.
+#     two-backend route-level pattern in FAILOVER-DEMO.md §5.
 #
 # Apply:
 #   kubectl apply --dry-run=server -f backend-llm-failover.yaml
@@ -38,7 +40,8 @@
 #     -H "Content-Type: application/json" \
 #     -d '{"model":"<local-model>","messages":[{"role":"user","content":"ping"}],"max_tokens":20}' | jq .
 #
-# Verify failover path: see FAILOVER-DEMO.md. Do **not** scale shared
+# Verify failover path, including the 429/rate-limit probe: see
+# FAILOVER-DEMO.md. Do **not** scale shared
 # KubeAI/vLLM deployments to zero unless explicitly approved — use the
 # temporary bad-host overlay described in the runbook instead.
 #
@@ -61,7 +64,7 @@ stringData:
 ---
 # Azure OpenAI API-key secret used by the fallback group. Replace the
 # value before applying. For UAMI-based auth the schema forces the
-# top-level/two-backend pattern (see FAILOVER-DEMO.md §4).
+# top-level/two-backend pattern (see FAILOVER-DEMO.md §5).
 apiVersion: v1
 kind: Secret
 metadata:
@@ -69,7 +72,7 @@ metadata:
   namespace: agentgateway-system
 type: Opaque
 stringData:
-  Authorization: "Bearer REPLACE_WITH_AZURE_OPENAI_API_KEY"
+  Authorization: "Bearer {{AZURE_OPENAI_API_KEY}}"
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
@@ -86,7 +89,7 @@ spec:
       - providers:
           - name: local-kubeai
             openai:
-              model: REPLACE_WITH_PRIMARY_MODEL    # match `kubectl get model -n kubeai`
+              model: "{{PRIMARY_MODEL}}"           # match `kubectl get model -n kubeai`
             host: kubeai.kubeai.svc.cluster.local
             port: 80
             policies:
@@ -102,12 +105,12 @@ spec:
       # applies to all providers in all groups. Since KubeAI doesn't use
       # UAMI, mixing them in one backend forces an Azure API-key auth
       # path here. For UAMI failover, use the route-level two-backend
-      # pattern in FAILOVER-DEMO.md §4 instead.
+      # pattern in FAILOVER-DEMO.md §5 instead.
       - providers:
           - name: azure-fallback
             azureopenai:
-              endpoint: REPLACE_RESOURCE.openai.azure.com
-              deploymentName: REPLACE_DEPLOYMENT_NAME
+              endpoint: "{{AZURE_OPENAI_RESOURCE}}.openai.azure.com"
+              deploymentName: "{{AZURE_OPENAI_DEPLOYMENT}}"
               apiVersion: "2024-10-21"
             policies:
               auth:
@@ -138,7 +141,10 @@ spec:
           group: agentgateway.dev
           kind: AgentgatewayBackend
 ---
-# AgentgatewayPolicy — timeouts, rate limit, PII guard for the failover route.
+# AgentgatewayPolicy — timeouts, retry on 429/5xx, rate limit, PII guard for
+# the failover route. On agentgateway versions that support backend health
+# policies, add a separate health policy for `response.code == 429 ||
+# response.code >= 500` after server-side CRD validation.
 # Prompt enrichment from policy-prompt-enrichment.yaml will also need a new
 # targetRef row added for `llm-failover-route` once that policy is in place
 # (validate policy-merge behavior first per the plan's Risks section).
@@ -158,6 +164,14 @@ spec:
     # `traffic.requestTimeout` used in this repo's older ai-policy.yaml.
     timeouts:
       request: "120s"
+    retry:
+      attempts: 2
+      codes:
+        - 429
+        - 500
+        - 502
+        - 503
+        - 504
     rateLimit:
       local:
         - requests: 10

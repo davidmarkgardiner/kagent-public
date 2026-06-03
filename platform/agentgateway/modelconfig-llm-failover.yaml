@@ -1,0 +1,46 @@
+# kagent ModelConfig — agentgateway failover endpoint
+#
+# DEPLOY ON: worker cluster where kagent runs.
+#
+# This points kagent at the `/llm/v1` agentgateway route from
+# backend-llm-failover.yaml. The gateway, not kagent, chooses the primary or
+# fallback provider. Use this for agents that should move to a second model
+# when the primary provider is unhealthy or rate-limited.
+#
+# Preconditions on the management cluster:
+#   kubectl apply --dry-run=server -f backend-llm-failover.yaml
+#   kubectl apply -f backend-llm-failover.yaml
+#   kubectl get agentgatewaybackend llm-failover-backend -n agentgateway-system -o yaml
+#   kubectl get httproute llm-failover-route -n agentgateway-system -o yaml
+#
+# Preconditions on the worker cluster:
+#   kubectl create secret generic litellm-key -n kagent \
+#     --from-literal=api-key="not-required" --dry-run=client -o yaml | kubectl apply -f -
+#
+# Switch one agent to it:
+#   kubectl patch agent k8s-agent -n kagent --type merge \
+#     -p '{"spec":{"declarative":{"modelConfig":"agentgateway-llm-failover"}}}'
+#
+# Switch existing default-model-config agents:
+#   kubectl apply -f modelconfig-llm-failover.yaml
+#   for agent in $(kubectl get agent -n kagent -o name | sed 's|agent.kagent.dev/||'); do
+#     kubectl patch agent "$agent" -n kagent --type merge \
+#       -p '{"spec":{"declarative":{"modelConfig":"agentgateway-llm-failover"}}}'
+#   done
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: agentgateway-llm-failover
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: "{{PRIMARY_MODEL}}"
+  apiKeySecret: litellm-key # pragma: allowlist secret
+  apiKeySecretKey: api-key # pragma: allowlist secret
+  openAI:
+    # Keep this timeout >= the AgentgatewayPolicy request timeout on
+    # llm-failover-route so kagent does not give up before gateway retry and
+    # priority-group failover have time to complete.
+    timeout: 150
+    baseUrl: "https://{{AGENTGATEWAY_HOSTNAME}}/llm/v1"

@@ -32,6 +32,40 @@ The dashboard uses Grafana datasource variables, not fixed environment-specific 
 Namespace variables default to the validation-cluster names but can be changed
 at import time.
 
+## Fallback and Failure Signals
+
+For primary-model rate limits, route kagent through
+`platform/agentgateway/modelconfig-llm-failover.yaml`, which points to the
+gateway `/llm/v1` endpoint from `platform/agentgateway/backend-llm-failover.yaml`.
+The gateway owns fallback: retry on `429/5xx` and route through priority groups.
+On agentgateway versions that support backend health policy, provider 429 can
+also evict the primary group; validate that field against the installed CRD
+before applying it.
+
+Alerting coverage:
+
+- `AgentgatewayRouteRateLimited`: any gateway route returns HTTP 429.
+- `AgentgatewayRouteHighErrorRate`, `AgentgatewayRouteTimeouts`, and
+  `AgentgatewayRouteSlowP95`: backend or route degradation.
+- `KagentControllerDown` and `KagentContainerRestartBurst`: kagent platform
+  process health.
+- `KagentTriageWorkflowFailures`: Argo triage workflows fail.
+- `KagentA2ACallDidNotComplete`: Loki catches wrapper logs where the kagent A2A
+  call does not complete before the workflow returns.
+
+The `Agent Gateway Traffic Quality` dashboard includes panels for 429s, model
+request rate, token use, route failures, and slow calls. Use the route variable
+`.*llm.*` when checking the fallback endpoint. Treat Grafana MCP as
+alert-triggered enrichment: it should pull evidence and dashboard links after an
+alert fires, not silently watch Grafana unless a separate continuous polling loop
+has been deployed and tested.
+
+Stuck workflow age requires a current workflow-state metric, not only the Argo
+`argo_workflows_count` counter. If the environment needs "running longer than N
+minutes" alerts, enable Argo current-state metrics or kube-state-metrics custom
+resource metrics for `Workflow.status.phase` and `Workflow.status.startedAt`,
+then add a duration alert against that source.
+
 ## Install Order
 
 1. Import `observability/grafana/dashboards/k-agent-agentgateway-public-ready.json`.
@@ -115,8 +149,9 @@ the workflow silently.
   sending model traffic through Agent Gateway.
 - `Agent Gateway Traffic Quality` is metric-first and focuses on route/backend
   request rate, 5xx and timeout rate, p50/p95/p99 latency, calls slower than
-  30s, active Envoy requests, response bytes, and token panels that activate
-  when `agentgateway_gen_ai_client_token_usage_*` metrics are emitted.
+  30s, HTTP 429 rate-limit signals, active Envoy requests, response bytes, and
+  token panels that activate when `agentgateway_gen_ai_client_token_usage_*`
+  metrics are emitted.
 - Per-agent tool-call attribution requires additional gateway, agent, or OTel
   labels such as agent name, tool name, model, and trace/request ID. Without
   those labels, the current safe proxy is route/backend/status/reason.

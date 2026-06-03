@@ -1,0 +1,48 @@
+# Managed-Loki rule-sync alerts.
+#
+# Do not apply this directly to vanilla Prometheus. It is a PrometheusRule-shaped
+# object for environments that sync `lgtm.engine: loki` rules into a Loki ruler.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: work-llm-failover-log-alerts
+  namespace: monitoring
+  labels:
+    shipto.lgtm: "true"
+    lgtm.tenant: platform
+    lgtm.engine: loki
+    team: ai-platform
+    route_to: triage
+spec:
+  groups:
+    - name: work-llm-failover-log-signals
+      interval: 1m
+      rules:
+        - alert: WorkAgentgatewayRateLimitLogBurst
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace=~"agentgateway-system|kgateway-system"} |~ "(?i)(429|too many requests|rate.?limit|quota exceeded)" [10m])
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "agentgateway rate-limit signals in logs"
+            description: "Repeated rate-limit or quota signals are present in gateway logs. Confirm whether Qwen primary is saturated and whether GPT-4 fallback is serving."
+
+        - alert: WorkKagentA2ACallDidNotComplete
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace=~"argo|argo-events|kagent"} |~ "(?i)(K-Agent A2A call did not complete|a2a call did not complete|agent invocation did not complete|context deadline exceeded)" [10m])
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "kagent A2A call did not complete"
+            description: "A triage workflow or kagent component logged that an A2A call did not complete. Check workflow pod logs, agentgateway route health, and model latency."

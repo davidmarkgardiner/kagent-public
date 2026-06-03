@@ -1,0 +1,105 @@
+# Prometheus alerts for the Qwen-primary/GPT-4-secondary failover path.
+#
+# DEPLOY ON: cluster where Prometheus Operator watches PrometheusRule resources.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: work-llm-failover-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prom
+    team: ai-platform
+    route_to: triage
+spec:
+  groups:
+    - name: work-llm-failover
+      interval: 30s
+      rules:
+        - alert: WorkLLMFailoverRouteRateLimited
+          expr: |
+            sum by (cluster, namespace, gateway, route, backend, status, reason) (
+              max without(job, container, endpoint, exported_gateway) (
+                increase(agentgateway_requests_total{route=~".*work-llm-failover.*|.*llm.*",status="429"}[10m])
+              )
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "LLM failover route returned HTTP 429"
+            description: "Route {{ $labels.route }} backend {{ $labels.backend }} returned 429. Confirm whether this is gateway-local rate limiting or upstream Qwen quota pressure."
+
+        - alert: WorkLLMFailoverRouteHighErrorRate
+          expr: |
+            (
+              sum by (cluster, route, backend) (
+                max without(job, container, endpoint, exported_gateway) (
+                  rate(agentgateway_requests_total{route=~".*work-llm-failover.*|.*llm.*",status=~"5.."}[5m])
+                )
+              )
+              /
+              clamp_min(
+                sum by (cluster, route, backend) (
+                  max without(job, container, endpoint, exported_gateway) (
+                    rate(agentgateway_requests_total{route=~".*work-llm-failover.*|.*llm.*"}[5m])
+                  )
+                ),
+                0.001
+              )
+            ) > 0.05
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "LLM failover route 5xx rate is high"
+            description: "Route {{ $labels.route }} backend {{ $labels.backend }} has sustained 5xx errors."
+
+        - alert: WorkLLMFailoverRouteSlowP95
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (cluster, route, backend, le) (
+                max without(job, container, endpoint, exported_gateway) (
+                  rate(agentgateway_request_duration_seconds_bucket{route=~".*work-llm-failover.*|.*llm.*"}[5m])
+                )
+              )
+            ) > 90
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "LLM failover route p95 latency is above 90s"
+            description: "Route {{ $labels.route }} backend {{ $labels.backend }} is slow. Check Qwen saturation, GPT-4 fallback, and kagent timeouts."
+
+        - alert: WorkKagentTriageWorkflowFailures
+          expr: |
+            sum by (cluster, workflow_template) (
+              rate(argo_workflows_count{status="Failed", workflow_template=~".*(k-agent|kagent|triage|alert).*"}[10m])
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "kagent triage workflow failed"
+            description: "Workflow template {{ $labels.workflow_template }} is failing. Check A2A call logs and gateway/model health."
+
+        - alert: WorkAgentgatewayTokenMetricsMissing
+          expr: |
+            absent(agentgateway_gen_ai_client_token_usage_count)
+          for: 30m
+          labels:
+            severity: info
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "agentgateway token metrics missing"
+            description: "Token panels and model-level traffic proof will be blind until LLM traffic routes through agentgateway and emits gen_ai metrics."

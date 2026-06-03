@@ -111,6 +111,23 @@ spec:
             summary: "agentgateway route is timing out"
             description: "{{ $labels.namespace }}/{{ $labels.gateway }} route {{ $labels.route }} backend {{ $labels.backend }} returned {{ $labels.status }} / {{ $labels.reason }} in the last 10m."
 
+        - alert: AgentgatewayRouteRateLimited
+          expr: |
+            sum by (cluster, namespace, gateway, route, backend, status, reason) (
+              max without(job, container, endpoint, exported_gateway) (
+                increase(agentgateway_requests_total{status="429"}[10m])
+              )
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "agentgateway route returned 429"
+            description: "{{ $labels.namespace }}/{{ $labels.gateway }} route {{ $labels.route }} backend {{ $labels.backend }} returned HTTP 429. If this is the /llm/v1 route, confirm whether the 429 is gateway-local overload protection or upstream provider rate limiting that should trigger fallback."
+
         - alert: AgentgatewayRouteSlowP95
           expr: |
             histogram_quantile(
@@ -199,3 +216,34 @@ spec:
           annotations:
             summary: "kagent container restart burst"
             description: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} restarted more than 3 times in 15m."
+
+    - name: k-agent-triage-workflow-health
+      interval: 1m
+      rules:
+        - alert: KagentTriageWorkflowFailures
+          expr: |
+            sum by (cluster, workflow_template) (
+              rate(argo_workflows_count{status="Failed", workflow_template=~".*(k-agent|kagent|triage|alert).*"}[10m])
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "kagent triage workflow failed"
+            description: "Argo workflow template {{ $labels.workflow_template }} is producing failed workflow runs. Check the workflow pod logs and kagent A2A call result."
+
+        - alert: KagentWorkflowMetricsMissing
+          expr: |
+            absent(argo_workflows_count)
+          for: 30m
+          labels:
+            severity: info
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "Argo workflow metrics are missing"
+            description: "Cannot alert on kagent triage workflow failures or incomplete runs because argo_workflows_count is absent. Enable Argo Workflows controller metrics and a ServiceMonitor before relying on workflow SLO alerts."

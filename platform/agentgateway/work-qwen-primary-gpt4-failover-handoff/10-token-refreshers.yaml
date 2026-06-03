@@ -1,0 +1,214 @@
+# Token refreshers for Qwen primary and GPT-4 secondary.
+#
+# DEPLOY ON: management cluster where agentgateway runs.
+#
+# Public-safe placeholders:
+#   {{TOKEN_REFRESHER_IMAGE}} must contain az, kubectl, bash, and coreutils.
+#   {{QWEN_*}} values describe the service-principal based Qwen token path.
+#   {{GPT4_*}} values describe the UAMI based GPT-4 token path.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agentgateway-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: qwen-service-principal
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  tenant-id: "{{QWEN_TENANT_ID}}"
+  client-id: "{{QWEN_CLIENT_ID}}"
+  client-secret: "{{QWEN_CLIENT_SECRET}}"
+  scope: "{{QWEN_AAD_SCOPE}}"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: qwen-token-refresher
+  namespace: agentgateway-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: qwen-token-refresher
+  namespace: agentgateway-system
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: qwen-token-refresher
+  namespace: agentgateway-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: qwen-token-refresher
+subjects:
+  - kind: ServiceAccount
+    name: qwen-token-refresher
+    namespace: agentgateway-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: qwen-token-refresher
+  namespace: agentgateway-system
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Replace
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: qwen-token-refresher
+          restartPolicy: OnFailure
+          containers:
+            - name: refresh-token
+              image: "{{TOKEN_REFRESHER_IMAGE}}"
+              env:
+                - name: TENANT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: qwen-service-principal
+                      key: tenant-id
+                - name: CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: qwen-service-principal
+                      key: client-id
+                - name: CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: qwen-service-principal
+                      key: client-secret
+                - name: AAD_SCOPE
+                  valueFrom:
+                    secretKeyRef:
+                      name: qwen-service-principal
+                      key: scope
+              command:
+                - /bin/bash
+                - -ceu
+                - |
+                  az login \
+                    --service-principal \
+                    --username "${CLIENT_ID}" \
+                    --password "${CLIENT_SECRET}" \
+                    --tenant "${TENANT_ID}" \
+                    --allow-no-subscriptions >/dev/null
+
+                  TOKEN="$(az account get-access-token --scope "${AAD_SCOPE}" --query accessToken -o tsv)"
+                  test -n "${TOKEN}"
+
+                  kubectl create secret generic qwen-primary-token \
+                    -n agentgateway-system \
+                    --from-literal=Authorization="Bearer ${TOKEN}" \
+                    --dry-run=client -o yaml | kubectl apply -f -
+
+                  echo "qwen-primary-token refreshed at $(date -u +%FT%TZ)"
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 96Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gpt4-uami-token-refresher
+  namespace: agentgateway-system
+  annotations:
+    azure.workload.identity/client-id: "{{GPT4_UAMI_CLIENT_ID}}"
+  labels:
+    azure.workload.identity/use: "true"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gpt4-uami-token-refresher
+  namespace: agentgateway-system
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gpt4-uami-token-refresher
+  namespace: agentgateway-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gpt4-uami-token-refresher
+subjects:
+  - kind: ServiceAccount
+    name: gpt4-uami-token-refresher
+    namespace: agentgateway-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gpt4-uami-token-refresher
+  namespace: agentgateway-system
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Replace
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: gpt4-uami-token-refresher
+          restartPolicy: OnFailure
+          containers:
+            - name: refresh-token
+              image: "{{TOKEN_REFRESHER_IMAGE}}"
+              env:
+                - name: AAD_SCOPE
+                  value: "{{GPT4_AAD_SCOPE}}"
+              command:
+                - /bin/bash
+                - -ceu
+                - |
+                  test -n "${AZURE_CLIENT_ID:-}"
+                  test -n "${AZURE_TENANT_ID:-}"
+                  test -n "${AZURE_FEDERATED_TOKEN_FILE:-}"
+
+                  az login \
+                    --service-principal \
+                    --username "${AZURE_CLIENT_ID}" \
+                    --tenant "${AZURE_TENANT_ID}" \
+                    --federated-token "$(cat "${AZURE_FEDERATED_TOKEN_FILE}")" \
+                    --allow-no-subscriptions >/dev/null
+
+                  TOKEN="$(az account get-access-token --scope "${AAD_SCOPE}" --query accessToken -o tsv)"
+                  test -n "${TOKEN}"
+
+                  kubectl create secret generic gpt4-secondary-token \
+                    -n agentgateway-system \
+                    --from-literal=Authorization="Bearer ${TOKEN}" \
+                    --dry-run=client -o yaml | kubectl apply -f -
+
+                  echo "gpt4-secondary-token refreshed at $(date -u +%FT%TZ)"
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 96Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi

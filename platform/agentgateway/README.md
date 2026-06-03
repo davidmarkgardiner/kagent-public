@@ -23,6 +23,7 @@ secret-rotation-safe UAMI custom-scope workflow.
                                                   │     │    /azure/v1   → azure-openai-bknd  │
                                                   │     │    /openai/v1  → kubeai-bknd        │
                                                   │     │    /qwen/v1    → vllm-qwen-bknd     │
+                                                  │     │    /llm/v1     → priority failover  │
                                                   │     ▼                                     │
                                                   │  AgentgatewayBackends                     │
                                                   │     │  • azureopenai + UAMI (or CronJob)  │
@@ -70,12 +71,14 @@ secret-rotation-safe UAMI custom-scope workflow.
 | `backend-kubeai.yaml` | KubeAI local model server available |
 | `backend-kubeai-qwen.yaml` | KubeAI serves `qwen3-14b` and kagent should call it through `/qwen/v1` on agentgateway |
 | `backend-vllm-qwen.yaml` | vLLM-hosted Qwen model — HTTPRoute at `/qwen/v1` with URL rewrite |
+| `backend-llm-failover.yaml` | Priority-group failover endpoint at `/llm/v1`; primary provider first, fallback provider after the primary group is unavailable; route retry includes 429/5xx |
 
 ### Worker cluster — kagent model configs
 
 | File | Use when |
 |---|---|
 | `modelconfig-default-qwen.yaml` | Existing agents use `default-model-config` and should route through agentgateway to local Qwen |
+| `modelconfig-llm-failover.yaml` | Agents should use the `/llm/v1` gateway failover endpoint |
 | `modelconfig-kubeai.yaml` | You want a separate `agentgateway-kubeai` ModelConfig |
 | `modelconfig-qwen.yaml` | You want a separate `agentgateway-qwen` ModelConfig |
 
@@ -95,7 +98,7 @@ applies until that file's verdict table is filled in against a live cluster.
 |---|---|---|
 | `DEMO-SCHEMA-GATE.md` | PR 0 | Read-only CRD/runtime support verdict for PRs 1-4 |
 | `policy-prompt-enrichment.yaml` | PR 1 | Inject org-wide SRE system prompt at the gateway, no kagent edits |
-| `backend-llm-failover.yaml` | PR 2 | Single `/llm/v1` endpoint with local model first, Azure OpenAI fallback |
+| `backend-llm-failover.yaml` | PR 2 | Single `/llm/v1` endpoint with local model first, Azure OpenAI fallback, and route retry on 429/5xx |
 | `FAILOVER-DEMO.md` | PR 2 | Safe failover test options + rollback |
 | `backend-argo-openapi-mcp.yaml` | PR 3 | Argo Server REST OpenAPI → MCP tools (gated on schema verdict) |
 | `policy-argo-openapi-mcp.yaml` | PR 3 | MCP CEL authz: read tools open, writes allowlisted |
@@ -112,6 +115,7 @@ applies until that file's verdict table is filled in against a live cluster.
 | File | Applies when |
 |---|---|
 | `modelconfig-azure.yaml` | Pointing kagent at Azure OpenAI backend |
+| `modelconfig-llm-failover.yaml` | Pointing kagent at the gateway-controlled fallback backend |
 | `modelconfig-kubeai.yaml` | Pointing kagent at KubeAI backend |
 | `modelconfig-qwen.yaml` | Pointing kagent at vLLM/Qwen backend |
 | `kagent-values-otel.yaml` | Want richer kagent → Alloy OTLP logs/traces (Helm values overlay) |
@@ -169,6 +173,35 @@ for agent in $(kubectl get agent -n kagent -o name | sed 's|agent.kagent.dev/||'
     -p '{"spec":{"declarative":{"modelConfig":"agentgateway-azure-openai"}}}'
 done
 ```
+
+## Rate-Limit Fallback Pattern
+
+kagent `ModelConfig` does not define a list of fallback models. It points to one
+OpenAI-compatible endpoint. Put fallback in agentgateway instead:
+
+1. Apply `backend-llm-failover.yaml` on the management cluster.
+2. Apply `modelconfig-llm-failover.yaml` on the worker cluster.
+3. Patch selected agents to `spec.declarative.modelConfig=agentgateway-llm-failover`.
+4. Run `FAILOVER-DEMO.md`, including the 429 probe, before rolling it out fleet-wide.
+
+`backend-llm-failover.yaml` includes route retry on
+`429, 500, 502, 503, 504` plus priority groups. Keep the gateway's own local
+`rateLimit` above expected kagent bursts; a gateway-generated 429 happens before
+provider selection and is an overload protection signal, not a provider fallback
+signal. If the installed CRD supports `AgentgatewayPolicy.spec.backend.health`,
+add a backend health policy for `response.code == 429 || response.code >= 500`
+after server-side validation; the `proxmox-k8s` CRD checked on 2026-06-03 did
+not accept that field.
+
+### Failover Configuration
+
+| Placeholder | Meaning |
+|---|---|
+| `{{PRIMARY_MODEL}}` | Primary model served by the local/OpenAI-compatible provider. |
+| `{{AGENTGATEWAY_HOSTNAME}}` | Worker-cluster reachable hostname for the management-cluster agentgateway ingress. |
+| `{{AZURE_OPENAI_RESOURCE}}` | Azure OpenAI resource name without the `.openai.azure.com` suffix. |
+| `{{AZURE_OPENAI_DEPLOYMENT}}` | Azure OpenAI deployment name used by the fallback provider. |
+| `{{AZURE_OPENAI_API_KEY}}` | API key for the fallback path when using the mixed-provider demo manifest; prefer the UAMI/two-backend pattern where available. |
 
 ## Troubleshooting
 

@@ -43,6 +43,36 @@ spec:
             summary: "agentgateway upstream reset burst"
             description: "agentgateway logged repeated upstream resets or timeouts. Check model backend health and retry behavior."
 
+        - alert: AgentgatewayRateLimitLogBurst
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace=~"agentgateway-system|kgateway-system"} |~ "(?i)(429|too many requests|rate.?limit|quota exceeded)" [10m])
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "agentgateway rate-limit signals in logs"
+            description: "agentgateway logged repeated rate-limit or quota signals. Confirm whether /llm/v1 fallback is engaging and whether the gateway-local rate limit is too low."
+
+        - alert: KagentA2ACallDidNotComplete
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace=~"argo|argo-events|kagent"} |~ "(?i)(K-Agent A2A call did not complete|a2a call did not complete|agent invocation did not complete|context deadline exceeded)" [10m])
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+            kagent_path: webhook
+          annotations:
+            summary: "kagent A2A call did not complete"
+            description: "A triage workflow or kagent component logged that an A2A call did not complete. Check agentgateway route health, model latency, and workflow pod logs."
+
         - alert: LitmusChaosExperimentFailed
           expr: |
             sum by (cluster) (

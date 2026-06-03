@@ -1,0 +1,31 @@
+# kagent ModelConfig for the work failover endpoint.
+#
+# DEPLOY ON: worker cluster where kagent runs.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kagent
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agentgateway-work-failover-key
+  namespace: kagent
+type: Opaque
+stringData:
+  api-key: "not-required" # pragma: allowlist secret
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: agentgateway-qwen-primary-gpt4-fallback
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: "{{QWEN_MODEL}}"
+  apiKeySecret: agentgateway-work-failover-key # pragma: allowlist secret
+  apiKeySecretKey: api-key # pragma: allowlist secret
+  openAI:
+    timeout: 180
+    baseUrl: "https://{{AGENTGATEWAY_HOSTNAME}}/llm/v1"
