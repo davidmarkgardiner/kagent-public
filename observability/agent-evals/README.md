@@ -37,6 +37,12 @@ Wire the post-run Argo audit step:
 observability/agent-evals/ARGO-RUNTIME.md
 ```
 
+Review the DeepEval fit analysis:
+
+```text
+observability/agent-evals/deepeval/README.md
+```
+
 This directory contains the deterministic MVP for scoring kagent agents before
 they are promoted into dev, staging, or production workflows.
 
@@ -63,6 +69,7 @@ observability/agent-evals/
 |-- cases/                   Golden deterministic cases
 |-- lifecycle-cases/         Golden end-to-end workflow cases
 |-- argo/                    Reusable Argo lifecycle-eval template and caller example
+|-- deepeval/                Supplemental DeepEval fit analysis and future pilot area
 |-- LIFECYCLE-EVALUATION.md  Phase 2 end-to-end incident scoring design
 |-- ARGO-RUNTIME.md          Runtime wiring for post-incident Argo evaluation
 |-- scripts/                 Scorer and report helpers
