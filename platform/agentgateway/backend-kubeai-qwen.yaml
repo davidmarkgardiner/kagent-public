@@ -4,7 +4,11 @@
 # and KubeAI are co-located.
 #
 # This mirrors the home-lab/work target shape:
-#   kagent -> agentgateway /qwen/v1 -> KubeAI /openai/v1 -> qwen3-14b
+#   kagent -> agentgateway /qwen/v1 -> qwen3-openai-clean-proxy
+#          -> KubeAI/Ollama native API with think=false -> qwen3-14b
+#
+# The clean proxy is defined in qwen3-no-think-proxy.yaml. It keeps the public
+# route OpenAI-compatible while suppressing Qwen3 <think> wrappers at source.
 #
 # Replace the parentRef Gateway name if your cluster uses a different
 # agentgateway Gateway. The Proxmox home-lab cluster uses `agent-gw`; the repo
@@ -40,7 +44,7 @@ spec:
     provider:
       openai:
         model: qwen3-14b
-      host: kubeai.kubeai.svc.cluster.local
+      host: qwen3-openai-clean-proxy.kubeai.svc.cluster.local
       port: 80
   policies:
     auth:
