@@ -15,9 +15,9 @@ spec:
       - name: runtime_image
         value: "alpine:3.19"
       - name: incident_id
-        value: "{{GITLAB_ISSUE_ID}}"
+        value: PLACEHOLDER_GITLAB_ISSUE_ID
       - name: ticket_url
-        value: "{{GITLAB_ISSUE_URL}}"
+        value: PLACEHOLDER_GITLAB_ISSUE_URL
   templates:
     - name: main
       dag:

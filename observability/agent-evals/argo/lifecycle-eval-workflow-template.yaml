@@ -22,7 +22,7 @@ spec:
       - name: workflow_name
         value: "{{workflow.name}}"
       - name: incident_id
-        value: "{{GITLAB_ISSUE_ID}}"
+        value: PLACEHOLDER_GITLAB_ISSUE_ID
       - name: incident_namespace
         value: demo-payments
       - name: workload
@@ -32,9 +32,9 @@ spec:
       - name: ticket_system
         value: GitLab
       - name: ticket_id
-        value: "{{GITLAB_ISSUE_ID}}"
+        value: PLACEHOLDER_GITLAB_ISSUE_ID
       - name: ticket_url
-        value: "{{GITLAB_ISSUE_URL}}"
+        value: PLACEHOLDER_GITLAB_ISSUE_URL
       - name: ticket_closed
         value: "false"
       - name: remediation_mode
@@ -65,6 +65,26 @@ spec:
             path: lifecycle-cases/chaos-pod-delete.yaml
   templates:
     - name: evaluate-lifecycle
+      volumes:
+        - name: agent-eval-runtime
+          configMap:
+            name: agent-eval-runtime-files
+            defaultMode: 0755
+            items:
+              - key: reporting.py
+                path: scripts/reporting.py
+              - key: metrics.py
+                path: scripts/metrics.py
+              - key: collect-lifecycle-evidence.py
+                path: scripts/collect-lifecycle-evidence.py
+              - key: score-lifecycle-run.py
+                path: scripts/score-lifecycle-run.py
+              - key: summarize-agent-scores.py
+                path: scripts/summarize-agent-scores.py
+              - key: pod-crashloop-hitl-remediation.yaml
+                path: lifecycle-cases/pod-crashloop-hitl-remediation.yaml
+              - key: chaos-pod-delete.yaml
+                path: lifecycle-cases/chaos-pod-delete.yaml
       inputs:
         parameters:
           - name: runtime_image
