@@ -637,6 +637,7 @@ spec:
         command: [sh]
         source: |
           set -eu
+          echo "HITL_EVIDENCE_SOURCE: public_demo_resume_marker"
           echo "HITL_STATUS: resumed"
           echo "REMEDIATION_MODE: gitops_or_workflow_only"
           echo "KB_UPDATE_MR: dry_run_after_hitl"
@@ -715,8 +716,10 @@ spec:
           TRACE_FALLBACK: NO_TRACE
           INCIDENT_SYNTHESIS: completed
           HITL_REQUIRED: yes
+          HITL_EVIDENCE_SOURCE: public_demo_resume_marker
           HITL_STATUS: resumed
           HITL approval id recorded
+          KNOWLEDGE_EVIDENCE_SOURCE: synthetic_marker_contract
           KB_UPDATE_MR: dry_run_after_hitl
           REMEDIATION_MODE: gitops_or_workflow_only
           REMEDIATION_EXECUTED: yes

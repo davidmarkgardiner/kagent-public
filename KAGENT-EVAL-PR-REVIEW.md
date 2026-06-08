@@ -69,6 +69,7 @@ kubectl create --dry-run=client -f a2a/smart-triage-fanout-demo/workflow.yaml
 
 python3 -m py_compile \
   observability/agent-evals/scripts/reporting.py \
+  observability/agent-evals/scripts/metrics.py \
   observability/agent-evals/scripts/collect-lifecycle-evidence.py \
   observability/agent-evals/scripts/score-lifecycle-run.py \
   observability/agent-evals/scripts/summarize-agent-scores.py \

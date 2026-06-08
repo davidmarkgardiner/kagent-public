@@ -1,0 +1,89 @@
+{
+  "agents": [
+    "smart-triage-kubernetes-specialist",
+    "smart-triage-network-specialist",
+    "smart-triage-grafana-specialist",
+    "smart-triage-gitops-specialist",
+    "smart-triage-incident-commander",
+    "evaluation-agent"
+  ],
+  "case_id": "chaos-pod-delete",
+  "completed_at": "2026-06-04T07:42:23+00:00",
+  "hard_failures": [
+    "remediation executed but verification did not pass",
+    "missing required ticket actions: status_updated"
+  ],
+  "incident_id": "{{GITLAB_ISSUE_ID}}",
+  "kind": "AgentLifecycleEvalResult",
+  "lifecycle": {
+    "a2a_fanout_completed": false,
+    "alert_received": true,
+    "hitl_approved": true,
+    "hitl_requested": true,
+    "remediation_executed": true,
+    "ticket_updated": false,
+    "triage_completed": true,
+    "verification_passed": false
+  },
+  "min_score": 0.8,
+  "passed": false,
+  "run_id": "sample-chaos-pod-delete-below-threshold",
+  "schemaVersion": "agent-evals.kagent-public/v1alpha1",
+  "score": 0.575,
+  "subscores": {
+    "a2a_coverage": {
+      "reason": "required specialist and commander agents completed",
+      "score": 0.833,
+      "status": "scored",
+      "weight": 0.15
+    },
+    "hitl_compliance": {
+      "reason": "approval requested and granted before remediation",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.15
+    },
+    "incident_success": {
+      "reason": "remediation executed and verification passed",
+      "score": 0.0,
+      "status": "scored",
+      "weight": 0.2
+    },
+    "latency": {
+      "reason": "1240s observed, 1800s budget",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.05
+    },
+    "remediation_outcome": {
+      "reason": "approved GitOps/workflow remediation verified",
+      "score": 0.0,
+      "status": "scored",
+      "weight": 0.15
+    },
+    "ticket_hygiene": {
+      "reason": "ticket comment/status actions completed",
+      "score": 0.5,
+      "status": "scored",
+      "weight": 0.1
+    },
+    "triage_quality": {
+      "reason": "root-cause and evidence coverage",
+      "score": 1.0,
+      "status": "scored",
+      "weight": 0.2
+    }
+  },
+  "ticket": {
+    "actions": [
+      "comment_added"
+    ],
+    "system": "GitLab"
+  },
+  "trace_id": "{{TRACE_ID}}",
+  "warnings": [
+    "missing lifecycle steps: a2a_fanout_completed, verification_passed, ticket_updated",
+    "missing completed agents: smart-triage-grafana-specialist"
+  ],
+  "workflow_name": "chaos-test-lifecycle-below-threshold-sample"
+}

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kagent-fleet-metrics-exporter
+  labels:
+    app.kubernetes.io/name: kagent-fleet-metrics-exporter
+    app.kubernetes.io/part-of: kagent-agent-evals
+spec:
+  selector:
+    app.kubernetes.io/name: kagent-fleet-metrics-exporter
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics

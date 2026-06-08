@@ -53,6 +53,7 @@ scripts and the lifecycle case:
 
 ```text
 scripts/reporting.py
+scripts/metrics.py
 scripts/collect-lifecycle-evidence.py
 scripts/score-lifecycle-run.py
 scripts/summarize-agent-scores.py

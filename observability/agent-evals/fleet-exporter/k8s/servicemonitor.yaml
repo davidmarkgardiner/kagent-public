@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kagent-fleet-metrics-exporter
+  labels:
+    app.kubernetes.io/name: kagent-fleet-metrics-exporter
+    app.kubernetes.io/part-of: kagent-agent-evals
+    release: kube-prom
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kagent-fleet-metrics-exporter
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s

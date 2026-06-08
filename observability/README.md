@@ -21,6 +21,8 @@ Start with these documents for the current K-Agent / Agent Gateway path:
 | Score whether kagent agents are doing the right job | [`agent-evals/README.md`](agent-evals/README.md) |
 | Audit full incident workflows after A2A, HITL, remediation, and ticket updates | [`agent-evals/LIFECYCLE-EVALUATION.md`](agent-evals/LIFECYCLE-EVALUATION.md) |
 | Wire lifecycle scoring as an Argo post-run audit step | [`agent-evals/ARGO-RUNTIME.md`](agent-evals/ARGO-RUNTIME.md) |
+| Review eval metric labels, RBAC, retention, and dashboard access | [`agent-evals/EVAL-METRICS-ACCESS-CONTROL-DESIGN.md`](agent-evals/EVAL-METRICS-ACCESS-CONTROL-DESIGN.md) |
+| Review the offline/online eval design visual | [`agent-evals/offline-online-eval-design.html`](agent-evals/offline-online-eval-design.html) |
 | Review the agent eval visual walkthrough | [`agent-evals/agent-eval-scorecard-demo.html`](agent-evals/agent-eval-scorecard-demo.html) |
 | Lift the pattern into a work environment | [`../KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md`](../KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md) |
 | Route agents to home dashboards and incident evidence dashboards | [`grafana/dashboard-registry.yaml`](grafana/dashboard-registry.yaml) |

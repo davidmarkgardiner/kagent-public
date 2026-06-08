@@ -1,0 +1,89 @@
+# HELP kagent_agent_info Kagent Agent inventory record. Value is always 1.
+# TYPE kagent_agent_info gauge
+kagent_agent_info{cluster="proxmox-k8s",namespace="kagent",agent="chaos-test-manager",role="orchestrator",capability="chaos",env_tier="dev"} 1
+kagent_agent_info{cluster="proxmox-k8s",namespace="kagent",agent="chaos-designer",role="planner",capability="chaos",env_tier="dev"} 1
+kagent_agent_info{cluster="proxmox-k8s",namespace="kagent",agent="grafana-evidence-agent",role="specialist",capability="observability",env_tier="dev"} 1
+kagent_agent_info{cluster="proxmox-k8s",namespace="kagent",agent="review-manager",role="reviewer",capability="governance",env_tier="dev"} 1
+kagent_agent_info{cluster="workload-dev-a",namespace="kagent",agent="kube-system-agent",role="triage",capability="kubernetes",env_tier="dev"} 1
+kagent_agent_info{cluster="workload-dev-a",namespace="kagent",agent="networking-triage-agent",role="specialist",capability="networking",env_tier="dev"} 1
+
+# HELP kagent_agent_ready Kagent Agent readiness as observed by inventory collection.
+# TYPE kagent_agent_ready gauge
+kagent_agent_ready{cluster="proxmox-k8s",namespace="kagent",agent="chaos-test-manager",role="orchestrator",capability="chaos",env_tier="dev"} 1
+kagent_agent_ready{cluster="proxmox-k8s",namespace="kagent",agent="chaos-designer",role="planner",capability="chaos",env_tier="dev"} 1
+kagent_agent_ready{cluster="proxmox-k8s",namespace="kagent",agent="grafana-evidence-agent",role="specialist",capability="observability",env_tier="dev"} 1
+kagent_agent_ready{cluster="proxmox-k8s",namespace="kagent",agent="review-manager",role="reviewer",capability="governance",env_tier="dev"} 1
+kagent_agent_ready{cluster="workload-dev-a",namespace="kagent",agent="kube-system-agent",role="triage",capability="kubernetes",env_tier="dev"} 1
+kagent_agent_ready{cluster="workload-dev-a",namespace="kagent",agent="networking-triage-agent",role="specialist",capability="networking",env_tier="dev"} 0
+
+# HELP kagent_incident_received_total Incidents received by agent workflow.
+# TYPE kagent_incident_received_total counter
+kagent_incident_received_total{cluster="proxmox-k8s",namespace="argo",agent="chaos-test-manager",workflow_name="chaos-test-lifecycle",run_id="chaos-test-lifecycle-sample",failure_mode="pod-delete",env_tier="dev"} 1
+kagent_incident_received_total{cluster="workload-dev-a",namespace="argo",agent="kube-system-agent",workflow_name="smart-triage-fanout",run_id="smart-triage-fanout-sample",failure_mode="CrashLoopBackOff",env_tier="dev"} 6
+kagent_incident_received_total{cluster="workload-dev-a",namespace="argo",agent="networking-triage-agent",workflow_name="network-triage",run_id="network-triage-sample",failure_mode="latency",env_tier="dev"} 2
+
+# HELP kagent_incident_triaged_total Incidents with completed triage evidence.
+# TYPE kagent_incident_triaged_total counter
+kagent_incident_triaged_total{cluster="proxmox-k8s",namespace="argo",agent="chaos-test-manager",workflow_name="chaos-test-lifecycle",run_id="chaos-test-lifecycle-sample",failure_mode="pod-delete",env_tier="dev"} 1
+kagent_incident_triaged_total{cluster="workload-dev-a",namespace="argo",agent="kube-system-agent",workflow_name="smart-triage-fanout",run_id="smart-triage-fanout-sample",failure_mode="CrashLoopBackOff",env_tier="dev"} 5
+kagent_incident_triaged_total{cluster="workload-dev-a",namespace="argo",agent="networking-triage-agent",workflow_name="network-triage",run_id="network-triage-sample",failure_mode="latency",env_tier="dev"} 1
+
+# HELP kagent_remediation_attempted_total Remediation attempts made through approved workflow paths.
+# TYPE kagent_remediation_attempted_total counter
+kagent_remediation_attempted_total{cluster="proxmox-k8s",namespace="argo",agent="chaos-test-manager",workflow_name="chaos-test-lifecycle",run_id="chaos-test-lifecycle-sample",failure_mode="pod-delete",env_tier="dev"} 1
+kagent_remediation_attempted_total{cluster="workload-dev-a",namespace="argo",agent="kube-system-agent",workflow_name="smart-triage-fanout",run_id="smart-triage-fanout-sample",failure_mode="CrashLoopBackOff",env_tier="dev"} 3
+
+# HELP kagent_remediation_verified_total Remediation attempts with successful post-action verification.
+# TYPE kagent_remediation_verified_total counter
+kagent_remediation_verified_total{cluster="proxmox-k8s",namespace="argo",agent="chaos-test-manager",workflow_name="chaos-test-lifecycle",run_id="chaos-test-lifecycle-sample",failure_mode="pod-delete",env_tier="dev"} 1
+kagent_remediation_verified_total{cluster="workload-dev-a",namespace="argo",agent="kube-system-agent",workflow_name="smart-triage-fanout",run_id="smart-triage-fanout-sample",failure_mode="CrashLoopBackOff",env_tier="dev"} 2
+
+# HELP kagent_hitl_pending Human approvals currently pending for agent workflows.
+# TYPE kagent_hitl_pending gauge
+kagent_hitl_pending{cluster="proxmox-k8s",namespace="argo",workflow_name="chaos-test-lifecycle",run_id="chaos-test-lifecycle-sample",approval_type="chaos",env_tier="dev"} 0
+kagent_hitl_pending{cluster="workload-dev-a",namespace="argo",workflow_name="smart-triage-fanout",run_id="smart-triage-fanout-sample",approval_type="remediation",env_tier="dev"} 1
+
+# HELP agent_eval_score Deterministic kagent agent eval score normalized from 0 to 1.
+# TYPE agent_eval_score gauge
+agent_eval_score{cluster="proxmox-k8s",namespace="kagent",agent="chaos-test-manager",case_id="chaos-pod-delete",run_id="chaos-test-lifecycle-s2j7z",env_tier="dev"} 1.0
+agent_eval_score{cluster="proxmox-k8s",namespace="kagent",agent="grafana-evidence-agent",case_id="chaos-pod-delete",run_id="chaos-test-lifecycle-s2j7z",env_tier="dev"} 1.0
+agent_eval_score{cluster="workload-dev-a",namespace="kagent",agent="kube-system-agent",case_id="crashloop-wrong-env-var",run_id="sample-crashloop-001",env_tier="dev"} 0.92
+agent_eval_score{cluster="workload-dev-a",namespace="kagent",agent="networking-triage-agent",case_id="latency-network-policy",run_id="sample-network-001",env_tier="dev"} 0.71
+
+# HELP agent_eval_hard_failures Deterministic kagent agent eval hard failure count.
+# TYPE agent_eval_hard_failures gauge
+agent_eval_hard_failures{cluster="proxmox-k8s",namespace="kagent",agent="chaos-test-manager",case_id="chaos-pod-delete",run_id="chaos-test-lifecycle-s2j7z",env_tier="dev"} 0
+agent_eval_hard_failures{cluster="proxmox-k8s",namespace="kagent",agent="grafana-evidence-agent",case_id="chaos-pod-delete",run_id="chaos-test-lifecycle-s2j7z",env_tier="dev"} 0
+agent_eval_hard_failures{cluster="workload-dev-a",namespace="kagent",agent="kube-system-agent",case_id="crashloop-wrong-env-var",run_id="sample-crashloop-001",env_tier="dev"} 0
+agent_eval_hard_failures{cluster="workload-dev-a",namespace="kagent",agent="networking-triage-agent",case_id="latency-network-policy",run_id="sample-network-001",env_tier="dev"} 1
+
+# HELP agent_lifecycle_eval_score Incident lifecycle eval score normalized from 0 to 1.
+# TYPE agent_lifecycle_eval_score gauge
+agent_lifecycle_eval_score{cluster="proxmox-k8s",namespace="argo",agent="chaos-test-manager",case_id="chaos-pod-delete",run_id="chaos-test-lifecycle-s2j7z",workflow_name="chaos-test-lifecycle",env_tier="dev"} 1.0
+agent_lifecycle_eval_score{cluster="proxmox-k8s",namespace="argo",agent="review-manager",case_id="chaos-pod-delete",run_id="sample-chaos-pod-delete-below-threshold",workflow_name="chaos-test-lifecycle-below-threshold-sample",env_tier="dev"} 0.575
+agent_lifecycle_eval_score{cluster="workload-dev-a",namespace="argo",agent="kube-system-agent",case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout",env_tier="dev"} 0.88
+
+# HELP agent_lifecycle_eval_passed Whether an incident lifecycle eval passed.
+# TYPE agent_lifecycle_eval_passed gauge
+agent_lifecycle_eval_passed{cluster="proxmox-k8s",namespace="argo",agent="chaos-test-manager",case_id="chaos-pod-delete",run_id="chaos-test-lifecycle-s2j7z",workflow_name="chaos-test-lifecycle",env_tier="dev"} 1
+agent_lifecycle_eval_passed{cluster="proxmox-k8s",namespace="argo",agent="review-manager",case_id="chaos-pod-delete",run_id="sample-chaos-pod-delete-below-threshold",workflow_name="chaos-test-lifecycle-below-threshold-sample",env_tier="dev"} 0
+agent_lifecycle_eval_passed{cluster="workload-dev-a",namespace="argo",agent="kube-system-agent",case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout",env_tier="dev"} 1
+
+# HELP agent_lifecycle_eval_hard_failures Incident lifecycle eval hard failure count.
+# TYPE agent_lifecycle_eval_hard_failures gauge
+agent_lifecycle_eval_hard_failures{cluster="proxmox-k8s",namespace="argo",agent="chaos-test-manager",case_id="chaos-pod-delete",run_id="chaos-test-lifecycle-s2j7z",workflow_name="chaos-test-lifecycle",env_tier="dev"} 0
+agent_lifecycle_eval_hard_failures{cluster="proxmox-k8s",namespace="argo",agent="review-manager",case_id="chaos-pod-delete",run_id="sample-chaos-pod-delete-below-threshold",workflow_name="chaos-test-lifecycle-below-threshold-sample",env_tier="dev"} 2
+agent_lifecycle_eval_hard_failures{cluster="workload-dev-a",namespace="argo",agent="kube-system-agent",case_id="pod-crashloop-hitl-remediation",run_id="sample-lifecycle-001",workflow_name="smart-triage-fanout",env_tier="dev"} 0
+
+# HELP kagent_toolgrant_info BYO kagent ToolGrant inventory. Value is always 1.
+# TYPE kagent_toolgrant_info gauge
+kagent_toolgrant_info{cluster="proxmox-k8s",namespace="payments-dev",agent="payments-triage-agent",tool_catalog_ref="kagent-tool-server@v1.0",expires_at="2027-01-01T00:00:00Z"} 1
+kagent_toolgrant_info{cluster="proxmox-k8s",namespace="payments-dev",agent="payments-remediation-agent",tool_catalog_ref="memory-mcp@v1.0",expires_at="2027-01-01T00:00:00Z"} 1
+
+# HELP kagent_agent_tool_denied_total BYO kagent MCP tool denials.
+# TYPE kagent_agent_tool_denied_total counter
+kagent_agent_tool_denied_total{cluster="proxmox-k8s",namespace="payments-dev",agent="payments-remediation-agent",tool="k8s_delete_resource",reason="not_in_toolgrant"} 1
+
+# HELP kagent_policy_violation_total BYO kagent policy violations from admission or PolicyReports.
+# TYPE kagent_policy_violation_total counter
+kagent_policy_violation_total{cluster="proxmox-k8s",namespace="payments-dev",policy="validate-agent-tool-grants",resource_kind="Agent",reason="missing_toolgrant"} 1

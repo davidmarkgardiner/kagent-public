@@ -25,6 +25,36 @@ Open the visual walkthrough:
 observability/agent-evals/agent-eval-scorecard-demo.html
 ```
 
+Open the offline/online eval design visual:
+
+```text
+observability/agent-evals/offline-online-eval-design.html
+```
+
+Import the fleet Grafana dashboard:
+
+```text
+observability/agent-evals/grafana/kagent-fleet-overview-dashboard.json
+```
+
+Read the fleet dashboard metric contract:
+
+```text
+observability/agent-evals/FLEET-DASHBOARD.md
+```
+
+Read the eval metrics library and access-control design:
+
+```text
+observability/agent-evals/EVAL-METRICS-ACCESS-CONTROL-DESIGN.md
+```
+
+Run the live fleet metrics exporter:
+
+```text
+observability/agent-evals/fleet-exporter/README.md
+```
+
 Read the end-to-end lifecycle scoring design:
 
 ```text
@@ -69,8 +99,14 @@ observability/agent-evals/
 |-- cases/                   Golden deterministic cases
 |-- lifecycle-cases/         Golden end-to-end workflow cases
 |-- argo/                    Reusable Argo lifecycle-eval template and caller example
+|-- grafana/                 Agent scorecard and fleet overview dashboards
+|-- fleet-exporter/          Read-only live Agent inventory and workflow metrics exporter
 |-- deepeval/                Supplemental DeepEval fit analysis and future pilot area
+|-- OFFLINE-ONLINE-EVALUATION-DESIGN.md  Offline vs online evaluation architecture
+|-- EVALUATION-ROLLOUT-OPERATING-MODE.md Environment rollout and production gating model
+|-- EVAL-METRICS-ACCESS-CONTROL-DESIGN.md Metrics library, label, and RBAC design
 |-- LIFECYCLE-EVALUATION.md  Phase 2 end-to-end incident scoring design
+|-- FLEET-DASHBOARD.md       Fleet dashboard metric contract and import path
 |-- ARGO-RUNTIME.md          Runtime wiring for post-incident Argo evaluation
 |-- scripts/                 Scorer and report helpers
 |-- results/sample/          Public-safe sample runs, workflow export, and generated reports
@@ -146,6 +182,10 @@ starter dashboard and alerting rule live under `grafana/` and `alerting/`.
 
 Lifecycle results are included when they are under the same result tree. The
 metric family uses `agent_lifecycle_eval_*`.
+
+For fleet views, publish the extra inventory and incident funnel metrics
+documented in `FLEET-DASHBOARD.md`. The dashboard displays scores out of 10
+with PromQL while keeping stored scores normalized from `0.0` to `1.0`.
 
 ## Run Input Format
 

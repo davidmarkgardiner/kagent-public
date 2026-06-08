@@ -33,10 +33,12 @@ Copy or adapt these paths:
 | `observability/agent-evals/scripts/score-lifecycle-run.py` | Scores the normalized lifecycle. |
 | `observability/agent-evals/scripts/summarize-agent-scores.py` | Emits Markdown summary and Prometheus metrics. |
 | `observability/agent-evals/scripts/reporting.py` | Shared JSON/Markdown rendering helpers. |
+| `observability/agent-evals/scripts/metrics.py` | Independent Prometheus metric rendering library. |
 | `observability/agent-evals/lifecycle-cases/pod-crashloop-hitl-remediation.yaml` | Golden lifecycle scoring case. |
 | `observability/agent-evals/schemas/agent-lifecycle-run.schema.json` | Input contract for normalized lifecycle evidence. |
 | `observability/agent-evals/alerting/agent-eval-rules.yaml` | Starter PrometheusRule alerts. |
 | `observability/agent-evals/grafana/agent-eval-scorecard-dashboard.json` | Starter Grafana dashboard. |
+| `observability/agent-evals/EVAL-METRICS-ACCESS-CONTROL-DESIGN.md` | Metrics label, RBAC, retention, and dashboard access-control design. |
 
 ## Runtime Model
 

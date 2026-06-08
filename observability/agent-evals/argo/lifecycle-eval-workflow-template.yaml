@@ -51,6 +51,8 @@ spec:
         items:
           - key: reporting.py
             path: scripts/reporting.py
+          - key: metrics.py
+            path: scripts/metrics.py
           - key: collect-lifecycle-evidence.py
             path: scripts/collect-lifecycle-evidence.py
           - key: score-lifecycle-run.py
@@ -59,6 +61,8 @@ spec:
             path: scripts/summarize-agent-scores.py
           - key: pod-crashloop-hitl-remediation.yaml
             path: lifecycle-cases/pod-crashloop-hitl-remediation.yaml
+          - key: chaos-pod-delete.yaml
+            path: lifecycle-cases/chaos-pod-delete.yaml
   templates:
     - name: evaluate-lifecycle
       inputs:

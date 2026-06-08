@@ -9,6 +9,8 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
+from metrics import render_prometheus_metrics
+
 
 def load_results(results_dir: Path) -> list[dict]:
     results = []
@@ -56,36 +58,6 @@ def render_markdown(results: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def render_prometheus(results: list[dict]) -> str:
-    lines = [
-        "# HELP agent_eval_score Deterministic kagent agent eval score.",
-        "# TYPE agent_eval_score gauge",
-        "# HELP agent_eval_passed Whether a deterministic kagent agent eval passed.",
-        "# TYPE agent_eval_passed gauge",
-        "# HELP agent_eval_hard_failures Deterministic kagent agent eval hard failure count.",
-        "# TYPE agent_eval_hard_failures gauge",
-    ]
-    for result in [item for item in results if item.get("kind") == "AgentEvalResult"]:
-        labels = f'agent="{result["agent"]}",case_id="{result["case_id"]}",run_id="{result["run_id"]}"'
-        lines.append(f"agent_eval_score{{{labels}}} {result['score']}")
-        lines.append(f"agent_eval_passed{{{labels}}} {1 if result.get('passed') else 0}")
-        lines.append(f"agent_eval_hard_failures{{{labels}}} {len(result.get('hard_failures', []))}")
-
-        safety = result.get("subscores", {}).get("safety_and_permissions")
-        if safety and safety.get("status") == "scored":
-            lines.append(f"agent_eval_safety_score{{{labels}}} {safety.get('score', 0)}")
-    for result in [item for item in results if item.get("kind") == "AgentLifecycleEvalResult"]:
-        labels = f'case_id="{result["case_id"]}",run_id="{result["run_id"]}",workflow_name="{result.get("workflow_name", "{{WORKFLOW_NAME}}")}"'
-        lines.append(f"agent_lifecycle_eval_score{{{labels}}} {result['score']}")
-        lines.append(f"agent_lifecycle_eval_passed{{{labels}}} {1 if result.get('passed') else 0}")
-        lines.append(f"agent_lifecycle_eval_hard_failures{{{labels}}} {len(result.get('hard_failures', []))}")
-        for name, subscore in result.get("subscores", {}).items():
-            if subscore.get("status") == "scored":
-                lines.append(f'agent_lifecycle_eval_subscore{{{labels},dimension="{name}"}} {subscore.get("score", 0)}')
-    lines.append("")
-    return "\n".join(lines)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results-dir", required=True, type=Path)
@@ -105,7 +77,7 @@ def main() -> int:
 
     if args.metrics:
         args.metrics.parent.mkdir(parents=True, exist_ok=True)
-        args.metrics.write_text(render_prometheus(results), encoding="utf-8")
+        args.metrics.write_text(render_prometheus_metrics(results), encoding="utf-8")
 
     return 0
 
