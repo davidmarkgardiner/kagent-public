@@ -112,6 +112,21 @@ Expected proof:
 - `list_datasources` returns Grafana datasource names, types, and UIDs
 - `query_prometheus` returns a non-empty result for `count(up)`
 
+Latest home-lab verification on 2026-06-08:
+
+```text
+RemoteMCPServer/kagent-grafana-mcp Accepted=True
+Agent/grafana-evidence-agent Accepted=True Ready=True
+MCP initialized
+list_datasources returned Alertmanager, Loki, Mimir, and Prometheus
+query_prometheus count(up) returned 48
+```
+
+If this check flips back to connection refused, first inspect whether the
+`kagent-grafana-mcp` pod was restarting or unavailable. In the 2026-06-08 run,
+the RemoteMCPServer recovered after the pod restarted and no token or Helm
+configuration change was required.
+
 Add a Loki check only after the Grafana Loki datasource is healthy:
 
 ```bash
