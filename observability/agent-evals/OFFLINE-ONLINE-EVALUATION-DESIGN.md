@@ -220,7 +220,7 @@ Recommended rollout:
 - Which system owns final metrics ingestion: Prometheus textfile collector,
   OTEL collector, workflow artifact import, or a dedicated eval exporter.
 
-## Suggested Microsoft Discussion Summary
+## Suggested Stakeholder Discussion Summary
 
 Use this wording:
 

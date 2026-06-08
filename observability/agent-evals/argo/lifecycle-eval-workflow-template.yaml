@@ -43,28 +43,9 @@ spec:
         value: "{}"
       - name: marker_evidence
         value: ""
-  volumes:
-    - name: agent-eval-runtime
-      configMap:
-        name: agent-eval-runtime-files
-        defaultMode: 0755
-        items:
-          - key: reporting.py
-            path: scripts/reporting.py
-          - key: metrics.py
-            path: scripts/metrics.py
-          - key: collect-lifecycle-evidence.py
-            path: scripts/collect-lifecycle-evidence.py
-          - key: score-lifecycle-run.py
-            path: scripts/score-lifecycle-run.py
-          - key: summarize-agent-scores.py
-            path: scripts/summarize-agent-scores.py
-          - key: pod-crashloop-hitl-remediation.yaml
-            path: lifecycle-cases/pod-crashloop-hitl-remediation.yaml
-          - key: chaos-pod-delete.yaml
-            path: lifecycle-cases/chaos-pod-delete.yaml
   templates:
     - name: evaluate-lifecycle
+      serviceAccountName: agent-lifecycle-eval
       volumes:
         - name: agent-eval-runtime
           configMap:
@@ -77,6 +58,8 @@ spec:
                 path: scripts/metrics.py
               - key: collect-lifecycle-evidence.py
                 path: scripts/collect-lifecycle-evidence.py
+              - key: route-lifecycle-review.py
+                path: scripts/route-lifecycle-review.py
               - key: score-lifecycle-run.py
                 path: scripts/score-lifecycle-run.py
               - key: summarize-agent-scores.py
@@ -119,14 +102,23 @@ spec:
           output_dir=/work/output
           mkdir -p "${output_dir}" /work/evidence
 
-          cat > /work/evidence/workflow.json <<'WORKFLOW_JSON'
+          cat > /work/evidence/workflow.json <<'__KAGENT_EVAL_WORKFLOW_JSON_20260608__'
           {{inputs.parameters.workflow_json}}
-          WORKFLOW_JSON
+          __KAGENT_EVAL_WORKFLOW_JSON_20260608__
 
-          cat > /work/evidence/markers.txt <<'MARKER_EVIDENCE'
+          cat > /work/evidence/markers.txt <<'__KAGENT_EVAL_MARKER_EVIDENCE_20260608__'
           {{inputs.parameters.marker_evidence}}
-          MARKER_EVIDENCE
+          __KAGENT_EVAL_MARKER_EVIDENCE_20260608__
           printf '\nEVALUATION_AGENT: completed\n' >> /work/evidence/markers.txt
+
+          if [ "$(wc -c < /work/evidence/workflow.json)" -gt 200000 ]; then
+            echo "workflow_json exceeds inline parameter guard; pass large evidence as an artifact" >&2
+            exit 2
+          fi
+          if [ "$(wc -c < /work/evidence/markers.txt)" -gt 200000 ]; then
+            echo "marker_evidence exceeds inline parameter guard; pass large evidence as an artifact" >&2
+            exit 2
+          fi
 
           collect_args="
             --output ${output_dir}/lifecycle-run.json
@@ -154,15 +146,25 @@ spec:
           fi
 
           python3 "${eval_root}/scripts/collect-lifecycle-evidence.py" ${collect_args}
+
+          set +e
           python3 "${eval_root}/scripts/score-lifecycle-run.py" \
             --case "${eval_root}/lifecycle-cases/{{inputs.parameters.case_id}}.yaml" \
             --run "${output_dir}/lifecycle-run.json" \
             --output-dir "${output_dir}"
+          score_status=$?
+          set -e
 
           python3 "${eval_root}/scripts/summarize-agent-scores.py" \
             --results-dir "${output_dir}" \
             --summary-md "${output_dir}/summary.md" \
             --metrics "${output_dir}/agent-eval.prom"
+
+          python3 "${eval_root}/scripts/route-lifecycle-review.py" \
+            --results-dir "${output_dir}" \
+            --output "${output_dir}/review-route.json"
+
+          exit "${score_status}"
       outputs:
         parameters:
           - name: lifecycle-run
@@ -174,3 +176,6 @@ spec:
           - name: lifecycle-metrics
             valueFrom:
               path: /work/output/agent-eval.prom
+          - name: review-route
+            valueFrom:
+              path: /work/output/review-route.json

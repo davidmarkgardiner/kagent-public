@@ -343,6 +343,17 @@ spec:
                 - name: marker_evidence
                   value: "{{tasks.prove-result.outputs.parameters.marker-evidence}}"
 
+          - name: close-ticket-after-eval
+            when: "{{tasks.normalize-incident.outputs.parameters.duplicate}} == false"
+            dependencies: [evaluate-lifecycle]
+            template: close-ticket-after-eval
+            arguments:
+              parameters:
+                - name: ticket_id
+                  value: "{{workflow.parameters.fingerprint}}"
+                - name: ticket_url
+                  value: PLACEHOLDER_GITLAB_ISSUE_URL
+
           - name: duplicate-suppressed
             template: duplicate-suppressed
             dependencies: [normalize-incident]
@@ -354,6 +365,24 @@ spec:
 
     - name: human-review
       suspend: {}
+
+    - name: close-ticket-after-eval
+      inputs:
+        parameters:
+          - name: ticket_id
+          - name: ticket_url
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          cat <<'EOF'
+          TICKET_CLOSE_GATE: eval_passed
+          TICKET_ID: {{inputs.parameters.ticket_id}}
+          TICKET_URL: {{inputs.parameters.ticket_url}}
+          ACTION: close_ticket_or_mark_resolved_in_ticket_system
+          DEMO_NOTE: public demo only; no real GitLab issue was closed.
+          EOF
 
     - name: normalize-incident
       outputs:

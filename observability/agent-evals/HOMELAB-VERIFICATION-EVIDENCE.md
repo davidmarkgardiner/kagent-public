@@ -135,9 +135,9 @@ argo submit -n argo observability/agent-evals/argo/lifecycle-eval-hook-example.y
 Observed successful workflow:
 
 ```text
-Name: lifecycle-eval-hook-example-sr5d5
+Name: lifecycle-eval-hook-example-jszv5
 Namespace: argo
-ServiceAccount: smart-triage-fanout-workflow
+ServiceAccount: agent-lifecycle-eval
 Status: Succeeded
 Duration: 20 seconds
 Progress: 3/3
@@ -151,28 +151,81 @@ Evaluator logs:
 
 ```text
 wrote /work/output/lifecycle-run.json
-score=1.0 passed=true json=/work/output/pod-crashloop-hitl-remediation.lifecycle-eval-hook-example-sr5d5.json markdown=/work/output/pod-crashloop-hitl-remediation.lifecycle-eval-hook-example-sr5d5.md
+score=1.0 passed=true json=/work/output/pod-crashloop-hitl-remediation.lifecycle-eval-hook-example-jszv5.json markdown=/work/output/pod-crashloop-hitl-remediation.lifecycle-eval-hook-example-jszv5.md
+REVIEW_MANAGER_ROUTE: not_required
 ```
 
 Output summary included:
 
 ```text
-pod-crashloop-hitl-remediation | lifecycle-eval-hook-example-sr5d5 | PLACEHOLDER_GITLAB_ISSUE_ID | lifecycle-eval-hook-example-sr5d5 | 1.0 | true | None
+pod-crashloop-hitl-remediation | lifecycle-eval-hook-example-jszv5 | PLACEHOLDER_GITLAB_ISSUE_ID | lifecycle-eval-hook-example-jszv5 | 1.0 | true | None
 ```
 
 Output metrics included:
 
 ```text
-agent_lifecycle_eval_score{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5"} 1.0
-agent_lifecycle_eval_passed{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5"} 1
-agent_lifecycle_eval_hard_failures{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5"} 0
-agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5",dimension="a2a_coverage"} 1.0
-agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5",dimension="hitl_compliance"} 1.0
-agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5",dimension="incident_success"} 1.0
-agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5",dimension="remediation_outcome"} 1.0
-agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5",dimension="ticket_hygiene"} 1.0
-agent_lifecycle_eval_subscore{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-sr5d5",workflow_name="lifecycle-eval-hook-example-sr5d5",dimension="triage_quality"} 1.0
+agent_lifecycle_eval_score{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-jszv5",workflow_name="lifecycle-eval-hook-example-jszv5"} 1.0
+agent_lifecycle_eval_passed{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-jszv5",workflow_name="lifecycle-eval-hook-example-jszv5"} 1
+agent_lifecycle_eval_hard_failures{case_id="pod-crashloop-hitl-remediation",run_id="lifecycle-eval-hook-example-jszv5",workflow_name="lifecycle-eval-hook-example-jszv5"} 0
 ```
+
+Dedicated evaluator service account check:
+
+```bash
+kubectl get pods -n argo -l workflows.argoproj.io/workflow=lifecycle-eval-hook-example-jszv5 \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.serviceAccountName}{"\n"}{end}'
+```
+
+Observed every pod used:
+
+```text
+agent-lifecycle-eval
+```
+
+## Negative Online Argo Runtime Verification
+
+Submitted the failing hook:
+
+```bash
+argo submit -n argo observability/agent-evals/argo/lifecycle-eval-hook-negative-example.yaml --watch
+```
+
+Observed workflow:
+
+```text
+Name: lifecycle-eval-hook-negative-example-qgm9x
+Namespace: argo
+ServiceAccount: agent-lifecycle-eval
+Status: Succeeded
+Progress: 3/4
+
+capture-sanitized-workflow: Succeeded
+collect-marker-evidence: Succeeded
+evaluate-lifecycle: Failed with Error (exit code 1)
+route-review: Succeeded
+```
+
+Evaluator logs:
+
+```text
+wrote /work/output/lifecycle-run.json
+score=0.218 passed=false json=/work/output/pod-crashloop-hitl-remediation.lifecycle-eval-hook-negative-example-qgm9x.json markdown=/work/output/pod-crashloop-hitl-remediation.lifecycle-eval-hook-negative-example-qgm9x.md
+REVIEW_MANAGER_ROUTE: created /work/output/review-route.json
+Error: exit status 1
+```
+
+Route-review logs:
+
+```text
+REVIEW_MANAGER_ROUTE: created
+NEXT_ACTION: keep ticket open and attach sanitized eval summary
+EXPECTED_NEGATIVE_ONLINE_EVAL: evaluator task failed and review route continued
+```
+
+This proves the online path is not all-pass plumbing: missing evidence and
+`CLUSTER_MUTATION_BEFORE_HITL: yes` fail scoring, the evaluator exits non-zero,
+and the review-route stub can continue when the caller opts into
+`continueOn.failed`.
 
 ## Runtime Issue Found And Fixed
 
@@ -192,6 +245,10 @@ Fix:
 
 - Moved the `agent-eval-runtime` ConfigMap volume onto the reusable `evaluate-lifecycle` template.
 - Replaced GitLab example values such as `{{GITLAB_ISSUE_ID}}` with plain placeholder strings such as `PLACEHOLDER_GITLAB_ISSUE_ID` so the example is sanitized and runnable in Argo.
+- Added a dedicated `agent-lifecycle-eval` ServiceAccount with only Argo
+  `workflowtaskresults` `create`/`patch` permission.
+- Added `lifecycle-eval-hook-negative-example.yaml` to prove online failing
+  evidence fails the evaluator and produces a review route.
 
 Verification after fix:
 

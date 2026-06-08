@@ -92,6 +92,11 @@ workflow_name
 dimension
 ```
 
+`run_id` and full `workflow_name` are emitted by the repo-native textfile/CI
+path so individual eval artifacts can be reconciled back to a workflow. For a
+long-lived scraped endpoint, aggregate those fields or move per-run identifiers
+to logs/exemplars before publishing to avoid unbounded time-series growth.
+
 ### Fleet Metrics
 
 Fleet inventory and workflow counters are separate from the eval result library:
@@ -252,6 +257,8 @@ Control:
 - do not label on pod name, ticket URL, prompt hash, trace id, or log line by
   default
 - use stable case/workflow/agent dimensions
+- do not scrape per-run `run_id` labels indefinitely; treat them as batch
+  artifact labels unless the publisher enforces retention or aggregation
 - sample read-only production triage if volume grows
 
 ### Risk: Eval Failure Blocks Incident Response
