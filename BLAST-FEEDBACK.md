@@ -13,13 +13,15 @@ A single public-safe HTML briefing that contrasts two kagent triage deployment m
 
 - **Path A — worker-local kagent.** Event fires in the worker cluster, the local
   agent triages it, LLM traffic still egresses through the management-cluster
-  agentgateway, and the result lands in GitLab as an issue or MR.
+  agentgateway, and the result lands in GitLab or ServiceNow as the same issue,
+  MR, incident, or workflow handoff the central path would create.
 - **Path B — management-cluster kagent.** Worker events route through Confluent
   Kafka / Azure Event Hub, Argo Events/Sensor receives them, the management agent
-  triages and uses AKS-MCP to reach back into the worker cluster, output to GitLab.
+  triages and uses AKS-MCP to reach back into the worker cluster, output to GitLab
+  or ServiceNow.
 
 The page has: short verdict, two flow diagrams with a highlight toggle, an
-Architecture tab with a side-by-side network/port drawing, a six-row blast-radius
+Architecture tab with a side-by-side network/port drawing, a seven-row blast-radius
 comparison table, pros/cons, six controls, a recommended position, a copyable boss
 briefing, and repo anchors.
 
@@ -39,9 +41,10 @@ Specific checks against the brief:
 |---|---|---|
 | Do **not** claim worker-local is always safer | Met | Verdict hedges with "can be"; table row 1 shows Path A is only scoped "if RBAC is local and namespace-bound" |
 | Path B with central admin AKS-MCP = same destructive reach | Met | Blast-radius callout + Cons list ("Remote AKS-MCP credentials can create the same worker-cluster blast radius") |
-| One central MCP identity over many workers = larger aggregate blast radius | Met | Table row 1 "larger if one identity reaches many workers" + Recommended Position "Do not grant blanket admin" |
+| One central UAMI over management-scope clusters = larger aggregate blast radius | Met | Table row 1 "larger if one UAMI reaches every cluster in management scope" + Recommended Position "Do not grant blanket admin" |
+| Same GitLab / ServiceNow triage output in both models | Met | Short verdict + Architecture notes + Triage output table row + copyable briefing |
 | Path A smaller surface only when read-only, local-intake, not exposed, egress-limited | Met | Path A flow + Pros list + Controls 1/2/4 |
-| Write actions via GitLab MR / Argo Workflow with human approval | Met | Control 2 "Split agent front door from execution"; briefing closing paragraph |
+| Write actions via GitLab MR / ServiceNow / Argo Workflow with human approval | Met | Control 2 "Split agent front door from execution"; briefing closing paragraph |
 | agentgateway stays on management cluster for LLM routing/tokens/policy/audit | Met | Control 5 + both flow diagrams keep LLM egress through management agentgateway |
 
 **Verdict:** the boss's "can this thing go rogue" question is addressed honestly. The
@@ -59,7 +62,7 @@ The brief explicitly warns against a one-sided pitch. The artifact stays balance
   local SA scoping risk) are listed.
 - Path B is framed as valuable for fleet-level correlation and application namespaces
   already on Kafka/Event Hub, with the explicit caveat that broad central admin
-  credentials are the dominant risk.
+  credentials or one broad management-scope UAMI are the dominant risk.
 - The recommended position is a **hybrid**, not a winner, which matches the source
   docs (`PRODUCTION-READINESS.md` §5 lists central / per-cluster / hybrid as open
   options, not a settled decision).
@@ -131,7 +134,9 @@ is native radio inputs plus CSS sibling selectors, so it works even if the viewe
 does not run inline JavaScript. The copy button still uses
 `navigator.clipboard.writeText` with a select-text fallback.
 
-Browser validation completed with a Chrome-backed Playwright render check:
+Browser validation completed with a Chrome-backed Playwright render check before
+the ServiceNow/UAMI wording update; the update is text-only and did not change the
+selector mechanics:
 
 - Page title loaded as `Kagent Triage Deployment Models`.
 - H1 loaded as `Kagent triage: worker-local vs management-cluster routing`.
@@ -148,6 +153,9 @@ rather than a set of one-off actions. The Architecture tab emphasizes that both
 models keep agentgateway and MCP services on the management cluster; the difference
 is whether the event calls a worker-local agent first or exits to Kafka/Event Hub so
 a management-cluster agent can triage and connect back to the worker through AKS-MCP.
+It also explains that both paths can produce the same GitLab or ServiceNow output,
+so the architectural difference is evidence collection and credential scope rather
+than the final ticketing destination.
 
 ---
 
@@ -169,7 +177,9 @@ a management-cluster agent can triage and connect back to the worker through AKS
   worker-local (Path A) and management-cluster (Path B) kagent triage, framed around
   permission-bound blast radius rather than pod location. Includes a segmented
   Path A / Path B / Compare both / Architecture selector for explaining the flows and
-  cross-cluster exposed surfaces.
+  cross-cluster exposed surfaces. Clarifies that both paths can produce the same
+  GitLab or ServiceNow output, while Path B's central UAMI/AKS-MCP can reach back
+  into the worker and potentially other clusters in management scope.
 - `BLAST-FEEDBACK.md` — this review record.
 
 **Not touched** (out of scope): README navigation, manifests, RBAC,
@@ -181,5 +191,6 @@ binary artifacts added.
 
 **Headline:** the artifact gives a skeptical reviewer a defensible answer — agent
 blast radius is bounded by RBAC, tool grants, network paths, and human-approval
-gates, not by which cluster the pod runs in. A central admin AKS-MCP identity reaching
-many workers is the larger risk, in either model.
+gates, not by which cluster the pod runs in. A central admin AKS-MCP identity or
+broad UAMI reaching many management-scope clusters is the larger risk, in either
+model.

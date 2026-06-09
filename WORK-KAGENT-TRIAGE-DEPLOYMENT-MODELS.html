@@ -589,6 +589,8 @@
           tool grants, network paths, approval gates, and audit controls it is allowed to use.
           If the management-cluster agent uses AKS-MCP with admin rights back into the worker,
           it can have the same effective write blast radius as a local worker agent.
+          Both models can produce the same GitLab or ServiceNow triage output; the difference
+          is the route taken to collect evidence.
         </p>
       </div>
       <aside class="verdict">
@@ -597,12 +599,13 @@
           <p>
             <strong>Path A can be the smaller exposed surface</strong> for local platform namespaces:
             events stay inside the worker cluster, the agent does local triage, and only controlled
-            outbound traffic goes to the management agentgateway and GitLab.
+            outbound traffic goes to the management agentgateway and GitLab or ServiceNow.
           </p>
           <p>
             <strong>Path B is useful for fleet-level triage</strong>, but its safety depends on tightly
             scoped central AKS-MCP credentials. If central AKS-MCP has broad admin on every worker,
-            a management-plane compromise can fan out across the fleet.
+            or if the same UAMI can reach every cluster in the management scope, a management-plane
+            compromise can fan out across the fleet.
           </p>
         </div>
         <div class="badge-row">
@@ -650,8 +653,8 @@
             </div>
             <div class="arrow">down</div>
             <div class="node">
-              <span class="label">GitLab ticket or MR</span>
-              <span class="detail">Diagnosis is written out over controlled HTTPS. Remediation can stay GitOps/HITL.</span>
+              <span class="label">GitLab / ServiceNow output</span>
+              <span class="detail">Diagnosis is written to the same GitLab or ServiceNow destination. Remediation can stay GitOps/HITL.</span>
             </div>
           </div>
           <div class="callout">
@@ -681,8 +684,8 @@
             </div>
             <div class="arrow">down</div>
             <div class="node">
-              <span class="label">GitLab ticket or MR</span>
-              <span class="detail">Same output target, with more network and queue stages before the verdict.</span>
+              <span class="label">GitLab / ServiceNow output</span>
+              <span class="detail">Same GitLab or ServiceNow output target, with more network and queue stages before the verdict.</span>
             </div>
           </div>
           <div class="callout warning">
@@ -696,11 +699,12 @@
         <p class="small">
           Both models keep agentgateway and MCP services on the management cluster. The difference is whether
           the incident calls a local worker agent first, or leaves the worker through Kafka/Event Hub so a
-          management-cluster agent can triage and then connect back to the worker through AKS-MCP.
+          management-cluster agent can triage and then connect back to the worker through AKS-MCP. The final
+          ticket or workflow output can be identical in GitLab or ServiceNow.
         </p>
         <svg viewBox="0 0 1120 620" role="img" aria-labelledby="arch-title arch-desc">
           <title id="arch-title">Kagent triage architecture comparison</title>
-          <desc id="arch-desc">Path A keeps triage local to the worker cluster while Path B routes the event to the management cluster and connects back to the worker through AKS-MCP.</desc>
+          <desc id="arch-desc">Path A keeps triage local to the worker cluster while Path B routes the event to the management cluster and connects back to the worker through AKS-MCP. Both models can create the same GitLab or ServiceNow output.</desc>
 
           <defs>
             <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -760,7 +764,7 @@
           <text x="340" y="298" class="arch-port">metrics scrape internal</text>
 
           <rect x="322" y="350" width="175" height="48" rx="8" class="arch-box"></rect>
-          <text x="340" y="378" class="arch-label">GitLab output</text>
+          <text x="340" y="378" class="arch-label">GitLab / ServiceNow</text>
           <text x="340" y="394" class="arch-port">outbound HTTPS 443</text>
 
           <path d="M165 200 L165 238" class="arch-line-green"></path>
@@ -808,7 +812,7 @@
 
           <rect x="38" y="530" width="1044" height="62" rx="10" class="arch-box"></rect>
           <text x="60" y="557" class="arch-label">Port exposure summary</text>
-          <text x="60" y="580" class="arch-port">Path A: no public inbound worker-agent port; outbound HTTPS 443 to gateway/GitLab.</text>
+          <text x="60" y="580" class="arch-port">Path A: no public inbound worker-agent port; same GitLab/ServiceNow output.</text>
           <text x="600" y="566" class="arch-port">Path B: worker egress to Kafka/Event Hub,</text>
           <text x="600" y="584" class="arch-port">then management AKS-MCP back to worker API 443.</text>
         </svg>
@@ -819,7 +823,7 @@
             <ul>
               <li>Management agentgateway for LLM egress, policy, token metrics, and audit.</li>
               <li>Management-hosted MCP services and tool servers, reachable only from authorized agents/workflows.</li>
-              <li>Outbound HTTPS 443 to GitLab for tickets or merge requests.</li>
+              <li>Outbound HTTPS 443 to GitLab or ServiceNow for tickets, incidents, or merge requests.</li>
             </ul>
           </article>
           <article class="card">
@@ -827,7 +831,7 @@
             <ul>
               <li>Path A calls the worker-local agent directly from local events.</li>
               <li>Path B sends worker events out to Kafka/Event Hub first, then the management agent connects back to the worker through AKS-MCP.</li>
-              <li>Path B therefore has more cross-cluster edges to authenticate, monitor, and debug.</li>
+              <li>Path B therefore has more cross-cluster edges to authenticate, monitor, and debug, and its UAMI may be able to reach other clusters in management scope.</li>
             </ul>
           </article>
         </div>
@@ -837,7 +841,7 @@
     <section aria-labelledby="blast-heading">
       <h2 id="blast-heading">Blast Radius Comparison</h2>
       <div class="callout">
-        If Path B grants central AKS-MCP broad admin rights on the worker cluster, then a compromised management agent can make the same destructive Kubernetes changes as a compromised worker-local agent. The blast radius becomes the granted RBAC scope, not the pod location.
+        If Path B grants central AKS-MCP broad admin rights on the worker cluster, then a compromised management agent can make the same destructive Kubernetes changes as a compromised worker-local agent. If the same UAMI has access to every cluster in management scope, the management model can also reach clusters the local model cannot. The blast radius becomes the granted RBAC and identity scope, not the pod location.
       </div>
       <div class="matrix-wrap">
         <table>
@@ -853,8 +857,14 @@
             <tr>
               <td>Write blast radius</td>
               <td><span class="score med">Scoped</span> Local to the worker if RBAC is local and namespace-bound.</td>
-              <td><span class="score high">Can fan out</span> Same worker impact if central MCP has admin; larger if one identity reaches many workers.</td>
+              <td><span class="score high">Can fan out</span> Same worker impact if central MCP has admin; larger if one UAMI reaches every cluster in management scope.</td>
               <td>Tool grants, Kubernetes RBAC, workflow service account permissions, and HITL gates.</td>
+            </tr>
+            <tr>
+              <td>Triage output</td>
+              <td><span class="score low">Same</span> GitLab or ServiceNow ticket, incident, MR, or workflow handoff.</td>
+              <td><span class="score low">Same</span> GitLab or ServiceNow ticket, incident, MR, or workflow handoff.</td>
+              <td>The output destination and approval workflow are independent of where the agent runs.</td>
             </tr>
             <tr>
               <td>Exposed endpoint surface</td>
@@ -877,8 +887,8 @@
             <tr>
               <td>Debuggability</td>
               <td><span class="score low">Simpler</span> Event, agent, tools, and namespace evidence are close together.</td>
-              <td><span class="score med">More complex</span> Failures can be in producer, queue, EventSource, Sensor, workflow, MCP, gateway, or GitLab.</td>
-              <td>Trace IDs from event to ticket, workflow status, MCP audit logs, gateway metrics, and GitLab issue metadata.</td>
+              <td><span class="score med">More complex</span> Failures can be in producer, queue, EventSource, Sensor, workflow, MCP, gateway, or output system.</td>
+              <td>Trace IDs from event to ticket, workflow status, MCP audit logs, gateway metrics, and GitLab or ServiceNow metadata.</td>
             </tr>
             <tr>
               <td>Central governance</td>
@@ -902,7 +912,7 @@
             <li>No need to expose a public or shared agent endpoint for local event ingestion.</li>
             <li>Events, logs, namespace state, and local tools are close to the failure domain.</li>
             <li>Works better for critical local namespaces if management routing is down.</li>
-            <li>Can be made read-only by default, with write actions submitted as GitLab MRs or Argo workflows.</li>
+            <li>Can be made read-only by default, with write actions submitted as GitLab MRs, ServiceNow approvals, or Argo workflows.</li>
           </ul>
           <p><strong>Cons</strong></p>
           <ul>
@@ -925,8 +935,8 @@
           <p><strong>Cons</strong></p>
           <ul>
             <li>Remote AKS-MCP credentials can create the same worker-cluster blast radius as a local agent.</li>
-            <li>If one central identity can administer many workers, the aggregate blast radius may be larger.</li>
-            <li>More moving parts: producer, broker, EventSource, Sensor, workflow, MCP, gateway, and GitLab.</li>
+            <li>If one central UAMI can administer other clusters in management scope, the aggregate blast radius may be larger.</li>
+            <li>More moving parts: producer, broker, EventSource, Sensor, workflow, MCP, gateway, and output integration.</li>
             <li>Higher latency, more network traffic, and often more tokens because the agent has to fetch remote context.</li>
             <li>Management-cluster outages can break the triage path for the worker cluster.</li>
           </ul>
@@ -943,15 +953,15 @@
         </article>
         <article class="card">
           <h3>2. Split agent front door from execution</h3>
-          <p class="small">Agents submit GitLab issues, GitLab MRs, or Argo workflows. Workflow service accounts hold mutation permissions and can require human approval before changes land.</p>
+          <p class="small">Agents submit GitLab issues, GitLab MRs, ServiceNow incidents, or Argo workflows. Workflow service accounts hold mutation permissions and can require human approval before changes land.</p>
         </article>
         <article class="card">
           <h3>3. Scope AKS-MCP per failure domain</h3>
-          <p class="small">For worker-local mode, scope MCP or tool server access to that worker and preferably to namespaces. For central mode, avoid one all-powerful identity across the fleet.</p>
+          <p class="small">For worker-local mode, scope MCP or tool server access to that worker and preferably to namespaces. For central mode, avoid one all-powerful UAMI across every cluster in management scope.</p>
         </article>
         <article class="card">
           <h3>4. Lock network paths</h3>
-          <p class="small">Worker-local agents need outbound access to management agentgateway and GitLab, not broad inbound exposure. MCP endpoints should only accept traffic from authorized agent pods.</p>
+          <p class="small">Worker-local agents need outbound access to management agentgateway and GitLab or ServiceNow, not broad inbound exposure. MCP endpoints should only accept traffic from authorized agent pods.</p>
         </article>
         <article class="card">
           <h3>5. Keep agentgateway centralized</h3>
@@ -959,7 +969,7 @@
         </article>
         <article class="card">
           <h3>6. Audit every hop</h3>
-          <p class="small">Carry a trace ID from event to agent run to MCP call to workflow to GitLab ticket. Alert on unexpected write tools, unusual token bursts, and cross-cluster MCP access.</p>
+          <p class="small">Carry a trace ID from event to agent run to MCP call to workflow to GitLab or ServiceNow output. Alert on unexpected write tools, unusual token bursts, and cross-cluster MCP access.</p>
         </article>
       </div>
     </section>
@@ -981,7 +991,7 @@
         </div>
         <div class="stance">
           <strong>Do not grant blanket admin</strong>
-          <p>The biggest risk is broad write-capable MCP access. That risk exists in both models and is worse when centralized across many workers.</p>
+          <p>The biggest risk is broad write-capable MCP access. That risk exists in both models and is worse when one central UAMI can reach many clusters.</p>
         </div>
       </div>
     </section>
@@ -991,11 +1001,13 @@
       <div class="briefing">
         <pre id="briefingText">The decision is not "agent in the worker cluster equals unsafe" and "agent in the management cluster equals safe." The real blast radius is the Kubernetes and MCP permission set the agent can use.
 
-Path A has kagent running inside the worker cluster. The event stays local, triage runs local, LLM calls still go out through the management agentgateway for monitoring and token control, and the output goes to GitLab. This can be the smaller exposed surface because we do not need to expose an agent endpoint or route every local event through Kafka/Event Hub before diagnosis.
+Both paths can produce exactly the same triage result: a GitLab issue, GitLab MR, ServiceNow incident, or workflow handoff. The difference is not the final ticketing output; the difference is how the agent gathers evidence.
 
-Path B has kagent running in the management cluster. Worker events go through Confluent Kafka or Azure Event Hub, then the management agent uses AKS-MCP to connect back to the worker cluster. If that AKS-MCP identity has admin rights on the worker, the management agent can do the same damage as a local write-capable agent. If the same identity reaches many workers, the aggregate blast radius can be larger.
+Path A has kagent running inside the worker cluster. The event stays local, triage runs local, LLM calls still go out through the management agentgateway for monitoring and token control, and the output goes to GitLab or ServiceNow. This can be the smaller exposed surface because we do not need to expose an agent endpoint or route every local event through Kafka/Event Hub before diagnosis.
 
-The safer rollout is a hybrid: worker-local read-only triage for critical worker namespaces, central management triage for fleet-level and application events, and all write actions routed through GitLab MR or Argo Workflow with human approval. Keep agentgateway on the management cluster for LLM policy, token metrics, model routing, and audit. Lock down MCP endpoints so only authorized agents can call them, and avoid broad admin credentials in both models.</pre>
+Path B has kagent running in the management cluster. Worker events go through Confluent Kafka or Azure Event Hub, then the management agent uses AKS-MCP to connect back to the worker cluster. If that AKS-MCP identity has admin rights on the worker, the management agent can do the same damage as a local write-capable agent. If the same UAMI reaches every cluster in management scope, the aggregate blast radius can be larger because it can connect to clusters the local worker model cannot.
+
+The safer rollout is a hybrid: worker-local read-only triage for critical worker namespaces, central management triage for fleet-level and application events, and all write actions routed through GitLab MR, ServiceNow approval, or Argo Workflow with human approval. Keep agentgateway on the management cluster for LLM policy, token metrics, model routing, and audit. Lock down MCP endpoints so only authorized agents can call them, and avoid broad admin credentials in both models.</pre>
         <button class="primary" type="button" id="copyBtn">Copy as markdown</button>
       </div>
     </section>
