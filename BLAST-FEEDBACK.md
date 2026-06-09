@@ -18,9 +18,10 @@ A single public-safe HTML briefing that contrasts two kagent triage deployment m
   Kafka / Azure Event Hub, Argo Events/Sensor receives them, the management agent
   triages and uses AKS-MCP to reach back into the worker cluster, output to GitLab.
 
-The page has: short verdict, two flow diagrams with a highlight toggle, a six-row
-blast-radius comparison table, pros/cons, six controls, a recommended position, a
-copyable boss briefing, and repo anchors.
+The page has: short verdict, two flow diagrams with a highlight toggle, an
+Architecture tab with a side-by-side network/port drawing, a six-row blast-radius
+comparison table, pros/cons, six controls, a recommended position, a copyable boss
+briefing, and repo anchors.
 
 ---
 
@@ -124,11 +125,11 @@ with placeholders before work use.
 ## 7. Browser validation note
 
 The page is self-contained (inline CSS + minimal vanilla JS, no external assets or
-network calls). Interactivity is two pieces: the Path A / Path B / Compare both
-segmented selector and the "Copy as markdown" button. The path selector is now
-native radio inputs plus CSS sibling selectors, so it works even if the viewer does
-not run inline JavaScript. The copy button still uses `navigator.clipboard.writeText`
-with a select-text fallback.
+network calls). Interactivity is two pieces: the Path A / Path B / Compare both /
+Architecture segmented selector and the "Copy as markdown" button. The path selector
+is native radio inputs plus CSS sibling selectors, so it works even if the viewer
+does not run inline JavaScript. The copy button still uses
+`navigator.clipboard.writeText` with a select-text fallback.
 
 Browser validation completed with a Chrome-backed Playwright render check:
 
@@ -137,12 +138,16 @@ Browser validation completed with a Chrome-backed Playwright render check:
 - Clicking `Path A` checked `path-worker`, highlighted the worker card, and dimmed the management card.
 - Clicking `Path B` checked `path-management`, highlighted the management card, and dimmed the worker card.
 - Clicking `Compare both` checked `path-both`, highlighted both path cards, and dimmed neither card.
+- Clicking `Architecture` checked `path-architecture`, hid the flow cards, and displayed the network/port diagram.
 - The boss briefing block rendered with 1448 characters.
 
 The selector was then tightened from long action-style buttons ("Highlight Path A",
 "Highlight Path B") into a CSS-backed segmented selector with short labels
-(`Path A`, `Path B`, `Compare both`) so it reads as a view selector rather than a
-set of one-off actions.
+(`Path A`, `Path B`, `Compare both`, `Architecture`) so it reads as a view selector
+rather than a set of one-off actions. The Architecture tab emphasizes that both
+models keep agentgateway and MCP services on the management cluster; the difference
+is whether the event calls a worker-local agent first or exits to Kafka/Event Hub so
+a management-cluster agent can triage and connect back to the worker through AKS-MCP.
 
 ---
 
@@ -163,12 +168,13 @@ set of one-off actions.
 - `WORK-KAGENT-TRIAGE-DEPLOYMENT-MODELS.html` — public-safe boss briefing comparing
   worker-local (Path A) and management-cluster (Path B) kagent triage, framed around
   permission-bound blast radius rather than pod location. Includes a segmented
-  Path A / Path B / Compare both selector for explaining the flows.
-- `README.md` — one Quick Navigation row linking to the new briefing.
+  Path A / Path B / Compare both / Architecture selector for explaining the flows and
+  cross-cluster exposed surfaces.
 - `BLAST-FEEDBACK.md` — this review record.
 
-**Not touched** (out of scope): manifests, RBAC, kagent/agentgateway configs,
-Confluent assets, live deployment instructions. No binary artifacts added.
+**Not touched** (out of scope): README navigation, manifests, RBAC,
+kagent/agentgateway configs, Confluent assets, live deployment instructions. No
+binary artifacts added.
 
 **Validation:** HTML parses; `git diff --check` clean; private-value sweep clean
 (only `{{WORKLOAD_KUBE_CONTEXT}}` placeholder and benign security vocabulary).
