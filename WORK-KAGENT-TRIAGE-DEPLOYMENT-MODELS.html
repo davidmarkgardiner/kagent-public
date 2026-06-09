@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kagent Triage Deployment Models</title>
+  <style>
+    :root {
+      --ink: #171717;
+      --muted: #66645f;
+      --paper: #ffffff;
+      --wash: #f7f4ee;
+      --line: #d9d4ca;
+      --blue: #265f99;
+      --blue-soft: #e8f1fb;
+      --green: #28705b;
+      --green-soft: #e9f4ef;
+      --amber: #9a6419;
+      --amber-soft: #fff2d9;
+      --red: #9a342f;
+      --red-soft: #fbe7e4;
+      --violet: #6251a8;
+      --violet-soft: #eeeafa;
+      --shadow: 0 18px 45px rgba(25, 25, 20, 0.08);
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--wash);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 36px 28px 68px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+      gap: 28px;
+      align-items: stretch;
+      padding: 20px 0 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0;
+      margin-bottom: 14px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 3px;
+      background: var(--amber);
+      border-radius: 999px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 3.2rem;
+      line-height: 1.05;
+      letter-spacing: 0;
+      max-width: 780px;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--blue);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 1.65rem;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .lead {
+      margin-top: 18px;
+      max-width: 760px;
+      font-size: 1.05rem;
+      color: #32312e;
+    }
+
+    .verdict {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100%;
+    }
+
+    .verdict strong {
+      color: var(--green);
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fafafa;
+      color: #333;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .badge.green {
+      background: var(--green-soft);
+      border-color: #b9d9cc;
+      color: var(--green);
+    }
+
+    .badge.amber {
+      background: var(--amber-soft);
+      border-color: #efd39a;
+      color: var(--amber);
+    }
+
+    .badge.red {
+      background: var(--red-soft);
+      border-color: #ebbab4;
+      color: var(--red);
+    }
+
+    section {
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .path-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      width: fit-content;
+      max-width: 100%;
+      margin: 18px 0 10px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #eee9df;
+    }
+
+    .path-toggle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 10px 14px;
+      min-height: 42px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .path-tabs label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 118px;
+      min-height: 42px;
+      padding: 10px 14px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      border-color: transparent;
+      background: transparent;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    button:hover,
+    .path-tabs label:hover {
+      border-color: #b8b0a3;
+    }
+
+    #path-worker:checked ~ .path-tabs label[for="path-worker"],
+    #path-management:checked ~ .path-tabs label[for="path-management"],
+    #path-both:checked ~ .path-tabs label[for="path-both"],
+    button.primary {
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
+    }
+
+    #path-worker:focus-visible ~ .path-tabs label[for="path-worker"],
+    #path-management:focus-visible ~ .path-tabs label[for="path-management"],
+    #path-both:focus-visible ~ .path-tabs label[for="path-both"] {
+      outline: 3px solid rgba(38, 95, 153, 0.35);
+      outline-offset: 2px;
+    }
+
+    .path-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .path-card,
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(25, 25, 20, 0.05);
+    }
+
+    .path-card {
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    #path-worker:checked ~ .path-grid #worker,
+    #path-management:checked ~ .path-grid #management,
+    #path-both:checked ~ .path-grid .path-card,
+    .path-card.selected {
+      border-color: var(--blue);
+      box-shadow: 0 18px 44px rgba(38, 95, 153, 0.16);
+      transform: translateY(-2px);
+    }
+
+    #path-worker:checked ~ .path-grid #management,
+    #path-management:checked ~ .path-grid #worker,
+    .path-card.dimmed {
+      opacity: 0.66;
+      transform: none;
+    }
+
+    .path-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .path-title span {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+    }
+
+    .node {
+      border: 1px solid var(--line);
+      background: #fbfbfa;
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 58px;
+    }
+
+    .node .label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .node .detail {
+      display: block;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .arrow {
+      width: 100%;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.9rem;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .callout {
+      border-left: 4px solid var(--blue);
+      background: var(--blue-soft);
+      padding: 14px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+    }
+
+    .callout.warning {
+      border-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .matrix-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(25, 25, 20, 0.04);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      background: var(--paper);
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      color: #4d4b47;
+      background: #f2eee7;
+      letter-spacing: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td:first-child {
+      font-weight: 700;
+      width: 21%;
+    }
+
+    .score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 68px;
+      min-height: 26px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .score.low {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .score.med {
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .score.high {
+      color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .control-grid .card {
+      min-height: 160px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    ul {
+      margin: 10px 0 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin: 7px 0;
+    }
+
+    .stance-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .stance {
+      min-height: 150px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .stance strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--blue);
+    }
+
+    .briefing {
+      background: #1f1f1d;
+      color: #f7f4ee;
+      border-radius: 8px;
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .briefing pre {
+      white-space: pre-wrap;
+      margin: 0;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      line-height: 1.55;
+      color: #f4efe4;
+    }
+
+    .briefing button {
+      justify-self: start;
+      border-color: #f7f4ee;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 8px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list li {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 0;
+    }
+
+    .footer-note {
+      padding-top: 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 900px) {
+      header,
+      .path-grid,
+      .split,
+      .control-grid,
+      .stance-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 2.45rem;
+      }
+
+      .page {
+        padding: 24px 18px 52px;
+      }
+
+      .path-tabs {
+        width: 100%;
+      }
+
+      .path-tabs label {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="eyebrow">Boss briefing</div>
+        <h1>Kagent triage: <em>worker-local</em> vs management-cluster routing</h1>
+        <p class="lead">
+          The practical security question is not where the agent pod runs. It is which credentials,
+          tool grants, network paths, approval gates, and audit controls it is allowed to use.
+          If the management-cluster agent uses AKS-MCP with admin rights back into the worker,
+          it can have the same effective write blast radius as a local worker agent.
+        </p>
+      </div>
+      <aside class="verdict">
+        <div>
+          <h2>Short verdict</h2>
+          <p>
+            <strong>Path A can be the smaller exposed surface</strong> for local platform namespaces:
+            events stay inside the worker cluster, the agent does local triage, and only controlled
+            outbound traffic goes to the management agentgateway and GitLab.
+          </p>
+          <p>
+            <strong>Path B is useful for fleet-level triage</strong>, but its safety depends on tightly
+            scoped central AKS-MCP credentials. If central AKS-MCP has broad admin on every worker,
+            a management-plane compromise can fan out across the fleet.
+          </p>
+        </div>
+        <div class="badge-row">
+          <span class="badge green">Blast radius is credential-bound</span>
+          <span class="badge amber">Central MCP needs hard scoping</span>
+          <span class="badge">agentgateway stays on management</span>
+        </div>
+      </aside>
+    </header>
+
+    <section aria-labelledby="paths-heading">
+      <h2 id="paths-heading">Two Deployment Paths</h2>
+      <p class="small">Use the selector to focus the flow you are explaining, or compare both side by side.</p>
+      <input class="path-toggle" type="radio" name="path-view" id="path-worker" checked>
+      <input class="path-toggle" type="radio" name="path-view" id="path-management">
+      <input class="path-toggle" type="radio" name="path-view" id="path-both">
+      <div class="path-tabs" role="radiogroup" aria-label="Deployment path selector">
+        <label for="path-worker">Path A</label>
+        <label for="path-management">Path B</label>
+        <label for="path-both">Compare both</label>
+      </div>
+
+      <div class="path-grid">
+        <article class="path-card" id="worker">
+          <div class="path-title">
+            <h3>Path A: kagent runs on the worker cluster</h3>
+            <span>Local event, local triage</span>
+          </div>
+          <div class="flow">
+            <div class="node">
+              <span class="label">Kubernetes event or alert</span>
+              <span class="detail">Generated inside `{{WORKLOAD_KUBE_CONTEXT}}`.</span>
+            </div>
+            <div class="arrow">down</div>
+            <div class="node">
+              <span class="label">Worker-local kagent triage</span>
+              <span class="detail">Agent reads the local namespace and cluster evidence through scoped tools.</span>
+            </div>
+            <div class="arrow">down</div>
+            <div class="node">
+              <span class="label">Management agentgateway</span>
+              <span class="detail">Outbound LLM traffic still routes through the management gateway for logging, tokens, and policy.</span>
+            </div>
+            <div class="arrow">down</div>
+            <div class="node">
+              <span class="label">GitLab ticket or MR</span>
+              <span class="detail">Diagnosis is written out over controlled HTTPS. Remediation can stay GitOps/HITL.</span>
+            </div>
+          </div>
+          <div class="callout">
+            Best fit: platform namespaces whose failure may break central event forwarding or delay triage.
+          </div>
+        </article>
+
+        <article class="path-card" id="management">
+          <div class="path-title">
+            <h3>Path B: kagent runs on the management cluster</h3>
+            <span>Kafka/Event Hub routed</span>
+          </div>
+          <div class="flow">
+            <div class="node">
+              <span class="label">Worker event producer</span>
+              <span class="detail">Alloy, Alertmanager, or bridge emits to Confluent Kafka or Azure Event Hub.</span>
+            </div>
+            <div class="arrow">down</div>
+            <div class="node">
+              <span class="label">Management consumer</span>
+              <span class="detail">Argo Events/Sensor receives the record and starts triage.</span>
+            </div>
+            <div class="arrow">down</div>
+            <div class="node">
+              <span class="label">Management kagent + AKS-MCP</span>
+              <span class="detail">Agent uses central MCP credentials to query or modify the worker cluster remotely.</span>
+            </div>
+            <div class="arrow">down</div>
+            <div class="node">
+              <span class="label">GitLab ticket or MR</span>
+              <span class="detail">Same output target, with more network and queue stages before the verdict.</span>
+            </div>
+          </div>
+          <div class="callout warning">
+            Best fit: fleet correlation, application namespaces, and cases where the management cluster is the operational hub.
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="blast-heading">
+      <h2 id="blast-heading">Blast Radius Comparison</h2>
+      <div class="callout">
+        If Path B grants central AKS-MCP broad admin rights on the worker cluster, then a compromised management agent can make the same destructive Kubernetes changes as a compromised worker-local agent. The blast radius becomes the granted RBAC scope, not the pod location.
+      </div>
+      <div class="matrix-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Dimension</th>
+              <th>Path A: worker-local</th>
+              <th>Path B: management routed</th>
+              <th>What controls the real risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Write blast radius</td>
+              <td><span class="score med">Scoped</span> Local to the worker if RBAC is local and namespace-bound.</td>
+              <td><span class="score high">Can fan out</span> Same worker impact if central MCP has admin; larger if one identity reaches many workers.</td>
+              <td>Tool grants, Kubernetes RBAC, workflow service account permissions, and HITL gates.</td>
+            </tr>
+            <tr>
+              <td>Exposed endpoint surface</td>
+              <td><span class="score low">Lower</span> No external agent endpoint required; events can be delivered in-cluster.</td>
+              <td><span class="score med">Higher</span> Queue, EventSource, management agent endpoint, and remote MCP path all need protection.</td>
+              <td>NetworkPolicy, service mesh auth, queue ACLs, ingress allowlists, and mTLS/token auth.</td>
+            </tr>
+            <tr>
+              <td>Self-healing during central outage</td>
+              <td><span class="score low">Better</span> Local triage still works for worker-internal namespaces if management event routing is degraded.</td>
+              <td><span class="score high">Weaker</span> If management cluster, queue consumer, or central MCP is down, worker triage may stop.</td>
+              <td>Fallback worker agents, secondary management plane, and local runbooks for management-plane failure.</td>
+            </tr>
+            <tr>
+              <td>Latency and token use</td>
+              <td><span class="score low">Lower</span> Fewer hops and less remote tool context.</td>
+              <td><span class="score med">Higher</span> Kafka/Event Hub, Argo, remote MCP, and extra evidence fetches add time and tokens.</td>
+              <td>Prompt design, evidence limits, queue SLAs, MCP response shaping, and token budgets in agentgateway.</td>
+            </tr>
+            <tr>
+              <td>Debuggability</td>
+              <td><span class="score low">Simpler</span> Event, agent, tools, and namespace evidence are close together.</td>
+              <td><span class="score med">More complex</span> Failures can be in producer, queue, EventSource, Sensor, workflow, MCP, gateway, or GitLab.</td>
+              <td>Trace IDs from event to ticket, workflow status, MCP audit logs, gateway metrics, and GitLab issue metadata.</td>
+            </tr>
+            <tr>
+              <td>Central governance</td>
+              <td><span class="score med">Needs design</span> Keep LLM egress through management agentgateway and publish local audit events centrally.</td>
+              <td><span class="score low">Natural fit</span> One management plane sees many clusters and can enforce common routing.</td>
+              <td>agentgateway for LLM routing, shared policy, token metrics, audit export, and eval scorecards.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="pros-heading">
+      <h2 id="pros-heading">Pros And Cons</h2>
+      <div class="split">
+        <article class="card">
+          <h3>Path A: worker-local kagent</h3>
+          <p><strong>Pros</strong></p>
+          <ul>
+            <li>Smallest dependency chain for worker-internal incidents.</li>
+            <li>No need to expose a public or shared agent endpoint for local event ingestion.</li>
+            <li>Events, logs, namespace state, and local tools are close to the failure domain.</li>
+            <li>Works better for critical local namespaces if management routing is down.</li>
+            <li>Can be made read-only by default, with write actions submitted as GitLab MRs or Argo workflows.</li>
+          </ul>
+          <p><strong>Cons</strong></p>
+          <ul>
+            <li>More agent deployments to operate across the fleet.</li>
+            <li>Needs consistent policy, prompt, ModelConfig, and audit configuration per worker.</li>
+            <li>Local service accounts must be carefully scoped so the agent cannot mutate broad cluster state.</li>
+            <li>Central dashboards need local audit and metrics export to compare agents consistently.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h3>Path B: management-cluster kagent via Kafka/Event Hub</h3>
+          <p><strong>Pros</strong></p>
+          <ul>
+            <li>One central triage surface for many clusters.</li>
+            <li>Natural place for fleet correlation, shared Argo workflows, and centralized audit.</li>
+            <li>Good fit for application namespaces where events already flow through Confluent Kafka or Azure Event Hub.</li>
+            <li>Simpler to update one agent stack when the fleet does not need local fallback.</li>
+          </ul>
+          <p><strong>Cons</strong></p>
+          <ul>
+            <li>Remote AKS-MCP credentials can create the same worker-cluster blast radius as a local agent.</li>
+            <li>If one central identity can administer many workers, the aggregate blast radius may be larger.</li>
+            <li>More moving parts: producer, broker, EventSource, Sensor, workflow, MCP, gateway, and GitLab.</li>
+            <li>Higher latency, more network traffic, and often more tokens because the agent has to fetch remote context.</li>
+            <li>Management-cluster outages can break the triage path for the worker cluster.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="controls-heading">
+      <h2 id="controls-heading">Controls That Calm The Security Concern</h2>
+      <div class="control-grid">
+        <article class="card">
+          <h3>1. Default triage agents to read-only</h3>
+          <p class="small">Give triage agents evidence tools only: get resources, logs, describe, YAML, events, connectivity, and configuration. Do not attach apply, patch, delete, exec, label, or annotate tools to normal triage agents.</p>
+        </article>
+        <article class="card">
+          <h3>2. Split agent front door from execution</h3>
+          <p class="small">Agents submit GitLab issues, GitLab MRs, or Argo workflows. Workflow service accounts hold mutation permissions and can require human approval before changes land.</p>
+        </article>
+        <article class="card">
+          <h3>3. Scope AKS-MCP per failure domain</h3>
+          <p class="small">For worker-local mode, scope MCP or tool server access to that worker and preferably to namespaces. For central mode, avoid one all-powerful identity across the fleet.</p>
+        </article>
+        <article class="card">
+          <h3>4. Lock network paths</h3>
+          <p class="small">Worker-local agents need outbound access to management agentgateway and GitLab, not broad inbound exposure. MCP endpoints should only accept traffic from authorized agent pods.</p>
+        </article>
+        <article class="card">
+          <h3>5. Keep agentgateway centralized</h3>
+          <p class="small">Route LLM traffic through the management agentgateway for model routing, cost tracking, token monitoring, policy, failover, and suspicious-use alerting.</p>
+        </article>
+        <article class="card">
+          <h3>6. Audit every hop</h3>
+          <p class="small">Carry a trace ID from event to agent run to MCP call to workflow to GitLab ticket. Alert on unexpected write tools, unusual token bursts, and cross-cluster MCP access.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="stance-heading">
+      <h2 id="stance-heading">Recommended Position</h2>
+      <div class="stance-grid">
+        <div class="stance">
+          <strong>Use Path A first</strong>
+          <p>For worker-local platform namespaces such as cert-manager, external-secrets, kro, kyverno, reloader, monitoring, and ingress-nginx.</p>
+        </div>
+        <div class="stance">
+          <strong>Use Path B where it fits</strong>
+          <p>For fleet-level correlation, application namespaces, and central operational queues already backed by Confluent Kafka or Azure Event Hub.</p>
+        </div>
+        <div class="stance">
+          <strong>Use hybrid for critical services</strong>
+          <p>Keep local fallback triage where losing management connectivity would block diagnosis of the worker cluster itself.</p>
+        </div>
+        <div class="stance">
+          <strong>Do not grant blanket admin</strong>
+          <p>The biggest risk is broad write-capable MCP access. That risk exists in both models and is worse when centralized across many workers.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="brief-heading">
+      <h2 id="brief-heading">Copyable Boss Briefing</h2>
+      <div class="briefing">
+        <pre id="briefingText">The decision is not "agent in the worker cluster equals unsafe" and "agent in the management cluster equals safe." The real blast radius is the Kubernetes and MCP permission set the agent can use.
+
+Path A has kagent running inside the worker cluster. The event stays local, triage runs local, LLM calls still go out through the management agentgateway for monitoring and token control, and the output goes to GitLab. This can be the smaller exposed surface because we do not need to expose an agent endpoint or route every local event through Kafka/Event Hub before diagnosis.
+
+Path B has kagent running in the management cluster. Worker events go through Confluent Kafka or Azure Event Hub, then the management agent uses AKS-MCP to connect back to the worker cluster. If that AKS-MCP identity has admin rights on the worker, the management agent can do the same damage as a local write-capable agent. If the same identity reaches many workers, the aggregate blast radius can be larger.
+
+The safer rollout is a hybrid: worker-local read-only triage for critical worker namespaces, central management triage for fleet-level and application events, and all write actions routed through GitLab MR or Argo Workflow with human approval. Keep agentgateway on the management cluster for LLM policy, token metrics, model routing, and audit. Lock down MCP endpoints so only authorized agents can call them, and avoid broad admin credentials in both models.</pre>
+        <button class="primary" type="button" id="copyBtn">Copy as markdown</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="sources-heading">
+      <h2 id="sources-heading">Repo Anchors</h2>
+      <ul class="source-list">
+        <li><a href="observability/PRODUCTION-READINESS.md">observability/PRODUCTION-READINESS.md</a> frames central vs per-workload AKS-MCP and calls out central MCP as a single point of failure with cross-cluster auth.</li>
+        <li><a href="observability/ENGINEERING-ROLLOUT.md">observability/ENGINEERING-ROLLOUT.md</a> lists worker-cluster namespaces that can be triaged without EventHub dependency.</li>
+        <li><a href="observability/confluent-cloud-pipeline/README.md">observability/confluent-cloud-pipeline/README.md</a> documents the Confluent Kafka and Event Hub style ingestion path for management-cluster triage.</li>
+        <li><a href="observability/prometheus-alertmanager/KAGENT-ALERT-TRIAGE-ARCHITECTURE.md">observability/prometheus-alertmanager/KAGENT-ALERT-TRIAGE-ARCHITECTURE.md</a> describes agentgateway as the LLM gateway and AKS-MCP as structured Kubernetes access.</li>
+        <li><a href="agents/kagent-triage/API-REFERENCE.md">agents/kagent-triage/API-REFERENCE.md</a> lists the actual read and write Kubernetes MCP tools that must be separated by policy.</li>
+      </ul>
+      <p class="footer-note">
+        Public-safe artifact. Replace all environment-specific values with placeholders before adapting this for a real work environment.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const copyBtn = document.getElementById("copyBtn");
+    copyBtn.addEventListener("click", async () => {
+      const text = document.getElementById("briefingText").textContent.trim();
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = "Copied";
+        setTimeout(() => {
+          copyBtn.textContent = "Copy as markdown";
+        }, 1600);
+      } catch (error) {
+        copyBtn.textContent = "Select text above";
+        setTimeout(() => {
+          copyBtn.textContent = "Copy as markdown";
+        }, 1800);
+      }
+    });
+  </script>
+</body>
+</html>
