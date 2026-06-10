@@ -272,9 +272,14 @@ The workflow should capture:
 ## Safety Rules
 
 - Use a sandbox project first.
+- Use a project-scoped token or approved least-privilege OAuth identity for that
+  sandbox project. Do not test the MCP write path with a broadly scoped personal
+  or group token.
 - Use a feature branch; never commit directly to the target branch.
 - Set `remove_source_branch=true` on the MR where appropriate.
 - Require HITL before branch creation if the branch contains remediation logic.
 - Do not allow general triage agents to hold GitLab write tools.
 - Keep GitLab write tools restricted to the GitOps specialist identity.
+- Treat the public demo's sandbox constraint as prompt-level unless the token
+  and project permissions prove infrastructure-level isolation.
 - Capture MR evidence in the execution review before claiming success.

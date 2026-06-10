@@ -1,0 +1,68 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: checkout-triage-agent
+  namespace: checkout-dev
+  labels:
+    app.kubernetes.io/name: checkout-triage-agent
+    app.kubernetes.io/part-of: kagent
+    platform.com/team: checkout
+    platform.com/type: triage
+spec:
+  type: Declarative
+  description: Read-only checkout-api triage agent for checkout-dev.
+  declarative:
+    modelConfig: "{{CHAT_MODEL_CONFIG}}"
+    systemMessage: |
+      You are the checkout-dev read-only triage agent.
+
+      Only inspect namespace checkout-dev unless explicitly asked for
+      cross-namespace dependency evidence by the incident commander.
+      Do not mutate resources. Do not delete resources. Do not exec into pods.
+      Use Grafana, querydoc, GitOps context, and memory as evidence sources.
+      Return citations or fallback markers instead of inventing evidence.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_pod_logs
+            - k8s_get_events
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: grafana-mcp
+          toolNames:
+            - grafana_query_metrics
+            - grafana_query_logs
+            - grafana_get_dashboard
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: platform-kb-querydoc
+          toolNames:
+            - querydoc_search
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+    a2aConfig:
+      skills:
+        - id: checkout-triage
+          name: Checkout API Triage
+          description: Read-only triage for checkout-api in checkout-dev.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [checkout, triage, readonly, grafana, querydoc, memory]
+

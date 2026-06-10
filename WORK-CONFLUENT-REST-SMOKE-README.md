@@ -77,7 +77,6 @@ curl -sS \
   "topic_name": "{{CONFLUENT_TOPIC}}",
   "partition_id": 0,
   "offset": 123,
-  "timestamp": "2026-06-04T00:00:00.000Z",
   "key": {
     "type": "STRING",
     "size": 19
@@ -89,8 +88,8 @@ curl -sS \
 }
 ```
 
-The exact `partition_id`, `offset`, `timestamp`, and `size` values will differ.
-The important fields are:
+The exact `partition_id`, `offset`, and `size` values will differ. The important
+fields are:
 
 ```text
 HTTP status: 2xx
@@ -135,4 +134,3 @@ partition_id:
 offset:
 operator:
 ```
-

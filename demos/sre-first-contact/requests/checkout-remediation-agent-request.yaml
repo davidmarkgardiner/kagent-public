@@ -1,0 +1,40 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: BYOAgentRequest
+metadata:
+  name: checkout-remediation
+spec:
+  team: checkout
+  namespace: checkout-dev
+  agentType: remediation-planner
+  owner: "{{TEAM_OWNER}}"
+  modelConfig: "{{CHAT_MODEL_CONFIG}}"
+  failureModes:
+    - CrashLoopBackOff
+    - dependency timeout
+    - pod loss and recovery
+  allowedTools:
+    - k8s_get_resources
+    - k8s_describe_resource
+    - k8s_get_pod_logs
+    - k8s_get_events
+    - k8s_annotate_resource
+    - k8s_patch_resource
+    - gitlab_create_sandbox_branch
+    - gitlab_open_merge_request
+    - gitlab_add_merge_request_note
+    - memory_add_observation_curated
+  forbiddenTools:
+    - k8s_delete_resource
+    - k8s_exec
+  gitlab:
+    mode: sandbox-mr
+    project: "{{GITLAB_PROJECT}}"
+  memory:
+    read: true
+    write: curator-only
+  hitl:
+    requiredForWrites: true
+    approvalRoute: "{{HITL_FRONT_DOOR}}"
+  escalation:
+    contact: "{{TEAM_ESCALATION_CONTACT}}"
+

@@ -1,11 +1,11 @@
-# Prometheus alerts for the Qwen-primary/GPT-4-secondary failover path.
+# Prometheus alerts for Qwen capacity control and the older failover path.
 #
 # DEPLOY ON: cluster where Prometheus Operator watches PrometheusRule resources.
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: work-llm-failover-alerts
+  name: work-llm-capacity-alerts
   namespace: monitoring
   labels:
     release: kube-prom
@@ -13,10 +13,10 @@ metadata:
     route_to: triage
 spec:
   groups:
-    - name: work-llm-failover
+    - name: work-llm-capacity
       interval: 30s
       rules:
-        - alert: WorkLLMFailoverRouteRateLimited
+        - alert: WorkQwenRouteRateLimited
           expr: |
             sum by (cluster, namespace, gateway, route, backend, status, reason) (
               max without(job, container, endpoint, exported_gateway) (
@@ -29,10 +29,26 @@ spec:
             team: ai-platform
             route_to: triage
           annotations:
-            summary: "LLM failover route returned HTTP 429"
-            description: "Route {{ $labels.route }} backend {{ $labels.backend }} returned 429. Confirm whether this is gateway-local rate limiting or upstream Qwen quota pressure."
+            summary: "Qwen LLM route returned HTTP 429"
+            description: "Route {{ $labels.route }} backend {{ $labels.backend }} returned 429. Treat this as Qwen capacity pressure until proven to be gateway-local overload protection."
 
-        - alert: WorkLLMFailoverRouteHighErrorRate
+        - alert: WorkQwenRouteTimeoutOrReset
+          expr: |
+            sum by (cluster, namespace, gateway, route, backend, reason) (
+              max without(job, container, endpoint, exported_gateway) (
+                increase(agentgateway_requests_total{route=~".*work-llm-failover.*|.*llm.*",reason=~"Timeout|DeadlineExceeded|Canceled|Connection.*|Reset.*"}[10m])
+              )
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "Qwen LLM route timed out or reset"
+            description: "Route {{ $labels.route }} backend {{ $labels.backend }} reason {{ $labels.reason }} indicates saturation, network reset, or provider-side session pressure."
+
+        - alert: WorkQwenRouteHighErrorRate
           expr: |
             (
               sum by (cluster, route, backend) (
@@ -56,10 +72,10 @@ spec:
             team: ai-platform
             route_to: triage
           annotations:
-            summary: "LLM failover route 5xx rate is high"
+            summary: "Qwen LLM route 5xx rate is high"
             description: "Route {{ $labels.route }} backend {{ $labels.backend }} has sustained 5xx errors."
 
-        - alert: WorkLLMFailoverRouteSlowP95
+        - alert: WorkQwenRouteSlowP95
           expr: |
             histogram_quantile(
               0.95,
@@ -75,8 +91,8 @@ spec:
             team: ai-platform
             route_to: triage
           annotations:
-            summary: "LLM failover route p95 latency is above 90s"
-            description: "Route {{ $labels.route }} backend {{ $labels.backend }} is slow. Check Qwen saturation, GPT-4 fallback, and kagent timeouts."
+            summary: "Qwen LLM route p95 latency is above 90s"
+            description: "Route {{ $labels.route }} backend {{ $labels.backend }} is slow. Check Qwen saturation, workflow concurrency, and kagent timeouts."
 
         - alert: WorkKagentTriageWorkflowFailures
           expr: |
@@ -91,6 +107,20 @@ spec:
           annotations:
             summary: "kagent triage workflow failed"
             description: "Workflow template {{ $labels.workflow_template }} is failing. Check A2A call logs and gateway/model health."
+
+        - alert: WorkKagentTriageWorkflowBacklog
+          expr: |
+            sum by (cluster, workflow_template, status) (
+              argo_workflows_count{status=~"Pending|Running", workflow_template=~".*(k-agent|kagent|triage|alert).*"}
+            ) > 10
+          for: 10m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "kagent triage workflow backlog is growing"
+            description: "There are more than 10 pending/running triage workflows. Compare this with the configured Qwen concurrency limit and Kafka/Event Hub lag."
 
         - alert: WorkAgentgatewayTokenMetricsMissing
           expr: |

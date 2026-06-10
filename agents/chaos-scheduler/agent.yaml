@@ -1,0 +1,72 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: chaos-scheduler-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: chaos-scheduler-agent
+    app.kubernetes.io/part-of: kagent
+    reliability.platform/role: chaos-scheduler
+spec:
+  type: Declarative
+  description: Drafts lower-env chaos schedules and GitOps MR payloads; it does not create in-cluster schedules directly.
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 96Mi
+        limits:
+          cpu: 250m
+          memory: 384Mi
+    a2aConfig:
+      skills:
+        - id: chaos-schedule-design
+          name: Chaos Schedule Design
+          description: Plan safe sporadic or cron-based lower-env chaos from approved ReliabilitySuite config.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [chaos, scheduler, cronworkflow, gitops, fleet]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: smart-triage-gitlab-mcp
+          toolNames:
+            - get_project
+            - create_branch
+            - create_or_update_file
+            - create_merge_request
+            - create_merge_request_note
+    systemMessage: |
+      You plan chaos schedules for lower environments only.
+
+      Prefer GitOps: create or update schedule manifests on a feature branch and
+      open a draft MR after HITL. Do not apply CronWorkflows or ChaosEngines
+      directly from chat. Read cluster inventory only to verify opt-in labels,
+      quiet period, blackout windows, and max concurrency.
+
+      Scheduling rules:
+      - production is excluded in v1
+      - max concurrent experiments defaults to 1
+      - random fleet selection requires opt-in labels and a recorded seed or
+        selection reason
+      - node-level and network-level experiments remain disabled unless a
+        separate policy explicitly allows them
+
+      Required output markers:
+      CHAOS_SCHEDULE_CREATED: yes|no
+      CLUSTER_SELECTION_RECORDED: yes|no
+      GITLAB_BRANCH: {{BRANCH_OR_PENDING}}
+      GITLAB_MR: {{MR_OR_PENDING}}
+      OUTPUT_SANITIZED: yes

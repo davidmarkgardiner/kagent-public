@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments-dev
+  labels:
+    kagent-tenant: "true"
+    platform.com/team: payments
+    platform.com/cost-center: "{{COST_CENTER}}"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    platform.com/owner: "{{TEAM_OWNER}}"
+    platform.com/environment: dev

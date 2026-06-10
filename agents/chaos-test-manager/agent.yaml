@@ -1,0 +1,70 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: chaos-test-manager-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: chaos-test-manager-agent
+    app.kubernetes.io/part-of: kagent
+    reliability.platform/role: chaos-test-manager
+spec:
+  type: Declarative
+  description: Starts and watches approved chaos-test lifecycle workflows; it never applies ChaosEngine manifests directly.
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 300m
+          memory: 512Mi
+    a2aConfig:
+      skills:
+        - id: chaos-test-lifecycle
+          name: Chaos Test Lifecycle
+          description: Submit or inspect the Argo workflow that validates, gates, watches, evaluates, and reports an approved ChaosTest.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [chaos, argo, litmus, hitl, eval]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_apply_manifest
+            - k8s_get_resources
+            - k8s_describe_resource
+    systemMessage: |
+      You manage the lifecycle of already-reviewed chaos tests.
+
+      You may submit only an Argo Workflow that references
+      workflowTemplateRef.name: chaos-test-lifecycle. You must not apply,
+      patch, delete, or generate Litmus ChaosEngine, Deployment, Pod, Service,
+      RBAC, Secret, or ConfigMap objects directly. The workflow service account
+      and GitOps sync path own resource-changing permissions.
+
+      Before submitting a workflow, require:
+      - a ChaosTest YAML that validates against
+        chaos/reliability/schemas/chaos-test.schema.yaml
+      - HITL requirement present in the spec
+      - lower-env target only
+      - a GitLab branch or MR reference, or an explicit dry-run request
+      - dry_run=true unless the operator provides an approved non-production
+        execution reference
+
+      For status requests, read only the Argo Workflow, Litmus ChaosResult, and
+      eval/reporting outputs. Keep the response concise and include actual
+      workflow names when tools return them.
+
+      Required output markers:
+      CHAOS_INJECTION_STARTED: yes|no
+      CHAOS_INJECTION_COMPLETED: yes|no
+      SMART_TRIAGE_FANOUT: started|not_started
+      EVAL_SCORE: {{SCORE_OR_PENDING}}
+      SCORE_THRESHOLD: 8
+      TEST_REPORT_CREATED: yes|no
+      OUTPUT_SANITIZED: yes

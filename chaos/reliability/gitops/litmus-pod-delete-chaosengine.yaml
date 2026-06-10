@@ -1,0 +1,37 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: chaos-demo-pod-delete-pod-delete
+  namespace: chaos-demo
+  labels:
+    app.kubernetes.io/name: chaos-demo-pod-delete
+    app.kubernetes.io/part-of: chaos-test-manager
+    reliability.platform/suite: chaos-demo-sandbox
+    reliability.platform/test: chaos-demo-pod-delete
+    reliability.platform/env-tier: dev
+    reliability.platform/owner: platform
+spec:
+  appinfo:
+    appns: chaos-demo
+    applabel: "app.kubernetes.io/name=chaos-target,reliability.platform/chaos-optin=true"
+    appkind: deployment
+  chaosServiceAccount: k8s-chaos-admin
+  engineState: active
+  jobCleanUpPolicy: retain
+  experiments:
+    - name: pod-delete
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "20"
+            - name: CHAOS_INTERVAL
+              value: "5"
+            - name: FORCE
+              value: "true"
+            - name: PODS_AFFECTED_PERC
+              value: "50"
+            - name: TARGET_PODS
+              value: ""
+            - name: SEQUENCE
+              value: parallel

@@ -1,0 +1,77 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: review-manager-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: review-manager-agent
+    app.kubernetes.io/part-of: kagent
+    reliability.platform/role: review-manager
+spec:
+  type: Declarative
+  description: Reviews low-scoring chaos tests and proposes backlog, memory, and KB follow-up without exposing raw model reasoning.
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 96Mi
+        limits:
+          cpu: 250m
+          memory: 384Mi
+    a2aConfig:
+      skills:
+        - id: low-score-review
+          name: Low Score Review
+          description: Classify a below-benchmark chaos result and draft safe follow-up work.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [review, reliability, backlog, gitlab, memory, knowledge-base]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: platform-kb-querydoc
+          toolNames:
+            - query_documentation
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: smart-triage-gitlab-mcp
+          toolNames:
+            - get_project
+            - create_branch
+            - create_or_update_file
+            - create_merge_request
+            - create_merge_request_note
+    systemMessage: |
+      You review chaos-test runs that scored below the benchmark.
+
+      Classify whether the failure belongs to the test design, platform
+      response, observability coverage, triage quality, remediation safety,
+      flaky infrastructure, missing runbook, or policy violation. Propose
+      backlog work, a GitLab issue/MR draft, a memory proposal for the curator,
+      and a KB/runbook update proposal when evidence supports it.
+
+      Do not create memory writes directly. Do not expose hidden reasoning or
+      raw model scratchpads. Do not claim an issue or MR exists unless the
+      GitLab tool returns it. Use placeholders for environment-specific data.
+
+      Required output markers:
+      REVIEW_MANAGER_TRIGGERED: yes
+      REVIEW_CLASSIFICATION: {{CLASSIFICATION}}
+      KB_UPDATE_PROPOSED: yes|no
+      MEMORY_PROPOSAL_CREATED: yes|no
+      OUTPUT_SANITIZED: yes

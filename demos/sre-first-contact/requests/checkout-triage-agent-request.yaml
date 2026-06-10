@@ -1,0 +1,30 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: BYOAgentRequest
+metadata:
+  name: checkout-triage
+spec:
+  team: checkout
+  namespace: checkout-dev
+  agentType: watcher
+  owner: "{{TEAM_OWNER}}"
+  modelConfig: "{{CHAT_MODEL_CONFIG}}"
+  failureModes:
+    - CrashLoopBackOff
+    - dependency timeout
+    - pod loss and recovery
+  allowedTools:
+    - k8s_get_resources
+    - k8s_describe_resource
+    - k8s_get_pod_logs
+    - k8s_get_events
+    - grafana_query_metrics
+    - grafana_query_logs
+    - querydoc_search
+    - search_nodes
+    - open_nodes
+    - read_graph
+  memory:
+    read: true
+    write: false
+  escalation:
+    contact: "{{TEAM_ESCALATION_CONTACT}}"

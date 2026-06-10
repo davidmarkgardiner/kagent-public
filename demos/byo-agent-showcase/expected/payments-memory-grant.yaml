@@ -1,0 +1,32 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolGrant
+metadata:
+  name: payments-triage-memory-read
+  namespace: payments-dev
+spec:
+  agentRef:
+    name: payments-triage-agent
+  toolCatalogRef: memory-mcp@v1.0
+  allowedToolNames:
+    - search_nodes
+    - open_nodes
+    - read_graph
+  expiresAt: "2027-01-01T00:00:00Z"
+  reason: "Read shared incident lessons during payments triage"
+---
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolGrant
+metadata:
+  name: payments-remediation-memory-curator
+  namespace: payments-dev
+spec:
+  agentRef:
+    name: payments-remediation-agent
+  toolCatalogRef: memory-mcp@v1.0
+  allowedToolNames:
+    - search_nodes
+    - open_nodes
+    - read_graph
+    - add_observations
+  expiresAt: "2027-01-01T00:00:00Z"
+  reason: "Curator-mediated memory observations after approved remediation"

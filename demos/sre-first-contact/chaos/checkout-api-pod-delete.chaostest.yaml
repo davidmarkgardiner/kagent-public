@@ -1,0 +1,75 @@
+apiVersion: reliability.platform.example/v1alpha1
+kind: ChaosTest
+metadata:
+  name: checkout-api-pod-delete
+  labels:
+    reliability.platform/suite: checkout-api-first-contact
+    reliability.platform/owner: checkout
+    reliability.platform/env-tier: dev
+spec:
+  owner: checkout
+  description: >
+    Delete one checkout-api pod in checkout-dev and prove Kagent triage v2 can
+    detect the failure, attach Grafana/KB/GitOps evidence, hold remediation
+    behind HITL, verify recovery, score the run, and record curated learning.
+  target:
+    environment: dev
+    clusters:
+      selectionMode: explicit
+      count: 1
+      selector: environment=dev,reliability.platform/chaos-optin=true
+      resolved:
+        - "{{CLUSTER_NAME}}"
+    namespace: checkout-dev
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: checkout-api
+        reliability.platform/chaos-optin: "true"
+    serviceOwnership: catalog://checkout/checkout-api
+  experiment:
+    provider: litmus
+    type: pod-delete
+    parameters:
+      totalChaosDuration: "20"
+      chaosInterval: "5"
+      podsAffectedPerc: "50"
+      force: "true"
+  schedule:
+    mode: manual
+    cron: ""
+    window: next-business-hours-lower-env
+  safety:
+    blastRadius: single-workload
+    maxDurationSeconds: 600
+    abortConditions:
+      - checkout-api unavailable for more than 120 seconds
+      - checkout-dev namespace error rate exceeds {{ERROR_RATE_THRESHOLD}}
+    rollback: >
+      Stop the workflow, delete the active ChaosEngine if present, and wait for
+      deployment/checkout-api in checkout-dev to return to two Ready replicas.
+    requiresHITL: true
+  observability:
+    expectedSignals:
+      - ChaosResult reaches Pass or Fail
+      - pod deletion event appears for app.kubernetes.io/name=checkout-api
+      - checkout-api available replicas dip
+      - smart triage fan-out starts
+    recoverySignals:
+      - deployment/checkout-api reports two Ready replicas
+      - checkout-api service health dashboard returns to baseline
+      - checkout error rate returns below {{ERROR_RATE_THRESHOLD}}
+    grafanaDashboard: checkout-api-service-health
+  triage:
+    workflowTemplate: smart-triage-fanout
+  eval:
+    rubricRef: chaos-pod-delete
+    benchmark: 8
+  reporting:
+    destination:
+      - GitLab
+      - GrafanaAnnotation
+      - Teams
+  learning:
+    memoryUpdatePolicy: curator-only
+    kbUpdatePolicy: hitl-gated-mr
+

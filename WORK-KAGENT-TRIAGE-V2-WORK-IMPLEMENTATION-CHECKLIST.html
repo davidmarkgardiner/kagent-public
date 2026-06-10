@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Kagent Triage V2 Work Implementation Checklist</title>
+  <style>
+    :root {
+      --ink: #171717;
+      --muted: #5f6368;
+      --bg: #f5f6f7;
+      --paper: #ffffff;
+      --line: #d9dde3;
+      --red: #c9202b;
+      --blue: #185f9f;
+      --green: #247247;
+      --amber: #946300;
+      --violet: #5f4b8b;
+      --radius: 8px;
+      --sans: Frutiger, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.45;
+    }
+
+    header {
+      display: grid;
+      gap: 14px;
+      padding: 28px;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 1120px;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1.06;
+    }
+
+    .lede {
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    main {
+      display: grid;
+      gap: 18px;
+      padding: 22px;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .progress {
+      width: min(340px, 100%);
+      height: 10px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #eef0f2;
+    }
+
+    .progress span {
+      display: block;
+      width: 0%;
+      height: 100%;
+      background: var(--green);
+      transition: width 160ms ease;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      color: var(--ink);
+      font: 700 13px var(--sans);
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: var(--red);
+      background: var(--red);
+      color: #fff;
+    }
+
+    .section {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .badge {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .p0 { background: var(--red); }
+    .p1 { background: var(--amber); }
+    .p2 { background: var(--blue); }
+    .done { background: var(--green); }
+
+    .items {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfbfc;
+    }
+
+    .item input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      margin-top: 2px;
+      accent-color: var(--green);
+    }
+
+    .item-body {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .title-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .title-row h3 {
+      font-size: 16px;
+    }
+
+    .desc {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta code {
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 54px;
+      resize: vertical;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      font: 13px var(--sans);
+    }
+
+    .checked h3,
+    .checked .desc {
+      color: var(--muted);
+      text-decoration: line-through;
+      text-decoration-thickness: 1px;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    @media (max-width: 840px) {
+      main { padding: 14px; }
+      .toolbar { grid-template-columns: 1fr; }
+      .section-head { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">Kagent triage system v2</p>
+    <h1>Work implementation checklist</h1>
+    <p class="lede">Use this to tick off the V2 pieces as they are implemented and proven on the work machine. Today starts with doc2vec/querydoc KB, then A2A, then GitLab MCP and Grafana MCP through kagent.</p>
+  </header>
+
+  <main>
+    <div class="toolbar" aria-label="Checklist progress">
+      <div class="summary">
+        <span id="count">0 / 0 complete</span>
+        <div class="progress" aria-label="Completion progress"><span id="bar"></span></div>
+        <span id="focus">Focus: KB first</span>
+      </div>
+      <button id="resetBtn" type="button">Reset checks</button>
+      <button id="exportBtn" class="primary" type="button">Copy as markdown</button>
+    </div>
+
+    <section class="section" data-section="today">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Today's focus</p>
+          <h2>Get the core integrations proven at work</h2>
+          <p class="desc">These are first because they unlock better triage answers and prove kagent can actually use the work-side tools.</p>
+        </div>
+        <span class="badge p0">P0 today</span>
+      </div>
+      <div class="items">
+        <article class="item" data-id="local-verifier">
+          <input type="checkbox" aria-label="Local handoff verifier passes">
+          <div class="item-body">
+            <div class="title-row"><h3>Local handoff verifier passes before work-side implementation</h3><span class="badge p0">0</span></div>
+            <p class="desc">Run the package verifier so you know the local handoff artifacts, static demos, querydoc package, eval proof, HITL mock, and public-safety scan are internally consistent.</p>
+            <div class="meta">
+              <div>Command: <code>scripts/verify-kagent-triage-v2-handoff.sh</code></div>
+              <div>Expected: <code>PASS Kagent triage v2 handoff package is locally consistent</code></div>
+            </div>
+            <textarea placeholder="Verifier output, date, and any warnings"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="kb-static">
+          <input type="checkbox" aria-label="KB static package validates">
+          <div class="item-body">
+            <div class="title-row"><h3>doc2vec/querydoc KB package validates in work repo</h3><span class="badge p0">1</span></div>
+            <p class="desc">Run the static validation and confirm the querydoc manifests, RemoteMCPServer, Agent, PVC, CronJob, and ModelConfig render safely.</p>
+            <div class="meta">
+              <div>Evidence: <code>validation complete</code>, rendered resources, no provisioning kinds.</div>
+              <div>Reference: <a href="WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md">WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md</a></div>
+            </div>
+            <textarea placeholder="Work evidence, commands, blocker, or link"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="kb-live">
+          <input type="checkbox" aria-label="KB live query proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>doc2vec/querydoc live cited hit and no-docs fallback</h3><span class="badge p0">2</span></div>
+            <p class="desc">Build the KB DB with approved credentials, run querydoc, prove one cited hit and one explicit <code>NO_RELEVANT_DOCS</code> fallback.</p>
+            <div class="meta">
+              <div>Evidence: cited runbook answer, no-docs fallback, MCP path or endpoint used.</div>
+              <div>Command: <code>./scripts/build-platform-kb-db.sh && ./scripts/smoke-querydoc-local.sh</code></div>
+            </div>
+            <textarea placeholder="Cited hit, NO_RELEVANT_DOCS output, embedding/provider notes"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="kb-gitlab-update">
+          <input type="checkbox" aria-label="GitLab MCP KB update loop proven">
+          <div class="item-body">
+            <div class="title-row"><h3>GitLab MCP creates KB docs and querydoc retrieves them</h3><span class="badge p0">3</span></div>
+            <p class="desc">Use the GitLab MCP path to create or update Kagent triage v2 KB docs, update the KB index, rebuild doc2vec/querydoc, and prove the knowledge agent cites the new docs.</p>
+            <div class="meta">
+              <div>Evidence: GitLab branch/MR/note, <code>INDEX.md</code> diff, reindex output, cited hit, no-docs fallback.</div>
+              <div>Reference: <a href="demos/kb-gitlab-mcp-update/README.md">demos/kb-gitlab-mcp-update/</a></div>
+            </div>
+            <textarea placeholder="MR link, KB paths, querydoc citation, fallback proof, blocker if any"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="a2a">
+          <input type="checkbox" aria-label="A2A workflows proven">
+          <div class="item-body">
+            <div class="title-row"><h3>Agent-to-agent workflows and shared context prove out</h3><span class="badge p0">4</span></div>
+            <p class="desc">Show kagent agents can hand off context through A2A, call specialist skills, and preserve memory/KB context across the triage flow.</p>
+            <div class="meta">
+              <div>Evidence: A2A call result, specialist handoff, shared memory/context marker.</div>
+              <div>Reference: <code>a2a/platform-memory-showcase-demo/</code>, <code>a2a/smart-triage-fanout-demo/</code></div>
+            </div>
+            <textarea placeholder="A2A workflow name, agent names, memory/context proof"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="gitlab-mcp">
+          <input type="checkbox" aria-label="GitLab MCP via kagent proven">
+          <div class="item-body">
+            <div class="title-row"><h3>GitLab MCP works via kagent with scoped sandbox auth</h3><span class="badge p0">5</span></div>
+            <p class="desc">Prove branch/MR/comment in a sandbox project through the kagent-mounted GitLab MCP path, not just terminal access.</p>
+            <div class="meta">
+              <div>Evidence: sandbox MR URL, note/comment, auth scope/project boundary.</div>
+              <div>Reference: <a href="SMART-TRIAGE-GITLAB-MCP-MR-DEMO.md">SMART-TRIAGE-GITLAB-MCP-MR-DEMO.md</a></div>
+            </div>
+            <textarea placeholder="Sandbox project, MR link, token/auth scope, kagent path proof"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="grafana-mcp">
+          <input type="checkbox" aria-label="Grafana MCP via kagent proven">
+          <div class="item-body">
+            <div class="title-row"><h3>Grafana MCP works via kagent for metrics, logs, and dashboard lookup</h3><span class="badge p0">6</span></div>
+            <p class="desc">Prove read-only Grafana MCP access from kagent with PromQL, LogQL, and dashboard lookup against approved work datasources.</p>
+            <div class="meta">
+              <div>Evidence: PromQL result, LogQL result, dashboard UID/link, datasource names.</div>
+              <div>Reference: <code>docs/ai-grafana/</code>, <code>observability/agent-evals/FLEET-DASHBOARD.md</code></div>
+            </div>
+            <textarea placeholder="PromQL, LogQL, dashboard link, datasource UID, blocker if any"></textarea>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-section="core">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Core V2 proof</p>
+          <h2>Prove the main triage, safety, eval, and reporting path</h2>
+        </div>
+        <span class="badge p0">P0</span>
+      </div>
+      <div class="items">
+        <article class="item" data-id="runtime-inventory">
+          <input type="checkbox" aria-label="Runtime inventory captured">
+          <div class="item-body">
+            <div class="title-row"><h3>Runtime inventory captured</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Confirm kagent, Argo Workflows, Argo Events, agentgateway, Grafana/Mimir/Loki, Flux/GitOps, Kyverno, and Litmus/equivalent status.</p>
+            <div class="meta"><div>Evidence: namespaces, CRDs, controller versions, endpoint readiness.</div></div>
+            <textarea placeholder="Inventory output and gaps"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="model-path">
+          <input type="checkbox" aria-label="Model path proven">
+          <div class="item-body">
+            <div class="title-row"><h3>Approved work model path responds through kagent/agentgateway</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Prove a real chat completion through the approved work model path before running agent workflows.</p>
+            <div class="meta"><div>Evidence: request/response through ModelConfig, agentgateway, LiteLLM, Azure OpenAI, KubeAI, or vLLM path.</div></div>
+            <textarea placeholder="ModelConfig, endpoint path, response marker"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="smart-triage">
+          <input type="checkbox" aria-label="Smart triage fan-out proven">
+          <div class="item-body">
+            <div class="title-row"><h3>Smart triage fan-out completes on work alert or controlled incident</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Replay one alert or controlled incident and prove specialist fan-out, synthesis, and proof markers.</p>
+            <div class="meta"><div>Evidence: workflow name, node table, specialist results, synthesis.</div></div>
+            <textarea placeholder="Workflow name, nodes, markers, synthesis result"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="hitl">
+          <input type="checkbox" aria-label="HITL proven">
+          <div class="item-body">
+            <div class="title-row"><h3>HITL approval path proves suspend/resume identity</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Show non-read-only actions cannot continue until approval is captured.</p>
+            <div class="meta"><div>Evidence: approval ID, approver identity, workflow node evidence.</div></div>
+            <textarea placeholder="Approval route, ID, approver, resume evidence"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="eval">
+          <input type="checkbox" aria-label="Lifecycle eval proven">
+          <div class="item-body">
+            <div class="title-row"><h3>Lifecycle eval scores runs and enforces hard gates</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Prove at least one pass and one below-threshold or hard-gate failure route.</p>
+            <div class="meta"><div>Evidence: score report, hard failures, review-manager route for weak run.</div></div>
+            <textarea placeholder="Eval report link, score, hard failures, review-manager output"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="chaos">
+          <input type="checkbox" aria-label="Lower environment chaos run proven">
+          <div class="item-body">
+            <div class="title-row"><h3>Approved lower-env chaos/regression run completes</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Inject one approved low-risk failure, verify target recovery, and attach eval/report evidence.</p>
+            <div class="meta"><div>Evidence: ChaosResult/equivalent, recovery proof, eval score, report.</div></div>
+            <textarea placeholder="Chaos run, target, verdict, recovery, report link"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="sre-first-contact">
+          <input type="checkbox" aria-label="SRE first-contact demo proven">
+          <div class="item-body">
+            <div class="title-row"><h3>SRE first-contact app onboarding demo adapts and runs</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Use the cold-start path from app profile to agents, chaos, remediation decision, eval, reporting, KB, and memory learning.</p>
+            <div class="meta">
+              <div>Evidence: completed bundle from <code>demos/sre-first-contact/</code> adapted to work app.</div>
+              <div>Reference: <a href="WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-WALKTHROUGH.md">ASTHERI/SRE walkthrough</a></div>
+            </div>
+            <textarea placeholder="App name, profile, agents, chaos result, eval, report"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="safety">
+          <input type="checkbox" aria-label="Safety checks complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Safety check: no broad mutation, delete, exec, or broad GitLab write tools</h3><span class="badge p0">P0</span></div>
+            <p class="desc">Confirm read-only and write-capable agents are separated and ToolGrants match intended scopes.</p>
+            <div class="meta"><div>Evidence: Agent manifests, ToolGrant toolNames, policy report or denial proof.</div></div>
+            <textarea placeholder="ToolGrant scan, policy report, exceptions if any"></textarea>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-section="enhance">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Strong follow-ups</p>
+          <h2>Queue after today's integration focus</h2>
+        </div>
+        <span class="badge p1">P1</span>
+      </div>
+      <div class="items">
+        <article class="item" data-id="memory">
+          <input type="checkbox" aria-label="Memory proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Shared memory recall and curator-mediated write path</h3><span class="badge p1">P1</span></div>
+            <p class="desc">Prove memory recall across an agent/session boundary and make learning updates only through the curator path.</p>
+            <div class="meta"><div>Evidence: seed, lookup, context reuse, curator update marker.</div></div>
+            <textarea placeholder="Memory seed/recall/write evidence"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="byo-triage">
+          <input type="checkbox" aria-label="BYO triage agent proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>BYO read-only triage agent onboarding</h3><span class="badge p1">P1</span></div>
+            <p class="desc">Onboard one team agent with explicit ToolGrant and prove granted tools only.</p>
+            <div class="meta"><div>Reference: <code>demos/byo-agent-showcase/</code></div></div>
+            <textarea placeholder="Team, Agent Ready, ToolGrant, smoke query"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="byo-remediation">
+          <input type="checkbox" aria-label="BYO remediation proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>BYO bounded remediation agent dry-run or live non-prod proof</h3><span class="badge p1">P1</span></div>
+            <p class="desc">Show remediation stays behind HITL, restricted tools, and no delete/exec by default.</p>
+            <div class="meta"><div>Evidence: HITL gate, restricted ToolGrant, GitOps/workflow proposal.</div></div>
+            <textarea placeholder="Remediation scope, HITL proof, proposed action"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="policy-denial">
+          <input type="checkbox" aria-label="Policy denial proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Policy denial for missing ToolGrant or dangerous tool request</h3><span class="badge p1">P1</span></div>
+            <p class="desc">Show Kyverno/PolicyReport or equivalent blocks unsafe BYO agent/tool requests.</p>
+            <div class="meta"><div>Evidence: denial event, PolicyReport, failed admission, or explicit installed-policy blocker.</div></div>
+            <textarea placeholder="Policy name, denied resource, reason"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="dashboard-panels">
+          <input type="checkbox" aria-label="Grafana dashboard panels complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Grafana fleet/BYO dashboard panels populate or have collector blockers</h3><span class="badge p1">P1</span></div>
+            <p class="desc">Confirm ToolGrant, tool-denial, policy-violation, eval score, HITL, and chaos panels are wired.</p>
+            <div class="meta"><div>Reference: <code>observability/agent-evals/grafana/kagent-fleet-overview-dashboard.json</code></div></div>
+            <textarea placeholder="Panel screenshots, metric queries, collector blocker"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="review-manager">
+          <input type="checkbox" aria-label="Review manager proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Review-manager below-threshold routing in work lab</h3><span class="badge p1">P1</span></div>
+            <p class="desc">Exercise one weak run and confirm it produces a finding, issue draft, or review report.</p>
+            <div class="meta"><div>Home sample: <code>score=0.575 passed=false hard_failures=2</code></div></div>
+            <textarea placeholder="Weak run, score, finding/report link"></textarea>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-section="defer">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Defer unless time remains</p>
+          <h2>Useful hardening after the work handover is credible</h2>
+        </div>
+        <span class="badge p2">P2</span>
+      </div>
+      <div class="items">
+        <article class="item" data-id="native-memory">
+          <input type="checkbox" aria-label="Native memory proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Native Postgres/pgvector memory restart proof</h3><span class="badge p2">P2</span></div>
+            <p class="desc">Prove durable memory survives restart and recall still works.</p>
+            <textarea placeholder="Restart test and recall proof"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="ticket-closure">
+          <input type="checkbox" aria-label="Eval gated ticket closure complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Eval-gated ticket closure</h3><span class="badge p2">P2</span></div>
+            <p class="desc">Block ticket closure unless lifecycle eval passes and hard gates are clear.</p>
+            <textarea placeholder="Ticket workflow evidence"></textarea>
+          </div>
+        </article>
+
+        <article class="item" data-id="fleet-scheduling">
+          <input type="checkbox" aria-label="Fleet scheduling proof complete">
+          <div class="item-body">
+            <div class="title-row"><h3>Fleet/randomized chaos scheduling under policy</h3><span class="badge p2">P2</span></div>
+            <p class="desc">Randomized multi-cluster test selection with approval, policy, and reporting controls.</p>
+            <textarea placeholder="Fleet selector, schedule, policy proof"></textarea>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const key = "kagent-v2-work-checklist-v1";
+    const state = JSON.parse(localStorage.getItem(key) || "{}");
+    const items = Array.from(document.querySelectorAll(".item"));
+    const count = document.getElementById("count");
+    const bar = document.getElementById("bar");
+    const exportBtn = document.getElementById("exportBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    function itemTitle(item) {
+      return item.querySelector("h3").textContent.trim();
+    }
+
+    function save() {
+      localStorage.setItem(key, JSON.stringify(state));
+    }
+
+    function update() {
+      let complete = 0;
+      items.forEach((item) => {
+        const id = item.dataset.id;
+        const checkbox = item.querySelector("input[type='checkbox']");
+        const textarea = item.querySelector("textarea");
+        state[id] = state[id] || {};
+        state[id].checked = checkbox.checked;
+        state[id].note = textarea.value;
+        item.classList.toggle("checked", checkbox.checked);
+        if (checkbox.checked) complete += 1;
+      });
+      const total = items.length;
+      count.textContent = `${complete} / ${total} complete`;
+      bar.style.width = `${total ? Math.round((complete / total) * 100) : 0}%`;
+      save();
+    }
+
+    function hydrate() {
+      items.forEach((item) => {
+        const id = item.dataset.id;
+        const checkbox = item.querySelector("input[type='checkbox']");
+        const textarea = item.querySelector("textarea");
+        if (state[id]) {
+          checkbox.checked = Boolean(state[id].checked);
+          textarea.value = state[id].note || "";
+        }
+        checkbox.addEventListener("change", update);
+        textarea.addEventListener("input", update);
+      });
+      update();
+    }
+
+    function exportMarkdown() {
+      const lines = [
+        "# Kagent Triage V2 Work Implementation Checklist",
+        "",
+        `Generated: ${new Date().toISOString()}`,
+        ""
+      ];
+      document.querySelectorAll(".section").forEach((section) => {
+        const title = section.querySelector("h2").textContent.trim();
+        lines.push(`## ${title}`, "");
+        section.querySelectorAll(".item").forEach((item) => {
+          const id = item.dataset.id;
+          const done = item.querySelector("input[type='checkbox']").checked ? "x" : " ";
+          const note = (state[id]?.note || "").trim();
+          lines.push(`- [${done}] ${itemTitle(item)}`);
+          if (note) lines.push(`  - evidence: ${note.replace(/\n/g, " ")}`);
+        });
+        lines.push("");
+      });
+      navigator.clipboard.writeText(lines.join("\n")).then(() => {
+        exportBtn.textContent = "Copied";
+        setTimeout(() => { exportBtn.textContent = "Copy as markdown"; }, 1400);
+      });
+    }
+
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("Clear all checklist state and notes in this browser?")) return;
+      Object.keys(state).forEach((id) => delete state[id]);
+      localStorage.removeItem(key);
+      items.forEach((item) => {
+        item.querySelector("input[type='checkbox']").checked = false;
+        item.querySelector("textarea").value = "";
+      });
+      update();
+    });
+    exportBtn.addEventListener("click", exportMarkdown);
+    hydrate();
+  </script>
+</body>
+</html>

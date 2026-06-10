@@ -1,0 +1,265 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://kagent-public.local/schemas/chaos-test.schema.yaml
+title: ChaosTest
+description: Git-stored reliability chaos test configuration. This is not a CRD in v1.
+type: object
+additionalProperties: false
+required:
+  - apiVersion
+  - kind
+  - metadata
+  - spec
+properties:
+  apiVersion:
+    const: reliability.platform.example/v1alpha1
+  kind:
+    const: ChaosTest
+  metadata:
+    type: object
+    additionalProperties: true
+    required:
+      - name
+      - labels
+    properties:
+      name:
+        type: string
+        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+        maxLength: 63
+      labels:
+        type: object
+        additionalProperties:
+          type: string
+        required:
+          - reliability.platform/suite
+          - reliability.platform/owner
+          - reliability.platform/env-tier
+        properties:
+          reliability.platform/suite:
+            type: string
+          reliability.platform/owner:
+            type: string
+          reliability.platform/env-tier:
+            enum:
+              - dev
+              - test
+              - staging
+  spec:
+    type: object
+    additionalProperties: false
+    required:
+      - owner
+      - description
+      - target
+      - experiment
+      - schedule
+      - safety
+      - observability
+      - triage
+      - eval
+      - reporting
+      - learning
+    properties:
+      owner:
+        type: string
+        minLength: 1
+      description:
+        type: string
+        minLength: 1
+      target:
+        type: object
+        additionalProperties: false
+        required:
+          - environment
+          - clusters
+          - namespace
+          - selector
+          - serviceOwnership
+        properties:
+          environment:
+            enum:
+              - dev
+              - test
+              - staging
+          clusters:
+            type: object
+            additionalProperties: false
+            required:
+              - selectionMode
+              - count
+              - selector
+              - resolved
+            properties:
+              selectionMode:
+                enum:
+                  - explicit
+                  - random
+                  - label-selector
+              count:
+                type: integer
+                minimum: 1
+                maximum: 4
+              selector:
+                type: string
+              resolved:
+                type: array
+                items:
+                  type: string
+          namespace:
+            type: string
+            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+            maxLength: 63
+          selector:
+            type: object
+            additionalProperties: false
+            required:
+              - matchLabels
+            properties:
+              matchLabels:
+                type: object
+                additionalProperties:
+                  type: string
+                required:
+                  - reliability.platform/chaos-optin
+                properties:
+                  reliability.platform/chaos-optin:
+                    const: "true"
+          serviceOwnership:
+            type: string
+            minLength: 1
+      experiment:
+        type: object
+        additionalProperties: false
+        required:
+          - provider
+          - type
+          - parameters
+        properties:
+          provider:
+            const: litmus
+          type:
+            enum:
+              - pod-delete
+              - pod-cpu-hog
+              - pod-network-latency
+          parameters:
+            type: object
+            additionalProperties:
+              anyOf:
+                - type: string
+                - type: number
+                - type: integer
+                - type: boolean
+      schedule:
+        type: object
+        additionalProperties: false
+        required:
+          - mode
+          - window
+        properties:
+          mode:
+            enum:
+              - manual
+              - cron
+          cron:
+            type: string
+          window:
+            type: string
+            minLength: 1
+      safety:
+        type: object
+        additionalProperties: false
+        required:
+          - blastRadius
+          - maxDurationSeconds
+          - abortConditions
+          - rollback
+          - requiresHITL
+        properties:
+          blastRadius:
+            enum:
+              - single-workload
+              - single-namespace
+          maxDurationSeconds:
+            type: integer
+            minimum: 1
+            maximum: 3600
+          abortConditions:
+            type: array
+            minItems: 1
+            items:
+              type: string
+          rollback:
+            type: string
+            minLength: 1
+          requiresHITL:
+            const: true
+      observability:
+        type: object
+        additionalProperties: false
+        required:
+          - expectedSignals
+          - recoverySignals
+          - grafanaDashboard
+        properties:
+          expectedSignals:
+            type: array
+            minItems: 1
+            items:
+              type: string
+          recoverySignals:
+            type: array
+            minItems: 1
+            items:
+              type: string
+          grafanaDashboard:
+            type: string
+            minLength: 1
+      triage:
+        type: object
+        additionalProperties: false
+        required:
+          - workflowTemplate
+        properties:
+          workflowTemplate:
+            type: string
+            minLength: 1
+      eval:
+        type: object
+        additionalProperties: false
+        required:
+          - rubricRef
+          - benchmark
+        properties:
+          rubricRef:
+            type: string
+            minLength: 1
+          benchmark:
+            type: number
+            minimum: 0
+            maximum: 10
+      reporting:
+        type: object
+        additionalProperties: false
+        required:
+          - destination
+        properties:
+          destination:
+            type: array
+            minItems: 1
+            items:
+              enum:
+                - GitLab
+                - GrafanaAnnotation
+                - Teams
+                - ObjectStorage
+      learning:
+        type: object
+        additionalProperties: false
+        required:
+          - memoryUpdatePolicy
+          - kbUpdatePolicy
+        properties:
+          memoryUpdatePolicy:
+            const: curator-only
+          kbUpdatePolicy:
+            const: hitl-gated-mr

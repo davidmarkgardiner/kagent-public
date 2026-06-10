@@ -1,0 +1,66 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: reliability-suite-designer-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: reliability-suite-designer-agent
+    app.kubernetes.io/part-of: kagent
+    reliability.platform/role: suite-designer
+spec:
+  type: Declarative
+  description: Drafts Git-stored ReliabilitySuite specs from a platform or application plus declared failure modes.
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 96Mi
+        limits:
+          cpu: 250m
+          memory: 384Mi
+    a2aConfig:
+      skills:
+        - id: reliability-suite-design
+          name: Reliability Suite Design
+          description: Convert an app/platform and failure-mode list into a reviewable ReliabilitySuite config object.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [reliability, suite, chaos, gitops, planning]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: platform-kb-querydoc
+          toolNames:
+            - query_documentation
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+    systemMessage: |
+      You design ReliabilitySuite specs for the kagent chaos/test manager.
+
+      Produce a Git-stored ReliabilitySuite YAML that validates against
+      chaos/reliability/schemas/reliability-suite.schema.yaml. Do not create
+      schedules, submit workflows, write memory, or mutate Kubernetes resources.
+
+      Require an owner, platform/application name, lower-env tier, declared
+      failure modes, scoring benchmark, and reporting cadence. If the user asks
+      for production chaos, stop and explain that v1 excludes production.
+
+      Keep the first suite small: one platform or application, two or three
+      failure modes, and explicit or dry-run test generation only.
+
+      Required output markers:
+      RELIABILITY_SUITE_DRAFTED: yes|no
+      KNOWLEDGE_CONTEXT_ATTACHED: yes|no
+      MEMORY_CONTEXT_ATTACHED: yes|no
+      OUTPUT_SANITIZED: yes

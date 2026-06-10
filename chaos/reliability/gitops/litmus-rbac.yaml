@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-chaos-admin
+  namespace: chaos-demo
+  labels:
+    app: k8s-chaos-admin
+    app.kubernetes.io/name: k8s-chaos-admin
+    app.kubernetes.io/part-of: litmus
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-chaos-admin
+  labels:
+    app: k8s-chaos-admin
+    app.kubernetes.io/name: k8s-chaos-admin
+    app.kubernetes.io/part-of: litmus
+rules:
+  - apiGroups: ["", "apps", "apps.openshift.io", "argoproj.io", "batch", "litmuschaos.io"]
+    resources:
+      - chaosengines
+      - chaosexperiments
+      - chaosresults
+      - daemonsets
+      - deploymentconfigs
+      - deployments
+      - events
+      - jobs
+      - pods
+      - pods/exec
+      - pods/log
+      - replicasets
+      - replicationcontrollers
+      - rollouts
+      - statefulsets
+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch", "update", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-chaos-admin
+  labels:
+    app: k8s-chaos-admin
+    app.kubernetes.io/name: k8s-chaos-admin
+    app.kubernetes.io/part-of: litmus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-chaos-admin
+subjects:
+  - kind: ServiceAccount
+    name: k8s-chaos-admin
+    namespace: chaos-demo

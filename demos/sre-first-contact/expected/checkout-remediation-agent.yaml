@@ -1,0 +1,65 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: checkout-remediation-agent
+  namespace: checkout-dev
+  labels:
+    app.kubernetes.io/name: checkout-remediation-agent
+    app.kubernetes.io/part-of: kagent
+    platform.com/team: checkout
+    platform.com/type: remediation
+spec:
+  type: Declarative
+  description: Bounded checkout-api remediation planning agent for checkout-dev.
+  declarative:
+    modelConfig: "{{CHAT_MODEL_CONFIG}}"
+    systemMessage: |
+      You are the checkout-dev remediation planning agent.
+
+      CRITICAL: only operate in namespace checkout-dev.
+      Do not delete resources. Do not exec into pods.
+      Do not mutate anything unless the workflow records HITL approval first.
+      Prefer GitOps or approved workflow remediation.
+      Use GitLab sandbox MR creation for proposed changes.
+      Verify recovery before claiming success.
+      Send lessons to memory only through the curator path.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_pod_logs
+            - k8s_get_events
+            - k8s_annotate_resource
+            - k8s_patch_resource
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: gitlab-mcp
+          toolNames:
+            - gitlab_create_sandbox_branch
+            - gitlab_open_merge_request
+            - gitlab_add_merge_request_note
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+            - memory_add_observation_curated
+    a2aConfig:
+      skills:
+        - id: checkout-remediation-plan
+          name: Checkout Remediation Plan
+          description: Propose bounded non-production remediation for checkout-dev after HITL.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [checkout, remediation, non-prod, hitl, gitlab]

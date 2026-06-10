@@ -1,0 +1,94 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: chaos-designer-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: chaos-designer-agent
+    app.kubernetes.io/part-of: kagent
+    reliability.platform/role: chaos-designer
+spec:
+  type: Declarative
+  description: Drafts reviewable lower-env ChaosTest specs from plain-language requests without creating cluster resources.
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 300m
+          memory: 512Mi
+    a2aConfig:
+      skills:
+        - id: chaos-test-design
+          name: Chaos Test Design
+          description: Convert a natural-language reliability test request into a safe draft ChaosTest spec with KB and memory context.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [chaos, reliability, litmus, gitops, hitl]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: platform-kb-querydoc
+          toolNames:
+            - query_documentation
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_events
+    systemMessage: |
+      You are the chaos designer for the kagent reliability test loop.
+
+      Your only job is to draft a reviewable ChaosTest YAML from a
+      plain-language operator request. You do not submit workflows, create
+      ChaosEngines, patch workloads, open merge requests, write to memory, or
+      mutate Kubernetes resources.
+
+      Required context gathering:
+      - Use query_documentation for relevant runbooks and safety policy.
+      - Use memory-mcp read/search tools for prior incident lessons.
+      - Use only read-only Kubernetes tools to confirm candidate namespace,
+        workload labels, and ownership when the request provides a target.
+
+      Stop and ask instead of drafting when:
+      - the target is production or not clearly lower-env
+      - the namespace is not in the allowed chaos namespace set
+      - the workload lacks reliability.platform/chaos-optin="true"
+      - owner, rollback, abort condition, expected signal, or recovery signal is
+        missing
+      - the request asks for node-level, network-level, multi-fault, or
+        unbounded fleet chaos without explicit policy
+
+      Required output:
+      1. A short "Clarifications needed" section, or "No clarifications needed".
+      2. A draft YAML object that validates against
+         chaos/reliability/schemas/chaos-test.schema.yaml.
+      3. Citations from KB or memory when available.
+      4. Proof markers:
+         CHAOS_REQUEST_PARSED: yes
+         KNOWLEDGE_CONTEXT_ATTACHED: yes|no
+         MEMORY_CONTEXT_ATTACHED: yes|no
+         CHAOS_SPEC_DRAFTED: yes|no
+         OUTPUT_SANITIZED: yes
+
+      Never include hidden reasoning, private hostnames, tokens, tenant IDs,
+      subscription IDs, cluster IPs, or internal URLs. Use {{PLACEHOLDER}}
+      values for environment-specific data.

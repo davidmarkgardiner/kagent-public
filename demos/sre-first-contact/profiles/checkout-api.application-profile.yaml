@@ -1,0 +1,66 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ApplicationReliabilityProfile
+metadata:
+  name: checkout-api
+  labels:
+    platform.kagent.dev/team: checkout
+    platform.kagent.dev/env-tier: dev
+spec:
+  application:
+    name: checkout-api
+    namespace: checkout-dev
+    owner: "{{TEAM_OWNER}}"
+    serviceOwnership: catalog://checkout/checkout-api
+    deploymentRef: deployment/checkout-api
+    serviceRef: service/checkout-api
+    gitopsPath: "{{GITOPS_REPO_PATH}}/apps/checkout-api"
+  runtime:
+    platform: kubernetes
+    environment: dev
+    replicas: 2
+    readinessProbe: /ready
+    livenessProbe: /healthz
+  dependencies:
+    - name: checkout-db
+      type: database
+      criticality: high
+    - name: payment-provider
+      type: external-api
+      criticality: high
+    - name: inventory-api
+      type: internal-service
+      criticality: medium
+  observability:
+    grafanaDashboard: checkout-api-service-health
+    metrics:
+      - checkout_request_rate
+      - checkout_error_rate
+      - checkout_latency_seconds
+      - kube_deployment_status_replicas_available
+    logs:
+      - namespace=checkout-dev app=checkout-api
+    traces:
+      backend: "{{TRACING_BACKEND}}"
+      serviceName: checkout-api
+  gitlab:
+    project: "{{GITLAB_PROJECT}}"
+    defaultBranch: "{{GITLAB_TARGET_BRANCH}}"
+    remediationMode: sandbox-mr
+  knowledgeBase:
+    runbooks:
+      - docs/platform-kb/runbooks/checkout-api-crashloop.md
+      - docs/platform-kb/runbooks/checkout-api-dependency-timeout.md
+    querydocServer: "{{KB_MCP_SERVER}}"
+  memory:
+    read: true
+    writePolicy: curator-only
+  safety:
+    allowedEnvironmentTiers:
+      - dev
+      - test
+      - staging
+    requiresHITLForWrites: true
+    forbiddenTools:
+      - k8s_delete_resource
+      - k8s_exec
+

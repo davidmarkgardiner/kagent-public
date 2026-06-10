@@ -33,6 +33,8 @@ The current iteration packages an AI SRE operating model:
   focused incident evidence dashboards.
 - GitLab MCP: sandbox branch/MR/comment proof from terminal and kagent-mounted
   MCP shim.
+- KB update loop: GitLab MCP creates or updates KB docs, updates the index,
+  opens a merge request, then doc2vec/querydoc proves cited retrieval.
 - Work lift-and-shift docs: front sheets, PR templates, execution reviews,
   HTML presenter pages, validation commands, and public-safety guardrails.
 
@@ -41,17 +43,57 @@ The current iteration packages an AI SRE operating model:
 Start with the presentation and top-level front sheets:
 
 1. `DEMOS.md` - repo-wide demo map.
-2. `SMART-TRIAGE-FANOUT-PRESENTER.html` - visual explanation for the smart
+2. `WORK-KAGENT-TRIAGE-V2-FRONT-SHEET.md` - one-page starting point,
+   current proof tiers, critical path, SRE demo script, and done definition.
+3. `WORK-KAGENT-TRIAGE-V2-REVIEW-PROMPT.md` - current-state review brief,
+   Opus prompt, and local improvement checklist for Kagent triage system v2.
+4. `WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md` - completion gates for
+   verification, HTML visuals, Grafana metrics, SRE workflows, and BYO-agent
+   integration.
+5. `WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md` - current local readiness
+   status and remaining priorities.
+6. `WORK-KAGENT-TRIAGE-V2-WORK-AGENT-START-PROMPT.md` - direct prompt to hand
+   to the work-side agent, including read order, priority order, definition of
+   done, and output format.
+7. `scripts/verify-kagent-triage-v2-handoff.sh` - one-command local/static
+   verifier for the human or work agent before cluster work begins.
+8. `WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html` - interactive
+   checkbox checklist for work-machine implementation, prioritized with
+   doc2vec/querydoc KB first, then A2A, GitLab MCP, and Grafana MCP.
+9. `WORK-KAGENT-TRIAGE-V2-SRE-OPERATING-GUIDE.md` - SRE-facing operating
+   guide for incident replay, controlled chaos, BYO agents, and review routing.
+10. `WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-WALKTHROUGH.md` - first-time ASTHERI/SRE
+   walkthrough from app onboarding to chaos, remediation, dashboards, GitLab,
+   reports, KB, memory, and eval evidence.
+11. `WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-REHEARSAL.md` - local rehearsal notes,
+   discrepancies found, fixes made, and remaining live work-lab proofs.
+12. `WORK-KAGENT-TRIAGE-V2-SRE-WORKFLOW.html` - visual SRE workflow for demos
+   and team walkthroughs.
+13. `WORK-KAGENT-TRIAGE-V2-SRE-FIRST-CONTACT.html` - visual cold-start demo for
+   an SRE bringing an app, generating agents, injecting chaos, and evaluating.
+14. `demos/sre-first-contact/README.md` - one-folder first-contact demo package
+   with prompts, app profile, failure modes, BYO agents, chaos, and eval.
+15. `WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md` - real suspend vs mock/full callback
+   proof status.
+16. `WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md` - static querydoc validation
+   and live-query blocker.
+17. `demos/kb-gitlab-mcp-update/README.md` - GitLab MCP KB update loop,
+   index update, reindex, querydoc citation, and triage KB lookup acceptance
+   test.
+18. `WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html` - presentation-ready proof board.
+19. `WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md` - prioritized work-side
+   replication checklist.
+20. `SMART-TRIAGE-FANOUT-PRESENTER.html` - visual explanation for the smart
    triage fan-out package.
-3. `SMART-TRIAGE-FANOUT-WORK-HANDOFF.md` - detailed smart-triage lift-and-shift
+21. `SMART-TRIAGE-FANOUT-WORK-HANDOFF.md` - detailed smart-triage lift-and-shift
    front sheet.
-4. `SMART-TRIAGE-FANOUT-LIVE-EVIDENCE.md` - example of acceptable live evidence.
-5. `SMART-TRIAGE-FANOUT-EXECUTION-REVIEW.md` - review checklist format.
-6. `KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md` - agent lifecycle evaluation handoff.
-7. `A2A-WORK-IMPLEMENTATION-PLAN.md` - memory/A2A work implementation plan.
-8. `SMART-TRIAGE-GITLAB-MCP-MR-DEMO.md` - GitLab MCP sandbox proof.
-9. `docs/ai-grafana/README.md` - AI and Grafana triage context.
-10. `chaos/litmus/WORK-INSTALL.md` - chaos engineering install handoff.
+22. `SMART-TRIAGE-FANOUT-LIVE-EVIDENCE.md` - example of acceptable live evidence.
+23. `SMART-TRIAGE-FANOUT-EXECUTION-REVIEW.md` - review checklist format.
+24. `KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md` - agent lifecycle evaluation handoff.
+25. `A2A-WORK-IMPLEMENTATION-PLAN.md` - memory/A2A work implementation plan.
+26. `SMART-TRIAGE-GITLAB-MCP-MR-DEMO.md` - GitLab MCP sandbox proof.
+27. `docs/ai-grafana/README.md` - AI and Grafana triage context.
+28. `chaos/litmus/WORK-INSTALL.md` - chaos engineering install handoff.
 
 Then inspect the implementation paths:
 
@@ -64,7 +106,10 @@ agents/skills/grafana-incident-evidence-pack/
 observability/grafana/
 docs/smart-triage-integration-spikes/
 docs/platform-kb/runbooks/
+docs/platform-kb/agents/
 infra/byo-kagent/kyverno-policies/
+demos/byo-agent-showcase/
+demos/kb-gitlab-mcp-update/
 chaos/litmus/
 ```
 
@@ -110,6 +155,11 @@ SMART_TRIAGE_PATTERN: proven
 At work, keep the same marker contract for the first run, but replace public
 synthetic evidence with approved live backends.
 
+Important evidence boundary: the public package includes some synthetic marker
+contracts for knowledge retrieval, Grafana evidence, GitLab write paths, and
+chaos-triggered specialist fan-out. Treat those as process contracts until the
+work environment proves them with approved live backends.
+
 ### GitLab MCP
 
 The package includes:
@@ -122,6 +172,12 @@ The package includes:
 Start in a sandbox project. Do not give general triage agents write-capable
 GitLab tools. Keep GitLab write tools on the GitOps specialist only, and call
 that specialist only after HITL for any non-sandbox action.
+
+Use a dedicated sandbox project and a project-scoped token or approved
+least-privilege OAuth identity. Do not reuse a broadly scoped user or group token
+for the GitLab MCP path. The public demo's sandbox boundary is partly
+prompt-level; work-side isolation must be enforced by token scope and project
+permissions.
 
 ### Agent Evaluations
 
@@ -171,6 +227,7 @@ Ask the work owner to provide these before applying anything.
 | GitLab | `{{GITLAB_PROJECT}}` | Sandbox project path or ID |
 | GitLab | `{{GITLAB_TARGET_BRANCH}}` | Default target branch |
 | GitLab | `{{GITLAB_AUTH_MODEL}}` | OAuth, project token, service account, or approved MCP auth |
+| GitLab | `{{GITLAB_TOKEN_SCOPE}}` | Project-scoped, least-privilege write scope for the sandbox project |
 | GitLab | `{{GITLAB_TOKEN_SECRET_NAME}}` | Kubernetes Secret name, if using token auth |
 | GitLab | `{{GITLAB_TOKEN_SECRET_KEY}}` | Secret key containing the token |
 | HITL | `{{HITL_FRONT_DOOR}}` | Argo UI, Teams, Slack, Git approval, or ITSM approval |

@@ -2,8 +2,16 @@
 
 ## TL;DR
 
-Implement one kagent `ModelConfig` that points agents at one stable
-agentgateway endpoint:
+This file is retained as the original automatic-failover handoff. The current
+recommended path is now [`80-QWEN-CAPACITY-CONTROL.md`](80-QWEN-CAPACITY-CONTROL.md):
+measure Qwen capacity, then throttle/dedupe Argo/Kafka/Alloy workflows before
+they exceed that capacity.
+
+Do not duplicate every kagent agent just to work around failover yet. Automatic
+gateway failover is blocked in the work stage until Qwen TLS-session limits and
+runtime per-provider authentication support are resolved.
+
+Original target pattern:
 
 ```text
 kagent -> agentgateway /llm/v1 -> Qwen primary -> GPT-4 secondary

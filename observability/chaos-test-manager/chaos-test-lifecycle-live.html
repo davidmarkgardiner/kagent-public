@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>Chaos Test Lifecycle Live Dashboard</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5c6670;
+      --line: #d9dee5;
+      --soft: #f4f6f8;
+      --panel: #ffffff;
+      --ok: #1f7a4d;
+      --ok-soft: #e8f6ef;
+      --warn: #9b6200;
+      --warn-soft: #fff5dc;
+      --blue: #235f9c;
+      --blue-soft: #e9f2fb;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      --sans: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--soft);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.45;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: end;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 3vw, 3rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .eyebrow {
+      color: var(--blue);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      letter-spacing: 0;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid #acd9c4;
+      border-radius: 999px;
+      background: var(--ok-soft);
+      color: #135c39;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(31, 122, 77, 0.13);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .metric,
+    .panel,
+    .timeline-step,
+    .link-tile {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .metric {
+      padding: 18px;
+      min-height: 132px;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .value {
+      margin-top: 10px;
+      font-size: 2rem;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .value.ok {
+      color: var(--ok);
+    }
+
+    .value.warn {
+      color: var(--warn);
+    }
+
+    .value.blue {
+      color: var(--blue);
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .panel {
+      padding: 20px;
+    }
+
+    .two-col {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.75fr);
+      align-items: start;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .timeline-step {
+      min-height: 120px;
+      padding: 14px;
+      position: relative;
+    }
+
+    .timeline-step::before {
+      content: "";
+      display: block;
+      width: 26px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--ok);
+      margin-bottom: 12px;
+    }
+
+    .marker-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .marker {
+      padding: 9px 10px;
+      border-radius: 6px;
+      background: var(--blue-soft);
+      color: #1d4f82;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      overflow-wrap: anywhere;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 8px;
+      background: #111827;
+      color: #e5e7eb;
+      font-family: var(--mono);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .warning {
+      border-color: #f3ce83;
+      background: var(--warn-soft);
+    }
+
+    .warning strong {
+      color: #7a4c00;
+    }
+
+    .links {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .link-tile {
+      display: block;
+      padding: 16px;
+      text-decoration: none;
+      min-height: 112px;
+    }
+
+    .link-tile:hover,
+    .link-tile:focus {
+      border-color: var(--blue);
+      outline: 2px solid transparent;
+    }
+
+    .link-tile span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .footer {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 920px) {
+      header,
+      .two-col,
+      .metrics,
+      .timeline,
+      .links,
+      .marker-list {
+        grid-template-columns: 1fr;
+      }
+
+      .shell {
+        padding: 18px;
+      }
+
+      .status-pill {
+        justify-self: start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Proxmox lower-env live proof</p>
+        <h1>Chaos Test Lifecycle</h1>
+        <p class="subtitle">Live status dashboard for the first HITL-approved `chaos-demo-pod-delete` run. Values are sanitized and backed by the evidence file plus current Kubernetes checks.</p>
+      </div>
+      <div class="status-pill" aria-label="Run status passed">
+        <span class="status-dot"></span>
+        Passed
+      </div>
+    </header>
+
+    <section class="grid metrics" aria-label="Run metrics">
+      <div class="metric">
+        <div class="label">Litmus verdict</div>
+        <div class="value ok">Pass</div>
+        <p class="note">`ChaosResult` reached terminal phase `Completed`.</p>
+      </div>
+      <div class="metric">
+        <div class="label">Target recovery</div>
+        <div class="value ok">2/2</div>
+        <p class="note">`chaos-demo/chaos-target` recovered to desired Ready replicas.</p>
+      </div>
+      <div class="metric">
+        <div class="label">Lifecycle eval</div>
+        <div class="value blue">1.0</div>
+        <p class="note">Eval run emitted `score=1.0 passed=true`.</p>
+      </div>
+      <div class="metric">
+        <div class="label">Final workflow</div>
+        <div class="value ok">Succeeded</div>
+        <p class="note">`chaos-test-lifecycle-s2j7z` finished successfully.</p>
+      </div>
+    </section>
+
+    <section class="grid two-col">
+      <div class="panel">
+        <h2>End-to-end path verified</h2>
+        <div class="timeline" aria-label="Verification timeline">
+          <div class="timeline-step">
+            <h3>Preflight</h3>
+            <p class="note">Config validation, Argo lint, server dry-runs, and CRD checks passed.</p>
+          </div>
+          <div class="timeline-step">
+            <h3>HITL</h3>
+            <p class="note">Workflow reached human review and resumed with approval evidence.</p>
+          </div>
+          <div class="timeline-step">
+            <h3>Injection</h3>
+            <p class="note">Litmus pod-delete ran against the opted-in lower-env target.</p>
+          </div>
+          <div class="timeline-step">
+            <h3>Recovery</h3>
+            <p class="note">Deployment returned to two Ready replicas after the experiment.</p>
+          </div>
+          <div class="timeline-step">
+            <h3>Triage</h3>
+            <p class="note">Kubernetes, network, Grafana, and GitOps specialist markers were collected.</p>
+          </div>
+          <div class="timeline-step">
+            <h3>Eval</h3>
+            <p class="note">Lifecycle evaluator scored the run as passing.</p>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel warning" aria-label="Boundaries">
+        <h2>Boundaries</h2>
+        <p><strong>Not claimed:</strong> Kyverno admission on Proxmox, because Kyverno is not installed there.</p>
+        <p class="note"><strong>Not claimed:</strong> live Grafana/Alloy ingestion. The repo includes importable/configurable assets for that path.</p>
+      </aside>
+    </section>
+
+    <section class="panel grid">
+      <div>
+        <h2>Proof markers</h2>
+        <p class="note">These are the workflow markers that count for the goal-achieved check.</p>
+      </div>
+      <div class="marker-list">
+        <div class="marker">HITL_STATUS: resumed</div>
+        <div class="marker">CHAOS_INJECTION_COMPLETED: yes</div>
+        <div class="marker">CHAOS_RESULT_VERDICT: Pass</div>
+        <div class="marker">SMART_TRIAGE_FANOUT: started</div>
+        <div class="marker">SPECIALIST_KUBERNETES: completed</div>
+        <div class="marker">SPECIALIST_NETWORK: completed</div>
+        <div class="marker">SPECIALIST_GRAFANA: completed</div>
+        <div class="marker">SPECIALIST_GITOPS: completed</div>
+        <div class="marker">VERIFICATION_PASSED: yes</div>
+        <div class="marker">EVAL_PASSED: true</div>
+      </div>
+    </section>
+
+    <section class="grid two-col">
+      <div class="panel">
+        <h2>Current verification commands</h2>
+        <pre><code>KUBECTL_CONTEXT=proxmox-k8s bash chaos/reliability/scripts/preflight-live-run.sh
+
+kubectl --context proxmox-k8s -n chaos-demo get chaosengine,chaosresult
+kubectl --context proxmox-k8s -n chaos-demo get deploy chaos-target
+kubectl --context proxmox-k8s -n argo get workflow chaos-test-lifecycle-s2j7z
+
+argo --context proxmox-k8s -n argo logs chaos-test-lifecycle-s2j7z \
+  | rg "CHAOS_RESULT_VERDICT|VERIFICATION_PASSED|score=1.0|passed=true"</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Dashboard inputs</h2>
+        <p class="note">The static page is backed by the evidence file. Grafana import and Alloy telemetry wiring are separate artifacts for managed LGTM integration.</p>
+        <pre><code>observability/chaos-test-manager/grafana/chaos-test-lifecycle-dashboard.json
+observability/chaos-test-manager/alloy/chaos-test-lifecycle.alloy
+WORK-CHAOS-TEST-MANAGER-LIVE-EVIDENCE.md</code></pre>
+      </div>
+    </section>
+
+    <section class="grid links" aria-label="Related artifacts">
+      <a class="link-tile" href="../../WORK-CHAOS-TEST-MANAGER-LIVE-EVIDENCE.md">
+        <strong>Live Evidence</strong>
+        <span>Sanitized proof for the Proxmox dry-run, live chaos run, recovery, and eval.</span>
+      </a>
+      <a class="link-tile" href="../../chaos/reliability/LIVE-RUNBOOK.md">
+        <strong>Live Runbook</strong>
+        <span>Operator path for preflight, dry-run, HITL approval, non-dry-run, and evidence capture.</span>
+      </a>
+      <a class="link-tile" href="grafana/chaos-test-lifecycle-dashboard.json">
+        <strong>Grafana JSON</strong>
+        <span>Importable dashboard for eval score, pass/fail, hard failures, markers, and subscores.</span>
+      </a>
+      <a class="link-tile" href="alloy/chaos-test-lifecycle.alloy">
+        <strong>Alloy Snippet</strong>
+        <span>Log and metric collection wiring for workflow proof markers and eval metrics.</span>
+      </a>
+      <a class="link-tile" href="../agent-evals/agent-eval-scorecard-demo.html">
+        <strong>Eval Scorecard</strong>
+        <span>Static explanation of the agent evaluation scorecard and promotion gates.</span>
+      </a>
+      <a class="link-tile" href="../../index.html#chaos">
+        <strong>Portal</strong>
+        <span>Return to the tabbed repo front door for the broader iteration package.</span>
+      </a>
+    </section>
+
+    <p class="footer">Last updated from sanitized live evidence on 2026-06-03. No private endpoints, tokens, tenant IDs, or cluster IPs are embedded in this page.</p>
+  </div>
+</body>
+</html>

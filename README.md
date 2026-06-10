@@ -25,11 +25,11 @@ The first iteration was a basic specialist agent focused on namespace-level tria
 
 - **Moved beyond a single namespace triage agent** — v1 could inspect and reason about one area; v2 coordinates multiple connected specialists.
 - **Smart triage fan-out** — incidents can be routed across Kubernetes, networking, Grafana/observability, and GitOps/remediation specialists.
-- **Grafana integration** — agents can pull observability evidence instead of relying only on Kubernetes state.
-- **GitLab MCP integration** — agents can interact with GitLab workflows, creating a path to proposed code changes and merge-request based remediation.
-- **Human-in-the-loop control** — production-impacting changes remain governed through approval and GitOps rather than uncontrolled direct writes.
+- **Grafana integration** — read-only Grafana MCP patterns and evidence-agent contracts are defined; work-side proof must use approved live Grafana datasources.
+- **GitLab MCP integration** — sandbox branch/MR/comment patterns are documented; work use requires a dedicated sandbox project and scoped token before any write-capable tool is exposed.
+- **Human-in-the-loop control** — approval and GitOps governance are part of the target path; public demos may synthesize approval markers unless the evidence file shows a real suspend/resume identity.
 - **Agent-to-agent workflows** — A2A patterns let agents collaborate, hand off context, and combine specialist findings into one incident summary.
-- **Chaos-driven validation** — controlled failure scenarios can prove the system can detect, triage, and support remediation of realistic cluster issues.
+- **Chaos-driven validation** — lower-env pod-delete injection and lifecycle eval are proven; chaos-triggered specialist fan-out is currently a skeleton/marker contract until wired to live backends.
 - **Evaluation layer** — agent output can be scored for evidence quality, correctness, safety, and remediation usefulness.
 - **Workplace lift-and-shift package** — work-specific endpoints, secrets, namespaces, GitLab/Grafana config, and cluster details are parameterized with placeholders.
 - **Stakeholder demo assets** — HTML visualizations and runbooks explain the architecture and provide copyable proof commands for demos.
@@ -57,10 +57,35 @@ examples/           Quickstart and sample payloads
 | I want to… | Go to |
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
+| Use the Kagent v2 work-agent bundle catalogue | [`work-agent-bundles/`](work-agent-bundles/README.md) |
 | Present the Kagent v2 stakeholder demo | [`WORK-STAKEHOLDER-DEMO-RUNBOOK.html`](WORK-STAKEHOLDER-DEMO-RUNBOOK.html) |
+| Compare worker-local vs management-cluster triage (blast-radius briefing) | [`WORK-KAGENT-TRIAGE-DEPLOYMENT-MODELS.html`](WORK-KAGENT-TRIAGE-DEPLOYMENT-MODELS.html) |
+| Start the Kagent triage v2 handoff | [`WORK-KAGENT-TRIAGE-V2-FRONT-SHEET.md`](WORK-KAGENT-TRIAGE-V2-FRONT-SHEET.md) |
+| Hand a start prompt to the work agent | [`WORK-KAGENT-TRIAGE-V2-WORK-AGENT-START-PROMPT.md`](WORK-KAGENT-TRIAGE-V2-WORK-AGENT-START-PROMPT.md) |
+| Run the local handoff verifier | [`scripts/verify-kagent-triage-v2-handoff.sh`](scripts/verify-kagent-triage-v2-handoff.sh) |
+| Review current Kagent triage system v2 status | [`WORK-KAGENT-TRIAGE-V2-REVIEW-PROMPT.md`](WORK-KAGENT-TRIAGE-V2-REVIEW-PROMPT.md) |
+| Tick off the work implementation checklist | [`WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html`](WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html) |
+| Check Kagent triage v2 completion gates | [`WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md`](WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md) |
+| See the latest Kagent triage v2 verification pass | [`WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md`](WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md) |
+| Follow the SRE operating guide for chaos and BYO-agent workflows | [`WORK-KAGENT-TRIAGE-V2-SRE-OPERATING-GUIDE.md`](WORK-KAGENT-TRIAGE-V2-SRE-OPERATING-GUIDE.md) |
+| Walk through first-time ASTHERI/SRE onboarding | [`WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-WALKTHROUGH.md`](WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-WALKTHROUGH.md) |
+| Review the ASTHERI/SRE rehearsal findings | [`WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-REHEARSAL.md`](WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-REHEARSAL.md) |
+| View the SRE workflow visualization | [`WORK-KAGENT-TRIAGE-V2-SRE-WORKFLOW.html`](WORK-KAGENT-TRIAGE-V2-SRE-WORKFLOW.html) |
+| Run the first-time SRE onboarding demo | [`demos/sre-first-contact/`](demos/sre-first-contact/README.md) |
+| View the first-contact SRE storyboard | [`WORK-KAGENT-TRIAGE-V2-SRE-FIRST-CONTACT.html`](WORK-KAGENT-TRIAGE-V2-SRE-FIRST-CONTACT.html) |
+| Check the HITL proof status | [`WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md`](WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md) |
+| Check the KB/querydoc proof status | [`WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md`](WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md) |
+| Prove KB docs can be updated through GitLab MCP and retrieved through querydoc | [`demos/kb-gitlab-mcp-update/`](demos/kb-gitlab-mcp-update/README.md) |
+| View the Kagent triage v2 proof board | [`WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html`](WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html) |
+| Follow the work-agent replication checklist | [`WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md`](WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md) |
 | Hand this zip to a work agent for lift-and-shift | [`WORK-ZIP-AGENT-HANDOFF.md`](WORK-ZIP-AGENT-HANDOFF.md) |
 | Replicate memory and knowledge-base features at work | [`WORK-MEMORY-KB-NEXT-HANDOFF-README.md`](WORK-MEMORY-KB-NEXT-HANDOFF-README.md) |
 | Verify memory, doc2vec, and GitLab MCP evidence | [`WORK-MEMORY-KB-VERIFY-PROMPT.md`](WORK-MEMORY-KB-VERIFY-PROMPT.md) |
+| Plan natural-language chaos test generation | [`WORK-CHAOS-TEST-MANAGER-PLANNING-PROMPT.md`](WORK-CHAOS-TEST-MANAGER-PLANNING-PROMPT.md) |
+| Review the chaos test manager implementation plan | [`WORK-CHAOS-TEST-MANAGER-PLAN.md`](WORK-CHAOS-TEST-MANAGER-PLAN.md) |
+| Build the chaos test manager skeleton | [`chaos/reliability/`](chaos/reliability/README.md) |
+| View the Proxmox chaos live-run dashboard | [`observability/chaos-test-manager/chaos-test-lifecycle-live.html`](observability/chaos-test-manager/chaos-test-lifecycle-live.html) |
+| Import the kagent fleet Grafana dashboard | [`observability/agent-evals/grafana/kagent-fleet-overview-dashboard.json`](observability/agent-evals/grafana/kagent-fleet-overview-dashboard.json) |
 | Verify the work-side triage/remediation integration | [`WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md`](WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md) |
 | See what changed recently | [`CHANGELOG.md`](CHANGELOG.md) |
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
@@ -84,6 +109,7 @@ examples/           Quickstart and sample payloads
 | Run the Agentgateway MVP demo set | [`DEMOS.md#2-agentgateway-mvp-control-plane-demo-set`](DEMOS.md#2-agentgateway-mvp-control-plane-demo-set) |
 | Add a HITL approval gate for remediation | [`platform/teams-hitl/`](platform/teams-hitl/README.md) |
 | Bring Your Own Agent to the platform | [`infra/byo-kagent/`](infra/byo-kagent/README.md) |
+| Run the BYO-agent showcase demo | [`demos/byo-agent-showcase/`](demos/byo-agent-showcase/README.md) |
 | Understand A2A + kagent memory | [`a2a/`](a2a/README.md) |
 | See the full programme scope | [`STATEMENT-OF-WORK.md`](STATEMENT-OF-WORK.md) |
 

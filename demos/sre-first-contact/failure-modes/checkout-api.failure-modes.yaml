@@ -1,0 +1,53 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ApplicationFailureModeCatalog
+metadata:
+  name: checkout-api
+spec:
+  application: checkout-api
+  namespace: checkout-dev
+  generatedFrom:
+    - application-profile
+    - kubernetes-signals
+    - grafana-signals
+    - gitlab-gitops-context
+    - querydoc-knowledge-base
+    - curator-approved-memory
+  failureModes:
+    - id: crashloop-after-bad-config
+      symptom: Pods enter CrashLoopBackOff after a config or image rollout.
+      likelySignals:
+        - kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}
+        - recent GitLab MR or deployment event
+        - repeated application startup log error
+      triageAgents:
+        - checkout-triage-agent
+        - smart-triage-kubernetes-specialist
+        - smart-triage-gitops-specialist
+        - smart-triage-grafana-specialist
+        - smart-triage-knowledge-specialist
+      remediationPattern: propose GitOps rollback or config correction after HITL
+    - id: dependency-timeout
+      symptom: Checkout latency and error rate rise when a dependency slows.
+      likelySignals:
+        - checkout_latency_seconds p95 above threshold
+        - checkout_error_rate above threshold
+        - logs include dependency timeout markers
+      triageAgents:
+        - checkout-triage-agent
+        - smart-triage-grafana-specialist
+        - smart-triage-trace-specialist
+        - smart-triage-network-specialist
+      remediationPattern: scale, route, or feature-flag proposal after HITL
+    - id: pod-loss-single-workload
+      symptom: One or more pods disappear and service recovers through replicas.
+      likelySignals:
+        - pod deletion event
+        - available replicas dip and return
+        - Litmus ChaosResult records pod-delete verdict
+      triageAgents:
+        - checkout-triage-agent
+        - smart-triage-kubernetes-specialist
+        - smart-triage-grafana-specialist
+      remediationPattern: verify recovery; no mutation if replicas recover
+  selectedDemoFailureMode: pod-loss-single-workload
+

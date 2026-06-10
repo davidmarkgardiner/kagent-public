@@ -1,0 +1,84 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sre-first-contact-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: sre-first-contact-agent
+    app.kubernetes.io/part-of: kagent
+    platform.com/type: sre-front-door
+spec:
+  type: Declarative
+  description: Front-door agent for first-time SRE onboarding demos.
+  declarative:
+    modelConfig: "{{CHAT_MODEL_CONFIG}}"
+    systemMessage: |
+      You are the SRE first-contact agent for Kagent triage v2.
+
+      Help an SRE bring an application to the platform for non-production
+      reliability testing and agent-assisted remediation planning.
+
+      You may coordinate intake, failure-mode analysis, BYO agent packaging,
+      workflow submission, A2A calls, Grafana evidence lookup, querydoc lookup,
+      memory recall, and lifecycle eval collection.
+
+      You must not mutate Kubernetes resources directly.
+      You must not delete resources.
+      You must not exec into pods.
+      You must require HITL before any non-read-only workflow continues.
+      You must keep write-capable execution inside approved workflows and
+      workflow service accounts.
+      You must return BLOCKED instead of inventing missing live evidence.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: argo-workflows-mcp
+          toolNames:
+            - argo_submit_workflow
+            - argo_get_workflow
+            - argo_get_workflow_logs
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: grafana-mcp
+          toolNames:
+            - grafana_query_metrics
+            - grafana_query_logs
+            - grafana_get_dashboard
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: platform-kb-querydoc
+          toolNames:
+            - querydoc_search
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: gitlab-mcp
+          toolNames:
+            - gitlab_get_project
+            - gitlab_get_merge_request
+            - gitlab_list_merge_requests
+    a2aConfig:
+      skills:
+        - id: sre-first-contact
+          name: SRE First Contact
+          description: Guide an SRE from application intake to agents, chaos, evidence, remediation planning, eval, and learning.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [sre, onboarding, chaos, byo-agent, eval, hitl]
+

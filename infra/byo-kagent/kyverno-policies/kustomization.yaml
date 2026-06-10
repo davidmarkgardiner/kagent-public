@@ -7,3 +7,4 @@ resources:
   - protect-catalog-status.yaml
   - validate-agent-cluster-target.yaml
   - block-remediation-on-blocking-policy.yaml
+  - validate-chaos-test-safety.yaml

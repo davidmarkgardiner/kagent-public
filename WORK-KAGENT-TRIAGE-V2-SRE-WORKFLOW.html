@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Kagent Triage V2 SRE Workflow</title>
+  <style>
+    :root {
+      --ink: #171717;
+      --muted: #62666d;
+      --bg: #f6f7f8;
+      --paper: #ffffff;
+      --line: #d7dbe0;
+      --red: #c9202b;
+      --blue: #185f9f;
+      --green: #247247;
+      --amber: #946300;
+      --violet: #5f4b8b;
+      --radius: 8px;
+      --sans: Frutiger, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.45;
+    }
+
+    a { color: inherit; }
+
+    header {
+      display: grid;
+      gap: 16px;
+      padding: 30px;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 1120px;
+      font-size: clamp(32px, 4vw, 56px);
+      line-height: 1.06;
+    }
+
+    .lede {
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    main {
+      display: grid;
+      gap: 18px;
+      padding: 24px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .panel {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .metric {
+      display: grid;
+      gap: 6px;
+      min-height: 118px;
+    }
+
+    .metric strong {
+      color: var(--red);
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .muted { color: var(--muted); }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #fafafa;
+    }
+
+    .swimlane {
+      display: grid;
+      grid-template-columns: 140px repeat(6, minmax(130px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .lane-label {
+      display: flex;
+      align-items: center;
+      min-height: 84px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      background: #f9fafb;
+    }
+
+    .node {
+      min-height: 84px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      border-radius: var(--radius);
+      background: #fbfbfc;
+    }
+
+    .node.red { border-left-color: var(--red); }
+    .node.green { border-left-color: var(--green); }
+    .node.amber { border-left-color: var(--amber); }
+    .node.violet { border-left-color: var(--violet); }
+
+    .node b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .node span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .status {
+      display: inline-flex;
+      width: fit-content;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .pass { background: var(--green); }
+    .partial { background: var(--amber); }
+    .contract { background: var(--blue); }
+    .blocked { background: var(--red); }
+
+    code, pre {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 12px 0 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #f9fafb;
+    }
+
+    .callout {
+      border-left: 5px solid var(--red);
+      background: #fff;
+    }
+
+    @media (max-width: 980px) {
+      main { padding: 16px; }
+      .span-3, .span-4, .span-6, .span-8 { grid-column: span 12; }
+      .swimlane { grid-template-columns: repeat(7, minmax(140px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">Kagent triage system v2</p>
+    <h1>SRE workflow for chaos, BYO agents, HITL, and evidence-backed remediation.</h1>
+    <p class="lede">Use this view to explain how SRE can inject a controlled failure, watch specialist agents triage it, keep writes behind approval, and prove the run with Grafana, GitLab, eval, and reports.</p>
+  </header>
+
+  <main>
+    <section class="grid" aria-label="Readiness summary">
+      <div class="panel span-3 metric">
+        <strong>P0</strong>
+        <h2>Core path</h2>
+        <p class="muted">Runtime, model path, smart triage, HITL, Grafana MCP, eval, lower-env run, safety, report.</p>
+      </div>
+      <div class="panel span-3 metric">
+        <strong>P1</strong>
+        <h2>Rich proof</h2>
+        <p class="muted">KB/querydoc, memory, BYO agents, policy denial, BYO Grafana panels, review manager.</p>
+      </div>
+      <div class="panel span-3 metric">
+        <strong>Gate</strong>
+        <h2>HITL first</h2>
+        <p class="muted">Any non-read-only remediation pauses before write-capable tools or GitLab proposals.</p>
+      </div>
+      <div class="panel span-3 metric">
+        <strong>Stop</strong>
+        <h2>No production chaos</h2>
+        <p class="muted">Work-lab proof comes first. Production game day is deferred until explicit approval.</p>
+      </div>
+    </section>
+
+    <section class="panel span-12" aria-label="SRE swimlane">
+      <p class="eyebrow">Primary operating flow</p>
+      <h2>SRE request to verified report</h2>
+      <div class="swimlane">
+        <div class="lane-label">SRE</div>
+        <div class="node red"><b>Choose path</b><span>Replay incident, inject chaos, or onboard BYO agent.</span></div>
+        <div class="node red"><b>Confirm scope</b><span>Namespace, target, owner, rollback, approval route.</span></div>
+        <div class="node red"><b>Trigger</b><span>Alert payload, chaos event, or BYO request file.</span></div>
+        <div class="node red"><b>Review gate</b><span>Approve or reject non-read-only remediation.</span></div>
+        <div class="node red"><b>Inspect proof</b><span>Dashboard, eval report, GitLab/MR artifact.</span></div>
+        <div class="node red"><b>Decide</b><span>Pass, route to review-manager, or rerun with fixes.</span></div>
+
+        <div class="lane-label">Kagent v2</div>
+        <div class="node"><b>Ingest</b><span>Normalize alert, chaos, or BYO request context.</span></div>
+        <div class="node"><b>Fan out</b><span>Kubernetes, network, Grafana, GitOps, KB, policy, trace.</span></div>
+        <div class="node"><b>Synthesize</b><span>Merge specialist findings into one incident story.</span></div>
+        <div class="node amber"><b>Suspend</b><span>Pause before action if remediation is not read-only.</span></div>
+        <div class="node"><b>Plan</b><span>Propose GitOps/workflow action, never broad direct mutation.</span></div>
+        <div class="node green"><b>Report</b><span>Emit proof markers and final status.</span></div>
+
+        <div class="lane-label">Evidence</div>
+        <div class="node"><b>Inventory</b><span>Controllers, CRDs, model path, dashboards.</span></div>
+        <div class="node"><b>Grafana MCP</b><span>PromQL, LogQL, dashboard lookup.</span></div>
+        <div class="node"><b>KB/querydoc</b><span>Cited hit or NO_RELEVANT_DOCS fallback.</span></div>
+        <div class="node"><b>GitLab MCP</b><span>Sandbox branch, MR, and note with scoped auth.</span></div>
+        <div class="node"><b>Eval</b><span>Score run and enforce hard gates.</span></div>
+        <div class="node"><b>Archive</b><span>Markdown report and dashboard link.</span></div>
+
+        <div class="lane-label">Controls</div>
+        <div class="node violet"><b>ToolGrant</b><span>Separate read-only and write-capable tools.</span></div>
+        <div class="node violet"><b>Policy</b><span>Deny dangerous requests by default.</span></div>
+        <div class="node violet"><b>HITL</b><span>Capture approver identity and resume evidence.</span></div>
+        <div class="node violet"><b>Blast radius</b><span>Non-production, bounded target, rollback known.</span></div>
+        <div class="node violet"><b>Hard gates</b><span>Fail missing HITL, wrong namespace, unsafe write.</span></div>
+        <div class="node violet"><b>Sanitize</b><span>No secrets, private hostnames, or internal URLs in public docs.</span></div>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Operator paths">
+      <div class="panel span-6">
+        <p class="eyebrow">SRE path</p>
+        <h2>Controlled chaos demo</h2>
+        <table>
+          <tr><th>Step</th><th>Evidence</th></tr>
+          <tr><td>Pick target</td><td>Namespace, workload, owner, rollback</td></tr>
+          <tr><td>Inject failure</td><td>ChaosResult or equivalent event</td></tr>
+          <tr><td>Run triage</td><td>Specialist node table and synthesis</td></tr>
+          <tr><td>Gate remediation</td><td>Approval ID and resume identity</td></tr>
+          <tr><td>Verify recovery</td><td>Kubernetes and Grafana proof</td></tr>
+          <tr><td>Score run</td><td>Lifecycle eval report</td></tr>
+        </table>
+      </div>
+
+      <div class="panel span-6">
+        <p class="eyebrow">Team path</p>
+        <h2>Bring your own agent</h2>
+        <table>
+          <tr><th>Step</th><th>Evidence</th></tr>
+          <tr><td>Submit request</td><td>BYOAgentRequest file</td></tr>
+          <tr><td>Render manifests</td><td>Agent and ToolGrant resources</td></tr>
+          <tr><td>Check tools</td><td>No delete/exec/write tools for triage</td></tr>
+          <tr><td>Apply in lab</td><td>Agent Ready and ToolGrant present</td></tr>
+          <tr><td>Run query</td><td>Namespace-scoped answer</td></tr>
+          <tr><td>Prove denial</td><td>PolicyReport or failed dangerous request</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Proof matrix">
+      <div class="panel span-8">
+        <p class="eyebrow">Proof matrix</p>
+        <h2>What to show before handoff</h2>
+        <table>
+          <tr><th>Capability</th><th>Status target</th><th>Minimum artifact</th></tr>
+          <tr><td>Smart triage fan-out</td><td><span class="status pass">PASS</span></td><td>Workflow name, node table, synthesis markers</td></tr>
+          <tr><td>HITL</td><td><span class="status pass">PASS</span></td><td>Approval ID, approver, resume node evidence</td></tr>
+          <tr><td>Grafana MCP</td><td><span class="status pass">PASS</span></td><td>PromQL, LogQL, dashboard lookup</td></tr>
+          <tr><td>GitLab MCP</td><td><span class="status contract">SANDBOX</span></td><td>Scoped sandbox MR and comment</td></tr>
+          <tr><td>Lifecycle eval</td><td><span class="status pass">PASS</span></td><td>Passing score and below-threshold route</td></tr>
+          <tr><td>BYO triage agent</td><td><span class="status partial">P1</span></td><td>Agent Ready, ToolGrant, forbidden tools absent</td></tr>
+          <tr><td>KB/querydoc</td><td><span class="status partial">P1</span></td><td>Cited hit and NO_RELEVANT_DOCS fallback</td></tr>
+        </table>
+      </div>
+
+      <div class="panel span-4 callout">
+        <p class="eyebrow">Critical rule</p>
+        <h2>Read-only agents stay read-only.</h2>
+        <p class="muted">General triage agents should not hold apply, delete, exec, or broad GitLab write tools. Write-capable paths belong to bounded remediation specialists and must pass HITL.</p>
+        <div class="tag-row">
+          <span class="tag">ToolGrant scoped</span>
+          <span class="tag">HITL required</span>
+          <span class="tag">GitOps preferred</span>
+          <span class="tag">Eval gated</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel span-12" aria-label="Copyable output">
+      <p class="eyebrow">Evidence bundle</p>
+      <h2>Return this shape after each work-lab run</h2>
+      <pre>STATUS: PASS | PARTIAL | BLOCKED
+RUN_NAME:
+TRIGGER_SOURCE:
+TARGET_NAMESPACE:
+MODEL_PATH:
+SPECIALIST_RESULTS:
+HITL_EVIDENCE:
+GRAFANA_EVIDENCE:
+GITLAB_OR_GITOPS_EVIDENCE:
+EVAL_SCORE:
+REPORT_LINK:
+SAFETY_CHECK:
+GAPS:
+NEXT_ACTION:</pre>
+    </section>
+  </main>
+</body>
+</html>

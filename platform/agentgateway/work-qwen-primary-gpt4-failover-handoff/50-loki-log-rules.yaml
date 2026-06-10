@@ -6,7 +6,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: work-llm-failover-log-alerts
+  name: work-llm-capacity-log-alerts
   namespace: monitoring
   labels:
     shipto.lgtm: "true"
@@ -16,10 +16,10 @@ metadata:
     route_to: triage
 spec:
   groups:
-    - name: work-llm-failover-log-signals
+    - name: work-llm-capacity-log-signals
       interval: 1m
       rules:
-        - alert: WorkAgentgatewayRateLimitLogBurst
+        - alert: WorkQwenRateLimitLogBurst
           expr: |
             sum by (cluster) (
               count_over_time({namespace=~"agentgateway-system|kgateway-system"} |~ "(?i)(429|too many requests|rate.?limit|quota exceeded)" [10m])
@@ -30,8 +30,22 @@ spec:
             team: ai-platform
             route_to: triage
           annotations:
-            summary: "agentgateway rate-limit signals in logs"
-            description: "Repeated rate-limit or quota signals are present in gateway logs. Confirm whether Qwen primary is saturated and whether GPT-4 fallback is serving."
+            summary: "Qwen rate-limit signals in gateway logs"
+            description: "Repeated rate-limit or quota signals are present in gateway logs. Reduce workflow concurrency or Kafka consumer fan-out until the Qwen capacity envelope is confirmed."
+
+        - alert: WorkQwenResetOrTimeoutLogBurst
+          expr: |
+            sum by (cluster) (
+              count_over_time({namespace=~"agentgateway-system|kgateway-system"} |~ "(?i)(connection reset|reset by peer|tls.*reset|upstream.*reset|deadline exceeded|context deadline exceeded|timeout)" [10m])
+            ) > 3
+          for: 5m
+          labels:
+            severity: warning
+            team: ai-platform
+            route_to: triage
+          annotations:
+            summary: "Qwen reset or timeout signals in gateway logs"
+            description: "Gateway logs show resets or timeouts. Check Qwen TLS session pressure, gateway egress IPs, and active workflow concurrency."
 
         - alert: WorkKagentA2ACallDidNotComplete
           expr: |
@@ -45,4 +59,4 @@ spec:
             route_to: triage
           annotations:
             summary: "kagent A2A call did not complete"
-            description: "A triage workflow or kagent component logged that an A2A call did not complete. Check workflow pod logs, agentgateway route health, and model latency."
+            description: "A triage workflow or kagent component logged that an A2A call did not complete. Check workflow pod logs, configured Qwen concurrency, gateway route health, and model latency."

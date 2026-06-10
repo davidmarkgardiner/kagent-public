@@ -111,3 +111,15 @@ policy or select it from an alert rule's notification settings when you want
 alerts to flow through this path.
 
 For a repeatable work-environment setup, use `WORK-SETUP-RUNBOOK.md`.
+
+After the contact point connects successfully, use
+`ALERT-FIRING-CONSUME-SCHEMA-RUNBOOK.md` to prove real alert firing, consume the
+Kafka records from the cluster side, capture the actual Grafana payload, and
+decide whether schema validation can stay consumer-side or requires a
+normalizing producer/bridge.
+
+The draft consumer-side JSON Schema for the native Grafana Kafka record is:
+
+```text
+grafana-kafka-alert.schema.json
+```

@@ -1,0 +1,41 @@
+apiVersion: reliability.platform.example/v1alpha1
+kind: ReliabilitySuite
+metadata:
+  name: chaos-demo-sandbox
+spec:
+  owner: platform
+  underTest:
+    kind: platform
+    name: chaos-demo-sandbox
+  featureAreas:
+    - litmus
+    - smart-triage
+    - grafana-evidence
+  failureModes:
+    - id: pod-disruption
+      description: A single opt-in workload pod disappears and the platform must detect, triage, and verify recovery.
+      generatedTests:
+        - chaos-demo-pod-delete
+    - id: below-threshold-review
+      description: A deliberately weak score exercises review-manager routing without mutating a second target.
+      generatedTests: []
+  environmentTiers:
+    - dev
+  schedulePolicy:
+    cadence: on-demand
+    randomization: explicit-only-for-first-spike
+    maxConcurrent: 1
+    quietPeriod: 24h
+    blackoutWindows:
+      - "{{BLACKOUT_WINDOW}}"
+  scoring:
+    weights:
+      pod-disruption: 1.0
+    benchmark: 8
+    aggregate: weighted-mean
+  dashboards:
+    - chaos-test-lifecycle
+  reporting:
+    cadence: weekly
+    reviewManagerRouting:
+      belowBenchmark: review-manager-agent

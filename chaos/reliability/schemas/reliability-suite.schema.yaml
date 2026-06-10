@@ -1,0 +1,156 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://kagent-public.local/schemas/reliability-suite.schema.yaml
+title: ReliabilitySuite
+description: Git-stored reliability suite configuration. This is not a CRD in v1.
+type: object
+additionalProperties: false
+required:
+  - apiVersion
+  - kind
+  - metadata
+  - spec
+properties:
+  apiVersion:
+    const: reliability.platform.example/v1alpha1
+  kind:
+    const: ReliabilitySuite
+  metadata:
+    type: object
+    additionalProperties: true
+    required:
+      - name
+  spec:
+    type: object
+    additionalProperties: false
+    required:
+      - owner
+      - underTest
+      - featureAreas
+      - failureModes
+      - environmentTiers
+      - schedulePolicy
+      - scoring
+      - dashboards
+      - reporting
+    properties:
+      owner:
+        type: string
+        minLength: 1
+      underTest:
+        type: object
+        additionalProperties: false
+        required:
+          - kind
+          - name
+        properties:
+          kind:
+            enum:
+              - platform
+              - application
+          name:
+            type: string
+            minLength: 1
+      featureAreas:
+        type: array
+        minItems: 1
+        items:
+          type: string
+      failureModes:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - description
+            - generatedTests
+          properties:
+            id:
+              type: string
+              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+            description:
+              type: string
+            generatedTests:
+              type: array
+              items:
+                type: string
+      environmentTiers:
+        type: array
+        minItems: 1
+        items:
+          enum:
+            - dev
+            - test
+            - staging
+      schedulePolicy:
+        type: object
+        additionalProperties: false
+        required:
+          - cadence
+          - randomization
+          - maxConcurrent
+          - quietPeriod
+          - blackoutWindows
+        properties:
+          cadence:
+            enum:
+              - daily
+              - weekly
+              - on-demand
+          randomization:
+            type: string
+          maxConcurrent:
+            type: integer
+            minimum: 1
+          quietPeriod:
+            type: string
+          blackoutWindows:
+            type: array
+            items:
+              type: string
+      scoring:
+        type: object
+        additionalProperties: false
+        required:
+          - weights
+          - benchmark
+          - aggregate
+        properties:
+          weights:
+            type: object
+            additionalProperties:
+              type: number
+              minimum: 0
+              maximum: 1
+          benchmark:
+            type: number
+            minimum: 0
+            maximum: 10
+          aggregate:
+            enum:
+              - weighted-mean
+      dashboards:
+        type: array
+        minItems: 1
+        items:
+          type: string
+      reporting:
+        type: object
+        additionalProperties: false
+        required:
+          - cadence
+          - reviewManagerRouting
+        properties:
+          cadence:
+            enum:
+              - daily
+              - weekly
+          reviewManagerRouting:
+            type: object
+            additionalProperties: false
+            required:
+              - belowBenchmark
+            properties:
+              belowBenchmark:
+                const: review-manager-agent

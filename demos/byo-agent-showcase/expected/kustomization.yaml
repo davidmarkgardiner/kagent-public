@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - payments-triage-agent.yaml
+  - payments-remediation-agent.yaml
+  - payments-toolgrants.yaml
+  - payments-memory-grant.yaml

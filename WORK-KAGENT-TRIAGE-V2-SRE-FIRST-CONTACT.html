@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Kagent Triage V2 SRE First Contact</title>
+  <style>
+    :root {
+      --ink: #171717;
+      --muted: #5f6368;
+      --bg: #f5f6f7;
+      --paper: #ffffff;
+      --line: #d9dde3;
+      --red: #c9202b;
+      --blue: #185f9f;
+      --green: #247247;
+      --amber: #946300;
+      --violet: #5f4b8b;
+      --radius: 8px;
+      --sans: Frutiger, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.45;
+    }
+
+    a { color: inherit; }
+
+    header {
+      display: grid;
+      gap: 14px;
+      padding: 30px;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 1120px;
+      font-size: clamp(32px, 4vw, 56px);
+      line-height: 1.06;
+    }
+
+    .lede {
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 24px;
+    }
+
+    .grid,
+    .cards-4,
+    .cards-3,
+    .cards-2 {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .cards-4 { grid-template-columns: repeat(4, minmax(180px, 1fr)); }
+    .cards-3 { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+    .cards-2 { grid-template-columns: repeat(2, minmax(320px, 1fr)); }
+
+    .panel {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .metric {
+      display: grid;
+      gap: 6px;
+      min-height: 118px;
+    }
+
+    .metric strong {
+      color: var(--red);
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .muted { color: var(--muted); }
+
+    .journey {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(130px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .step {
+      min-height: 128px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      border-radius: var(--radius);
+      background: #fbfbfc;
+    }
+
+    .step.red { border-left-color: var(--red); }
+    .step.green { border-left-color: var(--green); }
+    .step.amber { border-left-color: var(--amber); }
+    .step.violet { border-left-color: var(--violet); }
+
+    .step b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .status {
+      display: inline-flex;
+      width: fit-content;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .pass { background: var(--green); }
+    .partial { background: var(--amber); }
+    .contract { background: var(--blue); }
+    .blocked { background: var(--red); }
+
+    pre, code {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 12px 0 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #f9fafb;
+    }
+
+    .prompt {
+      border-left: 5px solid var(--red);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #fafafa;
+    }
+
+    @media (max-width: 980px) {
+      main { padding: 16px; }
+      .span-3, .span-4, .span-6, .span-8 { grid-column: span 12; }
+      .cards-4, .cards-3, .cards-2 { grid-template-columns: 1fr; }
+      .journey { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">SRE first-contact demo</p>
+    <h1>Bring an app, generate agents, inject chaos, prove remediation, score the run.</h1>
+    <p class="lede">This is the handover litmus test: a new SRE arrives with an application and can see how Kagent triage v2 uses BYO agents, Grafana, GitLab, knowledge, memory, HITL, chaos, and lifecycle eval in one governed loop.</p>
+  </header>
+
+  <main>
+    <section class="cards-4" aria-label="Package summary">
+      <div class="panel metric">
+        <strong>01</strong>
+        <h2>Intake</h2>
+        <p class="muted">App profile and SRE intent become failure modes and tool needs.</p>
+      </div>
+      <div class="panel metric">
+        <strong>02</strong>
+        <h2>Build</h2>
+        <p class="muted">Read-only triage and bounded remediation agents are generated.</p>
+      </div>
+      <div class="panel metric">
+        <strong>03</strong>
+        <h2>Prove</h2>
+        <p class="muted">A lower-env pod-delete failure drives triage, HITL, recovery, and eval.</p>
+      </div>
+      <div class="panel metric">
+        <strong>04</strong>
+        <h2>Learn</h2>
+        <p class="muted">Memory is curator-only and KB changes are proposed through MR.</p>
+      </div>
+    </section>
+
+    <section class="panel span-12" aria-label="Journey">
+      <p class="eyebrow">End-to-end journey</p>
+      <h2>What the first-time SRE should experience</h2>
+      <div class="journey">
+      <div class="step red"><b>SRE asks</b><span>"I want to onboard checkout-api and understand what could break."</span></div>
+        <div class="step"><b>Front door</b><span>SRE first-contact agent reads app profile, Grafana signals, GitLab path, KB runbooks, and memory posture.</span></div>
+        <div class="step"><b>Failure modes</b><span>CrashLoop, dependency timeout, and pod-loss recovery are proposed.</span></div>
+        <div class="step violet"><b>BYO agents</b><span>Read-only triage and bounded remediation agents get explicit ToolGrants.</span></div>
+        <div class="step amber"><b>Chaos gate</b><span>SRE approves a lower-env pod-delete test with rollback and abort conditions.</span></div>
+        <div class="step"><b>Triage + remediate</b><span>Specialists fan out, Grafana/GitLab/KB/memory evidence is gathered, writes wait for HITL.</span></div>
+        <div class="step green"><b>Eval + learn</b><span>Recovery is verified, lifecycle eval scores the run, weak evidence routes to review-manager.</span></div>
+      </div>
+    </section>
+
+    <section class="cards-3" aria-label="Prompt pack">
+      <div class="panel prompt">
+        <p class="eyebrow">Prompt 01</p>
+        <h2>SRE intake</h2>
+        <p class="muted">Turns an app profile into likely failure modes, integration needs, and the smallest safe chaos proposal.</p>
+        <div class="tag-row">
+          <span class="tag">profile</span>
+          <span class="tag">failure modes</span>
+          <span class="tag">safe chaos</span>
+        </div>
+      </div>
+      <div class="panel prompt">
+        <p class="eyebrow">Prompt 02</p>
+        <h2>Build agents</h2>
+        <p class="muted">Creates BYO requests, Agent manifests, ToolGrants, one ChaosTest, and an eval evidence contract.</p>
+        <div class="tag-row">
+          <span class="tag">ToolGrant</span>
+          <span class="tag">no delete/exec</span>
+          <span class="tag">HITL</span>
+        </div>
+      </div>
+      <div class="panel prompt">
+        <p class="eyebrow">Prompt 03</p>
+        <h2>Run and evaluate</h2>
+        <p class="muted">Conducts the work-lab demo and returns PASS, PARTIAL, or BLOCKED with exact evidence and gaps.</p>
+        <div class="tag-row">
+          <span class="tag">Grafana</span>
+          <span class="tag">GitLab</span>
+          <span class="tag">eval</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="cards-2" aria-label="Artifact map">
+      <div class="panel">
+        <p class="eyebrow">Demo package</p>
+        <h2>One folder for the work-side agent</h2>
+        <table>
+          <tr><th>Artifact</th><th>Purpose</th><th>Status</th></tr>
+          <tr><td><code>profiles/checkout-api.application-profile.yaml</code></td><td>Application facts, observability, GitLab, KB, memory, safety</td><td><span class="status pass">READY</span></td></tr>
+          <tr><td><code>failure-modes/checkout-api.failure-modes.yaml</code></td><td>Likely failure catalogue generated from the profile and evidence sources</td><td><span class="status pass">READY</span></td></tr>
+          <tr><td><code>expected/sre-first-contact-agent.yaml</code></td><td>Front-door liaison agent for SRE intake, workflow coordination, A2A, and evidence lookup</td><td><span class="status pass">READY</span></td></tr>
+          <tr><td><code>requests/*.yaml</code></td><td>BYO triage and remediation agent requests</td><td><span class="status pass">READY</span></td></tr>
+          <tr><td><code>expected/*.yaml</code></td><td>Expected Agent and ToolGrant manifests</td><td><span class="status pass">READY</span></td></tr>
+          <tr><td><code>chaos/checkout-api-pod-delete.chaostest.yaml</code></td><td>Approved lower-env chaos test contract</td><td><span class="status pass">VALID</span></td></tr>
+          <tr><td><code>eval/checkout-api-demo-evidence-contract.yaml</code></td><td>Required markers and hard failures for the live demo</td><td><span class="status pass">READY</span></td></tr>
+        </table>
+      </div>
+
+      <div class="panel">
+        <p class="eyebrow">Verifier</p>
+        <h2>Dry-run proof</h2>
+        <pre>bash demos/sre-first-contact/scripts/verify-demo.sh</pre>
+        <p class="muted" style="margin-top: 12px;">Checks YAML, reliability config, forbidden tools, and the eval evidence contract before the work lab applies anything.</p>
+      </div>
+    </section>
+
+    <section class="cards-2" aria-label="Work lab evidence">
+      <div class="panel">
+        <p class="eyebrow">Must capture live</p>
+        <h2>Evidence the team should see</h2>
+        <table>
+          <tr><th>System</th><th>Proof</th></tr>
+          <tr><td>Kagent</td><td>SRE front-door agent, BYO agents, and smart triage fan-out complete</td></tr>
+          <tr><td>Grafana</td><td>Metric, log, and dashboard evidence attached</td></tr>
+          <tr><td>GitLab</td><td>Sandbox MR or explicit blocked reason</td></tr>
+          <tr><td>KB/querydoc</td><td>Cited hit or NO_RELEVANT_DOCS fallback</td></tr>
+          <tr><td>Memory</td><td>Recall proof and curator-only learning update</td></tr>
+          <tr><td>Eval</td><td>Score, hard gates, and review-manager route when weak</td></tr>
+        </table>
+      </div>
+
+      <div class="panel">
+        <p class="eyebrow">Acceptance output</p>
+        <h2>What the SRE agent returns</h2>
+        <pre>STATUS: PASS | PARTIAL | BLOCKED
+APP: checkout-api
+TARGET_NAMESPACE: checkout-dev
+BYO_AGENT_STATUS:
+TOOLGRANT_STATUS:
+CHAOS_RESULT:
+SMART_TRIAGE_RESULTS:
+GRAFANA_EVIDENCE:
+GITLAB_OR_GITOPS_EVIDENCE:
+KB_EVIDENCE:
+MEMORY_EVIDENCE:
+HITL_EVIDENCE:
+EVAL_SCORE:
+REVIEW_MANAGER_ROUTE:
+SAFETY_CHECK:
+GAPS:
+NEXT_ACTION:</pre>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

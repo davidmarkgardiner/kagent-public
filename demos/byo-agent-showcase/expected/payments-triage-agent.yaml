@@ -1,0 +1,50 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: payments-triage-agent
+  namespace: payments-dev
+  labels:
+    app.kubernetes.io/name: payments-triage-agent
+    app.kubernetes.io/part-of: kagent
+    platform.com/team: payments
+    platform.com/type: triage
+spec:
+  type: Declarative
+  description: Read-only triage agent for the payments-dev namespace.
+  declarative:
+    modelConfig: agentgateway-qwen
+    systemMessage: |
+      You are the read-only payments-dev triage agent.
+
+      CRITICAL: only investigate namespace payments-dev.
+      Never apply, patch, delete, exec, or mutate Kubernetes resources.
+      Use Grafana or knowledge-base evidence only through approved read-only tools.
+      If a fix is needed, propose a GitOps or workflow action and stop for HITL.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_pod_logs
+            - k8s_get_events
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+    a2aConfig:
+      skills:
+        - id: payments-triage
+          name: Payments Triage
+          description: Read-only diagnosis for payments-dev.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [payments, triage, readonly]

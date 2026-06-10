@@ -1,0 +1,106 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: validate-chaos-test-safety
+  labels:
+    app.kubernetes.io/part-of: byo-kagent
+    reliability.platform/part-of: chaos-test-manager
+  annotations:
+    policies.kyverno.io/title: "Validate Chaos Test Safety"
+    policies.kyverno.io/category: "Reliability Testing"
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Enforces the v1 chaos/test-manager safety model: lower environments only,
+      opt-in workload selectors, no unsuspended schedules by default, and
+      namespace-scoped Litmus ChaosEngine targets.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: block-production-chaosengines
+      match:
+        any:
+          - resources:
+              kinds:
+                - litmuschaos.io/v1alpha1/ChaosEngine
+      validate:
+        message: >-
+          Litmus ChaosEngine resources managed by the chaos test manager must
+          target lower environments only and carry reliability.platform/env-tier
+          set to dev, test, or staging.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.metadata.labels.\"reliability.platform/env-tier\" || '' }}"
+                operator: AnyNotIn
+                value:
+                  - dev
+                  - test
+                  - staging
+              - key: "{{ request.object.metadata.namespace }}"
+                operator: Equals
+                value: production
+              - key: "{{ request.object.spec.appinfo.appns || '' }}"
+                operator: Equals
+                value: production
+
+    - name: require-opt-in-workload-selector
+      match:
+        any:
+          - resources:
+              kinds:
+                - litmuschaos.io/v1alpha1/ChaosEngine
+      validate:
+        message: >-
+          ChaosEngine workload selector must include
+          reliability.platform/chaos-optin=true so unlabelled workloads cannot
+          be selected.
+        deny:
+          conditions:
+            all:
+              - key: "{{ contains(request.object.spec.appinfo.applabel || '', 'reliability.platform/chaos-optin=true') }}"
+                operator: Equals
+                value: false
+
+    - name: require-namespace-scoped-target
+      match:
+        any:
+          - resources:
+              kinds:
+                - litmuschaos.io/v1alpha1/ChaosEngine
+      validate:
+        message: >-
+          ChaosEngine app namespace must match the object namespace for the v1
+          namespace-scoped chaos model.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.spec.appinfo.appns || '' }}"
+                operator: NotEquals
+                value: "{{ request.object.metadata.namespace }}"
+
+    - name: keep-chaos-cronworkflows-suspended-by-default
+      match:
+        any:
+          - resources:
+              kinds:
+                - argoproj.io/v1alpha1/CronWorkflow
+              selector:
+                matchLabels:
+                  reliability.platform/suite: "?*"
+      validate:
+        message: >-
+          Reliability CronWorkflows must be committed suspended by default.
+          Unsuspend only in a lower-environment overlay after HITL/GitOps review.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.suspend || false }}"
+                operator: NotEquals
+                value: true
+              - key: "{{ request.object.metadata.labels.\"reliability.platform/env-tier\" || '' }}"
+                operator: AnyNotIn
+                value:
+                  - dev
+                  - test
+                  - staging

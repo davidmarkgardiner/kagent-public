@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-demo
+  labels:
+    app.kubernetes.io/part-of: chaos-test-manager
+    reliability.platform/env-tier: dev

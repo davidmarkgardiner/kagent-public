@@ -3,315 +3,802 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>kagent Workgroup</title>
+  <link rel="icon" href="data:,">
+  <title>Kagent v2 Iteration Portal</title>
   <style>
     :root {
-      --primary: #e60000;
-      --accent: #427c99;
-      --background: #ffffff;
-      --text: #1c1c1c;
-      --muted: #555555;
-      --border: #dedede;
-      --surface: #f5f5f5;
-      --selected: #fff4f4;
-      --base: 4px;
-      --font: Frutiger, Arial, sans-serif;
+      --red: #d71920;
+      --red-dark: #a91117;
+      --ink: #171717;
+      --muted: #5f6368;
+      --line: #d8d8d8;
+      --soft: #f3f4f6;
+      --panel: #ffffff;
+      --wash: #fff4f4;
+      --ok: #227a45;
+      --warn: #9a6700;
+      --radius: 8px;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      --sans: Frutiger, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
 
     * {
       box-sizing: border-box;
     }
 
-    html,
-    body {
-      min-height: 100%;
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
       margin: 0;
-      background: var(--background);
-      color: var(--text);
-      font-family: var(--font);
+      background: var(--soft);
+      color: var(--ink);
+      font-family: var(--sans);
       font-size: 16px;
-      line-height: 1.45;
+      line-height: 1.5;
       letter-spacing: 0;
     }
 
-    .app {
+    a {
+      color: inherit;
+    }
+
+    .shell {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: minmax(280px, 344px) minmax(0, 1fr);
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
     }
 
     aside {
-      min-width: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      gap: calc(var(--base) * 4);
-      padding: calc(var(--base) * 5);
-      border-right: 1px solid var(--border);
-      background: var(--surface);
+      gap: 18px;
+      padding: 22px;
+      border-right: 1px solid var(--line);
+      background: #eeeeee;
+      overflow: auto;
     }
 
     main {
       min-width: 0;
-      display: flex;
-      flex-direction: column;
-      background: var(--background);
+      padding: 28px;
+    }
+
+    .brand {
+      padding-left: 14px;
+      border-left: 8px solid var(--red);
+    }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
     }
 
     h1,
     h2,
+    h3,
     p {
       margin: 0;
     }
 
-    h1,
+    h1 {
+      font-size: 25px;
+      line-height: 1.08;
+    }
+
     h2 {
+      font-size: 26px;
+      line-height: 1.12;
+    }
+
+    h3 {
       font-size: 16px;
       line-height: 1.25;
     }
 
-    .brand {
-      display: grid;
-      gap: calc(var(--base) * 2);
-      padding-left: calc(var(--base) * 3);
-      border-left: calc(var(--base) * 2) solid var(--primary);
-    }
-
-    .brand strong {
-      color: var(--primary);
-      text-transform: uppercase;
-    }
-
     .brand p,
-    .meta,
-    .tab small {
+    .lede,
+    .muted {
       color: var(--muted);
     }
 
-    .meta {
-      display: grid;
-      gap: calc(var(--base) * 2);
-      padding: calc(var(--base) * 3);
-      border: 1px solid var(--border);
-      background: var(--background);
+    .brand p {
+      margin-top: 10px;
+      font-size: 14px;
     }
 
-    .row {
+    .summary {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .summary-row {
       display: flex;
       justify-content: space-between;
-      gap: calc(var(--base) * 3);
+      gap: 14px;
+      font-size: 14px;
+    }
+
+    .summary-row b {
+      color: var(--red);
     }
 
     .tabs {
-      display: flex;
-      flex: 1;
-      min-height: 0;
-      flex-direction: column;
-      gap: calc(var(--base) * 2);
-      overflow: auto;
-      padding-right: var(--base);
+      display: grid;
+      gap: 8px;
     }
 
     .tab {
-      width: 100%;
-      min-height: calc(var(--base) * 16);
+      min-height: 58px;
       display: grid;
-      gap: var(--base);
+      gap: 3px;
       align-content: center;
-      padding: calc(var(--base) * 3);
-      border: 1px solid var(--border);
-      background: var(--background);
-      color: var(--text);
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      color: var(--ink);
       font: inherit;
       text-align: left;
       cursor: pointer;
     }
 
     .tab:hover,
-    .tab[aria-current="page"] {
-      border-color: var(--primary);
-      background: var(--selected);
+    .tab[aria-selected="true"] {
+      border-color: var(--red);
+      background: var(--wash);
+    }
+
+    .tab strong {
+      font-size: 14px;
     }
 
     .tab span {
-      font-weight: 700;
+      color: var(--muted);
+      font-size: 12px;
     }
 
-    header {
-      min-height: calc(var(--base) * 16);
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 20px;
+      align-items: stretch;
+      margin-bottom: 20px;
+    }
+
+    .hero-card,
+    .panel,
+    .metric,
+    .resource,
+    .flow {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .hero-card {
+      padding: 26px;
+    }
+
+    .hero-card h2 {
+      max-width: 780px;
+      font-size: 34px;
+    }
+
+    .lede {
+      max-width: 780px;
+      margin-top: 14px;
+      font-size: 17px;
+    }
+
+    .quick-actions {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: calc(var(--base) * 4);
-      padding: calc(var(--base) * 4) calc(var(--base) * 5);
-      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
     }
 
-    .actions {
-      display: flex;
-      gap: calc(var(--base) * 2);
-      align-items: center;
-    }
-
-    a.button {
-      min-height: calc(var(--base) * 10);
+    .button {
+      min-height: 40px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0 calc(var(--base) * 3);
-      border: 1px solid var(--border);
-      color: var(--text);
-      background: var(--surface);
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--soft);
+      color: var(--ink);
+      font-weight: 700;
       text-decoration: none;
       white-space: nowrap;
     }
 
-    iframe {
-      width: 100%;
-      flex: 1;
-      min-height: 0;
-      border: 0;
-      background: var(--background);
+    .button.primary {
+      border-color: var(--red);
+      background: var(--red);
+      color: #ffffff;
     }
 
-    @media (max-width: 880px) {
-      .app {
+    .panel {
+      padding: 18px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      padding: 14px;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--red);
+      font-size: 23px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .section-panel {
+      display: none;
+      gap: 18px;
+    }
+
+    .section-panel.active {
+      display: grid;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 430px);
+      gap: 18px;
+      align-items: start;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .badge.ok {
+      border-color: rgba(34, 122, 69, 0.35);
+      background: #edf7f0;
+      color: var(--ok);
+    }
+
+    .badge.warn {
+      border-color: rgba(154, 103, 0, 0.35);
+      background: #fff8e6;
+      color: var(--warn);
+    }
+
+    .resource-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .resource {
+      min-height: 154px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .resource p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .resource a {
+      color: var(--red);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .resource a:hover {
+      text-decoration: underline;
+    }
+
+    .flow {
+      padding: 18px;
+      overflow: hidden;
+    }
+
+    .flow svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .copy-panel {
+      min-width: 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #202124;
+      color: #f5f5f5;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .footer {
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1080px) {
+      .shell {
         grid-template-columns: 1fr;
       }
 
       aside {
-        max-height: 42vh;
-        border-right: 0;
-        border-bottom: 1px solid var(--border);
+        position: static;
+        height: auto;
       }
 
-      iframe {
-        min-height: 72vh;
+      .tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hero,
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .resource-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      main {
+        padding: 16px;
+      }
+
+      .tabs,
+      .resource-grid,
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-card h2 {
+        font-size: 27px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="shell">
     <aside>
       <section class="brand" aria-labelledby="portal-title">
-        <strong>kagent Workgroup</strong>
-        <h1 id="portal-title">HTML handover portal</h1>
-        <p>Static front page for the repo's checked-in HTML artifacts.</p>
+        <p class="eyebrow">Kagent v2</p>
+        <h1 id="portal-title">Iteration front page</h1>
+        <p>Tabbed map of the recent smart-triage, memory, knowledge, GitLab, Grafana, chaos, HITL, and evaluation work.</p>
       </section>
 
-      <section class="meta" aria-label="Portal status">
-        <div class="row"><span>Pages</span><b id="page-count">0</b></div>
-        <div class="row"><span>Mode</span><b>Repo static</b></div>
+      <section class="summary" aria-label="Portal summary">
+        <div class="summary-row"><span>Sections</span><b id="section-count">0</b></div>
+        <div class="summary-row"><span>Mode</span><b>Static HTML</b></div>
+        <div class="summary-row"><span>Posture</span><b>Public-safe</b></div>
       </section>
 
-      <nav class="tabs" id="tabs" aria-label="HTML pages"></nav>
+      <nav class="tabs" id="tabs" aria-label="Iteration sections"></nav>
     </aside>
 
     <main>
-      <header>
-        <div>
-          <h2 id="page-title">Loading</h2>
-          <p class="meta-text" id="page-path"></p>
+      <section class="hero">
+        <div class="hero-card">
+          <p class="eyebrow">What changed</p>
+          <h2>From a namespace triage agent to a connected AI SRE system.</h2>
+          <p class="lede">This page is the clickable front door for the latest iteration: specialist fan-out, Grafana evidence, GitLab MCP, memory, doc2vec knowledge retrieval, human approval, chaos testing, and evaluation.</p>
+          <div class="quick-actions">
+            <a class="button primary" href="WORK-STAKEHOLDER-DEMO-RUNBOOK.html">Open stakeholder runbook</a>
+            <a class="button" href="WORK-KAGENT-TRIAGE-V2-FRONT-SHEET.md">Open triage v2 front sheet</a>
+            <a class="button" href="WORK-KAGENT-TRIAGE-V2-REVIEW-PROMPT.md">Open triage v2 review prompt</a>
+            <a class="button" href="WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html">Open proof board</a>
+            <a class="button" href="WORK-ZIP-AGENT-HANDOFF.md">Open lift-and-shift handoff</a>
+            <a class="button" href="WORK-MEMORY-KB-VERIFY-PROMPT.md">Open verification prompt</a>
+          </div>
         </div>
-        <div class="actions">
-          <a class="button" id="open-link" href="#" target="_blank" rel="noopener">Open page</a>
+
+        <div class="panel">
+          <p class="eyebrow">Current package</p>
+          <div class="metrics">
+            <div class="metric">
+              <strong>8</strong>
+              <h3>Specialist lanes</h3>
+              <p class="muted">Kubernetes, network, Grafana, GitOps, knowledge, deployment, policy, trace.</p>
+            </div>
+            <div class="metric">
+              <strong>HITL</strong>
+              <h3>Governed action</h3>
+              <p class="muted">Writes stay behind approval and GitOps-style review.</p>
+            </div>
+            <div class="metric">
+              <strong>MCP</strong>
+              <h3>Tool connectivity</h3>
+              <p class="muted">Grafana, GitLab, querydoc, memory, AKS/cloud tool paths.</p>
+            </div>
+            <div class="metric">
+              <strong>Eval</strong>
+              <h3>Proof layer</h3>
+              <p class="muted">Scoring and hard gates for evidence quality and safety.</p>
+            </div>
+          </div>
         </div>
-      </header>
-      <iframe id="frame" title="Selected kagent workgroup page"></iframe>
+      </section>
+
+      <div id="sections"></div>
+
+      <p class="footer">This portal is a static repo artifact. It contains links and placeholders only; replace environment-specific values in the underlying handoff docs before running commands.</p>
     </main>
   </div>
 
+  <template id="section-template">
+    <section class="section-panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow section-kicker"></p>
+          <h2 class="section-title"></h2>
+          <p class="lede section-summary"></p>
+          <div class="badge-row section-badges"></div>
+        </div>
+        <div class="copy-panel">
+          <button class="button primary copy-button" type="button">Copy section TLDR</button>
+          <pre class="section-tldr"></pre>
+        </div>
+      </div>
+      <div class="flow section-flow"></div>
+      <div class="resource-grid section-resources"></div>
+    </section>
+  </template>
+
   <script>
-    const pages = [
+    const sections = [
       {
-        title: "K-Agent Knowledge UI",
-        group: "Agents",
-        path: "agents/kagent-knowledge-ui/app/static/index.html"
+        id: "smart-triage",
+        title: "Smart Triage Fan-Out",
+        kicker: "Coordinator and specialists",
+        tab: "Smart triage",
+        summary: "The v2 workflow fans out from one incident to multiple specialists, synthesizes evidence, gates action through HITL, and emits proof markers.",
+        badges: ["Live proof captured", "A2A", "HITL", "GitOps-safe"],
+        tldr: "Smart triage now coordinates Kubernetes, network, Grafana, GitOps, knowledge, deployment, policy, and trace specialists before producing one governed incident summary.",
+        flow: ["Alert", "Normalize", "Fan-out specialists", "Synthesis", "HITL", "GitOps / workflow action", "Eval"],
+        resources: [
+          ["Presenter", "SMART-TRIAGE-FANOUT-PRESENTER.html", "Visual explanation of the fan-out architecture and stakeholder storyline."],
+          ["Live Evidence", "SMART-TRIAGE-FANOUT-LIVE-EVIDENCE.md", "Captured proof markers and workflow evidence for the home run."],
+          ["Work Handoff", "SMART-TRIAGE-FANOUT-WORK-HANDOFF.md", "Lift-and-shift plan for adapting the fan-out pattern at work."],
+          ["Demo Package", "a2a/smart-triage-fanout-demo/README.md", "Runnable smart-triage workflow, agents, scripts, and contracts."],
+          ["Verification", "WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md", "Prompt and commands for proving the work-side triage system."],
+          ["Stakeholder Runbook", "WORK-STAKEHOLDER-DEMO-RUNBOOK.html", "Copyable demo commands for a stakeholder walkthrough."]
+        ]
       },
       {
-        title: "Platform Knowledge Base POC Presentation",
-        group: "AI Platform",
-        path: "ai-platform/kagent-knowledge-base/platform-kb-poc-presentation.html"
+        id: "memory",
+        title: "Memory and A2A Continuity",
+        kicker: "Shared recall and HITL resume",
+        tab: "Memory",
+        summary: "The memory package proves shared incident recall, A2A context reuse, and workflow suspend/resume. Production hardening focuses on durable Postgres, pgvector, audit, and curator-mediated writes.",
+        badges: ["Memory POC proven", "Postgres hardening next", "A2A context", "Curator writes"],
+        tldr: "Memory is split into workflow state, A2A session continuity, native kagent memory, and shared incident memory. The POC works; production needs durable database-backed storage and controlled write paths.",
+        flow: ["Seed incident", "Search memory", "Record contextId", "Suspend for human", "Resume same context", "Emit memory proposal"],
+        resources: [
+          ["Execution Review", "A2A-DEMO-EXECUTION-REVIEW.md", "Review of the live memory/A2A/HITL showcase demo."],
+          ["Implementation Plan", "A2A-WORK-IMPLEMENTATION-PLAN.md", "Work-side memory-assisted HITL implementation plan."],
+          ["Memory Architecture", "docs/kagent-memory/platform-memory/README.md", "Layered memory design across workflow, native memory, shared memory, and RAG."],
+          ["Native Findings", "docs/kagent-memory/README.md", "Live findings on kagent session memory and native memory behavior."],
+          ["Memory MCP", "docs/memory-integration.md", "Custom shared memory MCP integration and tool tiers."],
+          ["Demo Package", "a2a/platform-memory-showcase-demo/README.md", "Runnable memory showcase demo package."]
+        ]
       },
       {
-        title: "A2A Auth Options",
-        group: "A2A",
-        path: "docs/a2a-auth/a2a-auth-options.html"
+        id: "knowledge",
+        title: "Knowledge Base and doc2vec",
+        kicker: "Git-backed runbook retrieval",
+        tab: "Knowledge base",
+        summary: "The knowledge package indexes Markdown runbooks with doc2vec, serves them through querydoc MCP, and wires a read-only kagent specialist that answers with citations.",
+        badges: ["doc2vec", "querydoc MCP", "Citations required", "NO_RELEVANT_DOCS"],
+        tldr: "Platform knowledge should live in Git, be indexed into a vector DB, and be queried through MCP. The agent must answer from retrieved chunks only and cite the source path.",
+        flow: ["Markdown repo", "doc2vec indexer", "platform-kb.db", "querydoc MCP", "RemoteMCPServer", "Knowledge agent", "Cited answer"],
+        resources: [
+          ["POC Presentation", "ai-platform/kagent-knowledge-base/platform-kb-poc-presentation.html", "Visual walk-through of doc2vec/querydoc and the knowledge agent."],
+          ["POC README", "ai-platform/kagent-knowledge-base/README.md", "Implementation package, images, scripts, and Kubernetes flow."],
+          ["Embedding Options", "ai-platform/kagent-knowledge-base/EMBEDDING-OPTIONS.md", "OpenAI, Azure OpenAI, and local OpenAI-compatible embedding options."],
+          ["RAG Pattern", "docs/platform-kb/platform/kagent-docs-rag.md", "Why Git-backed RAG is separate from kagent memory."],
+          ["KB Corpus", "docs/platform-kb/INDEX.md", "Seed index for the platform knowledge base."],
+          ["KB GitLab MCP Update Loop", "demos/kb-gitlab-mcp-update/README.md", "Acceptance test for GitLab MCP-created KB docs, index update, reindex, citation, and fallback proof."],
+          ["Verify Prompt", "WORK-MEMORY-KB-VERIFY-PROMPT.md", "Commands to prove doc2vec ingestion, MCP mounting, and cited answers."]
+        ]
       },
       {
-        title: "MCP Tool Auth Discovery Explainer",
-        group: "Agent Gateway",
-        path: "docs/agentgateway-mcp-tool-auth/mcp-tool-auth-discovery-explainer.html"
+        id: "gitlab",
+        title: "GitLab MCP and GitOps Writes",
+        kicker: "Branch, MR, issue loop",
+        tab: "GitLab",
+        summary: "GitLab integration moves the system from recommendation-only output toward sandbox branch/MR creation and issue updates through an MCP-mounted specialist.",
+        badges: ["MCP mounted path", "MR proof", "Issue update test", "Sandbox only"],
+        tldr: "The GitLab specialist should create feature branches, update Markdown, open MRs, post notes, and update issues only through approved MCP tooling and only after HITL for remediation paths.",
+        flow: ["HITL approval", "GitLab specialist", "MCP tool call", "Feature branch", "File update", "MR", "Issue note"],
+        resources: [
+          ["GitLab Demo", "SMART-TRIAGE-GITLAB-MCP-MR-DEMO.md", "Branch, file, MR, and kagent-mounted MCP proof notes."],
+          ["KB GitLab MCP Update Loop", "demos/kb-gitlab-mcp-update/README.md", "Uses GitLab MCP to create or update KB docs and prove querydoc retrieves them."],
+          ["Verify Prompt", "WORK-MEMORY-KB-VERIFY-PROMPT.md", "Adds GitLab issue list/read/update checks to the verification flow."],
+          ["Smart Triage Demo", "a2a/smart-triage-fanout-demo/README.md", "Contains the GitLab specialist and demo scripts."],
+          ["Work Handoff", "WORK-ZIP-AGENT-HANDOFF.md", "Environment variables and GitLab sandbox requirements."],
+          ["PR Summary", "SMART-TRIAGE-FANOUT-PR.md", "PR framing for the smart-triage fan-out package."],
+          ["GitOps Scope", "SMART-TRIAGE-FANOUT-WORK-PLAN.md", "Work plan with GitOps boundaries and proof markers."]
+        ]
       },
       {
-        title: "K-Agent Observability Playbook",
-        group: "Observability",
-        path: "docs/observability/k-agent-observability-playbook.html"
+        id: "grafana",
+        title: "Grafana and Observability Evidence",
+        kicker: "Evidence beyond kubectl",
+        tab: "Grafana",
+        summary: "Grafana integration lets the triage flow pull metrics, logs, dashboards, and incident context instead of depending only on Kubernetes object state.",
+        badges: ["Grafana MCP", "Evidence agent", "Dashboards", "Logs and metrics"],
+        tldr: "Grafana is the observability evidence lane: it enriches incident triage with dashboards, queries, and links that can be folded into HITL and eval output.",
+        flow: ["Alert", "Grafana specialist", "Metrics/logs", "Dashboard link", "Evidence pack", "Synthesis"],
+        resources: [
+          ["AI Grafana README", "docs/ai-grafana/README.md", "Context for AI-assisted Grafana triage patterns."],
+          ["Kagent Fleet Dashboard JSON", "observability/agent-evals/grafana/kagent-fleet-overview-dashboard.json", "Importable Grafana dashboard for agent inventory, readiness, score out of 10, triage rate, remediation rate, HITL pending, and hard failures."],
+          ["Fleet Dashboard Contract", "observability/agent-evals/FLEET-DASHBOARD.md", "Metric contract for multi-cluster kagent inventory, incident funnel, remediation, HITL, and eval scores."],
+          ["Fleet Metrics Exporter", "observability/agent-evals/fleet-exporter/README.md", "Read-only exporter that publishes live Agent inventory, readiness, workflow, and lifecycle eval metrics for Grafana."],
+          ["Chaos Lifecycle Live HTML", "observability/chaos-test-manager/chaos-test-lifecycle-live.html", "Static live-run dashboard for the Proxmox chaos result, recovery state, eval score, and verification commands."],
+          ["Chaos Lifecycle Dashboard JSON", "observability/chaos-test-manager/grafana/chaos-test-lifecycle-dashboard.json", "Importable Grafana dashboard for chaos lifecycle scores, pass/fail state, hard failures, proof markers, and subscores."],
+          ["Chaos Lifecycle Alloy Snippet", "observability/chaos-test-manager/alloy/chaos-test-lifecycle.alloy", "Alloy log and metric wiring for chaos workflow markers and eval metrics."],
+          ["Chaos Dashboard", "docs/ai-grafana/chaos-grafana-triage-dashboard.html", "Visual dashboard for chaos and triage evidence."],
+          ["Iteration Review", "docs/ai-grafana/iteration-review-chaos-agent-demo.html", "HTML review of the chaos/Grafana agent demo."],
+          ["Grafana Agent", "agents/grafana-evidence-agent/README.md", "Dedicated agent for Grafana evidence gathering."],
+          ["Observability Playbook", "docs/observability/k-agent-observability-playbook.html", "Broader kagent observability playbook."],
+          ["Managed LGTM", "observability/managed-lgtm-integration/README.md", "Managed Mimir/Loki/Grafana integration notes."]
+        ]
       },
       {
-        title: "Governed Agent Runtime Epic",
-        group: "Security",
-        path: "docs/security/governed-agent-runtime-epic.html"
+        id: "chaos",
+        title: "Chaos Engineering",
+        kicker: "Controlled failure proof",
+        tab: "Chaos",
+        summary: "Chaos scenarios provide repeatable incidents that can prove detection, triage, evidence gathering, remediation planning, and evaluation without touching production workloads.",
+        badges: ["Litmus", "Controlled target", "Non-production", "Recovery proof"],
+        tldr: "Chaos gives us demo-safe incidents. The goal is to inject a known problem, watch the agents triage it, hold remediation behind HITL, and capture proof of recovery.",
+        flow: ["Litmus experiment", "Alert/event", "Triage fan-out", "Grafana evidence", "HITL", "Recovery check"],
+        resources: [
+          ["Chaos README", "chaos/README.md", "Top-level chaos engineering package."],
+          ["Live HTML Dashboard", "observability/chaos-test-manager/chaos-test-lifecycle-live.html", "Static live-run dashboard for the Proxmox chaos result, recovery state, eval score, and verification commands."],
+          ["Reliability Chaos Skeleton", "chaos/reliability/README.md", "Entry point for ChaosTest/ReliabilitySuite contracts, workflow templates, GitOps manifests, reports, and validation."],
+          ["Live Runbook", "chaos/reliability/LIVE-RUNBOOK.md", "Copyable Proxmox/non-production execution path for dry-run and HITL-approved live runs."],
+          ["Live Evidence", "WORK-CHAOS-TEST-MANAGER-LIVE-EVIDENCE.md", "Sanitized evidence from the Proxmox dry-run, live Litmus pod-delete run, recovery check, and lifecycle eval."],
+          ["Execution Review", "WORK-CHAOS-TEST-MANAGER-EXECUTION-REVIEW.md", "Implementation review, validation summary, and remaining non-claims."],
+          ["Chaos Planning Prompt", "WORK-CHAOS-TEST-MANAGER-PLANNING-PROMPT.md", "Prompt for planning natural-language chaos test generation and scheduling."],
+          ["Chaos Manager Plan", "WORK-CHAOS-TEST-MANAGER-PLAN.md", "Reviewed plan for the natural-language chaos test manager and reliability suite process."],
+          ["Litmus Work Install", "chaos/litmus/WORK-INSTALL.md", "Work-side install and validation handoff for Litmus."],
+          ["Litmus README", "chaos/litmus/README.md", "Local Litmus package details."],
+          ["Grafana Dashboard", "docs/ai-grafana/chaos-grafana-triage-dashboard.html", "Chaos triage dashboard visualization."],
+          ["Iteration Review", "docs/ai-grafana/iteration-review-chaos-agent-demo.html", "Demo review for chaos plus AI evidence."],
+          ["Verification README", "WORK-TRIAGE-REMEDIATION-VERIFICATION-README.md", "Commands to prove chaos-driven triage and remediation."]
+        ]
       },
       {
-        title: "Pod Sandboxing",
-        group: "Security",
-        path: "docs/security/pod-sandboxing.html"
+        id: "eval",
+        title: "Evaluation and Hard Gates",
+        kicker: "Trust but verify",
+        tab: "Evaluation",
+        summary: "The evaluation layer scores whether agent output is useful, grounded, safe, and compliant with HITL and remediation controls.",
+        badges: ["Scorecard", "Hard failures", "Lifecycle eval", "Evidence quality"],
+        tldr: "Eval turns demos into measurable proof. It should fail runs with missing HITL, missing citations, unsafe writes, wrong namespace, or unverified remediation.",
+        flow: ["Capture run", "Extract markers", "Score evidence", "Check hard gates", "Pass/fail", "Review"],
+        resources: [
+          ["Eval Handoff", "KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md", "Work-side handoff for agent lifecycle evaluation."],
+          ["Fleet Dashboard JSON", "observability/agent-evals/grafana/kagent-fleet-overview-dashboard.json", "Importable Grafana dashboard for fleet-scale agent inventory and performance."],
+          ["Fleet Dashboard Contract", "observability/agent-evals/FLEET-DASHBOARD.md", "Metric contract and wiring path for multi-cluster agent dashboards."],
+          ["Fleet Metrics Exporter", "observability/agent-evals/fleet-exporter/README.md", "Live exporter for Agent inventory, readiness, incident funnel, and lifecycle eval metrics."],
+          ["Eval Scorecard", "observability/agent-evals/agent-eval-scorecard-demo.html", "Visual scorecard demo."],
+          ["Agent Evals README", "observability/agent-evals/README.md", "Evaluation package entry point."],
+          ["Eval PR Review", "KAGENT-EVAL-PR-REVIEW.md", "Review of the eval PR package."],
+          ["Eval Plan", "eval-plan.md", "Planning artifact for the evaluation layer."],
+          ["Verify Prompt", "WORK-MEMORY-KB-VERIFY-PROMPT.md", "Adds memory, KB, and GitLab hard gates."]
+        ]
+      },
+      {
+        id: "handoff",
+        title: "Work Lift-and-Shift Handoff",
+        kicker: "Give this to another agent",
+        tab: "Handoff",
+        summary: "The handoff docs package the home-lab patterns into prompts, environment variables, prerequisites, images, validation commands, and evidence templates for work replication.",
+        badges: ["Zip-ready", "Placeholders", "Evidence-first", "Public-safe"],
+        tldr: "The work handoff is designed so another agent can install, adapt, test, and prove the same system in a different environment without copying home-specific values.",
+        flow: ["Read front sheet", "Fill variables", "Deploy safely", "Run proof", "Capture evidence", "Review"],
+        resources: [
+          ["Kagent Triage V2 Front Sheet", "WORK-KAGENT-TRIAGE-V2-FRONT-SHEET.md", "Single starting point with proof tiers, critical path, SRE demo script, known gaps, and done definition."],
+          ["Work Agent Start Prompt", "WORK-KAGENT-TRIAGE-V2-WORK-AGENT-START-PROMPT.md", "Copyable prompt for the work-side agent with read order, priority order, definition of done, and evidence output format."],
+          ["Local Handoff Verifier", "scripts/verify-kagent-triage-v2-handoff.sh", "One-command local/static verifier for the human or work agent before cluster work begins."],
+          ["Work Implementation Checklist", "WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html", "Interactive checkbox checklist prioritized for work implementation, starting with doc2vec/querydoc KB, then A2A, GitLab MCP, and Grafana MCP."],
+          ["Kagent Triage V2 Review", "WORK-KAGENT-TRIAGE-V2-REVIEW-PROMPT.md", "Current-state review brief, Opus prompt, and local improvement checklist before work-side packaging."],
+          ["Kagent Triage V2 Completion", "WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md", "Completion gates for verification, HTML visuals, Grafana metrics, SRE workflows, and BYO-agent integration."],
+          ["Kagent Triage V2 Verification", "WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md", "Latest local readiness status, capability classification, visual proof, and remaining priorities."],
+          ["Kagent Triage V2 SRE Guide", "WORK-KAGENT-TRIAGE-V2-SRE-OPERATING-GUIDE.md", "Operator guide for incident replay, controlled chaos, BYO agents, bounded remediation, and review-manager routing."],
+          ["ASTHERI/SRE Walkthrough", "WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-WALKTHROUGH.md", "Step-by-step first-time operator walkthrough from app onboarding to chaos, remediation, dashboards, GitLab, reports, KB, memory, and eval evidence."],
+          ["ASTHERI/SRE Rehearsal", "WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-REHEARSAL.md", "Local rehearsal notes, discrepancies fixed, and the remaining live work-lab proofs."],
+          ["Kagent Triage V2 SRE Workflow", "WORK-KAGENT-TRIAGE-V2-SRE-WORKFLOW.html", "Visual workflow showing the SRE, Kagent, evidence, and control lanes from trigger to report."],
+          ["SRE First-Contact Storyboard", "WORK-KAGENT-TRIAGE-V2-SRE-FIRST-CONTACT.html", "Visual cold-start path for an SRE bringing an app, generating agents, injecting chaos, proving remediation, and scoring the run."],
+          ["SRE First-Contact Demo", "demos/sre-first-contact/README.md", "One-folder demo with prompts, app profile, failure modes, BYO agents, chaos contract, eval evidence, and verifier."],
+          ["Kagent Triage V2 HITL Proof", "WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md", "Real suspend, mock approval workflow lint, and live callback proof requirements."],
+          ["Kagent Triage V2 KB Proof", "WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md", "Static doc2vec/querydoc validation and exact live-query proof still requiring an embedding key."],
+          ["KB GitLab MCP Update Demo", "demos/kb-gitlab-mcp-update/README.md", "Copyable work-agent package for branch, KB docs, index, MR, reindex, querydoc citation, and triage KB lookup."],
+          ["Kagent Triage V2 Proof Board", "WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html", "Presentation-ready visual map of proof tiers, SRE workflows, Grafana coverage, and BYO-agent integration."],
+          ["Kagent Triage V2 Work Checklist", "WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md", "Prioritized P0/P1/P2 checklist for the work-side replication agent."],
+          ["Main Handoff", "WORK-ZIP-AGENT-HANDOFF.md", "The broad zip handoff for smart triage, chaos, evals, Grafana, GitLab, and memory."],
+          ["Chaos Planning", "WORK-CHAOS-TEST-MANAGER-PLANNING-PROMPT.md", "Planning prompt for the next natural-language chaos test manager iteration."],
+          ["Chaos Plan", "WORK-CHAOS-TEST-MANAGER-PLAN.md", "Reviewed planning artifact for the next execution pass."],
+          ["Memory/KB Handoff", "WORK-MEMORY-KB-NEXT-HANDOFF-README.md", "Tomorrow's handoff for memory, Postgres, doc2vec, and querydoc."],
+          ["Memory/KB Verify", "WORK-MEMORY-KB-VERIFY-PROMPT.md", "Verification prompt for evidence after the work agent completes implementation."],
+          ["Stakeholder Runbook", "WORK-STAKEHOLDER-DEMO-RUNBOOK.html", "Copyable commands and demo flow for stakeholder calls."],
+          ["Repo README", "README.md", "Top-level repo navigation and Kagent v2 TLDR."],
+          ["Demo Map", "DEMOS.md", "Showcase demo index."]
+        ]
       }
     ];
 
     const tabs = document.getElementById("tabs");
-    const frame = document.getElementById("frame");
-    const pageTitle = document.getElementById("page-title");
-    const pagePath = document.getElementById("page-path");
-    const openLink = document.getElementById("open-link");
-    const pageCount = document.getElementById("page-count");
+    const sectionsRoot = document.getElementById("sections");
+    const sectionTemplate = document.getElementById("section-template");
+    const sectionCount = document.getElementById("section-count");
 
-    function flattened(path) {
-      return path.replaceAll("/", "__");
+    function makeFlow(items) {
+      const width = 1080;
+      const height = 150;
+      const stepWidth = 132;
+      const gap = (width - 80 - (items.length * stepWidth)) / Math.max(items.length - 1, 1);
+      const nodes = items.map((item, index) => {
+        const x = 40 + index * (stepWidth + gap);
+        const y = 54;
+        const text = item.length > 17 ? item.replace(" / ", " /\\n") : item;
+        const lines = text.split("\\n");
+        const label = lines.map((line, lineIndex) => `<text x="${x + stepWidth / 2}" y="${y + 38 + lineIndex * 16}" text-anchor="middle" font-size="12" font-family="Arial" fill="#171717">${line}</text>`).join("");
+        return `
+          <g>
+            <rect x="${x}" y="${y}" width="${stepWidth}" height="62" rx="8" fill="#fff4f4" stroke="#d71920" stroke-width="1.5"></rect>
+            ${label}
+          </g>
+        `;
+      }).join("");
+      const arrows = items.slice(0, -1).map((_, index) => {
+        const x1 = 40 + index * (stepWidth + gap) + stepWidth;
+        const x2 = 40 + (index + 1) * (stepWidth + gap);
+        return `
+          <line x1="${x1 + 8}" y1="85" x2="${x2 - 12}" y2="85" stroke="#9ca3af" stroke-width="2"></line>
+          <path d="M ${x2 - 12} 85 L ${x2 - 22} 79 L ${x2 - 22} 91 Z" fill="#9ca3af"></path>
+        `;
+      }).join("");
+      return `
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Section flow">
+          <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="8" fill="#f3f4f6" stroke="#d8d8d8"></rect>
+          ${arrows}
+          ${nodes}
+        </svg>
+      `;
     }
 
-    function sourcePathFromHash() {
-      const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
-      if (!raw) return "";
-      return raw.includes("/") ? raw : raw.replaceAll("__", "/");
-    }
-
-    function selectPage(path, updateHash = true) {
-      const page = pages.find((item) => item.path === path) || pages[0];
-      if (!page) return;
-
-      frame.src = page.path;
-      pageTitle.textContent = page.title;
-      pagePath.textContent = `${page.group} / ${page.path}`;
-      openLink.href = page.path;
-
+    function selectSection(id, updateHash = true) {
+      const selected = sections.find((section) => section.id === id) || sections[0];
       for (const button of tabs.querySelectorAll("button")) {
-        button.setAttribute("aria-current", button.dataset.path === page.path ? "page" : "false");
+        button.setAttribute("aria-selected", button.dataset.section === selected.id ? "true" : "false");
       }
-
+      for (const panel of sectionsRoot.querySelectorAll(".section-panel")) {
+        panel.classList.toggle("active", panel.dataset.section === selected.id);
+      }
       if (updateHash) {
-        window.history.replaceState(null, "", `#${flattened(page.path)}`);
+        window.history.replaceState(null, "", `#${selected.id}`);
       }
     }
 
-    pageCount.textContent = String(pages.length);
-
-    for (const page of pages) {
-      const button = document.createElement("button");
-      button.className = "tab";
-      button.type = "button";
-      button.dataset.path = page.path;
-      button.innerHTML = `<span>${page.title}</span><small>${page.group} / ${page.path}</small>`;
-      button.addEventListener("click", () => selectPage(page.path));
-      tabs.appendChild(button);
+    function copyText(button, text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const previous = button.textContent;
+        button.textContent = "Copied";
+        setTimeout(() => {
+          button.textContent = previous;
+        }, 1400);
+      });
     }
 
-    window.addEventListener("hashchange", () => selectPage(sourcePathFromHash(), false));
-    selectPage(sourcePathFromHash() || pages[0].path, false);
+    sectionCount.textContent = String(sections.length);
+
+    for (const section of sections) {
+      const tab = document.createElement("button");
+      tab.className = "tab";
+      tab.type = "button";
+      tab.dataset.section = section.id;
+      tab.setAttribute("role", "tab");
+      tab.innerHTML = `<strong>${section.tab}</strong><span>${section.title}</span>`;
+      tab.addEventListener("click", () => selectSection(section.id));
+      tabs.appendChild(tab);
+
+      const node = sectionTemplate.content.cloneNode(true);
+      const panel = node.querySelector(".section-panel");
+      panel.dataset.section = section.id;
+      node.querySelector(".section-kicker").textContent = section.kicker;
+      node.querySelector(".section-title").textContent = section.title;
+      node.querySelector(".section-summary").textContent = section.summary;
+      node.querySelector(".section-tldr").textContent = section.tldr;
+      node.querySelector(".section-flow").innerHTML = makeFlow(section.flow);
+
+      const badges = node.querySelector(".section-badges");
+      for (const badgeText of section.badges) {
+        const badge = document.createElement("span");
+        badge.className = `badge ${/proven|captured|ready|accepted|required/i.test(badgeText) ? "ok" : ""} ${/next|hardening|sandbox/i.test(badgeText) ? "warn" : ""}`;
+        badge.textContent = badgeText;
+        badges.appendChild(badge);
+      }
+
+      const resources = node.querySelector(".section-resources");
+      for (const [title, href, description] of section.resources) {
+        const card = document.createElement("article");
+        card.className = "resource";
+        card.innerHTML = `
+          <div>
+            <h3>${title}</h3>
+            <p>${description}</p>
+          </div>
+          <a href="${href}">Open ${title}</a>
+        `;
+        resources.appendChild(card);
+      }
+
+      const copyButton = node.querySelector(".copy-button");
+      copyButton.addEventListener("click", () => copyText(copyButton, section.tldr));
+      sectionsRoot.appendChild(node);
+    }
+
+    window.addEventListener("hashchange", () => selectSection(window.location.hash.replace("#", ""), false));
+    selectSection(window.location.hash.replace("#", "") || sections[0].id, false);
   </script>
 </body>
 </html>

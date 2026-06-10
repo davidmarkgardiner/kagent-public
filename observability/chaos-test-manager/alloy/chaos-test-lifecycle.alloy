@@ -1,0 +1,79 @@
+// Grafana Alloy snippet for the chaos/test manager lifecycle.
+//
+// Merge into the environment-specific Alloy configuration after replacing
+// placeholders and wiring the existing managed Loki/Mimir receivers.
+// It is intentionally label-first so Grafana drill-downs can pivot by suite,
+// test, environment tier, namespace, workload, workflow, and score.
+
+discovery.kubernetes "chaos_test_workflow_pods" {
+  role = "pod"
+
+  selectors {
+    role  = "pod"
+    label = "app.kubernetes.io/name=chaos-test-lifecycle"
+  }
+}
+
+discovery.relabel "chaos_test_workflow_pods" {
+  targets = discovery.kubernetes.chaos_test_workflow_pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_reliability_platform_suite"]
+    target_label  = "suite"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_reliability_platform_test"]
+    target_label  = "test"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_reliability_platform_env_tier"]
+    target_label  = "env_tier"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "workflow_name"
+  }
+}
+
+loki.source.kubernetes "chaos_test_workflow_logs" {
+  targets    = discovery.relabel.chaos_test_workflow_pods.output
+  forward_to = [loki.process.chaos_test_lifecycle.receiver]
+}
+
+loki.process "chaos_test_lifecycle" {
+  stage.regex {
+    expression = ".*(?P<marker>CHAOS_REQUEST_PARSED|CHAOS_SPEC_DRAFTED|RELIABILITY_SUITE_DRAFTED|CLUSTER_SELECTION_RECORDED|HITL_STATUS|GITLAB_BRANCH|GITLAB_MR|CHAOS_INJECTION_STARTED|CHAOS_INJECTION_COMPLETED|SMART_TRIAGE_FANOUT|EVAL_SCORE|SCORE_THRESHOLD|REVIEW_MANAGER_TRIGGERED|ALLOY_TELEMETRY_CAPTURED|TEST_REPORT_CREATED|KB_UPDATE_PROPOSED|MEMORY_PROPOSAL_CREATED|OUTPUT_SANITIZED).*"
+  }
+
+  stage.labels {
+    values = {
+      marker = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      component = "chaos-test-manager",
+    }
+  }
+
+  forward_to = [loki.write.managed_loki.receiver]
+}
+
+prometheus.scrape "chaos_test_lifecycle_eval_metrics" {
+  targets = [
+    {
+      __address__ = "{{EVAL_METRICS_ENDPOINT}}",
+      job         = "chaos-test-lifecycle-eval",
+    },
+  ]
+  forward_to = [prometheus.remote_write.managed_mimir.receiver]
+}

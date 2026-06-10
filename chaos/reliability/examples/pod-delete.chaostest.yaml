@@ -1,0 +1,71 @@
+apiVersion: reliability.platform.example/v1alpha1
+kind: ChaosTest
+metadata:
+  name: chaos-demo-pod-delete
+  labels:
+    reliability.platform/suite: chaos-demo-sandbox
+    reliability.platform/owner: platform
+    reliability.platform/env-tier: dev
+spec:
+  owner: platform
+  description: >
+    Delete one pod from the opt-in chaos-demo target workload and verify that
+    smart triage, Grafana evidence, lifecycle eval, and reporting all complete.
+  target:
+    environment: dev
+    clusters:
+      selectionMode: explicit
+      count: 1
+      selector: environment=dev,reliability.platform/chaos-optin=true
+      resolved:
+        - "{{CLUSTER_NAME}}"
+    namespace: chaos-demo
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: chaos-target
+        reliability.platform/chaos-optin: "true"
+    serviceOwnership: catalog://platform/chaos-target
+  experiment:
+    provider: litmus
+    type: pod-delete
+    parameters:
+      totalChaosDuration: "20"
+      chaosInterval: "5"
+      podsAffectedPerc: "50"
+      force: "true"
+  schedule:
+    mode: manual
+    cron: ""
+    window: next-business-hours-lower-env
+  safety:
+    blastRadius: single-workload
+    maxDurationSeconds: 600
+    abortConditions:
+      - demo workload unavailable for more than 120 seconds
+      - namespace-level error rate exceeds {{ERROR_RATE_THRESHOLD}}
+    rollback: >
+      Stop the workflow, delete the active ChaosEngine if present, and wait for
+      deployment/chaos-target in chaos-demo to return to two Ready replicas.
+    requiresHITL: true
+  observability:
+    expectedSignals:
+      - ChaosResult reaches Pass or Fail
+      - pod deletion event appears for app.kubernetes.io/name=chaos-target
+      - smart triage fan-out starts
+    recoverySignals:
+      - deployment/chaos-target reports two Ready replicas
+      - Grafana pod availability panel returns to baseline
+    grafanaDashboard: k8s-pod-crash-evidence
+  triage:
+    workflowTemplate: smart-triage-fanout
+  eval:
+    rubricRef: chaos-pod-delete
+    benchmark: 8
+  reporting:
+    destination:
+      - GitLab
+      - GrafanaAnnotation
+      - Teams
+  learning:
+    memoryUpdatePolicy: curator-only
+    kbUpdatePolicy: hitl-gated-mr

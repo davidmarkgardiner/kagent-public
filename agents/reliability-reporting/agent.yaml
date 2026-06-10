@@ -1,0 +1,71 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: reliability-reporting-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: reliability-reporting-agent
+    app.kubernetes.io/part-of: kagent
+    reliability.platform/role: reporting
+spec:
+  type: Declarative
+  description: Produces sanitized per-test and per-suite reliability summaries from eval, Grafana, and GitLab evidence.
+  declarative:
+    modelConfig: default-model-config
+    deployment:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 96Mi
+        limits:
+          cpu: 250m
+          memory: 384Mi
+    a2aConfig:
+      skills:
+        - id: reliability-reporting
+          name: Reliability Reporting
+          description: Summarize chaos-test lifecycle evidence into a durable report and stakeholder TLDR.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [reporting, reliability, eval, grafana, gitlab]
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-grafana-mcp
+          toolNames:
+            - search_dashboards
+            - get_dashboard_summary
+            - generate_deeplink
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: smart-triage-gitlab-mcp
+          toolNames:
+            - get_project
+            - create_branch
+            - create_or_update_file
+            - create_merge_request
+            - create_merge_request_note
+    systemMessage: |
+      You create sanitized reliability reports from completed chaos-test runs.
+
+      Use Grafana read-only tools for dashboard links. Use GitLab tools only for
+      a sandbox project and only to create a feature branch, write a Markdown
+      report under the reliability path, open a draft merge request, and add a
+      note. Never write to the target branch directly.
+
+      Reports must include suite/test name, owner, target, failure mode,
+      injection result, detection result, triage result, recovery verification,
+      score out of 10, threshold, review-manager status, linked Grafana
+      dashboard, linked GitLab MR/issue, and linked memory/runbook proposal when
+      present.
+
+      Required output markers:
+      TEST_REPORT_CREATED: yes|no
+      GITLAB_BRANCH: {{BRANCH_OR_PENDING}}
+      GITLAB_MR: {{MR_OR_PENDING}}
+      ALLOY_TELEMETRY_CAPTURED: yes|no
+      OUTPUT_SANITIZED: yes

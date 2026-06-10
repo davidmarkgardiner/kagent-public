@@ -1,0 +1,75 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolGrant
+metadata:
+  name: sre-first-contact-front-door
+  namespace: kagent
+spec:
+  agentRef:
+    name: sre-first-contact-agent
+  toolCatalogRef: sre-first-contact-tools@v1.0
+  allowedToolNames:
+    - argo_submit_workflow
+    - argo_get_workflow
+    - argo_get_workflow_logs
+    - grafana_query_metrics
+    - grafana_query_logs
+    - grafana_get_dashboard
+    - querydoc_search
+    - search_nodes
+    - open_nodes
+    - read_graph
+    - gitlab_get_project
+    - gitlab_get_merge_request
+    - gitlab_list_merge_requests
+  expiresAt: "2027-01-01T00:00:00Z"
+  reason: "SRE front-door onboarding and evidence coordination"
+---
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolGrant
+metadata:
+  name: checkout-triage-readonly
+  namespace: checkout-dev
+spec:
+  agentRef:
+    name: checkout-triage-agent
+  toolCatalogRef: kagent-tool-server@v1.0
+  allowedToolNames:
+    - k8s_get_resources
+    - k8s_describe_resource
+    - k8s_get_pod_logs
+    - k8s_get_events
+    - grafana_query_metrics
+    - grafana_query_logs
+    - grafana_get_dashboard
+    - querydoc_search
+    - search_nodes
+    - open_nodes
+    - read_graph
+  expiresAt: "2027-01-01T00:00:00Z"
+  reason: "Checkout read-only triage and evidence gathering"
+---
+apiVersion: platform.kagent.dev/v1alpha1
+kind: ToolGrant
+metadata:
+  name: checkout-remediation-bounded
+  namespace: checkout-dev
+spec:
+  agentRef:
+    name: checkout-remediation-agent
+  toolCatalogRef: kagent-tool-server@v1.0
+  allowedToolNames:
+    - k8s_get_resources
+    - k8s_describe_resource
+    - k8s_get_pod_logs
+    - k8s_get_events
+    - k8s_annotate_resource
+    - k8s_patch_resource
+    - gitlab_create_sandbox_branch
+    - gitlab_open_merge_request
+    - gitlab_add_merge_request_note
+    - search_nodes
+    - open_nodes
+    - read_graph
+    - memory_add_observation_curated
+  expiresAt: "2027-01-01T00:00:00Z"
+  reason: "Checkout non-production remediation planning after HITL"

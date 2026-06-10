@@ -1,0 +1,245 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "agent_lifecycle_eval_score{case_id=~\"$case\"} * 10",
+          "legendFormat": "{{run_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest Chaos Test Score",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "agent_lifecycle_eval_passed{case_id=~\"$case\"}",
+          "legendFormat": "{{run_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pass / Fail",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "agent_lifecycle_eval_hard_failures{case_id=~\"$case\"}",
+          "legendFormat": "{{run_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Hard Failures",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "expr": "{component=\"chaos-test-manager\", suite=~\"$suite\", test=~\"$test\"} |= \"$marker\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Lifecycle Proof Markers",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "agent_lifecycle_eval_subscore{case_id=~\"$case\"}",
+          "legendFormat": "{{dimension}} / {{run_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Subscores",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "kagent",
+    "chaos",
+    "reliability",
+    "eval"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "Prometheus",
+          "value": "prometheus"
+        },
+        "hide": 0,
+        "label": "Prometheus",
+        "name": "prometheus",
+        "query": "prometheus",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Loki",
+          "value": "loki"
+        },
+        "hide": 0,
+        "label": "Loki",
+        "name": "loki",
+        "query": "loki",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "chaos-pod-delete",
+          "value": "chaos-pod-delete"
+        },
+        "hide": 0,
+        "label": "Eval case",
+        "name": "case",
+        "query": "chaos-pod-delete",
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "chaos-demo-sandbox",
+          "value": "chaos-demo-sandbox"
+        },
+        "hide": 0,
+        "label": "Suite",
+        "name": "suite",
+        "query": "chaos-demo-sandbox",
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "chaos-demo-pod-delete",
+          "value": "chaos-demo-pod-delete"
+        },
+        "hide": 0,
+        "label": "Test",
+        "name": "test",
+        "query": "chaos-demo-pod-delete",
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "CHAOS_INJECTION",
+          "value": "CHAOS_INJECTION"
+        },
+        "hide": 0,
+        "label": "Marker",
+        "name": "marker",
+        "query": "CHAOS_INJECTION",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Chaos Test Lifecycle",
+  "uid": "chaos-test-lifecycle",
+  "version": 1
+}

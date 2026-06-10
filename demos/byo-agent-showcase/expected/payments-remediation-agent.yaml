@@ -1,0 +1,54 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: payments-remediation-agent
+  namespace: payments-dev
+  labels:
+    app.kubernetes.io/name: payments-remediation-agent
+    app.kubernetes.io/part-of: kagent
+    platform.com/team: payments
+    platform.com/type: remediation
+spec:
+  type: Declarative
+  description: Bounded non-production remediation planning agent for payments-dev.
+  declarative:
+    modelConfig: agentgateway-qwen
+    systemMessage: |
+      You are the payments-dev remediation planning agent.
+
+      CRITICAL: only operate in namespace payments-dev.
+      Do not delete resources. Do not exec into pods.
+      Do not mutate anything unless the workflow records HITL approval first.
+      Prefer GitOps or approved workflow remediation. Verify recovery before
+      claiming success, and route lessons to the memory curator path.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_pod_logs
+            - k8s_get_events
+            - k8s_annotate_resource
+            - k8s_patch_resource
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: memory-mcp
+          toolNames:
+            - search_nodes
+            - open_nodes
+            - read_graph
+            - add_observations
+    a2aConfig:
+      skills:
+        - id: payments-remediation-plan
+          name: Payments Remediation Plan
+          description: Propose bounded non-production remediation for payments-dev after HITL.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [payments, remediation, non-prod, hitl]

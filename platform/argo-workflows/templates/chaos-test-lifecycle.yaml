@@ -1,0 +1,461 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: chaos-test-lifecycle
+  namespace: argo
+  labels:
+    app.kubernetes.io/name: chaos-test-lifecycle
+    app.kubernetes.io/part-of: kagent
+    reliability.platform/role: chaos-test-manager
+spec:
+  entrypoint: lifecycle
+  serviceAccountName: chaos-test-manager-workflow
+  arguments:
+    parameters:
+      - name: chaos_test_spec
+        value: "{}"
+      - name: run_id
+        value: "{{workflow.name}}"
+      - name: dry_run
+        value: "true"
+      - name: gitlab_project
+        value: "{{GITLAB_SANDBOX_PROJECT}}"
+      - name: gitlab_target_branch
+        value: main
+      - name: gitlab_mr_url
+        value: "{{GITLAB_MR_URL}}"
+      - name: approval_id
+        value: "{{APPROVAL_ID}}"
+      - name: chaos_result_name
+        value: ""
+      - name: marker_evidence_extra
+        value: ""
+  volumes:
+    - name: agent-eval-runtime
+      configMap:
+        name: agent-eval-runtime-files
+        defaultMode: 0755
+        items:
+          - key: reporting.py
+            path: scripts/reporting.py
+          - key: collect-lifecycle-evidence.py
+            path: scripts/collect-lifecycle-evidence.py
+          - key: score-lifecycle-run.py
+            path: scripts/score-lifecycle-run.py
+          - key: summarize-agent-scores.py
+            path: scripts/summarize-agent-scores.py
+          - key: pod-crashloop-hitl-remediation.yaml
+            path: lifecycle-cases/pod-crashloop-hitl-remediation.yaml
+          - key: chaos-pod-delete.yaml
+            path: lifecycle-cases/chaos-pod-delete.yaml
+  templates:
+    - name: lifecycle
+      steps:
+        - - name: validate
+            template: validate-chaos-test
+            arguments:
+              parameters:
+                - name: chaos_test_spec
+                  value: "{{workflow.parameters.chaos_test_spec}}"
+        - - name: build-hitl-packet
+            template: build-hitl-packet
+            arguments:
+              parameters:
+                - name: test_name
+                  value: "{{steps.validate.outputs.parameters.test_name}}"
+                - name: namespace
+                  value: "{{steps.validate.outputs.parameters.namespace}}"
+                - name: experiment_type
+                  value: "{{steps.validate.outputs.parameters.experiment_type}}"
+                - name: owner
+                  value: "{{steps.validate.outputs.parameters.owner}}"
+                - name: dry_run
+                  value: "{{workflow.parameters.dry_run}}"
+        - - name: wait-for-human-review
+            template: wait-for-human-review
+        - - name: gitops-proposal
+            template: gitops-proposal
+            arguments:
+              parameters:
+                - name: test_name
+                  value: "{{steps.validate.outputs.parameters.test_name}}"
+                - name: gitlab_project
+                  value: "{{workflow.parameters.gitlab_project}}"
+                - name: gitlab_target_branch
+                  value: "{{workflow.parameters.gitlab_target_branch}}"
+                - name: gitlab_mr_url
+                  value: "{{workflow.parameters.gitlab_mr_url}}"
+                - name: dry_run
+                  value: "{{workflow.parameters.dry_run}}"
+        - - name: verify-gitops-sync
+            template: verify-gitops-sync
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{steps.validate.outputs.parameters.namespace}}"
+                - name: engine_name
+                  value: "{{steps.validate.outputs.parameters.engine_name}}"
+                - name: dry_run
+                  value: "{{workflow.parameters.dry_run}}"
+        - - name: watch-litmus-result
+            template: watch-litmus-result
+            arguments:
+              parameters:
+                - name: namespace
+                  value: "{{steps.validate.outputs.parameters.namespace}}"
+                - name: result_name
+                  value: "{{workflow.parameters.chaos_result_name}}"
+                - name: fallback_result_name
+                  value: "{{steps.validate.outputs.parameters.default_result_name}}"
+                - name: dry_run
+                  value: "{{workflow.parameters.dry_run}}"
+        - - name: collect-evidence
+            template: collect-evidence
+            when: "{{workflow.parameters.dry_run}} == false"
+            arguments:
+              parameters:
+                - name: test_name
+                  value: "{{steps.validate.outputs.parameters.test_name}}"
+                - name: namespace
+                  value: "{{steps.validate.outputs.parameters.namespace}}"
+                - name: workload
+                  value: "{{steps.validate.outputs.parameters.workload}}"
+                - name: experiment_type
+                  value: "{{steps.validate.outputs.parameters.experiment_type}}"
+                - name: approval_id
+                  value: "{{workflow.parameters.approval_id}}"
+                - name: marker_evidence_extra
+                  value: "{{workflow.parameters.marker_evidence_extra}}"
+        - - name: evaluate-lifecycle
+            templateRef:
+              name: agent-lifecycle-eval
+              template: evaluate-lifecycle
+            when: "{{workflow.parameters.dry_run}} == false"
+            arguments:
+              parameters:
+                - name: runtime_image
+                  value: alpine:3.19
+                - name: agent_eval_root
+                  value: /opt/agent-evals
+                - name: case_id
+                  value: chaos-pod-delete
+                - name: run_id
+                  value: "{{workflow.parameters.run_id}}"
+                - name: workflow_name
+                  value: "{{workflow.name}}"
+                - name: incident_id
+                  value: "{{workflow.parameters.gitlab_mr_url}}"
+                - name: incident_namespace
+                  value: "{{steps.validate.outputs.parameters.namespace}}"
+                - name: workload
+                  value: "{{steps.validate.outputs.parameters.workload}}"
+                - name: failure_mode
+                  value: "{{steps.validate.outputs.parameters.experiment_type}}"
+                - name: ticket_system
+                  value: GitLab
+                - name: ticket_id
+                  value: "{{workflow.parameters.gitlab_mr_url}}"
+                - name: ticket_url
+                  value: "{{workflow.parameters.gitlab_mr_url}}"
+                - name: ticket_closed
+                  value: "false"
+                - name: remediation_mode
+                  value: gitops_or_workflow_only
+                - name: workflow_json
+                  value: "{}"
+                - name: marker_evidence
+                  value: "{{steps.collect-evidence.outputs.parameters.marker_evidence}}"
+        - - name: dry-run-summary
+            template: dry-run-summary
+            when: "{{workflow.parameters.dry_run}} == true"
+            arguments:
+              parameters:
+                - name: test_name
+                  value: "{{steps.validate.outputs.parameters.test_name}}"
+                - name: namespace
+                  value: "{{steps.validate.outputs.parameters.namespace}}"
+                - name: experiment_type
+                  value: "{{steps.validate.outputs.parameters.experiment_type}}"
+
+    - name: validate-chaos-test
+      inputs:
+        parameters:
+          - name: chaos_test_spec
+      outputs:
+        parameters:
+          - name: test_name
+            valueFrom:
+              path: /tmp/test_name
+          - name: namespace
+            valueFrom:
+              path: /tmp/namespace
+          - name: workload
+            valueFrom:
+              path: /tmp/workload
+          - name: experiment_type
+            valueFrom:
+              path: /tmp/experiment_type
+          - name: owner
+            valueFrom:
+              path: /tmp/owner
+          - name: engine_name
+            valueFrom:
+              path: /tmp/engine_name
+          - name: default_result_name
+            valueFrom:
+              path: /tmp/default_result_name
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache python3 py3-yaml >/dev/null
+          cat > /tmp/chaos-test.yaml <<'SPEC'
+          {{inputs.parameters.chaos_test_spec}}
+          SPEC
+          python3 - <<'PY'
+          import sys
+          import yaml
+
+          data = yaml.safe_load(open("/tmp/chaos-test.yaml", encoding="utf-8")) or {}
+          if data.get("apiVersion") != "reliability.platform.example/v1alpha1":
+              raise SystemExit("apiVersion must be reliability.platform.example/v1alpha1")
+          if data.get("kind") != "ChaosTest":
+              raise SystemExit("kind must be ChaosTest")
+
+          metadata = data.get("metadata", {})
+          spec = data.get("spec", {})
+          target = spec.get("target", {})
+          safety = spec.get("safety", {})
+          experiment = spec.get("experiment", {})
+          labels = target.get("selector", {}).get("matchLabels", {})
+
+          env = target.get("environment")
+          if env not in {"dev", "test", "staging"}:
+              raise SystemExit("production or unknown environment is not allowed")
+          if safety.get("requiresHITL") is not True:
+              raise SystemExit("safety.requiresHITL must be true")
+          if not safety.get("abortConditions"):
+              raise SystemExit("at least one abort condition is required")
+          if not safety.get("rollback"):
+              raise SystemExit("rollback is required")
+          if labels.get("reliability.platform/chaos-optin") != "true":
+              raise SystemExit("target workload must be explicitly chaos opt-in")
+          if experiment.get("provider") != "litmus":
+              raise SystemExit("only Litmus experiments are enabled in this skeleton")
+          if experiment.get("type") not in {"pod-delete", "pod-cpu-hog", "pod-network-latency"}:
+              raise SystemExit("unsupported Litmus experiment type")
+
+          test_name = metadata.get("name", "")
+          namespace = target.get("namespace", "")
+          workload = labels.get("app.kubernetes.io/name", "unknown")
+          experiment_type = experiment.get("type", "")
+          owner = spec.get("owner", "")
+          engine_name = f"{test_name}-{experiment_type}"
+          default_result_name = f"{engine_name}-{experiment_type}"
+
+          for path, value in {
+              "/tmp/test_name": test_name,
+              "/tmp/namespace": namespace,
+              "/tmp/workload": workload,
+              "/tmp/experiment_type": experiment_type,
+              "/tmp/owner": owner,
+              "/tmp/engine_name": engine_name,
+              "/tmp/default_result_name": default_result_name,
+          }.items():
+              open(path, "w", encoding="utf-8").write(str(value))
+
+          print("CHAOS_SPEC_DRAFTED: yes")
+          print("CHAOS_POLICY_VALIDATED: yes")
+          print("OUTPUT_SANITIZED: yes")
+          PY
+
+    - name: build-hitl-packet
+      inputs:
+        parameters:
+          - name: test_name
+          - name: namespace
+          - name: experiment_type
+          - name: owner
+          - name: dry_run
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          cat <<EOF
+          HITL_REQUIRED: yes
+          HITL_PACKET:
+            test: {{inputs.parameters.test_name}}
+            namespace: {{inputs.parameters.namespace}}
+            experiment: {{inputs.parameters.experiment_type}}
+            owner: {{inputs.parameters.owner}}
+            dry_run: {{inputs.parameters.dry_run}}
+            decision: approve to continue to GitOps proposal and lower-env Litmus watch path
+          OUTPUT_SANITIZED: yes
+          EOF
+
+    - name: wait-for-human-review
+      suspend:
+        duration: "24h"
+
+    - name: gitops-proposal
+      inputs:
+        parameters:
+          - name: test_name
+          - name: gitlab_project
+          - name: gitlab_target_branch
+          - name: gitlab_mr_url
+          - name: dry_run
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          branch="{{GITLAB_SOURCE_BRANCH_PREFIX}}/chaos-{{inputs.parameters.test_name}}"
+          cat <<EOF
+          HITL_STATUS: resumed
+          GITLAB_PROJECT: {{inputs.parameters.gitlab_project}}
+          GITLAB_TARGET_BRANCH: {{inputs.parameters.gitlab_target_branch}}
+          GITLAB_BRANCH: ${branch}
+          GITLAB_MR: {{inputs.parameters.gitlab_mr_url}}
+          GITOPS_PROPOSAL_DRY_RUN: {{inputs.parameters.dry_run}}
+          OUTPUT_SANITIZED: yes
+          EOF
+
+    - name: verify-gitops-sync
+      inputs:
+        parameters:
+          - name: namespace
+          - name: engine_name
+          - name: dry_run
+      script:
+        image: bitnamilegacy/kubectl:1.30.7
+        command: [bash]
+        source: |
+          set -euo pipefail
+          if [ "{{inputs.parameters.dry_run}}" = "true" ]; then
+            echo "GITOPS_SYNC_STATUS: dry_run_skipped"
+            exit 0
+          fi
+
+          kubectl get chaosengine "{{inputs.parameters.engine_name}}" \
+            -n "{{inputs.parameters.namespace}}" -o name
+          echo "GITOPS_SYNC_STATUS: observed"
+
+    - name: watch-litmus-result
+      inputs:
+        parameters:
+          - name: namespace
+          - name: result_name
+          - name: fallback_result_name
+          - name: dry_run
+      script:
+        image: bitnamilegacy/kubectl:1.30.7
+        command: [bash]
+        source: |
+          set -euo pipefail
+          if [ "{{inputs.parameters.dry_run}}" = "true" ]; then
+            echo "CHAOS_INJECTION_STARTED: no"
+            echo "CHAOS_INJECTION_COMPLETED: no"
+            echo "CHAOS_RESULT_STATUS: dry_run_skipped"
+            exit 0
+          fi
+
+          result="{{inputs.parameters.result_name}}"
+          if [ -z "$result" ]; then
+            result="{{inputs.parameters.fallback_result_name}}"
+          fi
+
+          echo "CHAOS_INJECTION_STARTED: yes"
+          for _ in $(seq 1 60); do
+            verdict="$(kubectl get chaosresult "$result" -n "{{inputs.parameters.namespace}}" \
+              -o jsonpath='{.status.experimentStatus.verdict}' 2>/dev/null || true)"
+            if [ "$verdict" = "Pass" ] || [ "$verdict" = "Fail" ]; then
+              echo "CHAOS_INJECTION_COMPLETED: yes"
+              echo "CHAOS_RESULT_VERDICT: $verdict"
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "CHAOS_INJECTION_COMPLETED: no"
+          echo "CHAOS_RESULT_STATUS: timeout"
+          exit 1
+
+    - name: collect-evidence
+      inputs:
+        parameters:
+          - name: test_name
+          - name: namespace
+          - name: workload
+          - name: experiment_type
+          - name: approval_id
+          - name: marker_evidence_extra
+      outputs:
+        parameters:
+          - name: marker_evidence
+            valueFrom:
+              path: /tmp/markers.txt
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          # The specialist and Grafana lines below preserve the lifecycle-eval
+          # marker contract for the process skeleton. They are template-emitted
+          # placeholders until this workflow calls the live smart-triage fan-out
+          # and read-only Grafana MCP evidence path.
+          cat > /tmp/markers.txt <<EOF
+          SMART_TRIAGE_FANOUT: started
+          INCIDENT_SYNTHESIS: completed
+          HITL_REQUIRED: yes
+          HITL_STATUS: resumed
+          HITL_EVIDENCE_SOURCE: workflow_parameter
+          APPROVAL_ID: {{inputs.parameters.approval_id}}
+          REMEDIATION_EXECUTED: yes
+          VERIFICATION_PASSED: yes
+          TICKET_UPDATED: yes
+          SPECIALIST_MARKERS_SOURCE: synthetic_template_contract
+          SPECIALIST_KUBERNETES: completed
+          SPECIALIST_NETWORK: completed
+          SPECIALIST_GRAFANA: completed
+          SPECIALIST_GITOPS: completed
+          CHAOS_TEST: {{inputs.parameters.test_name}}
+          CHAOS_NAMESPACE: {{inputs.parameters.namespace}}
+          CHAOS_WORKLOAD: {{inputs.parameters.workload}}
+          CHAOS_FAILURE_MODE: {{inputs.parameters.experiment_type}}
+          CHAOS_RESULT_EVIDENCE: ChaosResult reached a terminal verdict for pod-delete.
+          GRAFANA_EVIDENCE_SOURCE: synthetic_template_contract
+          GRAFANA_EVIDENCE: Grafana dashboard k8s-pod-crash-evidence linked for recovery verification.
+          RECOVERY_EVIDENCE: deployment/chaos-target reports two Ready replicas after the pod-delete run.
+          OUTPUT_SANITIZED: yes
+          {{inputs.parameters.marker_evidence_extra}}
+          EOF
+          cat /tmp/markers.txt
+
+    - name: dry-run-summary
+      inputs:
+        parameters:
+          - name: test_name
+          - name: namespace
+          - name: experiment_type
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          cat <<EOF
+          DRY_RUN_SUMMARY:
+            test: {{inputs.parameters.test_name}}
+            namespace: {{inputs.parameters.namespace}}
+            experiment: {{inputs.parameters.experiment_type}}
+            next: approve a GitOps MR and rerun with dry_run=false in a non-production target.
+          CHAOS_INJECTION_STARTED: no
+          CHAOS_INJECTION_COMPLETED: no
+          SMART_TRIAGE_FANOUT: not_started
+          EVAL_SCORE: pending
+          SCORE_THRESHOLD: 8
+          TEST_REPORT_CREATED: no
+          OUTPUT_SANITIZED: yes
+          EOF

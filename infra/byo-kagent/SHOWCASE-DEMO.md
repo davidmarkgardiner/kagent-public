@@ -24,10 +24,11 @@ The repo already has the building blocks:
 | Shared MCP memory option | `docs/memory-integration.md`, `agents/memory-wired/` |
 | Native kagent memory reference | `docs/kagent-memory/README.md`, `a2a/memory-reference.md` |
 | A2A + HITL + skills runnable demo | `a2a/kagent-hitl-skills-demo/` |
+| One-folder BYO showcase demo | `demos/byo-agent-showcase/` |
 
-What is missing today is a single one-command BYO demo that deploys two
-tenant-owned agents from request files and validates every layer. Until that is
-added, use this document as the guided showcase.
+The one-folder BYO showcase now exists at `demos/byo-agent-showcase/`. It is
+dry-run first and renders two tenant-owned agents from request files: a
+read-only triage agent and a bounded remediation-planning agent.
 
 ## Demo Goal
 
@@ -243,9 +244,9 @@ For gateway-level MCP enforcement, add the Agent Gateway MCP policy projection
 from `docs/agentgateway-mcp-tool-auth/` once the target cluster CRD shape has
 been schema-gated.
 
-## What To Build Next For A One-Command Demo
+## One-Folder Demo
 
-Add a `demos/byo-agent-showcase/` folder with:
+The demo folder contains:
 
 ```text
 demos/byo-agent-showcase/
@@ -263,7 +264,22 @@ demos/byo-agent-showcase/
     `-- verify-demo.sh
 ```
 
-The script should:
+Run locally:
+
+```bash
+bash demos/byo-agent-showcase/scripts/verify-demo.sh
+bash demos/byo-agent-showcase/scripts/run-demo.sh --dry-run
+```
+
+The script:
+
+1. Verifies the request and expected manifests parse.
+2. Confirms demo Agents and ToolGrants do not include delete/exec tools.
+3. Renders the expected Kustomize tree.
+4. Prints the next apply command for an approved non-production cluster.
+5. In `--apply` mode, applies the expected manifests to the selected context.
+
+The work-side version should still:
 
 1. Apply CRDs, bootstrap catalog, and Kyverno policies.
 2. Apply or verify Agent Gateway model configs.
@@ -274,6 +290,3 @@ The script should:
 6. Prove policy denial by trying an unauthorized tool.
 7. Print links to the Argo workflow, Agent, ToolGrant, ModelConfig, and memory
    evidence.
-
-Until that folder exists, this showcase is a guided demo assembled from the
-existing repo artifacts.

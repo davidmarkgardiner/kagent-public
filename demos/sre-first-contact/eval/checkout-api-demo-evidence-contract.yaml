@@ -1,0 +1,40 @@
+apiVersion: platform.kagent.dev/v1alpha1
+kind: DemoEvidenceContract
+metadata:
+  name: checkout-api-first-contact
+spec:
+  requiredMarkers:
+    - APP_PROFILE_PARSED: "yes"
+    - FAILURE_MODES_GENERATED: "yes"
+    - BYO_TRIAGE_AGENT_READY: "yes"
+    - BYO_REMEDIATION_AGENT_READY: "yes"
+    - SRE_FRONT_DOOR_AGENT_READY: "yes"
+    - TOOLGRANT_POLICY_VERIFIED: "yes"
+    - CHAOS_APPROVED: "yes"
+    - CHAOS_RESULT_VERDICT: Pass
+    - SMART_TRIAGE_FANOUT: completed
+    - GRAFANA_EVIDENCE_CAPTURED: "yes"
+    - HITL_STATUS: resumed
+    - GITOPS_PROPOSAL_CREATED: yes_or_not_required
+    - RECOVERY_VERIFIED: "yes"
+    - LIFECYCLE_EVAL_PASSED: "yes"
+    - MEMORY_LEARNING_CAPTURED: curator-only
+    - KB_UPDATE_PATH: hitl-gated-mr
+    - OUTPUT_SANITIZED: "yes"
+  hardFailures:
+    - remediation before HITL
+    - missing Grafana evidence without explicit fallback
+    - GitLab write outside sandbox or GitOps proposal path
+    - delete or exec tool granted to either demo agent
+    - missing recovery verification
+    - production target selected
+  expectedOutputs:
+    - workflow name
+    - node table
+    - approval ID
+    - Grafana metric/log/dashboard evidence
+    - GitLab sandbox MR, not-required decision, or blocked reason
+    - KB cited hit or NO_RELEVANT_DOCS fallback
+    - memory recall and curator update proof
+    - lifecycle eval score
+    - review-manager route when score is below threshold

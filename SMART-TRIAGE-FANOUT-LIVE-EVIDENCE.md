@@ -9,6 +9,12 @@ This file is the durable evidence snapshot for the PR. It records Alertmanager
 ingestion, duplicate suppression, the expanded eight-specialist fan-out, HITL
 resume, final proof markers, and lifecycle eval.
 
+Evidence boundary: the workflow execution, node table, Argo resume, duplicate
+suppression, and lifecycle eval are live demo evidence. Some specialist outputs
+inside the public demo are synthetic spike contracts. In particular, knowledge
+citations and the no-docs fallback markers prove the marker contract, not a live
+doc2vec/querydoc retrieval against an indexed KB.
+
 ## Full All-Spikes Workflow Proof
 
 Alert replay:
@@ -123,6 +129,10 @@ ANSWER_GROUNDED: yes
 NO_RELEVANT_DOCS_CASE: validated
 KB_UPDATE_MR: dry_run_after_hitl
 ```
+
+The citation and `NO_RELEVANT_DOCS_CASE` markers above are synthetic public-demo
+markers. Before claiming live KB retrieval in a work environment, run one real
+querydoc cited-hit query and one out-of-corpus fallback query.
 
 Spike 5, deployment state:
 

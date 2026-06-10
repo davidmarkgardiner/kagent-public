@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Kagent Triage V2 Proof Board</title>
+  <style>
+    :root {
+      --ink: #161616;
+      --muted: #5f6368;
+      --line: #d9d9d9;
+      --bg: #f3f4f6;
+      --panel: #ffffff;
+      --red: #d71920;
+      --blue: #1464a5;
+      --green: #227a45;
+      --amber: #9a6700;
+      --radius: 8px;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      --sans: Frutiger, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.45;
+    }
+
+    a { color: inherit; }
+
+    header {
+      display: grid;
+      gap: 14px;
+      padding: 28px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 1100px;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1.05;
+    }
+
+    .lede {
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    main {
+      display: grid;
+      gap: 18px;
+      padding: 24px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .metric {
+      display: grid;
+      gap: 6px;
+    }
+
+    .metric strong {
+      color: var(--red);
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .pill-row, .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #fafafa;
+    }
+
+    .status {
+      display: inline-flex;
+      width: fit-content;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .proven { background: var(--green); }
+    .contract { background: var(--amber); }
+    .defer { background: var(--blue); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .step {
+      min-height: 92px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--red);
+      border-radius: var(--radius);
+      background: #fbfbfb;
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .link {
+      display: inline-flex;
+      min-height: 34px;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fafafa;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .span-4, .span-6, .span-8 { grid-column: span 12; }
+      .flow { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">Kagent triage system v2</p>
+    <h1>From namespace specialists to a connected, testable AI SRE system.</h1>
+    <p class="lede">This proof board shows what is proven, what is a contract, what SRE can do with it, and how BYO agents plug into the same governed platform.</p>
+    <div class="links">
+      <a class="link" href="WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md">Completion checklist</a>
+      <a class="link" href="WORK-KAGENT-TRIAGE-V2-REVIEW-FINDINGS.md">Review findings</a>
+      <a class="link" href="observability/agent-evals/grafana/kagent-fleet-overview-dashboard.json">Fleet Grafana dashboard</a>
+      <a class="link" href="infra/byo-kagent/SHOWCASE-DEMO.md">BYO-agent showcase</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card span-4 metric">
+        <strong>v1</strong>
+        <h2>Specialists in isolation</h2>
+        <p>Useful namespace/domain debugging, but one-dimensional and hard to turn into a repeatable SRE workflow.</p>
+      </article>
+      <article class="card span-4 metric">
+        <strong>v2</strong>
+        <h2>Connected triage system</h2>
+        <p>Smart fan-out, Grafana, GitLab, memory, KB, HITL, evals, chaos, and reporting connected into one operating model.</p>
+      </article>
+      <article class="card span-4 metric">
+        <strong>BYOA</strong>
+        <h2>Teams plug in safely</h2>
+        <p>ToolCatalogEntry, ToolGrant, Kyverno, Agent Gateway, memory, and A2A skills let teams bring agents without bypassing platform controls.</p>
+      </article>
+    </section>
+
+    <section class="card span-12">
+      <p class="eyebrow">SRE controlled failure workflow</p>
+      <h2>How SRE asks v2 to prove detection and recovery</h2>
+      <div class="flow">
+        <div class="step"><b>1. Request</b><span>Plain-language lower-env failure request.</span></div>
+        <div class="step"><b>2. Draft</b><span>ChaosTest spec with scope, owner, aborts, signals.</span></div>
+        <div class="step"><b>3. Approve</b><span>HITL and GitOps review before mutation.</span></div>
+        <div class="step"><b>4. Inject</b><span>Litmus/Argo runs bounded chaos.</span></div>
+        <div class="step"><b>5. Triage</b><span>Specialists gather K8s, Grafana, GitOps, KB evidence.</span></div>
+        <div class="step"><b>6. Score</b><span>Lifecycle eval checks detection, HITL, verification.</span></div>
+        <div class="step"><b>7. Report</b><span>Grafana, markdown, and review-manager follow-up.</span></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card span-6">
+        <p class="eyebrow">Proof tiers</p>
+        <h2>What we can honestly claim</h2>
+        <table>
+          <tr><th>Capability</th><th>Status</th><th>Current note</th></tr>
+          <tr><td>Smart triage fan-out</td><td><span class="status proven">PROVEN</span></td><td>Workflow and specialist fan-out evidence exists.</td></tr>
+          <tr><td>Chaos pod-delete + eval</td><td><span class="status proven">PROVEN</span></td><td>Lower-env Litmus run, recovery, and eval score captured.</td></tr>
+          <tr><td>Review-manager below threshold</td><td><span class="status proven">PROVEN</span></td><td>Failing sample scores 0.575 and renders review-manager finding.</td></tr>
+          <tr><td>HITL suspend and callback</td><td><span class="status contract">PARTIAL</span></td><td>Real suspend and mock workflow lint exist; live callback proof pending.</td></tr>
+          <tr><td>Grafana/KB from chaos loop</td><td><span class="status contract">CONTRACT</span></td><td>Marker contract exists; live backend wiring is next proof.</td></tr>
+          <tr><td>GitLab remediation writes</td><td><span class="status contract">CONTRACT</span></td><td>Sandbox pattern requires scoped token and project isolation.</td></tr>
+          <tr><td>Native Postgres memory</td><td><span class="status defer">DEFER</span></td><td>Work-lab feature proof, not local consolidation.</td></tr>
+        </table>
+      </article>
+
+      <article class="card span-6">
+        <p class="eyebrow">Grafana coverage</p>
+        <h2>Dashboards must answer these questions</h2>
+        <table>
+          <tr><th>Question</th><th>Metric family</th></tr>
+          <tr><td>Which agents exist and are Ready?</td><td><code>kagent_agent_info</code>, <code>kagent_agent_ready</code></td></tr>
+          <tr><td>Where are incidents in the funnel?</td><td><code>kagent_incident_*_total</code></td></tr>
+          <tr><td>What is pending HITL?</td><td><code>kagent_hitl_pending</code></td></tr>
+          <tr><td>What scored below threshold?</td><td><code>agent_lifecycle_eval_score</code>, <code>hard_failures</code></td></tr>
+          <tr><td>Are BYO tools safe?</td><td><code>kagent_toolgrant_info</code>, <code>kagent_agent_tool_denied_total</code></td></tr>
+        </table>
+      </article>
+    </section>
+
+    <section class="card span-12">
+      <p class="eyebrow">BYO-agent integration</p>
+      <h2>How teams integrate with v2</h2>
+      <div class="flow">
+        <div class="step"><b>Request</b><span>Team submits BYO-agent use case.</span></div>
+        <div class="step"><b>Render</b><span>Builder creates Agent, skills, ModelConfig reference.</span></div>
+        <div class="step"><b>Authorize</b><span>ToolCatalogEntry and ToolGrant approve exact tools.</span></div>
+        <div class="step"><b>Enforce</b><span>Kyverno and Agent Gateway block unsafe tools/routes.</span></div>
+        <div class="step"><b>Deploy</b><span>Flux applies reviewed manifests.</span></div>
+        <div class="step"><b>Smoke</b><span>A2A, memory, and granted-tool smoke tests run.</span></div>
+        <div class="step"><b>Observe</b><span>Grafana shows readiness, scores, denials, incidents.</span></div>
+      </div>
+      <div class="pill-row">
+        <span class="pill">ToolCatalogEntry</span>
+        <span class="pill">ToolGrant</span>
+        <span class="pill">Kyverno</span>
+        <span class="pill">Agent Gateway</span>
+        <span class="pill">A2A skills</span>
+        <span class="pill">memory-mcp</span>
+        <span class="pill">Flux GitOps</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

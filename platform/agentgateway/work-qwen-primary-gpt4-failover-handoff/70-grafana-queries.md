@@ -1,13 +1,21 @@
 # Grafana Queries
 
 Use these in Grafana Explore or as panels on the Agent Gateway Traffic Quality
-dashboard.
+dashboard while establishing the Qwen capacity envelope.
 
 ## Route 429s
 
 ```promql
 sum by (route, backend, status, reason) (
   increase(agentgateway_requests_total{route=~".*llm.*", status="429"}[1h])
+)
+```
+
+## Timeout / Reset Signals
+
+```promql
+sum by (route, backend, status, reason) (
+  increase(agentgateway_requests_total{route=~".*llm.*", reason=~"Timeout|DeadlineExceeded|Canceled|Connection.*|Reset.*"}[1h])
 )
 ```
 
@@ -46,10 +54,35 @@ sum by (workflow_template) (
 )
 ```
 
+## Pending / Running Triage Workflow Backlog
+
+```promql
+sum by (workflow_template, status) (
+  argo_workflows_count{status=~"Pending|Running", workflow_template=~".*(k-agent|kagent|triage|alert).*"}
+)
+```
+
 ## Gateway Rate-Limit Logs
 
 ```logql
 {namespace=~"agentgateway-system|kgateway-system"} |~ "(?i)(429|too many requests|rate.?limit|quota exceeded)"
+```
+
+## Gateway Reset / Timeout Logs
+
+```logql
+{namespace=~"agentgateway-system|kgateway-system"} |~ "(?i)(connection reset|reset by peer|tls.*reset|upstream.*reset|deadline exceeded|context deadline exceeded|timeout)"
+```
+
+## Kafka / Event Hub Consumer Lag
+
+Metric names vary by exporter. Use the installed Kafka exporter label set, then
+pin the Qwen triage topic/consumer group:
+
+```promql
+sum by (topic, consumergroup) (
+  kafka_consumergroup_lag{topic=~".*qwen.*|.*triage.*"}
+)
 ```
 
 ## Kagent A2A Non-Completion Logs
