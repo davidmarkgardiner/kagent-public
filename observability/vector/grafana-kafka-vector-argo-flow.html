@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>Grafana Alert Flow: Kafka, Vector, Argo</title>
+  <style>
+    :root {
+      --ivory: #faf9f5;
+      --paper: #ffffff;
+      --ink: #181816;
+      --muted: #65625b;
+      --line: #d9d4c8;
+      --soft: #efede5;
+      --clay: #c96f4a;
+      --blue: #4f7891;
+      --olive: #6f8555;
+      --amber: #d7a33e;
+      --violet: #746b92;
+      --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--ivory);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.5;
+      letter-spacing: 0;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 46px 28px 68px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.45fr);
+      gap: 32px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 3px;
+      background: var(--clay);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      margin-top: 16px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    h1 em {
+      color: var(--clay);
+      font-style: italic;
+    }
+
+    h2 {
+      margin-bottom: 18px;
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    p {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin-top: 18px;
+      font-size: 20px;
+    }
+
+    .summary {
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 42px rgba(39, 36, 28, 0.08);
+    }
+
+    .summary strong {
+      color: var(--ink);
+    }
+
+    .flow {
+      padding: 50px 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: 170px;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 42px rgba(39, 36, 28, 0.08);
+      overflow: hidden;
+    }
+
+    .step::after {
+      content: attr(data-num);
+      position: absolute;
+      right: 12px;
+      bottom: 4px;
+      color: rgba(24, 24, 22, 0.08);
+      font-family: var(--serif);
+      font-size: 66px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .step h3,
+    .step p,
+    .badge {
+      position: relative;
+      z-index: 1;
+    }
+
+    .step p {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .step.alert {
+      border-top: 5px solid var(--amber);
+    }
+
+    .step.kafka {
+      border-top: 5px solid var(--blue);
+    }
+
+    .step.vector {
+      border-top: 5px solid var(--clay);
+    }
+
+    .step.argo {
+      border-top: 5px solid var(--olive);
+    }
+
+    .step.workflow {
+      border-top: 5px solid var(--violet);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      margin-bottom: 12px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .arrow-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 9.2% 0;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .arrow-row span::after {
+      content: " ->";
+      color: var(--clay);
+    }
+
+    .details {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.55fr);
+      gap: 24px;
+      padding-top: 44px;
+    }
+
+    .panel {
+      padding: 22px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .panel ul {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .panel li {
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1fr);
+      gap: 10px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .panel li::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      margin-top: 7px;
+      border-radius: 999px;
+      background: var(--clay);
+    }
+
+    .code {
+      margin-top: 16px;
+      padding: 18px;
+      overflow-x: auto;
+      border-radius: 8px;
+      background: #1f1e1b;
+      color: #f6f1e6;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+
+    a {
+      color: var(--ink);
+      text-decoration-color: var(--clay);
+      text-underline-offset: 3px;
+    }
+
+    @media (max-width: 1020px) {
+      header,
+      .details {
+        grid-template-columns: 1fr;
+      }
+
+      .steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .arrow-row {
+        display: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 30px 18px 52px;
+      }
+
+      .steps {
+        grid-template-columns: 1fr;
+      }
+
+      .step {
+        min-height: 142px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="eyebrow">Grafana alert path</div>
+        <h1>Alert Manager to <em>Kafka</em>, Vector, and Argo</h1>
+        <p class="lead">
+          A Grafana-managed alert uses the Kafka REST Proxy contact point to
+          publish directly into Confluent Kafka. Vector consumes the raw alert,
+          normalizes it, writes a cleaned event back to Kafka, and Argo turns
+          that accepted event into a workflow.
+        </p>
+      </div>
+      <aside class="summary">
+        <p>
+          <strong>No webhook bridge is required for the producer path</strong>
+          when Grafana can use the Kafka REST Proxy contact point with a scoped
+          Kafka API key and secret.
+        </p>
+      </aside>
+    </header>
+
+    <section class="flow">
+      <h2>End-to-end flow</h2>
+      <div class="steps" aria-label="Alert flow from Grafana to Argo Workflow">
+        <article class="step alert" data-num="1">
+          <span class="badge">Grafana UI</span>
+          <h3>Alert fires</h3>
+          <p>Grafana-managed alert evaluates to firing and routes to the Kafka REST Proxy contact point.</p>
+        </article>
+        <article class="step kafka" data-num="2">
+          <span class="badge">Raw topic</span>
+          <h3>Kafka receives</h3>
+          <p>The contact point writes the native Grafana alert record into <code>alertmanager-events</code>.</p>
+        </article>
+        <article class="step vector" data-num="3">
+          <span class="badge">Normalizer</span>
+          <h3>Vector consumes</h3>
+          <p>Vector reads the raw topic, parses the event, filters noise, and builds a stable triage envelope.</p>
+        </article>
+        <article class="step kafka" data-num="4">
+          <span class="badge">Clean topic</span>
+          <h3>Kafka receives again</h3>
+          <p>Vector publishes the normalized event into <code>alertmanager-events-triage</code>.</p>
+        </article>
+        <article class="step argo" data-num="5">
+          <span class="badge">Trigger</span>
+          <h3>Argo Sensor accepts</h3>
+          <p>Argo Events consumes the cleaned topic and the Sensor filters on normalized fields.</p>
+        </article>
+        <article class="step workflow" data-num="6">
+          <span class="badge">Run record</span>
+          <h3>Workflow starts</h3>
+          <p>Argo Workflow runs triage, gathers evidence, gates remediation, and records the outcome.</p>
+        </article>
+      </div>
+      <div class="arrow-row" aria-hidden="true">
+        <span>publish</span>
+        <span>consume</span>
+        <span>produce</span>
+        <span>consume</span>
+        <span>create</span>
+      </div>
+    </section>
+
+    <section class="details">
+      <div class="panel">
+        <h2>What each piece owns</h2>
+        <ul>
+          <li>Grafana owns alert evaluation and sends the first Kafka record through the contact point.</li>
+          <li>Kafka keeps the raw event available for audit, replay, and debugging.</li>
+          <li>Vector owns payload normalization, filtering, short-window dedupe, and schema shaping.</li>
+          <li>The second Kafka topic is the automation-ready contract that Argo watches.</li>
+          <li>Argo Sensor owns trigger semantics: accepted event, filter match, workflow creation, retry, and rate limit.</li>
+          <li>Argo Workflow owns triage execution, evidence collection, HITL gates, and final outcome classification.</li>
+        </ul>
+      </div>
+
+      <aside class="panel">
+        <h2>Short version</h2>
+        <div class="code">Grafana Alerting
+  -> Kafka REST Proxy contact point
+  -> Confluent raw topic
+  -> Vector
+  -> Confluent triage topic
+  -> Argo Events Kafka EventSource
+  -> Argo Sensor
+  -> Argo Workflow</div>
+        <p style="margin-top:16px">
+          Companion explainer:
+          <a href="vector-confluent-event-management.html">Vector + Confluent event management</a>
+        </p>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
