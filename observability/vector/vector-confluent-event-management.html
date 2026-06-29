@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>Vector + Confluent Event Management</title>
+  <style>
+    :root {
+      --ivory: #faf9f5;
+      --paper: #ffffff;
+      --ink: #181816;
+      --muted: #66635c;
+      --line: #d9d4c8;
+      --soft: #efede5;
+      --clay: #c96f4a;
+      --olive: #6f8555;
+      --blue: #4f7891;
+      --amber: #d7a33e;
+      --red: #b85345;
+      --violet: #746b92;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--ivory);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.5;
+      letter-spacing: 0;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 44px 28px 72px;
+    }
+
+    section {
+      padding: 54px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 860px;
+      margin-top: 16px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+
+    h1 em {
+      color: var(--clay);
+      font-style: italic;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    p {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 3px;
+      background: var(--clay);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.78fr);
+      gap: 34px;
+      align-items: center;
+      padding-top: 16px;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin-top: 18px;
+      font-size: 20px;
+    }
+
+    .hero-card,
+    .panel,
+    .step,
+    .card,
+    .matrix-cell {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 42px rgba(39, 36, 28, 0.08);
+    }
+
+    .hero-card {
+      padding: 22px;
+    }
+
+    .verdict {
+      display: grid;
+      gap: 12px;
+    }
+
+    .verdict-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--ivory);
+    }
+
+    .label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .label.good {
+      background: #e8f0df;
+      color: #3d5a2d;
+    }
+
+    .label.warn {
+      background: #fff1cf;
+      color: #765313;
+    }
+
+    .label.stop {
+      background: #f4dfd9;
+      color: #81372e;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(280px, 0.52fr);
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+
+    .section-head p {
+      font-size: 17px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 18px;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: 128px;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .step::after {
+      content: attr(data-index);
+      position: absolute;
+      right: 12px;
+      bottom: 6px;
+      color: rgba(24, 24, 22, 0.08);
+      font-family: var(--serif);
+      font-size: 58px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .step h3 {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      position: relative;
+      z-index: 1;
+      font-size: 14px;
+    }
+
+    .step.raw {
+      border-top: 5px solid var(--blue);
+    }
+
+    .step.vector {
+      border-top: 5px solid var(--clay);
+    }
+
+    .step.argo {
+      border-top: 5px solid var(--olive);
+    }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .panel {
+      padding: 22px;
+    }
+
+    .panel h3 {
+      margin-bottom: 12px;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .list li {
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1fr);
+      gap: 10px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .list li::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      margin-top: 7px;
+      border-radius: 999px;
+      background: var(--clay);
+    }
+
+    .list.good li::before {
+      background: var(--olive);
+    }
+
+    .list.warn li::before {
+      background: var(--amber);
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 0.72fr repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .matrix-cell {
+      min-height: 126px;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .matrix-cell.header {
+      min-height: auto;
+      background: var(--ink);
+      color: white;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .matrix-cell h3 {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .matrix-cell p {
+      font-size: 14px;
+    }
+
+    .diagram {
+      width: 100%;
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .schema {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 8px;
+      background: #1e1e1b;
+      color: #f6f1e6;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .schema .key {
+      color: #f0b789;
+    }
+
+    .schema .val {
+      color: #a7d38f;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      min-height: 152px;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .card .num {
+      display: inline-grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      margin-bottom: 14px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .card p {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 18px;
+      border-left: 5px solid var(--clay);
+      background: var(--paper);
+      border-radius: 8px;
+      color: var(--muted);
+    }
+
+    .footer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+    }
+
+    a {
+      color: var(--ink);
+      text-decoration-color: var(--clay);
+      text-underline-offset: 3px;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+
+    @media (max-width: 960px) {
+      .hero,
+      .section-head,
+      .split,
+      .footer {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-row,
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        min-height: 18px;
+      }
+
+      .matrix {
+        grid-template-columns: 1fr;
+      }
+
+      .matrix-cell.header {
+        display: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 28px 18px 56px;
+      }
+
+      section {
+        padding: 40px 0;
+      }
+
+      .hero-card,
+      .panel,
+      .card,
+      .matrix-cell,
+      .step {
+        padding: 16px;
+      }
+
+      .verdict-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Observability event management</div>
+        <h1>Use Vector to clean the bus, not replace the <em>workflow</em>.</h1>
+        <p class="lead">
+          The current Confluent proof already moves Kubernetes and alert events
+          through Kafka into Argo. Vector is the missing middle layer for
+          normalization, filtering, and short-window dedupe before Argo creates
+          Workflows.
+        </p>
+      </div>
+      <aside class="hero-card">
+        <div class="verdict">
+          <div class="verdict-row">
+            <span class="label good">Use</span>
+            <p>Vector as an event normalizer between raw Confluent topics and triage topics.</p>
+          </div>
+          <div class="verdict-row">
+            <span class="label warn">Keep</span>
+            <p>Argo Sensors as the Kubernetes-native trigger boundary for Workflow creation.</p>
+          </div>
+          <div class="verdict-row">
+            <span class="label stop">Avoid</span>
+            <p>Treating Vector dedupe as durable 24-hour incident memory on its own.</p>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Recommended shape</div>
+          <h2>Raw topics stay auditable. Triage topics become automation-ready.</h2>
+        </div>
+        <p>
+          Vector consumes raw records, applies source-specific parsing and a
+          common schema, then publishes smaller normalized records for Argo.
+        </p>
+      </div>
+
+      <div class="flow">
+        <div class="flow-row">
+          <div class="step raw" data-index="1">
+            <h3>Producers</h3>
+            <p>Alloy, Alertmanager bridge, or Grafana-native Kafka contact points.</p>
+          </div>
+          <div class="step raw" data-index="2">
+            <h3>Raw topics</h3>
+            <p><code>k8s-events</code> and <code>alertmanager-events</code> remain the replay source.</p>
+          </div>
+          <div class="step vector" data-index="3">
+            <h3>Vector</h3>
+            <p>Parse, remap, classify, filter, and dedupe using a shared event contract.</p>
+          </div>
+          <div class="step vector" data-index="4">
+            <h3>Triage topics</h3>
+            <p>Publish <code>k8s-events-triage</code> and <code>alertmanager-events-triage</code>.</p>
+          </div>
+          <div class="step argo" data-index="5">
+            <h3>Argo</h3>
+            <p>EventSource and Sensor submit the right Workflow with a stable payload.</p>
+          </div>
+        </div>
+      </div>
+
+      <svg class="diagram" viewBox="0 0 1100 330" role="img" aria-label="Vector Confluent Argo architecture diagram">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#66635c"></path>
+          </marker>
+        </defs>
+        <rect x="30" y="48" width="210" height="74" rx="8" fill="#eef4f7" stroke="#4f7891"></rect>
+        <text x="52" y="78" font-family="system-ui" font-size="18" font-weight="700" fill="#181816">Alloy</text>
+        <text x="52" y="102" font-family="system-ui" font-size="14" fill="#66635c">Kubernetes event OTLP</text>
+
+        <rect x="30" y="196" width="210" height="74" rx="8" fill="#fff6dc" stroke="#d7a33e"></rect>
+        <text x="52" y="226" font-family="system-ui" font-size="18" font-weight="700" fill="#181816">Alert sources</text>
+        <text x="52" y="250" font-family="system-ui" font-size="14" fill="#66635c">Alertmanager / Grafana</text>
+
+        <rect x="300" y="40" width="190" height="92" rx="8" fill="#ffffff" stroke="#d9d4c8"></rect>
+        <text x="324" y="72" font-family="system-ui" font-size="17" font-weight="700" fill="#181816">Raw Confluent</text>
+        <text x="324" y="98" font-family="ui-monospace" font-size="13" fill="#66635c">k8s-events</text>
+
+        <rect x="300" y="188" width="190" height="92" rx="8" fill="#ffffff" stroke="#d9d4c8"></rect>
+        <text x="324" y="220" font-family="system-ui" font-size="17" font-weight="700" fill="#181816">Raw Confluent</text>
+        <text x="324" y="246" font-family="ui-monospace" font-size="13" fill="#66635c">alertmanager-events</text>
+
+        <rect x="550" y="88" width="190" height="154" rx="8" fill="#fff2eb" stroke="#c96f4a"></rect>
+        <text x="574" y="122" font-family="system-ui" font-size="20" font-weight="800" fill="#181816">Vector</text>
+        <text x="574" y="151" font-family="system-ui" font-size="14" fill="#66635c">normalize</text>
+        <text x="574" y="176" font-family="system-ui" font-size="14" fill="#66635c">filter</text>
+        <text x="574" y="201" font-family="system-ui" font-size="14" fill="#66635c">short-window dedupe</text>
+
+        <rect x="800" y="70" width="220" height="74" rx="8" fill="#f3f6ee" stroke="#6f8555"></rect>
+        <text x="824" y="101" font-family="system-ui" font-size="17" font-weight="700" fill="#181816">Normalized topics</text>
+        <text x="824" y="126" font-family="ui-monospace" font-size="13" fill="#66635c">*-events-triage</text>
+
+        <rect x="800" y="188" width="220" height="74" rx="8" fill="#f3f6ee" stroke="#6f8555"></rect>
+        <text x="824" y="219" font-family="system-ui" font-size="17" font-weight="700" fill="#181816">Argo boundary</text>
+        <text x="824" y="244" font-family="system-ui" font-size="14" fill="#66635c">Sensor creates Workflow</text>
+
+        <line x1="240" y1="85" x2="300" y2="85" stroke="#66635c" stroke-width="2" marker-end="url(#arrow)"></line>
+        <line x1="240" y1="233" x2="300" y2="233" stroke="#66635c" stroke-width="2" marker-end="url(#arrow)"></line>
+        <line x1="490" y1="86" x2="550" y2="135" stroke="#66635c" stroke-width="2" marker-end="url(#arrow)"></line>
+        <line x1="490" y1="234" x2="550" y2="190" stroke="#66635c" stroke-width="2" marker-end="url(#arrow)"></line>
+        <line x1="740" y1="142" x2="800" y2="108" stroke="#66635c" stroke-width="2" marker-end="url(#arrow)"></line>
+        <line x1="910" y1="144" x2="910" y2="188" stroke="#66635c" stroke-width="2" marker-end="url(#arrow)"></line>
+      </svg>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Decision matrix</div>
+          <h2>Which component owns which job?</h2>
+        </div>
+        <p>
+          The clean split is transport and normalization in Vector, trigger
+          semantics in Argo, and durable incident state outside Vector.
+        </p>
+      </div>
+
+      <div class="matrix">
+        <div class="matrix-cell header">Capability</div>
+        <div class="matrix-cell header">Confluent</div>
+        <div class="matrix-cell header">Vector</div>
+        <div class="matrix-cell header">Argo</div>
+
+        <div class="matrix-cell">
+          <h3>Replay and fanout</h3>
+          <p>Longer-lived event bus and audit source.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>Strong fit</h3>
+          <p>Keep raw topics and consumer groups clear.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>Consumer and producer</h3>
+          <p>Reads raw topics and writes normalized topics.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>Downstream only</h3>
+          <p>Consumes accepted automation-ready events.</p>
+        </div>
+
+        <div class="matrix-cell">
+          <h3>Payload normalization</h3>
+          <p>Turn different producers into one event contract.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>Not the place</h3>
+          <p>Kafka stores records; it does not own schema repairs.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>Best fit</h3>
+          <p>Use remap and filters before workflow submission.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>Keep simple</h3>
+          <p>Filter on stable fields and pass one payload.</p>
+        </div>
+
+        <div class="matrix-cell">
+          <h3>Workflow creation</h3>
+          <p>Accepted event becomes a Kubernetes Workflow.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>No</h3>
+          <p>Kafka should not create Kubernetes resources.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>No</h3>
+          <p>Vector should not become the orchestration layer.</p>
+        </div>
+        <div class="matrix-cell">
+          <h3>Best fit</h3>
+          <p>Sensor rate limits, retries, and creates Workflows.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Dedupe stance</div>
+          <h2>Suppress noise early, keep durable incident memory later.</h2>
+        </div>
+        <p>
+          Vector can prevent repeated events from flooding Argo, but it should
+          not be the sole system of record for high-value incident grouping.
+        </p>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <h3>Use Vector dedupe for</h3>
+          <ul class="list good">
+            <li>Short-window suppression before Workflow objects are created.</li>
+            <li>Field-based dedupe on <code>cluster</code>, <code>namespace</code>, <code>name</code>, and <code>reason</code>.</li>
+            <li>Reducing repeat triage noise from known noisy Kubernetes events.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Keep durable dedupe for</h3>
+          <ul class="list warn">
+            <li>24-hour incident grouping and operator-facing history.</li>
+            <li>Human-in-the-loop remediation safety decisions.</li>
+            <li>Restart-proof dedupe where losing memory would create risk.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        First implementation rule: Vector may reduce duplicate submissions, but
+        Argo or the incident layer still needs the final "have we already acted
+        on this?" guard.
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Normalized event</div>
+          <h2>Give Argo one small envelope, not every producer's native shape.</h2>
+        </div>
+        <p>
+          This is the shape Argo Sensors should filter and Workflows should
+          receive. The raw payload remains attached for debugging.
+        </p>
+      </div>
+
+      <pre class="schema"><span class="key">schema_version</span>: <span class="val">observability.triage.v1</span>
+<span class="key">source</span>: <span class="val">alloy | alertmanager | grafana</span>
+<span class="key">cluster</span>: <span class="val">{{CLUSTER_NAME}}</span>
+<span class="key">environment</span>: <span class="val">{{ENVIRONMENT}}</span>
+<span class="key">severity</span>: <span class="val">critical</span>
+<span class="key">event_type</span>: <span class="val">kubernetes-event | prometheus-alert | grafana-alert</span>
+<span class="key">reason</span>: <span class="val">CrashLoopBackOff</span>
+<span class="key">object_kind</span>: <span class="val">Pod</span>
+<span class="key">namespace</span>: <span class="val">default</span>
+<span class="key">name</span>: <span class="val">example-pod</span>
+<span class="key">dedupe_key</span>: <span class="val">{{CLUSTER_NAME}}:default:Pod:example:CrashLoopBackOff</span>
+<span class="key">raw_topic</span>: <span class="val">k8s-events</span>
+<span class="key">raw</span>: <span class="val">{ original source payload }</span></pre>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Spike path</div>
+          <h2>Start small with alerts, then extend to Kubernetes events.</h2>
+        </div>
+        <p>
+          Alertmanager records have a smaller shape than OTLP Kubernetes
+          events, so they are the safer first proof.
+        </p>
+      </div>
+
+      <div class="timeline">
+        <div class="card">
+          <span class="num">1</span>
+          <h3>Deploy Vector</h3>
+          <p>Management cluster, read raw topic, write triage topic.</p>
+        </div>
+        <div class="card">
+          <span class="num">2</span>
+          <h3>Normalize alerts</h3>
+          <p>Map Alertmanager records into the triage envelope.</p>
+        </div>
+        <div class="card">
+          <span class="num">3</span>
+          <h3>Add dedupe key</h3>
+          <p>Derive a stable key from source, alert name, cluster, and labels.</p>
+        </div>
+        <div class="card">
+          <span class="num">4</span>
+          <h3>Publish triage</h3>
+          <p>Write to <code>alertmanager-events-triage</code>.</p>
+        </div>
+        <div class="card">
+          <span class="num">5</span>
+          <h3>Point Argo</h3>
+          <p>Use the normalized topic in a new Sensor path.</p>
+        </div>
+        <div class="card">
+          <span class="num">6</span>
+          <h3>Measure</h3>
+          <p>Compare workflow count, duplicates, and readability.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <div>
+        <div class="eyebrow">Operator takeaway</div>
+        <h2>Vector improves Confluent as an event bus.</h2>
+        <p class="lead">
+          The first valuable milestone is a cleaner, normalized, less noisy
+          event stream feeding the same Argo workflow boundary.
+        </p>
+      </div>
+      <p>
+        Companion README:
+        <a href="README.md">observability/vector/README.md</a>
+      </p>
+    </section>
+  </main>
+</body>
+</html>
