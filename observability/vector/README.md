@@ -55,6 +55,43 @@ Alloy
   -> Argo Workflow
 ```
 
+## Ingestion Design Decision
+
+Alertmanager can send directly to Vector if Vector exposes an HTTP receiver.
+That path is technically valid:
+
+```text
+Alertmanager
+  -> Vector HTTP endpoint in the management cluster
+  -> Vector normalize / filter / dedupe
+  -> Confluent normalized topic: alertmanager-events-triage
+  -> Argo Events Kafka EventSource
+  -> Argo Sensor
+  -> Argo Workflow
+```
+
+Do not make that the default platform design for this repo. Prefer Kafka first:
+
+```text
+Alertmanager
+  -> Confluent raw topic: alertmanager-events
+  -> Vector in the management cluster
+  -> Confluent normalized topic: alertmanager-events-triage
+  -> Argo Events Kafka EventSource
+  -> Argo Sensor
+  -> Argo Workflow
+```
+
+Kafka-first is the safer platform pattern because the raw alert is captured
+before Vector touches it. That gives the team replay, auditability, easier
+debugging, and looser coupling between Alertmanager delivery and Vector uptime.
+If Vector is down, it can catch up from Kafka when it recovers. In a
+direct-to-Vector path, Alertmanager delivery depends on Vector being reachable
+and healthy at receive time.
+
+Use direct-to-Vector only for a smaller or lower-criticality deployment where
+the extra raw Kafka topic is not worth the operational cost.
+
 ## What Vector Adds
 
 | Area | Current shape | Vector enhancement |
