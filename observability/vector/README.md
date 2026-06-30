@@ -104,6 +104,16 @@ and healthy at receive time.
 Use direct-to-Vector only for a smaller or lower-criticality deployment where
 the extra raw Kafka topic is not worth the operational cost.
 
+Both patterns have now been verified in the home-lab management cluster:
+
+| Pattern | Verified path | Auth boundary |
+|---|---|---|
+| Kafka-first | Alertmanager-style payload -> bridge -> `alertmanager-events` -> Vector -> `alertmanager-events-triage` -> Argo Workflow | Producer auth is handled before Vector; Vector needs Kafka consume on the raw topic and produce on the normalized topic. |
+| Direct-to-Vector | Raw Alertmanager webhook -> Vector HTTP receiver -> `alertmanager-events-triage` -> Argo Workflow | Alertmanager needs network/auth to Vector HTTP; Vector needs Kafka produce on the normalized topic. |
+
+The direct-to-Vector verification used the raw Alertmanager webhook shape at
+the HTTP receiver, not a pre-wrapped internal test envelope.
+
 ## What Vector Adds
 
 | Area | Current shape | Vector enhancement |
@@ -232,10 +242,10 @@ Sensor filters: body.schema_version, body.severity, body.event_type, body.source
 Workflow parameter: normalized event payload
 ```
 
-## Verified Spike Flow
+## Verified Spike Flows
 
-The first live spike was run against the management cluster using sanitized test
-data:
+The Kafka-first live spike was run against the management cluster using
+sanitized test data:
 
 ```text
 Synthetic Alertmanager payload
@@ -257,6 +267,27 @@ Validation evidence from the run:
 - The normalized-topic Argo EventSource consumed
   `alertmanager-events-triage` and published the event onto the Argo EventBus.
 - The Vector Sensor created a workflow named `alert-triage-vector-*`.
+- The workflow completed successfully.
+
+The direct-to-Vector live spike was also run against the management cluster:
+
+```text
+Raw Alertmanager webhook payload
+  -> vector-alert-webhook-normalizer /alerts
+  -> Confluent normalized topic: alertmanager-events-triage
+  -> vector-alertmanager-triage-kafka EventSource
+  -> vector-alertmanager-triage Sensor
+  -> alertmanager-triage WorkflowTemplate
+```
+
+Validation evidence from the direct run:
+
+- Vector accepted the raw Alertmanager webhook with HTTP `200`.
+- The normalized-topic Argo EventSource consumed the event from
+  `alertmanager-events-triage`.
+- The Vector Sensor created `alert-triage-vector-rpwvn`.
+- The workflow payload contained the direct receiver marker and raw
+  Alertmanager fields.
 - The workflow completed successfully.
 
 During the spike, the existing raw Alertmanager Sensor remained enabled. That
