@@ -1,0 +1,63 @@
+[
+  {
+    "name": "critical-production-pod",
+    "input_match": {
+      "environment": "prod",
+      "severity": "critical",
+      "object_kind": "Pod",
+      "namespace": "payments",
+      "service": "checkout-api"
+    },
+    "output_route": {
+      "target_agent": "aks-sre-triage-agent",
+      "route_key": "alerts.prod.payments.checkout-api.critical.aks-sre-triage-agent",
+      "automation_allowed": true,
+      "incident_candidate": true
+    }
+  },
+  {
+    "name": "platform-control-plane-namespace",
+    "input_match": {
+      "severity": "warning",
+      "namespace": "kube-system",
+      "service": "coredns",
+      "alert_name": "CoreDNSLatencyHigh"
+    },
+    "output_route": {
+      "target_agent": "platform-ops-agent",
+      "route_key": "alerts.kube-system.coredns.warning.platform-ops-agent",
+      "automation_allowed": false,
+      "incident_candidate": false
+    }
+  },
+  {
+    "name": "security-vulnerability",
+    "input_match": {
+      "event_type": "security-advisory",
+      "severity": "critical",
+      "namespace": "platform-security",
+      "service": "admission-controller"
+    },
+    "output_route": {
+      "target_agent": "security-hardening-agent",
+      "route_key": "security.platform-security.admission-controller.critical.security-hardening-agent",
+      "automation_allowed": false,
+      "incident_candidate": true
+    }
+  },
+  {
+    "name": "unknown-owner",
+    "input_match": {
+      "severity": "warning",
+      "namespace": "unlabelled-apps",
+      "service": "",
+      "pod": "api-5d764b7f6d-j9m2q"
+    },
+    "output_route": {
+      "target_agent": "sre-triage-agent",
+      "route_key": "alerts.unlabelled-apps.unknown.warning.sre-triage-agent",
+      "automation_allowed": false,
+      "incident_candidate": false
+    }
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "schema_version": "observability.triage.v1",
+  "source": "grafana",
+  "event_type": "security-advisory",
+  "cluster": "aks-prod-01",
+  "environment": "prod",
+  "severity": "critical",
+  "namespace": "platform-security",
+  "object_kind": "ContainerImage",
+  "service": "admission-controller",
+  "alert_name": "CriticalImageVulnerability",
+  "reason": "ImageVulnerability",
+  "target_agent": "security-hardening-agent",
+  "route_key": "security.prod.platform-security.admission-controller.critical.security-hardening-agent",
+  "routing_reason": "critical vulnerability alert owned by the security domain",
+  "incident_candidate": true,
+  "automation_allowed": false,
+  "dedupe_key": "aks-prod-01:platform-security:admission-controller:CriticalImageVulnerability:critical",
+  "raw_topic": "grafana-alerts",
+  "normalized_topic": "security-events-triage",
+  "advisory": {
+    "id": "CVE-EXAMPLE-0001",
+    "package": "example-package",
+    "fixed_version": "1.2.3"
+  },
+  "raw": {}
+}

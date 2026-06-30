@@ -1,0 +1,40 @@
+{
+  "schema_version": "observability.triage.v1",
+  "source": "alertmanager",
+  "event_type": "prometheus-alert",
+  "cluster": "aks-dev-01",
+  "environment": "prod",
+  "severity": "critical",
+  "namespace": "payments",
+  "object_kind": "Pod",
+  "pod": "checkout-api-7d8f9c6d4f-l2t9x",
+  "service": "checkout-api",
+  "alert_name": "PodCrashLooping",
+  "reason": "CrashLoopBackOff",
+  "target_agent": "aks-sre-triage-agent",
+  "route_key": "alerts.prod.payments.checkout-api.critical.aks-sre-triage-agent",
+  "routing_reason": "critical production pod alert for an application service",
+  "incident_candidate": true,
+  "automation_allowed": true,
+  "dedupe_key": "aks-dev-01:payments:checkout-api:PodCrashLooping:critical",
+  "raw_topic": "alertmanager-events",
+  "normalized_topic": "alertmanager-events-triage",
+  "alertmanager": {
+    "status": "firing",
+    "alerts": [
+      {
+        "labels": {
+          "alertname": "PodCrashLooping",
+          "severity": "critical",
+          "namespace": "payments",
+          "pod": "checkout-api-7d8f9c6d4f-l2t9x",
+          "service": "checkout-api"
+        },
+        "annotations": {
+          "summary": "checkout-api pod is crash looping"
+        }
+      }
+    ]
+  },
+  "raw": {}
+}
