@@ -4,12 +4,16 @@ A side-by-side evaluation of Microsoft's [Azure SRE Agent](https://github.com/mi
 and the in-house **kagent + Argo Workflows + AKS-MCP + LGTM** SRE platform,
 plus guidance on when a hybrid of both makes sense.
 
-> **Environment notes for this comparison.** The internal estate (a) has **no
-> GitHub access at work** — code lives in GitLab, so Azure SRE Agent's
-> headline "GitHub deep-context RCA" advantage does not apply here; (b) uses
-> the **LGTM stack** (Loki, Grafana, Tempo, Mimir) for logs / metrics / traces /
-> events; (c) standardises on **kagent native agents** for triage and
-> remediation — HolmesGPT is **not** in the chosen stack.
+> **Environment notes for this comparison.** Last checked against Microsoft Learn
+> on 2026-06-30. The internal estate (a) has **no GitHub access at work** and
+> code lives in GitLab. Current Azure SRE Agent docs now list **GitHub and Azure
+> DevOps** as first-class source-code connection paths for code-aware RCA, and
+> list **GitLab** under preview managed connectors. That improves the story since
+> earlier drafts, but it still does **not** make GitLab the same documented
+> Deep Context source-code path as GitHub / Azure DevOps; (b) uses the **LGTM
+> stack** (Loki, Grafana, Tempo, Mimir) for logs / metrics / traces / events;
+> (c) standardises on **kagent native agents** for triage and remediation —
+> HolmesGPT is **not** in the chosen stack.
 
 | | |
 |---|---|
@@ -23,13 +27,17 @@ plus guidance on when a hybrid of both makes sense.
 ## 1. TL;DR
 
 - **Azure SRE Agent** is a fully managed, GA-since-March-2026 SaaS agent that ships
-  with deep Azure + GitHub integration, persistent memory, and enterprise governance
-  primitives. It is fast to adopt and stable, **scoped primarily to Azure resources
-  (AKS and Container Apps emphasis in public material; non-Azure cluster support is
-  not advertised)**, billed on token-based "Anthropic Usage Units" (AAU) plus a
-  4-AAU/agent/hour always-on charge, and tied to the Azure runtime. **The
-  GitHub-deep-context advantage does not apply in our environment** because we do
-  not have GitHub at work — code lives in GitLab.
+  with deep Azure + source-code integration, persistent memory, managed connectors,
+  MCP extensibility, code execution, and enterprise governance primitives. It is fast
+  to adopt and stable, **scoped primarily to Azure resources** (current docs emphasise
+  Azure services including AKS, Container Apps, App Service, Functions, databases,
+  networking, Azure Monitor, Log Analytics, Application Insights, Resource Graph,
+  Resource Manager, and Azure CLI), billed on token-based Azure Agent Units (AAUs)
+  plus a **4-AAU/agent/hour always-on charge**, and tied to the Azure runtime.
+  **The first-class source-code Deep Context advantage is weaker in our environment**
+  because work code lives in GitLab, while Microsoft's documented source-code setup
+  path is GitHub / Azure DevOps; GitLab appears as a preview managed connector rather
+  than the primary Code Access path.
 - **The in-house kagent stack** is a self-hosted, multi-cluster, multi-LLM agent
   platform built around open standards (A2A, MCP, Argo Workflows, Argo Events,
   LGTM). It has a narrower out-of-box feature set, but **persistent memory is
@@ -38,11 +46,13 @@ plus guidance on when a hybrid of both makes sense.
   multi-cluster by design, and extensible into non-SRE flows** (namespace
   onboarding, dev pipelines, app onboarding template factory).
 - **Generic industry advice is "hybrid"; our specific recommendation is
-  kagent-as-default, Azure SRE Agent only as a narrow specialist.** GitHub
-  deep-context RCA — the managed product's headline benefit — does not apply
-  here because code is on GitLab, and persistent memory (the next-biggest
-  managed-side win) is already addressable today via the kagent `Memory` CRD
-  (Pinecone or pgvector). See Section 7.
+  kagent-as-default, Azure SRE Agent only as a narrow specialist.** Azure SRE Agent
+  is materially stronger than early previews, but the reasons not to make it the
+  default remain: GitLab is not documented as the same first-class source-code
+  Deep Context path as GitHub / Azure DevOps, the estate already standardises on
+  LGTM + Argo + kagent + agentgateway, persistent memory is addressable in kagent,
+  the cost model includes an always-on per-agent charge, and the strategic platform
+  needs open A2A / MCP / GitOps workflows beyond Azure-resource SRE. See Section 7.
 
 ---
 
@@ -54,7 +64,7 @@ plus guidance on when a hybrid of both makes sense.
 |---|---|---|
 | Triage | Alert correlation, alert merging, incident-handler subagent | `sre-triage-agent` (kagent native), ~55s ImagePullBackOff diagnosis |
 | Remediation | Auto-fix Azure resources, restart, scale, credential rotation | `sre-remediation-agent` (kagent native, ~2 min via A2A from triage) |
-| RCA with code context | GitHub OAuth, deep code search baked in | **Not applicable in our environment** — no GitHub access; GitLab token wired and a GitLab MCP / repo-search tool can be added to kagent if/when needed |
+| RCA with code context | First-class source-code setup is documented for GitHub and Azure DevOps; GitLab appears in preview managed connectors, but not as the same primary Code Access / Deep Context path | **We are GitLab-first** — use the existing GitLab token plus GitLab MCP / repo-search tooling in kagent when code-aware RCA is needed |
 | Logs / metrics / traces | Native Log Analytics + App Insights MCP, KQL | **LGTM stack** (Loki for logs, Mimir for metrics, Tempo for traces, Grafana for UI / events) — agent reads via Loki / Mimir MCP or query tool |
 | Custom Python | Code interpreter built in | `script` step in Argo Workflows |
 | Governance | Stop hooks, PostToolUse hooks, approval gates as product | Build approvals yourself (Teams HITL design in flight) |
@@ -68,8 +78,10 @@ out of the box but each component is more composable into bespoke workflows.
 - **Azure SRE Agent** ships with persistent memory across investigations, "Deep Context"
   (continuous repo + incident history), and background intelligence that runs without a
   human prompt. The guided onboarding flow connects code, logs, incidents, resources,
-  and knowledge files in one pass. Note: the "code context" half of Deep Context
-  is GitHub-only and **does not apply in our environment**.
+  and knowledge files in one pass. Current docs describe source-code connection for
+  **GitHub and Azure DevOps**. GitLab is listed under preview managed connectors, so
+  the old "GitHub-only" statement is no longer accurate, but the documented Deep
+  Context source-code path still does not line up cleanly with a GitLab-first estate.
 - **kagent stack** has two memory paths, both available today:
   - **Native memory** — Postgres + pgvector (or SQLite + Turso), configured inline
     on the agent (`spec.declarative.memory`) with auto-extraction every 5 turns.
@@ -155,8 +167,8 @@ into a PR review loop** — a different control point than runtime hooks.
 
 - A primarily **Azure-resident** estate (AKS + Container Apps + Azure Monitor)
 - Looking for **zero-ops** time-to-value within weeks
-- A **GitHub-hosted** code shop (so the deep-context RCA actually applies — **does
-  not apply in our environment**, where code is on GitLab)
+- A **GitHub- or Azure DevOps-hosted** code shop (so the documented source-code
+  Deep Context path applies cleanly; our environment is GitLab-first)
 - Comfortable with AAU billing and Microsoft as the agent runtime
 - Procurement / audit teams want a managed-service checkbox
 
@@ -185,8 +197,9 @@ not "one or the other" — it is **per workload tier and per cluster type**.
   story, and ops simplicity may be worth the AAU cost.
 - **On-prem / edge / dev clusters**: kagent. Azure SRE Agent does not advertise
   support for non-Azure Kubernetes targets.
-- *Note for our environment:* the GitHub-deep-context advantage does not apply
-  (code on GitLab), which weakens the case for the managed agent on the AKS side.
+- *Note for our environment:* the source-code Deep Context advantage is weaker
+  because the documented first-class code paths are GitHub / Azure DevOps, while
+  code lives in GitLab.
 
 #### B. Tiered reliability budget
 
@@ -327,9 +340,9 @@ This is what you pay **before any work happens**, for every agent that exists,
 
 | Scenario | AAUs (Claude Opus 4.6) | $ | AAUs (GPT 5.3 Codex) | $ |
 |---|---|---|---|---|
-| Quick question (~20K in / 2K out + cache) | 3.8 | $0.38 | 1.6 | $0.16 |
-| Incident investigation (~200K in / 15K out + cache) | 35.5 | $3.55 | 13.7 | $1.37 |
-| Full remediation (~500K in / 40K out + cache) | 86.5 | $8.65 | 33.9 | $3.39 |
+| Quick question (~20K in / 2K out + cache) | 3.8 | $0.38 | 1.3 | $0.13 |
+| Incident investigation (~200K in / 15K out + cache) | 35.3 | $3.53 | 11.7 | $1.17 |
+| Full remediation (~500K in / 40K out + cache) | 86.5 | $8.65 | 30.1 | $3.01 |
 
 Anthropic models are roughly **2.5× the cost per task** of OpenAI GPT-5.x on
 this product. Microsoft notes Opus often reaches a conclusion in fewer
@@ -341,10 +354,10 @@ per-token delta.
 | Component | Calculation | Annual $ |
 |---|---|---|
 | Always-on | 35,040 AAU × $0.10 | **$3,504** |
-| 100 quick questions / month × 12 | 1,200 × 1.6 AAU × $0.10 | $192 |
-| 50 incident investigations / month × 12 | 600 × 13.7 AAU × $0.10 | $822 |
-| 10 full remediations / month × 12 | 120 × 33.9 AAU × $0.10 | $407 |
-| **Total — 1 agent / yr** | | **~$4,925** |
+| 100 quick questions / month × 12 | 1,200 × 1.3 AAU × $0.10 | $156 |
+| 50 incident investigations / month × 12 | 600 × 11.7 AAU × $0.10 | $702 |
+| 10 full remediations / month × 12 | 120 × 30.1 AAU × $0.10 | $361 |
+| **Total — 1 agent / yr** | | **~$4,723** |
 
 Switch to Claude Opus 4.6 and the per-task figures roughly 2.5×, pushing this
 single-agent total to **~$7,400 / year**.
@@ -354,12 +367,12 @@ single-agent total to **~$7,400 / year**.
 The always-on charge is what dominates at scale. Active-flow usage is
 sub-linear (one agent can serve many tasks).
 
-| Fleet size | Always-on / yr | + ~$1,400 active-flow / agent / yr (GPT) | Total / yr |
+| Fleet size | Always-on / yr | + ~$1,200 active-flow / agent / yr (GPT) | Total / yr |
 |---|---|---|---|
-| 1 agent | $3,504 | $1,400 | **~$4,900** |
-| 5 agents | $17,520 | $7,000 | **~$24,500** |
-| 10 agents | $35,040 | $14,000 | **~$49,000** |
-| 25 agents | $87,600 | $35,000 | **~$122,600** |
+| 1 agent | $3,504 | $1,200 | **~$4,700** |
+| 5 agents | $17,520 | $6,000 | **~$23,500** |
+| 10 agents | $35,040 | $12,000 | **~$47,000** |
+| 25 agents | $87,600 | $30,000 | **~$117,600** |
 
 For a meaningful estate (one agent per service team, or per cluster) you are
 looking at **mid-five-figures to low-six-figures USD/year just for the SaaS
@@ -441,15 +454,15 @@ matched active-flow on the Microsoft side):
 
 | Per-agent / yr | Azure SRE Agent (GPT 5.3) | kagent (Sonnet) | Ratio |
 |---|---|---|---|
-| Low volume | $3,504 + $192 = **$3,696** | **$310** | ~12× |
-| Mid volume | $3,504 + $822 = **$4,326** | **$1,550** | ~2.8× |
+| Low volume | $3,504 + $156 = **$3,660** | **$310** | ~12× |
+| Mid volume | $3,504 + $702 = **$4,206** | **$1,550** | ~2.7× |
 | High volume | $3,504 + $4,200 = **$7,700** | **$7,440** | ~1× (flat) |
 
 For 10 agents at mid-volume:
 
 | | Year 1 | Year 2+ |
 |---|---|---|
-| Azure SRE Agent | ~$43,000 | ~$43,000 |
+| Azure SRE Agent | ~$42,000 | ~$42,000 |
 | kagent stack | ~$15,500 LLM + ~$50k FTE = **~$65k** | ~$15,500 LLM + small ops tail = **~$18k** |
 
 **Crossover behaviour:**
@@ -511,8 +524,11 @@ The list is shorter than earlier drafts implied because of two material findings
   pgvector (preferred internally) or external Pinecone via the `kagent.dev/Memory`
   v1alpha1 CRD. The work is integration and indexing strategy, not building a
   substrate.
-- **Code-context RCA on GitHub does not apply** in our environment because
-  code is on GitLab.
+- **Code-context RCA is not a clean fit** in our environment because the latest
+  Microsoft docs put first-class source-code connection on GitHub / Azure DevOps,
+  while our code lives in GitLab. GitLab is present as a preview managed connector,
+  which may be useful for tool operations, but it should not be treated as proven
+  parity with Code Access / Deep Context until validated in the work tenant.
 
 Remaining gaps:
 
@@ -538,14 +554,31 @@ The general industry advice is "hybrid". **For our specific environment the
 case for hybrid is weaker than the generic answer suggests, and the case for
 kagent-as-default is correspondingly stronger** because:
 
-- **No GitHub at work** — Azure SRE Agent's headline GitHub-deep-context RCA
-  does not apply. We would be paying the always-on AAU charge without the
-  feature most of the marketing leans on.
+- **GitLab-first source control** — Azure SRE Agent's source-code RCA story has
+  improved since earlier drafts: current docs cover GitHub and Azure DevOps, and
+  preview managed connectors include GitLab. However, GitLab is not documented as
+  the same primary Code Access / Deep Context source-code path. Until that is
+  proven in the work tenant, we should not pay the always-on AAU charge assuming
+  full GitLab code-context parity.
+- **Azure-centric execution surface** — the latest docs show broad Azure service
+  coverage, Azure Monitor / Log Analytics / App Insights, Resource Graph, ARM,
+  Azure CLI, AKS diagnostics, and MCP extensibility. That is strong for Azure
+  resource investigations, but our strategic workflows also cover KRO / ASO,
+  Kyverno, Istio, cert-manager, NAP, namespace onboarding, GitOps changes, and
+  non-SRE platform flows that are already modeled in kagent + Argo.
 - **Persistent memory is already addressable in kagent** via the `Memory` CRD
   (Pinecone or pgvector). The "biggest functional gap" called out earlier is
   largely closed by configuration rather than greenfield engineering.
 - **LGTM is already deployed** — observability sunk cost is on the kagent side
   of the ledger, not the Microsoft side.
+- **Cost still scales by provisioned agents** — Microsoft documents a fixed
+  4-AAU/agent/hour always-on component from agent creation until deletion, plus
+  token-metered active flow. kagent keeps the platform cost mostly in shared
+  controllers and direct LLM usage through agentgateway.
+- **Open orchestration remains strategic** — Azure SRE Agent can be used as a
+  specialist, but it does not replace our need for open A2A peer agents, Argo
+  Workflow execution boundaries, GitLab/GitOps review trails, and model routing
+  through agentgateway.
 
 ### 7.1 Recommended posture
 
@@ -565,8 +598,11 @@ kagent-as-default is correspondingly stronger** because:
 
 ### 7.2 What would change this recommendation
 
-- If GitHub access is granted at work, the GitHub-deep-context advantage of
-  Azure SRE Agent becomes real and the hybrid case strengthens.
+- If GitHub or Azure DevOps becomes the authoritative work source-control path,
+  the documented source-code Deep Context advantage becomes real and the hybrid
+  case strengthens.
+- If Microsoft documents and we validate GitLab as a first-class Code Access /
+  Deep Context source-code path, not only as a preview managed connector.
 - If Microsoft published cross-cluster (non-Azure) support for SRE Agent.
 - If AAU pricing comes in materially below current public expectations.
 
@@ -585,5 +621,9 @@ that cannot or should not run on a managed agent.
 - [Azure SRE Agent pricing blog (April 2026 active-flow update)](https://aka.ms/sreagent/pricing/blog) — source for $0.10/AAU illustrative rate
 - [Context Engineering: Lessons from Building Azure SRE Agent](https://techcommunity.microsoft.com/blog/appsonazureblog/context-engineering-lessons-from-building-azure-sre-agent/4481200)
 - [Azure SRE Agent GA announcement](https://aka.ms/sreagent/ga)
+- [Azure SRE Agent overview](https://learn.microsoft.com/en-us/azure/sre-agent/overview) — current Azure service management scope
+- [Connect source code to Azure SRE Agent](https://learn.microsoft.com/en-us/azure/sre-agent/connect-source-code) — current GitHub / Azure DevOps source-code setup
+- [Managed connectors in Azure SRE Agent](https://learn.microsoft.com/en-us/azure/sre-agent/managed-connectors) — preview connector list including GitLab
+- [Azure DevOps connector in Azure SRE Agent](https://learn.microsoft.com/en-us/azure/sre-agent/ado-connector) — live source-code, work item, pipeline, and wiki capabilities
 - In-house: `aks-mgmt-stack/holmes-argoworkflows/`, `kagent-triage/`,
   `infra-stack/kro-stack/definitions/`
