@@ -26,6 +26,11 @@ plus guidance on when a hybrid of both makes sense.
 
 ## 1. TL;DR
 
+- **Shorter hybrid recommendation:** for a concise decision note and team
+  message, see
+  [`HYBRID-AZURE-SRE-AGENT-KAGENT-RECOMMENDATION.md`](HYBRID-AZURE-SRE-AGENT-KAGENT-RECOMMENDATION.md)
+  and
+  [`HYBRID-AZURE-SRE-AGENT-KAGENT-TEAM-MESSAGE.md`](HYBRID-AZURE-SRE-AGENT-KAGENT-TEAM-MESSAGE.md).
 - **Azure SRE Agent** is a fully managed, GA-since-March-2026 SaaS agent that ships
   with deep Azure + source-code integration, persistent memory, managed connectors,
   MCP extensibility, code execution, and enterprise governance primitives. It is fast
