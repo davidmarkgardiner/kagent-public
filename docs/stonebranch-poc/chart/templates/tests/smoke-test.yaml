@@ -1,0 +1,75 @@
+{{- if .Values.smokeTest.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "stonebranch-uag.fullname" . }}-smoke-test
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "stonebranch-uag.fullname" . }}-smoke-test
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "stonebranch-uag.fullname" . }}-smoke-test
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+subjects:
+- kind: ServiceAccount
+  name: {{ include "stonebranch-uag.fullname" . }}-smoke-test
+roleRef:
+  kind: Role
+  name: {{ include "stonebranch-uag.fullname" . }}-smoke-test
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "stonebranch-uag.fullname" . }}-smoke-test
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: {{ include "stonebranch-uag.fullname" . }}-smoke-test
+      restartPolicy: Never
+      containers:
+      - name: smoke
+        image: "{{ .Values.smokeTest.image.repository }}:{{ .Values.smokeTest.image.tag }}"
+        imagePullPolicy: {{ .Values.smokeTest.image.pullPolicy }}
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -eu
+          kubectl -n {{ include "stonebranch-uag.namespace" . }} rollout status deployment/oms-server --timeout={{ .Values.smokeTest.timeout }}
+          kubectl -n {{ include "stonebranch-uag.namespace" . }} rollout status deployment/uag-agent --timeout={{ .Values.smokeTest.timeout }}
+          kubectl -n {{ include "stonebranch-uag.namespace" . }} logs deployment/uag-agent -c patch-agent-config --tail=100 | grep "oms_servers {{ .Values.agent.oms.port }}@{{ .Values.agent.oms.host }}"
+          kubectl -n {{ include "stonebranch-uag.namespace" . }} logs deployment/uag-agent -c patch-agent-config --tail=100 | grep "netname {{ .Values.agent.namePrefix }}-"
+          kubectl -n {{ include "stonebranch-uag.namespace" . }} logs deployment/uag-agent -c uag --tail=300 | grep "Transport connected"
+{{- end }}

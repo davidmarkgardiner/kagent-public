@@ -1,0 +1,133 @@
+---
+# UAG Agent Deployment
+# Standalone agent pods that connect to a remote OMS
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uag-agent
+  namespace: stonebranch
+  labels:
+    app: uag-agent
+    component: agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: uag-agent
+  template:
+    metadata:
+      labels:
+        app: uag-agent
+        component: agent
+    spec:
+      serviceAccountName: uag-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10010
+        runAsGroup: 0
+        fsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      - name: patch-agent-config
+        image: stonebranch/universal-agent:8.0.0.0-debian
+        command: ["sh", "-c"]
+        args:
+        - |
+          # Copy default configs to writable volume
+          cp -a /etc/universal/* /config/
+          # Patch OMS server address to point to OMS service (not localhost)
+          sed -i 's|^oms_servers.*|oms_servers 7878@oms-server.stonebranch.svc.cluster.local|' /config/uags.conf
+          # Set agent name using pod hostname for uniqueness
+          sed -i "s|^netname.*|netname UAG-PROXMOX-$(hostname | tail -c 6)|" /config/uags.conf
+          echo "=== Patched uags.conf ==="
+          grep -E "^oms_servers|^netname" /config/uags.conf
+          # Pre-create required /var/opt/universal subdirectories
+          mkdir -p /vardata/spool/oms /vardata/spool/ubroker /vardata/log /vardata/tmp /vardata/trace \
+                   /vardata/keystore /vardata/cmdref /vardata/uem /vardata/uag
+          cp /etc/passwd /etcdata/passwd
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: universal-config
+          mountPath: /config
+        - name: var-universal
+          mountPath: /vardata
+        - name: etc-passwd
+          mountPath: /etcdata
+      containers:
+      - name: uag
+        image: stonebranch/universal-agent:8.0.0.0-debian
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: universal-config
+          mountPath: /etc/universal
+        - name: var-universal
+          mountPath: /var/opt/universal
+        - name: tmp
+          mountPath: /tmp
+        - name: etc-passwd
+          mountPath: /etc/passwd
+          subPath: passwd
+        ports:
+        - name: broker
+          containerPort: 7887
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        livenessProbe:
+          tcpSocket:
+            port: 7887
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 7887
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: universal-config
+        emptyDir: {}
+      - name: var-universal
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: etc-passwd
+        emptyDir: {}
+---
+# UAG Agent ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: uag-agent
+  namespace: stonebranch
+---
+# UAG Agent Service (for broker communication)
+apiVersion: v1
+kind: Service
+metadata:
+  name: uag-agent
+  namespace: stonebranch
+  labels:
+    app: uag-agent
+spec:
+  type: ClusterIP
+  ports:
+  - name: broker
+    port: 7887
+    targetPort: 7887
+    protocol: TCP
+  selector:
+    app: uag-agent

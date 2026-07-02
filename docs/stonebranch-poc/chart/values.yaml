@@ -1,0 +1,83 @@
+global:
+  namespace: stonebranch
+  labels: {}
+
+image:
+  repository: stonebranch/universal-agent
+  tag: 8.0.0.0-debian
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10010
+  runAsGroup: 0
+  fsGroup: 0
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+oms:
+  enabled: true
+  replicas: 1
+  netname: OMS-AKS-001
+  service:
+    type: ClusterIP
+    omsPort: 7878
+    brokerPort: 7887
+    annotations: {}
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+agent:
+  enabled: true
+  replicas: 2
+  namePrefix: UAG-AKS
+  oms:
+    # Use the same-cluster OMS service by default. For remote OMS deployments,
+    # set host to a placeholder-safe DNS name such as "{{OMS_HOSTNAME}}".
+    host: oms-server.stonebranch.svc.cluster.local
+    port: 7878
+  service:
+    brokerPort: 7887
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+networkPolicy:
+  enabled: true
+  allowSameNamespaceAgents: true
+  allowWorkerNamespaces: false
+  workerNamespaceLabel:
+    role: worker
+  workerPodLabel:
+    app: uag-worker
+
+smokeTest:
+  enabled: true
+  image:
+    repository: bitnamilegacy/kubectl
+    tag: 1.30.7
+    pullPolicy: IfNotPresent
+  timeout: 180s

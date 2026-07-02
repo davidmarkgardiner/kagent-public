@@ -1,0 +1,14 @@
+global:
+  namespace: stonebranch-test
+
+oms:
+  netname: OMS-TEST-001
+
+agent:
+  replicas: 2
+  namePrefix: UAG-TEST
+  oms:
+    host: oms-server.stonebranch-test.svc.cluster.local
+
+smokeTest:
+  timeout: 240s

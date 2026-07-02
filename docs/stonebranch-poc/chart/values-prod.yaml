@@ -1,0 +1,20 @@
+global:
+  namespace: stonebranch
+
+oms:
+  netname: OMS-PROD-001
+  service:
+    type: ClusterIP
+
+agent:
+  replicas: 3
+  namePrefix: UAG-PROD
+  oms:
+    host: "{{OMS_HOSTNAME}}"
+    port: 7878
+
+networkPolicy:
+  allowWorkerNamespaces: true
+
+smokeTest:
+  timeout: 300s

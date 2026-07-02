@@ -1,0 +1,65 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- if and .Values.oms.enabled .Values.agent.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-uag-to-oms
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: oms-server
+  policyTypes:
+  - Ingress
+  ingress:
+  {{- if .Values.networkPolicy.allowSameNamespaceAgents }}
+  - from:
+    - podSelector:
+        matchLabels:
+          app: uag-agent
+    ports:
+    - port: {{ .Values.oms.service.omsPort }}
+      protocol: TCP
+    - port: {{ .Values.oms.service.brokerPort }}
+      protocol: TCP
+  {{- end }}
+  {{- if .Values.networkPolicy.allowWorkerNamespaces }}
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          {{- toYaml .Values.networkPolicy.workerNamespaceLabel | nindent 10 }}
+      podSelector:
+        matchLabels:
+          {{- toYaml .Values.networkPolicy.workerPodLabel | nindent 10 }}
+    ports:
+    - port: {{ .Values.oms.service.omsPort }}
+      protocol: TCP
+    - port: {{ .Values.oms.service.brokerPort }}
+      protocol: TCP
+  {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-oms-to-uag
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: uag-agent
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: oms-server
+    ports:
+    - port: {{ .Values.agent.service.brokerPort }}
+      protocol: TCP
+{{- end }}
+{{- end }}

@@ -1,0 +1,107 @@
+{{- if .Values.agent.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uag-agent
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+    app: uag-agent
+    component: agent
+spec:
+  replicas: {{ .Values.agent.replicas }}
+  selector:
+    matchLabels:
+      app: uag-agent
+  template:
+    metadata:
+      labels:
+        app: uag-agent
+        component: agent
+    spec:
+      serviceAccountName: {{ include "stonebranch-uag.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: patch-agent-config
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["sh", "-c"]
+        args:
+        - |
+          cp -a /etc/universal/* /config/
+          sed -i 's|^oms_servers.*|oms_servers {{ .Values.agent.oms.port }}@{{ .Values.agent.oms.host }}|' /config/uags.conf
+          sed -i "s|^netname.*|netname {{ .Values.agent.namePrefix }}-$(hostname | tail -c 6)|" /config/uags.conf
+          grep -E "^oms_servers|^netname" /config/uags.conf
+          mkdir -p /vardata/spool/oms /vardata/spool/ubroker /vardata/log /vardata/tmp /vardata/trace \
+                   /vardata/keystore /vardata/cmdref /vardata/uem /vardata/uag
+          cp /etc/passwd /etcdata/passwd
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        volumeMounts:
+        - name: universal-config
+          mountPath: /config
+        - name: var-universal
+          mountPath: /vardata
+        - name: etc-passwd
+          mountPath: /etcdata
+      containers:
+      - name: uag
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        volumeMounts:
+        - name: universal-config
+          mountPath: /etc/universal
+        - name: var-universal
+          mountPath: /var/opt/universal
+        - name: tmp
+          mountPath: /tmp
+        - name: etc-passwd
+          mountPath: /etc/passwd
+          subPath: passwd
+        ports:
+        - name: broker
+          containerPort: {{ .Values.agent.service.brokerPort }}
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.agent.resources | nindent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: {{ .Values.agent.service.brokerPort }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.agent.service.brokerPort }}
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: universal-config
+        emptyDir: {}
+      - name: var-universal
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: etc-passwd
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uag-agent
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+    app: uag-agent
+spec:
+  type: ClusterIP
+  ports:
+  - name: broker
+    port: {{ .Values.agent.service.brokerPort }}
+    targetPort: {{ .Values.agent.service.brokerPort }}
+    protocol: TCP
+  selector:
+    app: uag-agent
+{{- end }}

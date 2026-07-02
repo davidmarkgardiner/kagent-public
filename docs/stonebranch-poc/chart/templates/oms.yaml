@@ -1,0 +1,119 @@
+{{- if .Values.oms.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oms-server
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+    app: oms-server
+    component: oms
+spec:
+  replicas: {{ .Values.oms.replicas }}
+  selector:
+    matchLabels:
+      app: oms-server
+  template:
+    metadata:
+      labels:
+        app: oms-server
+        component: oms
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: enable-oms-autostart
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["sh", "-c"]
+        args:
+        - |
+          cp -a /etc/universal/* /config/
+          sed -i 's/^auto_start.*no/auto_start            yes/' /config/comp/oms
+          grep auto_start /config/comp/oms
+          mkdir -p /vardata/spool/oms /vardata/spool/ubroker /vardata/log /vardata/tmp /vardata/trace \
+                   /vardata/keystore /vardata/cmdref /vardata/uem /vardata/uag
+          cp /etc/passwd /etcdata/passwd
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        volumeMounts:
+        - name: universal-config
+          mountPath: /config
+        - name: var-universal
+          mountPath: /vardata
+        - name: etc-passwd
+          mountPath: /etcdata
+      containers:
+      - name: oms
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: UAG_NETNAME
+          value: {{ .Values.oms.netname | quote }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        volumeMounts:
+        - name: universal-config
+          mountPath: /etc/universal
+        - name: var-universal
+          mountPath: /var/opt/universal
+        - name: tmp
+          mountPath: /tmp
+        - name: etc-passwd
+          mountPath: /etc/passwd
+          subPath: passwd
+        ports:
+        - name: oms
+          containerPort: {{ .Values.oms.service.omsPort }}
+          protocol: TCP
+        - name: broker
+          containerPort: {{ .Values.oms.service.brokerPort }}
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.oms.resources | nindent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: {{ .Values.oms.service.omsPort }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.oms.service.omsPort }}
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: universal-config
+        emptyDir: {}
+      - name: var-universal
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: etc-passwd
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oms-server
+  namespace: {{ include "stonebranch-uag.namespace" . }}
+  labels:
+    {{- include "stonebranch-uag.labels" . | nindent 4 }}
+    app: oms-server
+  {{- with .Values.oms.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.oms.service.type }}
+  ports:
+  - name: oms
+    port: {{ .Values.oms.service.omsPort }}
+    targetPort: {{ .Values.oms.service.omsPort }}
+    protocol: TCP
+  - name: broker
+    port: {{ .Values.oms.service.brokerPort }}
+    targetPort: {{ .Values.oms.service.brokerPort }}
+    protocol: TCP
+  selector:
+    app: oms-server
+{{- end }}

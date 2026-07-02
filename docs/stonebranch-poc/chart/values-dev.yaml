@@ -1,0 +1,14 @@
+global:
+  namespace: stonebranch-dev
+
+oms:
+  netname: OMS-DEV-001
+
+agent:
+  replicas: 1
+  namePrefix: UAG-DEV
+  oms:
+    host: oms-server.stonebranch-dev.svc.cluster.local
+
+smokeTest:
+  timeout: 180s
