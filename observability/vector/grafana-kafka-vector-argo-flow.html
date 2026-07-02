@@ -5,20 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <link rel="icon" href="data:,">
-  <title>Grafana Alert Flow: Kafka, Vector, Argo</title>
+  <title>Alert to Agentic Triage Flow</title>
   <style>
     :root {
       --ivory: #faf9f5;
       --paper: #ffffff;
       --ink: #181816;
-      --muted: #65625b;
+      --muted: #5f5d56;
       --line: #d9d4c8;
       --soft: #efede5;
+      --soft-2: #f6f3ec;
       --clay: #c96f4a;
       --blue: #4f7891;
-      --olive: #6f8555;
-      --amber: #d7a33e;
+      --olive: #718357;
+      --amber: #d59a2f;
       --violet: #746b92;
+      --rose: #a95768;
+      --teal: #4f8d84;
       --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
       --serif: ui-serif, Georgia, "Times New Roman", serif;
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -38,17 +41,17 @@
     }
 
     main {
-      max-width: 1180px;
+      width: min(1240px, calc(100% - 42px));
       margin: 0 auto;
-      padding: 46px 28px 68px;
+      padding: 42px 0 70px;
     }
 
     header {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.45fr);
-      gap: 32px;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 34px;
       align-items: end;
-      padding-bottom: 34px;
+      padding-bottom: 32px;
       border-bottom: 1px solid var(--line);
     }
 
@@ -60,13 +63,13 @@
       font-family: var(--mono);
       font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.09em;
       text-transform: uppercase;
     }
 
     .eyebrow::before {
       content: "";
-      width: 28px;
+      width: 30px;
       height: 3px;
       background: var(--clay);
     }
@@ -79,10 +82,11 @@
     }
 
     h1 {
+      max-width: 880px;
       margin-top: 16px;
       font-family: var(--serif);
-      font-size: clamp(42px, 6vw, 72px);
-      line-height: 1.04;
+      font-size: clamp(42px, 6vw, 78px);
+      line-height: 1.03;
       letter-spacing: 0;
     }
 
@@ -94,7 +98,7 @@
     h2 {
       margin-bottom: 18px;
       font-family: var(--serif);
-      font-size: clamp(30px, 4vw, 46px);
+      font-size: clamp(30px, 3.6vw, 48px);
       line-height: 1.1;
       letter-spacing: 0;
     }
@@ -111,146 +115,165 @@
     }
 
     .lead {
-      max-width: 760px;
+      max-width: 810px;
       margin-top: 18px;
+      color: var(--muted);
       font-size: 20px;
     }
 
     .summary {
-      padding: 18px;
+      padding: 20px;
       background: var(--paper);
       border: 1px solid var(--line);
       border-radius: 8px;
-      box-shadow: 0 18px 42px rgba(39, 36, 28, 0.08);
+      box-shadow: 0 16px 38px rgba(39, 36, 28, 0.08);
     }
 
     .summary strong {
       color: var(--ink);
     }
 
-    .flow {
-      padding: 50px 0 34px;
+    .summary .code {
+      margin-top: 14px;
+      padding: 12px;
+      font-size: 12px;
+    }
+
+    section {
+      padding: 44px 0;
       border-bottom: 1px solid var(--line);
     }
 
-    .steps {
+    .topline {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 12px;
-      align-items: stretch;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
     }
 
-    .step {
-      position: relative;
-      min-height: 170px;
+    .metric {
+      min-height: 126px;
       padding: 18px;
       background: var(--paper);
       border: 1px solid var(--line);
       border-radius: 8px;
-      box-shadow: 0 18px 42px rgba(39, 36, 28, 0.08);
-      overflow: hidden;
+      box-shadow: 0 14px 30px rgba(39, 36, 28, 0.06);
     }
 
-    .step::after {
-      content: attr(data-num);
-      position: absolute;
-      right: 12px;
-      bottom: 4px;
-      color: rgba(24, 24, 22, 0.08);
-      font-family: var(--serif);
-      font-size: 66px;
+    .metric span {
+      display: block;
+      color: var(--clay);
+      font-family: var(--mono);
+      font-size: 12px;
       font-weight: 800;
-      line-height: 1;
+      text-transform: uppercase;
     }
 
-    .step h3,
-    .step p,
-    .badge {
-      position: relative;
-      z-index: 1;
+    .metric strong {
+      display: block;
+      margin-top: 12px;
+      font-size: 20px;
+      line-height: 1.2;
     }
 
-    .step p {
-      margin-top: 10px;
+    .metric p {
+      margin-top: 8px;
       font-size: 14px;
     }
 
-    .step.alert {
-      border-top: 5px solid var(--amber);
+    .diagram-wrap {
+      margin-top: 22px;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 16px 38px rgba(39, 36, 28, 0.07);
+      overflow-x: auto;
     }
 
-    .step.kafka {
-      border-top: 5px solid var(--blue);
+    svg {
+      display: block;
+      width: 100%;
+      min-width: 1120px;
+      height: auto;
     }
 
-    .step.vector {
-      border-top: 5px solid var(--clay);
+    .node {
+      fill: #fff;
+      stroke: var(--line);
+      stroke-width: 1.4;
     }
 
-    .step.argo {
-      border-top: 5px solid var(--olive);
+    .node-title {
+      fill: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      font-weight: 800;
     }
 
-    .step.workflow {
-      border-top: 5px solid var(--violet);
+    .node-copy {
+      fill: var(--muted);
+      font-family: var(--sans);
+      font-size: 12.5px;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 26px;
-      margin-bottom: 12px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      background: var(--soft);
-      color: var(--muted);
+    .node-chip {
+      fill: var(--soft);
+    }
+
+    .chip-text {
+      fill: var(--muted);
       font-family: var(--mono);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
       text-transform: uppercase;
-      white-space: nowrap;
     }
 
-    .arrow-row {
+    .line {
+      fill: none;
+      stroke: #8f897f;
+      stroke-width: 2.2;
+      marker-end: url(#arrow);
+    }
+
+    .dashed {
+      stroke-dasharray: 6 5;
+    }
+
+    .swimlanes {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 12px;
-      margin: 18px 9.2% 0;
-      color: var(--muted);
-      font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 800;
-      text-align: center;
+      grid-template-columns: 1.2fr 1fr 1.3fr;
+      gap: 18px;
+      margin-top: 24px;
     }
 
-    .arrow-row span::after {
-      content: " ->";
-      color: var(--clay);
-    }
-
-    .details {
-      display: grid;
-      grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.55fr);
-      gap: 24px;
-      padding-top: 44px;
-    }
-
-    .panel {
-      padding: 22px;
+    .lane,
+    .panel,
+    .outcome {
+      padding: 20px;
       background: var(--paper);
       border: 1px solid var(--line);
       border-radius: 8px;
     }
 
-    .panel ul {
+    .lane h3,
+    .panel h3,
+    .outcome h3 {
+      margin-bottom: 12px;
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 800;
+    }
+
+    ul {
       display: grid;
       gap: 10px;
-      margin: 16px 0 0;
+      margin: 0;
       padding: 0;
       list-style: none;
     }
 
-    .panel li {
+    li {
       display: grid;
       grid-template-columns: 10px minmax(0, 1fr);
       gap: 10px;
@@ -258,7 +281,7 @@
       font-size: 15px;
     }
 
-    .panel li::before {
+    li::before {
       content: "";
       width: 10px;
       height: 10px;
@@ -267,16 +290,102 @@
       background: var(--clay);
     }
 
+    .lane.vector li::before {
+      background: var(--clay);
+    }
+
+    .lane.kafka li::before {
+      background: var(--blue);
+    }
+
+    .lane.agent li::before {
+      background: var(--olive);
+    }
+
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .agent-card {
+      min-height: 184px;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--olive);
+      border-radius: 8px;
+    }
+
+    .agent-card.network {
+      border-top-color: var(--blue);
+    }
+
+    .agent-card.platform {
+      border-top-color: var(--violet);
+    }
+
+    .agent-card.security {
+      border-top-color: var(--rose);
+    }
+
+    .agent-card.compliance {
+      border-top-color: var(--teal);
+    }
+
+    .agent-card p {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .outcomes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .outcome {
+      min-height: 168px;
+    }
+
+    .outcome p {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
     .code {
       margin-top: 16px;
-      padding: 18px;
+      padding: 16px;
       overflow-x: auto;
       border-radius: 8px;
       background: #1f1e1b;
       color: #f6f1e6;
       font-family: var(--mono);
       font-size: 13px;
-      line-height: 1.6;
+      line-height: 1.58;
     }
 
     code {
@@ -288,38 +397,34 @@
       padding: 2px 5px;
     }
 
-    a {
-      color: var(--ink);
-      text-decoration-color: var(--clay);
-      text-underline-offset: 3px;
+    .small-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 14px;
     }
 
-    @media (max-width: 1020px) {
+    @media (max-width: 1060px) {
       header,
-      .details {
+      .swimlanes,
+      .outcomes {
         grid-template-columns: 1fr;
       }
 
-      .steps {
+      .topline,
+      .agents-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .arrow-row {
-        display: none;
       }
     }
 
     @media (max-width: 640px) {
       main {
-        padding: 30px 18px 52px;
+        width: min(100% - 28px, 1240px);
+        padding-top: 30px;
       }
 
-      .steps {
+      .topline,
+      .agents-grid {
         grid-template-columns: 1fr;
-      }
-
-      .step {
-        min-height: 142px;
       }
     }
   </style>
@@ -328,95 +433,260 @@
   <main>
     <header>
       <div>
-        <div class="eyebrow">Grafana alert path</div>
-        <h1>Alert Manager to <em>Kafka</em>, Vector, and Argo</h1>
+        <div class="eyebrow">Stakeholder view</div>
+        <h1>Alert Manager to <em>agentic triage</em></h1>
         <p class="lead">
-          A Grafana-managed alert uses the Kafka REST Proxy contact point to
-          publish directly into Confluent Kafka. Vector consumes the raw alert,
-          normalizes it, writes a cleaned event back to Kafka, and Argo turns
-          that accepted event into a workflow.
+          The proven path sends alerts from Alertmanager or Grafana directly
+          into a Vector HTTP webhook receiver. Vector becomes the cleanup
+          boundary: it filters noise, suppresses duplicates, enriches the
+          event, and publishes only actionable records to Kafka for Argo to
+          trigger agent workflows.
         </p>
       </div>
       <aside class="summary">
         <p>
-          <strong>No webhook bridge is required for the producer path</strong>
-          when Grafana can use the Kafka REST Proxy contact point with a scoped
-          Kafka API key and secret.
+          <strong>Core message:</strong> Kafka is the durable event bus, Vector
+          protects the queue from noise, Argo starts controlled workflows, and
+          specialist agents produce evidence in GitLab or ServiceNow.
         </p>
+<div class="code">Alertmanager/Grafana
+  -> Vector webhook receiver
+  -> Vector cleanup
+  -> Kafka topic(s)
+  -> Argo Sensor
+  -> Agents
+  -> GitLab / ServiceNow</div>
       </aside>
     </header>
 
-    <section class="flow">
-      <h2>End-to-end flow</h2>
-      <div class="steps" aria-label="Alert flow from Grafana to Argo Workflow">
-        <article class="step alert" data-num="1">
-          <span class="badge">Grafana UI</span>
-          <h3>Alert fires</h3>
-          <p>Grafana-managed alert evaluates to firing and routes to the Kafka REST Proxy contact point.</p>
+    <section>
+      <h2>What we are proving</h2>
+      <div class="topline">
+        <article class="metric">
+          <span>Signal control</span>
+          <strong>Only actionable alerts reach Argo</strong>
+          <p>Resolved, duplicate, malformed, and ignored alerts are dropped, counted, or quarantined by Vector.</p>
         </article>
-        <article class="step kafka" data-num="2">
-          <span class="badge">Raw topic</span>
-          <h3>Kafka receives</h3>
-          <p>The contact point writes the native Grafana alert record into <code>alertmanager-events</code>.</p>
+        <article class="metric">
+          <span>Durable routing</span>
+          <strong>Kafka carries the cleaned contract</strong>
+          <p>One topic can work initially; multiple topics can split app, platform, security, or compliance routes later.</p>
         </article>
-        <article class="step vector" data-num="3">
-          <span class="badge">Normalizer</span>
-          <h3>Vector consumes</h3>
-          <p>Vector reads the raw topic, parses the event, filters noise, and builds a stable triage envelope.</p>
+        <article class="metric">
+          <span>Agentic harness</span>
+          <strong>Specialists can hand off</strong>
+          <p>Network, AKS, security, compliance, and SRE agents use different skills and tools.</p>
         </article>
-        <article class="step kafka" data-num="4">
-          <span class="badge">Clean topic</span>
-          <h3>Kafka receives again</h3>
-          <p>Vector publishes the normalized event into <code>alertmanager-events-triage</code>.</p>
+        <article class="metric">
+          <span>Audit outcome</span>
+          <strong>Tickets show the value</strong>
+          <p>GitLab or ServiceNow records capture triage, remediation, approvals, and evidence.</p>
         </article>
-        <article class="step argo" data-num="5">
-          <span class="badge">Trigger</span>
-          <h3>Argo Sensor accepts</h3>
-          <p>Argo Events consumes the cleaned topic and the Sensor filters on normalized fields.</p>
-        </article>
-        <article class="step workflow" data-num="6">
-          <span class="badge">Run record</span>
-          <h3>Workflow starts</h3>
-          <p>Argo Workflow runs triage, gathers evidence, gates remediation, and records the outcome.</p>
-        </article>
-      </div>
-      <div class="arrow-row" aria-hidden="true">
-        <span>publish</span>
-        <span>consume</span>
-        <span>produce</span>
-        <span>consume</span>
-        <span>create</span>
       </div>
     </section>
 
-    <section class="details">
-      <div class="panel">
-        <h2>What each piece owns</h2>
-        <ul>
-          <li>Grafana owns alert evaluation and sends the first Kafka record through the contact point.</li>
-          <li>Kafka keeps the raw event available for audit, replay, and debugging.</li>
-          <li>Vector owns payload normalization, filtering, short-window dedupe, and schema shaping.</li>
-          <li>The second Kafka topic is the automation-ready contract that Argo watches.</li>
-          <li>Argo Sensor owns trigger semantics: accepted event, filter match, workflow creation, retry, and rate limit.</li>
-          <li>Argo Workflow owns triage execution, evidence collection, HITL gates, and final outcome classification.</li>
-        </ul>
-      </div>
+    <section>
+      <h2>High-level design</h2>
+      <div class="diagram-wrap" aria-label="End-to-end alert to agentic triage architecture">
+        <svg viewBox="0 0 1180 620" role="img">
+          <defs>
+            <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto">
+              <path d="M0,0 L11,5.5 L0,11 Z" fill="#8f897f"></path>
+            </marker>
+          </defs>
 
-      <aside class="panel">
-        <h2>Short version</h2>
-        <div class="code">Grafana Alerting
-  -> Kafka REST Proxy contact point
-  -> Confluent raw topic
-  -> Vector
-  -> Confluent triage topic
-  -> Argo Events Kafka EventSource
-  -> Argo Sensor
-  -> Argo Workflow</div>
-        <p style="margin-top:16px">
-          Companion explainer:
-          <a href="vector-confluent-event-management.html">Vector + Confluent event management</a>
-        </p>
-      </aside>
+          <rect x="24" y="24" width="210" height="110" rx="8" class="node"></rect>
+          <rect x="44" y="42" width="92" height="22" rx="11" class="node-chip"></rect>
+          <text x="56" y="57" class="chip-text">source</text>
+          <text x="44" y="89" class="node-title">Alertmanager</text>
+          <text x="44" y="112" class="node-copy">Grafana or LGTM alert</text>
+
+          <rect x="292" y="24" width="190" height="110" rx="8" class="node"></rect>
+          <rect x="312" y="42" width="90" height="22" rx="11" class="node-chip"></rect>
+          <text x="324" y="57" class="chip-text">webhook</text>
+          <text x="312" y="89" class="node-title">Vector webhook</text>
+          <text x="312" y="112" class="node-copy">HTTP receiver source</text>
+
+          <rect x="538" y="24" width="230" height="148" rx="8" fill="#fff7f2" stroke="#d8b7a8" stroke-width="1.4"></rect>
+          <rect x="558" y="42" width="84" height="22" rx="11" fill="#f0ded5"></rect>
+          <text x="570" y="57" class="chip-text">cleanup</text>
+          <text x="558" y="89" class="node-title">Vector</text>
+          <text x="558" y="114" class="node-copy">Normalize schema</text>
+          <text x="558" y="134" class="node-copy">Dedupe repeat alerts</text>
+          <text x="558" y="154" class="node-copy">Drop noise and resolved</text>
+
+          <rect x="872" y="24" width="210" height="110" rx="8" fill="#f2f7f9" stroke="#b9cfda" stroke-width="1.4"></rect>
+          <rect x="892" y="42" width="68" height="22" rx="11" fill="#dfeaf0"></rect>
+          <text x="904" y="57" class="chip-text">event bus</text>
+          <text x="892" y="89" class="node-title">Kafka</text>
+          <text x="892" y="112" class="node-copy">Vector publishes directly</text>
+
+          <path d="M234 79 H292" class="line"></path>
+          <path d="M482 79 H538" class="line"></path>
+          <path d="M768 79 H872" class="line"></path>
+
+          <rect x="410" y="232" width="220" height="122" rx="8" fill="#f5f8ef" stroke="#bfccb0" stroke-width="1.4"></rect>
+          <rect x="430" y="250" width="92" height="22" rx="11" fill="#e4ecd9"></rect>
+          <text x="442" y="265" class="chip-text">trigger</text>
+          <text x="430" y="298" class="node-title">Argo EventSource</text>
+          <text x="430" y="321" class="node-copy">Watches Kafka topic(s)</text>
+
+          <rect x="676" y="232" width="210" height="122" rx="8" fill="#f5f8ef" stroke="#bfccb0" stroke-width="1.4"></rect>
+          <rect x="696" y="250" width="82" height="22" rx="11" fill="#e4ecd9"></rect>
+          <text x="708" y="265" class="chip-text">policy</text>
+          <text x="696" y="298" class="node-title">Argo Sensor</text>
+          <text x="696" y="321" class="node-copy">Creates workflow run</text>
+
+          <rect x="930" y="232" width="210" height="122" rx="8" fill="#f5f0f8" stroke="#c7bfd8" stroke-width="1.4"></rect>
+          <rect x="950" y="250" width="94" height="22" rx="11" fill="#e7e0ef"></rect>
+          <text x="962" y="265" class="chip-text">workflow</text>
+          <text x="950" y="298" class="node-title">Argo Workflow</text>
+          <text x="950" y="321" class="node-copy">Evidence and approvals</text>
+
+          <path d="M977 134 V190 H520 V232" class="line"></path>
+          <path d="M630 293 H676" class="line"></path>
+          <path d="M886 293 H930" class="line"></path>
+
+          <rect x="34" y="438" width="158" height="116" rx="8" fill="#f8f5ed" stroke="#d8caa9" stroke-width="1.4"></rect>
+          <text x="54" y="475" class="node-title">HITL</text>
+          <text x="54" y="500" class="node-copy">Approve PRs</text>
+          <text x="54" y="520" class="node-copy">Approve commands</text>
+
+          <rect x="238" y="410" width="174" height="156" rx="8" fill="#f7fbfa" stroke="#b7d2ce" stroke-width="1.4"></rect>
+          <text x="258" y="448" class="node-title">Tools</text>
+          <text x="258" y="474" class="node-copy">Cilium, AKS, MCP</text>
+          <text x="258" y="494" class="node-copy">GitLab, vector KB</text>
+          <text x="258" y="514" class="node-copy">Logs, metrics, traces</text>
+
+          <rect x="456" y="410" width="174" height="156" rx="8" fill="#f5f8ef" stroke="#bfccb0" stroke-width="1.4"></rect>
+          <text x="476" y="448" class="node-title">1. Triage</text>
+          <text x="476" y="474" class="node-copy">First agent receives</text>
+          <text x="476" y="494" class="node-copy">Classifies route</text>
+          <text x="476" y="514" class="node-copy">Collects evidence</text>
+
+          <rect x="674" y="410" width="174" height="156" rx="8" fill="#f5f8ef" stroke="#bfccb0" stroke-width="1.4"></rect>
+          <text x="694" y="448" class="node-title">2. Specialist</text>
+          <text x="694" y="474" class="node-copy">Network, AKS</text>
+          <text x="694" y="494" class="node-copy">Security, compliance</text>
+          <text x="694" y="514" class="node-copy">Hands back result</text>
+
+          <rect x="892" y="410" width="248" height="156" rx="8" fill="#fff" stroke="#d9d4c8" stroke-width="1.4"></rect>
+          <text x="912" y="448" class="node-title">3. Outcome</text>
+          <text x="912" y="474" class="node-copy">GitLab issue or MR</text>
+          <text x="912" y="494" class="node-copy">ServiceNow if needed</text>
+          <text x="912" y="514" class="node-copy">Triage/remediation report</text>
+
+          <path d="M1035 354 V382 H543 V410" class="line"></path>
+          <path d="M630 488 H674" class="line"></path>
+          <path d="M848 488 H892" class="line"></path>
+          <path d="M456 488 H412" class="line dashed"></path>
+          <path d="M456 520 H192" class="line dashed"></path>
+        </svg>
+      </div>
+      <p class="small-note">
+        The current target route posts alerts directly into Vector's webhook receiver. Vector then publishes the cleaned actionable event directly to Kafka, where Argo watches the topic or topics.
+      </p>
+    </section>
+
+    <section>
+      <h2>Ownership by layer</h2>
+      <div class="swimlanes">
+        <article class="lane vector">
+          <h3>Vector owns cleanup</h3>
+          <ul>
+            <li>Normalizes Alertmanager and Grafana payload shapes into one triage envelope.</li>
+            <li>Drops resolved alerts, ignored severities, malformed payloads, and known-noise labels.</li>
+            <li>Builds stable route fields: target agent, route key, dedupe key, and automation policy.</li>
+            <li>Suppresses duplicates before the actionable topic and before Argo workflow creation.</li>
+          </ul>
+        </article>
+
+        <article class="lane kafka">
+          <h3>Kafka owns durable delivery</h3>
+          <ul>
+            <li>Starts with one actionable topic if that is simplest.</li>
+            <li>Can split later into app, platform, security, compliance, or priority topics.</li>
+            <li>Allows replay and audit without asking Argo to process raw noise.</li>
+            <li>Gives Argo Sensors a clean stream to watch.</li>
+          </ul>
+        </article>
+
+        <article class="lane agent">
+          <h3>Argo and agents own action</h3>
+          <ul>
+            <li>Argo Sensors watch the cleaned topic or topics and create workflow runs.</li>
+            <li>Workflows collect evidence, call agents, and enforce approval gates.</li>
+            <li>Agents can hand off to specialists based on route and skill fit.</li>
+            <li>Final records are written to GitLab and optionally ServiceNow.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Serial agent handoff</h2>
+      <div class="agents-grid">
+        <article class="agent-card platform">
+          <h3>1. SRE triage agent</h3>
+          <p>Receives the workflow first, classifies the route, gathers initial evidence, and decides whether to resolve or hand off.</p>
+          <div class="chips">
+            <span class="chip">AKS</span>
+            <span class="chip">MCP</span>
+            <span class="chip">Grafana</span>
+          </div>
+        </article>
+
+        <article class="agent-card network">
+          <h3>2. Specialist handoff</h3>
+          <p>Passes the case to a network, AKS, security, or compliance specialist when the first agent needs deeper skills.</p>
+          <div class="chips">
+            <span class="chip">Cilium</span>
+            <span class="chip">Kubernetes</span>
+            <span class="chip">Logs</span>
+          </div>
+        </article>
+
+        <article class="agent-card security">
+          <h3>3. Tool-backed analysis</h3>
+          <p>Uses Cilium, AKS, MCP tools, GitLab context, logs, metrics, traces, and the vector-backed knowledge base.</p>
+          <div class="chips">
+            <span class="chip">Policy</span>
+            <span class="chip">Advisories</span>
+            <span class="chip">GitLab</span>
+          </div>
+        </article>
+
+        <article class="agent-card compliance">
+          <h3>4. Return and record</h3>
+          <p>Hands findings back into the workflow so the final ticket records triage, remediation, compliance, or escalation.</p>
+          <div class="chips">
+            <span class="chip">KB search</span>
+            <span class="chip">Evidence</span>
+            <span class="chip">ServiceNow</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ticket and approval loop</h2>
+      <div class="outcomes">
+        <article class="outcome">
+          <h3>GitLab evidence</h3>
+          <p>Creates an issue or merge request with alert fingerprint, affected workload, agent route, triage summary, logs, metrics, and recommendation.</p>
+        </article>
+        <article class="outcome">
+          <h3>Human approval</h3>
+          <p>Required before write-capable actions such as command execution, policy changes, or merge request approval.</p>
+        </article>
+        <article class="outcome">
+          <h3>ServiceNow escalation</h3>
+          <p>Used when a formal incident is required, ownership is unclear, the risk is high, or the workflow cannot safely remediate.</p>
+        </article>
+      </div>
+      <div class="code">GitLab ticket should show:
+alert fingerprint -> affected service -> selected agent -> evidence -> triage
+-> remediation recommendation/action -> approval state -> final outcome</div>
     </section>
   </main>
 </body>
