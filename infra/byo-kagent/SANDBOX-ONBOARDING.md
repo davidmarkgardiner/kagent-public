@@ -55,13 +55,15 @@ kubectl get clusterpolicies | grep byo-kagent
 
 Install via Helm into the `kagent` namespace. Use the values file that points at your agentgateway.
 
-```bash
-helm repo add kagent https://kagent-dev.github.io/kagent/helm
-helm repo update
+The public GitHub Pages Helm repo URL previously used here is not published for
+the current release. Use the upstream installer, a packaged chart from your
+internal mirror, or the chart location approved for your environment. Keep the
+kagent version pinned to the stable baseline below.
 
-helm upgrade --install kagent kagent/kagent \
+```bash
+helm upgrade --install kagent {{KAGENT_HELM_CHART_REF}} \
   --namespace kagent --create-namespace \
-  --version 0.8.0 \
+  --version 0.9.10 \
   -f ai-platform/config/kagent/kagent-values.yaml
 ```
 
@@ -69,7 +71,7 @@ Key values to set (`kagent-values.yaml`):
 
 ```yaml
 registry: ghcr.io
-tag: "0.8.0"
+tag: "0.9.10"
 
 providers:
   default: openAI

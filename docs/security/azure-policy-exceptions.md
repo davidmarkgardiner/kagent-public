@@ -113,7 +113,7 @@ controller:
 Apply:
 ```bash
 helm upgrade agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
-  --version v1.1.0 \
+  --version v1.3.1 \
   --namespace agentgateway-system \
   -f agentgateway-values.yaml \
   --reuse-values
@@ -231,13 +231,19 @@ kubectl get pods -n agentgateway-system -o jsonpath='{range .items[*]}{.spec.con
 
 ```bash
 # agentgateway data plane
-AGENTGW_IMG=cr.agentgateway.dev/agentgateway:0.11.1
+AGENTGW_IMG=cr.agentgateway.dev/agentgateway:v1.3.1
 docker pull $AGENTGW_IMG
 docker tag $AGENTGW_IMG {{INTERNAL_REGISTRY}}/$AGENTGW_IMG
 docker push {{INTERNAL_REGISTRY}}/$AGENTGW_IMG
 
+# agentgateway controller
+AGENTGW_CONTROLLER_IMG=cr.agentgateway.dev/controller:v1.3.1
+docker pull $AGENTGW_CONTROLLER_IMG
+docker tag $AGENTGW_CONTROLLER_IMG {{INTERNAL_REGISTRY}}/$AGENTGW_CONTROLLER_IMG
+docker push {{INTERNAL_REGISTRY}}/$AGENTGW_CONTROLLER_IMG
+
 # kagent controller
-KAGENT_IMG=ghcr.io/kagent-dev/kagent/controller:0.7.13
+KAGENT_IMG=ghcr.io/kagent-dev/kagent/controller:0.9.10
 docker pull $KAGENT_IMG
 docker tag $KAGENT_IMG {{INTERNAL_REGISTRY}}/$KAGENT_IMG
 docker push {{INTERNAL_REGISTRY}}/$KAGENT_IMG
@@ -253,8 +259,8 @@ controller:
 # agentgateway: override image
 image:
   registry: {{INTERNAL_REGISTRY}}
-  repository: agentgateway/agentgateway
-  tag: "0.11.1"
+  repository: agentgateway
+  tag: "v1.3.1"
 ```
 
 ---

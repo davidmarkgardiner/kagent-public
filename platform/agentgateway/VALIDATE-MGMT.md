@@ -36,10 +36,10 @@ Skip this if `helm list -n agentgateway-system` already shows it installed.
 
 ```bash
 helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
-  --version v1.1.0 -n agentgateway-system --create-namespace
+  --version v1.3.1 -n agentgateway-system --create-namespace
 
 helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
-  --version v1.1.0 -n agentgateway-system
+  --version v1.3.1 -n agentgateway-system
 
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=agentgateway \
   -n agentgateway-system --timeout=120s
@@ -303,7 +303,7 @@ kubectl get svc -n istio-system -l istio=ingressgateway -o wide
 
 Note the namespace/name of the wildcard Gateway and the wildcard domain
 (e.g. `*.internal.example.com`). Pick a specific hostname under it for
-agentgateway (e.g. `agentgateway.internal.example.com`).
+agentgateway (e.g. `{{INGRESS_DOMAIN}}`).
 
 ### 11b. Verify the agentgateway Service
 

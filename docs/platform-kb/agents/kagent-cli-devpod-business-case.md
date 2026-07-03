@@ -8,7 +8,7 @@ Sources checked on 2026-06-10:
 - Upstream installation guide: `https://kagent.dev/docs/kagent/introduction/installation`
 - Upstream architecture guide: `https://kagent.dev/docs/kagent/concepts/architecture`
 - Upstream local development guide: `https://kagent.dev/docs/kagent/getting-started/local-development`
-- Upstream release: `https://github.com/kagent-dev/kagent/releases/tag/v0.9.6`
+- Upstream release: `https://github.com/kagent-dev/kagent/releases/tag/v0.9.10`
 
 ## Executive View
 
@@ -80,7 +80,7 @@ The upstream installer supports non-root installation with `--no-sudo`, which in
 Override the version when needed:
 
 ```bash
-KAGENT_VERSION=v0.9.6 ./scripts/install-kagent-cli-devpod.sh
+KAGENT_VERSION=v0.9.10 ./scripts/install-kagent-cli-devpod.sh
 ```
 
 If `$HOME/bin` is not on `PATH`, add it to the DevPod shell profile:
@@ -103,10 +103,10 @@ kagent version
 kagent help
 ```
 
-Expected current pilot baseline on 2026-06-10:
+Expected current pilot baseline on 2026-06-30:
 
 ```text
-kagent_version: 0.9.6
+kagent_version: 0.9.10
 ```
 
 ## Business-Case Position

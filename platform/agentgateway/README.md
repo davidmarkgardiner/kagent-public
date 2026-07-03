@@ -122,7 +122,7 @@ applies until that file's verdict table is filled in against a live cluster.
 
 ## Empirical Validation Status
 
-Proven on the red cluster (see `SECRET-ROTATION-TEST.md`):
+Proven on the red cluster with agentgateway v1.1.0 (see `SECRET-ROTATION-TEST.md`):
 
 - ✅ agentgateway v1.1.0 Helm install
 - ✅ AgentgatewayBackend with `provider.openai` + `host` + `port`
@@ -131,6 +131,8 @@ Proven on the red cluster (see `SECRET-ROTATION-TEST.md`):
 - ✅ End-to-end chat completion (2.5s, 20 tokens, real response)
 - ✅ Native Prometheus token metrics emitted (`agentgateway_gen_ai_client_token_usage`)
 - ✅ Secret rotation via `kubectl patch secret` → xDS push → data-plane pod picks up new value with **zero restarts and zero connection drops** (~1s propagation)
+
+Current install baseline is agentgateway v1.3.1. Re-run the validation flow after upgrade before treating v1.3.1 as production-proven.
 
 Not yet tested in production:
 
@@ -147,9 +149,9 @@ Not yet tested in production:
 
 # 1. Management cluster: install + apply
 helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
-  --version v1.1.0 -n agentgateway-system --create-namespace
+  --version v1.3.1 -n agentgateway-system --create-namespace
 helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
-  --version v1.1.0 -n agentgateway-system
+  --version v1.3.1 -n agentgateway-system
 
 kubectl apply -f gateway-resources.yaml
 kubectl apply -f backend-azure-openai.yaml     # or -customscope

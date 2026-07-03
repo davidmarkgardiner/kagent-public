@@ -68,6 +68,8 @@ examples/           Quickstart and sample payloads
 | Tick off the work implementation checklist | [`WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html`](WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html) |
 | Check Kagent triage v2 completion gates | [`WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md`](WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md) |
 | See the latest Kagent triage v2 verification pass | [`WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md`](WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md) |
+| Review the current kagent/agentgateway release baseline | [`docs/platform-kb/agents/kagent-agentgateway-release-review-2026-06-30.md`](docs/platform-kb/agents/kagent-agentgateway-release-review-2026-06-30.md) |
+| Pick up the Hermes AgentHarness proof tomorrow | [`docs/platform-kb/agents/agentharness-hermes-next-steps.md`](docs/platform-kb/agents/agentharness-hermes-next-steps.md) |
 | Follow the SRE operating guide for chaos and BYO-agent workflows | [`WORK-KAGENT-TRIAGE-V2-SRE-OPERATING-GUIDE.md`](WORK-KAGENT-TRIAGE-V2-SRE-OPERATING-GUIDE.md) |
 | Walk through first-time ASTHERI/SRE onboarding | [`WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-WALKTHROUGH.md`](WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-WALKTHROUGH.md) |
 | Review the ASTHERI/SRE rehearsal findings | [`WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-REHEARSAL.md`](WORK-KAGENT-TRIAGE-V2-ASTHERI-SRE-REHEARSAL.md) |
@@ -123,7 +125,7 @@ examples/           Quickstart and sample payloads
 - [Azure Service Operator v2](https://github.com/Azure/azure-service-operator) on management cluster
 - [Argo Workflows v3.x](https://argoproj.github.io/argo-workflows/) in `argo` namespace
 - [Argo Events](https://argoproj.github.io/argo-events/) in `argo-events` namespace — **pin chart 2.4.14 / app v1.9.5** (see [EventHub regression note](platform/argo-events/README.md#eventhub-version-pin))
-- [kagent v0.8.0+](https://github.com/kagent-dev/kagent) in `kagent` namespace
+- [kagent v0.9.10+](https://github.com/kagent-dev/kagent) in `kagent` namespace for the current stable baseline
 
 ---
 

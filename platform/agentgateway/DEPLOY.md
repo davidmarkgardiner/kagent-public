@@ -25,8 +25,8 @@ It tells you which CRDs are installed, which are missing, and how to install eac
 | Cluster | Component | Helm install |
 |---|---|---|
 | Management | Gateway API CRDs | `helm upgrade -i gateway-api oci://registry.k8s.io/gateway-api/charts/gateway-api --version v1.5.0 -n gateway-system --create-namespace` |
-| Management | agentgateway CRDs | `helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.1.0 -n agentgateway-system --create-namespace` |
-| Management | agentgateway controller | `helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway --version v1.1.0 -n agentgateway-system` |
+| Management | agentgateway CRDs | `helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.3.1 -n agentgateway-system --create-namespace` |
+| Management | agentgateway controller | `helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway --version v1.3.1 -n agentgateway-system` |
 | Management | Istio | `istioctl install --set profile=default` (or via your existing method) |
 | Worker | kagent | already installed if kagent is running |
 
@@ -35,23 +35,25 @@ It tells you which CRDs are installed, which are missing, and how to install eac
 ```bash
 # Pull the OCI chart to a local tarball
 helm pull oci://registry.k8s.io/gateway-api/charts/gateway-api --version v1.5.0
-helm pull oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.1.0
-helm pull oci://cr.agentgateway.dev/charts/agentgateway --version v1.1.0
+helm pull oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.3.1
+helm pull oci://cr.agentgateway.dev/charts/agentgateway --version v1.3.1
 
 # Push to your private registry
 helm push gateway-api-v1.5.0.tgz oci://<your-registry>/charts
-helm push agentgateway-crds-v1.1.0.tgz oci://<your-registry>/charts
-helm push agentgateway-v1.1.0.tgz oci://<your-registry>/charts
+helm push agentgateway-crds-v1.3.1.tgz oci://<your-registry>/charts
+helm push agentgateway-v1.3.1.tgz oci://<your-registry>/charts
 
 # Then install from your mirror:
 helm upgrade -i gateway-api oci://<your-registry>/charts/gateway-api --version v1.5.0 ...
 ```
 
-**Container images** to mirror (agentgateway controller pulls these):
+**Container images** to mirror:
 ```bash
 # Inspect what the chart pulls:
-helm template oci://cr.agentgateway.dev/charts/agentgateway --version v1.1.0 | grep image:
-# Typically: cr.agentgateway.dev/agentgateway/agentgateway:v1.1.0
+helm template oci://cr.agentgateway.dev/charts/agentgateway --version v1.3.1 | grep image:
+# Controller chart: cr.agentgateway.dev/controller:v1.3.1
+# Data plane image defaults are defined by the agentgateway CRDs:
+# cr.agentgateway.dev/agentgateway:v1.3.1
 ```
 
 **Optional CRDs (skip the matching manifest if absent):**
@@ -108,12 +110,12 @@ helm upgrade -i gateway-api oci://registry.k8s.io/gateway-api/charts/gateway-api
 
 # agentgateway CRDs
 helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
-  --version v1.1.0 \
+  --version v1.3.1 \
   --namespace agentgateway-system --create-namespace
 
 # agentgateway controller
 helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
-  --version v1.1.0 \
+  --version v1.3.1 \
   --namespace agentgateway-system
 
 kubectl wait --for=condition=ready pod -l app=agentgateway \

@@ -80,7 +80,7 @@ echo "agentgateway (required on mgmt cluster):"
 check_crd "agentgatewaybackends.agentgateway.dev" \
   "agentgateway Backend CRD" \
   "optional-mgmt" \
-  "helm upgrade -i --create-namespace -n agentgateway-system --version v1.1.0 agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds"
+  "helm upgrade -i --create-namespace -n agentgateway-system --version v1.3.1 agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds"
 
 check_crd "agentgatewaypolicies.agentgateway.dev" \
   "agentgateway Policy CRD" \

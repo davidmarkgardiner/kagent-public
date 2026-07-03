@@ -66,12 +66,12 @@ kubectl get crd gateways.gateway.networking.k8s.io 2>/dev/null \
 ```bash
 helm upgrade -i --create-namespace \
   --namespace agentgateway-system \
-  --version v1.1.0 \
+  --version v1.3.1 \
   agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds
 
 helm upgrade -i \
   --namespace agentgateway-system \
-  --version v1.1.0 \
+  --version v1.3.1 \
   agentgateway oci://cr.agentgateway.dev/charts/agentgateway
 
 kubectl wait --for=condition=ready pod -l app=agentgateway \
