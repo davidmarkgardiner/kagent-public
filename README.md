@@ -66,6 +66,7 @@ examples/           Quickstart and sample payloads
 | Run the local handoff verifier | [`scripts/verify-kagent-triage-v2-handoff.sh`](scripts/verify-kagent-triage-v2-handoff.sh) |
 | Review current Kagent triage system v2 status | [`WORK-KAGENT-TRIAGE-V2-REVIEW-PROMPT.md`](WORK-KAGENT-TRIAGE-V2-REVIEW-PROMPT.md) |
 | Tick off the work implementation checklist | [`WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html`](WORK-KAGENT-TRIAGE-V2-WORK-IMPLEMENTATION-CHECKLIST.html) |
+| Measure Copilot Agent usage on small tasks | [`docs/copilot-usage-smoke-test/`](docs/copilot-usage-smoke-test/README.md) |
 | Check Kagent triage v2 completion gates | [`WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md`](WORK-KAGENT-TRIAGE-V2-COMPLETION-CHECKLIST.md) |
 | See the latest Kagent triage v2 verification pass | [`WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md`](WORK-KAGENT-TRIAGE-V2-VERIFICATION-PASS.md) |
 | Review the current kagent/agentgateway release baseline | [`docs/platform-kb/agents/kagent-agentgateway-release-review-2026-06-30.md`](docs/platform-kb/agents/kagent-agentgateway-release-review-2026-06-30.md) |
