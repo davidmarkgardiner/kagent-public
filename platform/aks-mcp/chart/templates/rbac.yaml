@@ -11,8 +11,13 @@ rules:
   resources: ["pods", "services", "endpoints", "nodes", "namespaces", "events"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
-  resources: ["configmaps", "secrets"]
+  resources: ["configmaps"]
   verbs: ["get", "list", "watch"]
+{{- if .Values.rbac.includeSecrets }}
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+{{- end }}
 - apiGroups: ["apps"]
   resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
   verbs: ["get", "list", "watch"]

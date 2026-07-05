@@ -50,9 +50,14 @@ spec:
               - key: "{{ request.object.spec.declarative.tools | length(@) }}"
                 operator: GreaterThan
                 value: "0"
-              - key: "{{ request.object.metadata.annotations.\"platform.kagent.dev/tool-grants-verified\" || 'false' }}"
-                operator: NotEquals
-                value: "true"
+              - key: "{{ toolGrants | length(@) }}"
+                operator: Equals
+                value: "0"
+      context:
+        - name: toolGrants
+          apiCall:
+            urlPath: "/apis/platform.kagent.dev/v1alpha1/namespaces/{{ request.object.metadata.namespace }}/toolgrants"
+            jmesPath: "items[?spec.agentRef.name=='{{ request.object.metadata.name }}']"
       # Additional rule using context to check ToolGrant existence
     - name: verify-toolgrant-not-expired
       match:

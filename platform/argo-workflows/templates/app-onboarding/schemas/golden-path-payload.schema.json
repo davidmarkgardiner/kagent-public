@@ -75,7 +75,7 @@
       "additionalProperties": false,
       "properties": {
         "teamAdGroup": { "type": "string" },
-        "clusterRole": { "type": "string", "enum": ["view", "edit", "admin"] }
+        "clusterRole": { "type": "string", "enum": ["view", "edit"] }
       }
     },
 

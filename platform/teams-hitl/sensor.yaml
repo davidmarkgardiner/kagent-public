@@ -38,6 +38,12 @@ spec:
           - path: body.decision
             type: string
             value: [approved]
+          - path: body.workflow_namespace
+            type: string
+            value: [argo]
+          - path: body.approval_id
+            type: string
+            value: ["[A-Za-z0-9._:-]{8,}"]
   triggers:
     - template:
         name: resume-on-approve
@@ -79,6 +85,12 @@ spec:
           - path: body.decision
             type: string
             value: [rejected]
+          - path: body.workflow_namespace
+            type: string
+            value: [argo]
+          - path: body.approval_id
+            type: string
+            value: ["[A-Za-z0-9._:-]{8,}"]
   triggers:
     - template:
         name: stop-on-reject
@@ -120,6 +132,12 @@ spec:
           - path: body.decision
             type: string
             value: [expired]
+          - path: body.workflow_namespace
+            type: string
+            value: [argo]
+          - path: body.approval_id
+            type: string
+            value: ["[A-Za-z0-9._:-]{8,}"]
   triggers:
     - template:
         name: stop-on-expire

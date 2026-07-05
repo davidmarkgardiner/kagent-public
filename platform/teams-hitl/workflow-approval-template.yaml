@@ -182,13 +182,22 @@ spec:
           TRIAGE='{{inputs.parameters.triage_report}}'
           ACTION=$(echo "$TRIAGE" | jq -r '.remediation.commands[0] // ""')
           PROPOSED_TIER=$(echo "$TRIAGE" | jq -r '.remediation.proposed_tier // "T4"')
+          KIND=$(echo "$TRIAGE" | jq -r '.remediation.kind // ""')
 
-          # Load tier mapping ConfigMap (pre-mounted) and match against rules.
-          # Simplified — your real logic may involve regex matching against the
-          # action command + namespace tier labels. See tier-mapping-configmap.yaml
-          # in ../kagent-agents/networking-triage-agent/.
-          # For now: trust agent's proposed tier unless it's lower than T4 default.
-          FINAL_TIER="${PROPOSED_TIER}"
+          # Never trust the agent's proposed tier as the execution tier. Until a
+          # mounted remediation-tier-mapping ConfigMap is wired in, classify a
+          # small read-only set locally and force every unknown action to T4.
+          FINAL_TIER="T4"
+          case "${ACTION}" in
+            "kubectl get "*|"kubectl describe "*|"kubectl logs "*)
+              FINAL_TIER="T0"
+              ;;
+          esac
+          case "${KIND}" in
+            diagnostic|read-only|readonly)
+              FINAL_TIER="T0"
+              ;;
+          esac
 
           echo "proposed=${PROPOSED_TIER} final=${FINAL_TIER} action=${ACTION}"
           echo -n "${FINAL_TIER}" > /tmp/tier

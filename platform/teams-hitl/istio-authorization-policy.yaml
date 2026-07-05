@@ -37,7 +37,7 @@ spec:
     - from:
         - source:
             remoteIpBlocks:
-              - "REPLACE_WITH_BOT_EGRESS_CIDR"     # e.g. 20.1.2.3/32 or 10.100.0.0/16
+              - "REPLACE_WITH_BOT_EGRESS_CIDR"
               # - "OTHER_BOT_EGRESS_CIDR"
       to:
         - operation:
@@ -65,25 +65,24 @@ spec:
         - operation:
             paths: ["*"]
 
-# ─── Layer 2 (OPTIONAL): require shared header / HMAC ──────────────────────
-# Uncomment once the bot is signing callbacks. Matches the HMAC header spec
-# in BOT-CONTRACT.md.
-#
-# ---
-# apiVersion: security.istio.io/v1
-# kind: AuthorizationPolicy
-# metadata:
-#   name: hitl-callback-require-signature
-#   namespace: argo-events
-# spec:
-#   selector:
-#     matchLabels:
-#       eventsource-name: teams-hitl-callback
-#   action: DENY
-#   rules:
-#     - to:
-#         - operation:
-#             paths: ["/approval-callback", "/approval-callback/"]
-#       when:
-#         - key: request.headers[x-bot-signature]
-#           notValues: ["*"]     # no signature header present = deny
+# ─── Layer 2: require signed callback header ───────────────────────────────
+# This policy only enforces that the bot supplied a signature header. The bot
+# and callback handler must still verify the HMAC value against BOT-CONTRACT.md.
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: hitl-callback-require-signature
+  namespace: argo-events
+spec:
+  selector:
+    matchLabels:
+      eventsource-name: teams-hitl-callback
+  action: DENY
+  rules:
+    - to:
+        - operation:
+            paths: ["/approval-callback", "/approval-callback/"]
+      when:
+        - key: request.headers[x-bot-signature]
+          notValues: ["*"]

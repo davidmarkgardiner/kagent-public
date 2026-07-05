@@ -14,6 +14,7 @@ helm upgrade --install aks-mcp ./chart \
 
 ## Notes
 
-- The MCP server runs with cluster-admin access by default — scope this down via `values.yaml` for production
+- The default chart posture is read-only and does not grant Secret reads unless
+  `rbac.includeSecrets=true` is explicitly set for an approved specialist.
 - Used by kagent agents via the `RemoteMCPServer` resource type
 - When specifying `toolNames` in `RemoteMCPServer`, always list tools explicitly — `None` causes a ValidationError

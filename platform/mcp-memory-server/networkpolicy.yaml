@@ -1,0 +1,34 @@
+# NetworkPolicy for the shared memory MCP server.
+#
+# Purpose:
+# - Prevent arbitrary pods in the cluster from reading, writing, or deleting the
+#   shared agent memory graph.
+# - Keep memory access limited to approved kagent runtime pods in the kagent
+#   namespace until agentgateway/CEL-authenticated MCP access is available.
+#
+# Apply with the memory server manifests in the kagent namespace:
+#   kubectl apply -f networkpolicy.yaml
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: memory-mcp-ingress-from-kagent
+  namespace: kagent
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-memory-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/part-of
+                operator: In
+                values:
+                  - kagent
+                  - dev-pipeline
+      ports:
+        - protocol: TCP
+          port: 3000

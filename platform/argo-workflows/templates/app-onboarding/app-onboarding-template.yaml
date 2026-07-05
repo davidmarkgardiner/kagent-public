@@ -18,6 +18,12 @@ spec:
     parameters:
       - name: payload
         description: "JSON payload from onboarding form or API"
+      - name: allowed-role-definition-ids
+        description: "Comma-separated allowlist of Azure roleDefinitionId ARM IDs permitted for onboarding RoleAssignments."
+        value: ""
+      - name: allowed-role-assignment-scope-prefixes
+        description: "Comma-separated allowlist of Azure scope prefixes permitted for onboarding RoleAssignments."
+        value: ""
 
   onExit: send-notification
 
@@ -835,6 +841,17 @@ spec:
             value: "{{inputs.parameters.cluster-role}}"
         source: |
           set -euo pipefail
+          case "$ROLE" in
+            view|edit) ;;
+            *)
+              echo "ERROR: cluster role '$ROLE' is not allowed. Allowed: view, edit" >&2
+              exit 1
+              ;;
+          esac
+          if ! echo "$AD_GROUP" | grep -Eq '^sg-[a-z0-9][a-z0-9-]{2,62}$'; then
+            echo "ERROR: AD group '$AD_GROUP' must match approved group naming, for example sg-team-name" >&2
+            exit 1
+          fi
 
           echo "Creating RoleBinding for AD group $AD_GROUP -> $ROLE in $NS"
           cat <<EOF | kubectl apply -f -
@@ -1330,14 +1347,39 @@ spec:
         env:
           - name: PARAM_AZURE
             value: "{{inputs.parameters.azure-json}}"
+          - name: ALLOWED_ROLE_DEFINITION_IDS
+            value: "{{workflow.parameters.allowed-role-definition-ids}}"
+          - name: ALLOWED_SCOPE_PREFIXES
+            value: "{{workflow.parameters.allowed-role-assignment-scope-prefixes}}"
         source: |
           import json, subprocess, sys, hashlib, os
 
           azure = json.loads(os.environ["PARAM_AZURE"])
           mi_name = azure["managedIdentity"]["name"]
           assignments = azure.get("roleAssignments", [])
+          allowed_role_definition_ids = {
+              role.strip()
+              for role in os.environ.get("ALLOWED_ROLE_DEFINITION_IDS", "").split(",")
+              if role.strip()
+          }
+          allowed_scope_prefixes = {
+              scope.strip().rstrip("/")
+              for scope in os.environ.get("ALLOWED_SCOPE_PREFIXES", "").split(",")
+              if scope.strip()
+          }
 
           for i, ra in enumerate(assignments):
+              role_definition_id = ra["roleDefinitionId"]
+              scope = ra["scope"].rstrip("/")
+              if role_definition_id not in allowed_role_definition_ids:
+                  print(
+                      f"RoleAssignment roleDefinitionId is not allowlisted: {role_definition_id}",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+              if not any(scope == prefix or scope.startswith(prefix + "/") for prefix in allowed_scope_prefixes):
+                  print(f"RoleAssignment scope is not allowlisted: {scope}", file=sys.stderr)
+                  sys.exit(1)
               hash_input = f"{ra['scope']}-{ra['roleDefinitionId']}"
               short_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:8]
               name = f"ra-{mi_name}-{short_hash}"

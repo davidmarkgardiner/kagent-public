@@ -108,6 +108,9 @@ serviceAccount:
 rbac:
   # Specifies whether RBAC resources should be created
   create: true
+  # Read-only AKS-MCP should not read Kubernetes Secrets by default. Enable only
+  # for a narrowly scoped remediation specialist with explicit approval.
+  includeSecrets: false
 
 # Pod security settings
 podSecurityContext:
