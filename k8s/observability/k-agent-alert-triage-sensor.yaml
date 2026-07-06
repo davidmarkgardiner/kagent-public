@@ -65,21 +65,50 @@ spec:
 
                         raw = r'''{{workflow.parameters.alert-payload}}'''
                         payload = json.loads(raw)
-                        alerts = payload.get("alerts", [])
+                        alertmanager = payload.get("alertmanager", {})
+                        alerts = payload.get("alerts", alertmanager.get("alerts", []))
                         first = alerts[0] if alerts else {}
                         labels = first.get("labels", {})
                         annotations = first.get("annotations", {})
-                        alertname = labels.get("alertname", "unknown")
-                        namespace = labels.get("namespace", "")
-                        severity = labels.get("severity", "info")
-                        cluster = labels.get("cluster", "")
-                        gateway = labels.get("gateway", labels.get("pod", ""))
+
+                        def first_value(*values):
+                            for value in values:
+                                if value is not None and value != "":
+                                    return value
+                            return ""
+
+                        alertname = first_value(payload.get("alert_name"), labels.get("alertname"), "unknown")
+                        namespace = first_value(payload.get("namespace"), labels.get("namespace"))
+                        severity = first_value(payload.get("severity"), labels.get("severity"), "info")
+                        cluster = first_value(payload.get("cluster"), labels.get("cluster"))
+                        gateway = first_value(payload.get("gateway"), payload.get("pod"), labels.get("gateway"), labels.get("pod"))
                         summary = annotations.get("summary", "")
                         description = annotations.get("description", "")
+                        event_name = first_value(payload.get("event_name"), labels.get("event_name"))
+                        event_reason = first_value(payload.get("event_reason"), payload.get("reason"), labels.get("event_reason"), annotations.get("event_reason"))
+                        event_context = first_value(payload.get("event_context"), annotations.get("event_context"))
+                        suggested_kubectl = first_value(payload.get("suggested_kubectl"), annotations.get("suggested_kubectl"))
+                        suggested_log_query = first_value(payload.get("suggested_log_query"), annotations.get("suggested_log_query"))
+                        runbook_url = first_value(payload.get("runbook_url"), annotations.get("runbook_url"))
+                        dashboard_url = first_value(payload.get("dashboard_url"), annotations.get("dashboard_url"), annotations.get("grafana_panel_url"))
+
+                        rich_context = {
+                            "Event name": event_name,
+                            "Event reason": event_reason,
+                            "Event context": event_context,
+                            "Suggested kubectl": suggested_kubectl,
+                            "Suggested log query": suggested_log_query,
+                            "Runbook URL": runbook_url,
+                            "Dashboard URL": dashboard_url,
+                        }
+                        rich_context_lines = "\n".join(
+                            f"{key}: {value}" for key, value in rich_context.items() if value
+                        ) or "No rich alert context fields were provided; fall back to Grafana MCP evidence gathering."
 
                         prompt = f"""Triage this observability alert from the K-Agent / Agent Gateway monitoring path.
 
-                        Use the Grafana MCP tools before giving the final answer:
+                        Use the rich alert context first when it is present. Use Grafana MCP tools to confirm evidence,
+                        generate deeplinks, or fill gaps when the alert does not include enough context:
                         - list_datasources if you need datasource UIDs.
                         - query_prometheus for metric confirmation.
                         - query_loki_logs for recent kagent, agentgateway, Argo, or Alertmanager logs.
@@ -93,12 +122,18 @@ spec:
                         Summary: {summary}
                         Description: {description}
 
+                        Rich alert context:
+                        {rich_context_lines}
+
                         Return:
                         1. Likely root cause in one paragraph.
                         2. Grafana MCP evidence gathered, including datasource UID and PromQL or LogQL used.
                         3. Exact kubectl commands for safe investigation.
                         4. Grafana dashboard or Explore deeplink if available.
                         5. Whether this should be observe_only, human_review, or safe_auto_remediate.
+                        6. If a GitLab ticket is created or updated, include the cluster, event reason,
+                           event context, suggested kubectl command, suggested log query, dashboard URL,
+                           and runbook URL from the rich alert context.
 
                         Full Alertmanager payload:
                         {json.dumps(payload, sort_keys=True)[:6000]}
