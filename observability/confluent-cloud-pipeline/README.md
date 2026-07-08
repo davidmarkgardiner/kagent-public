@@ -12,6 +12,10 @@ The implementation intentionally uses two topics in one Confluent cluster:
 
 This keeps the proof honest. The existing `k8s-triage-critical` workflow expects Kubernetes-event-shaped OTLP. Alertmanager payloads have a different contract, so they route to an Alertmanager-specific workflow path instead of pretending the same parser can handle both.
 
+For the production routing recommendation, including how many Confluent topics
+to use and where namespace/criticality routing should happen, see
+[`docs/observability/catent-alertmanager-confluent-routing.md`](../../docs/observability/catent-alertmanager-confluent-routing.md).
+
 ## Layout
 
 ```text

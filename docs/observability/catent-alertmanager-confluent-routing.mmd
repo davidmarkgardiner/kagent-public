@@ -1,0 +1,49 @@
+flowchart LR
+  subgraph Sources["Signal sources"]
+    AM["Alertmanager webhook"]
+    KE["Kubernetes events"]
+    OBS["Mimir / Loki / Grafana evidence"]
+    CE["Community or user events"]
+  end
+
+  subgraph Vector["Vector HTTP receiver"]
+    N["normalize and classify\nschema validation\nlabel mapping\ndeduplication\nseverity and tier mapping"]
+    DLQ["incident-triage-dlq"]
+  end
+
+  subgraph KafkaWork["Confluent workflow topics"]
+    REQ["incident-triage-requests\ncurrent: alertmanager-events-triage"]
+    RES["incident-triage-results"]
+    RAW["alertmanager-events-raw\noptional replay/audit"]
+  end
+
+  subgraph Routing["Argo / kagent routing"]
+    R["triage router\nroutes by labels, not topics"]
+    CORE["platform-core-sre"]
+    CRIT["app-critical-sre"]
+    STD["app-standard-sre"]
+    HOUSE["housekeeping-sre"]
+    NET["network-security-sre"]
+  end
+
+  AM --> N
+  OBS -. "links, queries, dashboards" .-> N
+  KE -. "optional if normalized through Vector" .-> N
+  CE -. "optional if normalized through Vector" .-> N
+
+  N -->|"valid normalized incident"| REQ
+  N -->|"invalid or unroutable"| DLQ
+  N -. "optional raw copy" .-> RAW
+
+  REQ --> R
+  R --> CORE
+  R --> CRIT
+  R --> STD
+  R --> HOUSE
+  R --> NET
+
+  CORE --> RES
+  CRIT --> RES
+  STD --> RES
+  HOUSE --> RES
+  NET --> RES

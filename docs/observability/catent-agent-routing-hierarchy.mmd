@@ -1,0 +1,22 @@
+flowchart TD
+  A["Normalized alert\nnamespace + severity + event_reason + labels"] --> B{"Cross-cutting symptom?"}
+
+  B -->|"DNS / network / ingress"| NET["networking-triage-agent"]
+  B -->|"FailedScheduling / capacity"| SCHED["platform-scheduling-agent"]
+  B -->|"Flux / Helm / KRO / ASO"| PROV["platform-provisioning-agent"]
+  B -->|"policy / admission / security"| SEC["security-hardening-agent"]
+  B -->|"no strong symptom override"| C{"Registered namespace agent?"}
+
+  C -->|"yes"| NS["namespace specialist\ncert-manager, flux-system,\nexternal-secrets, app team agent"]
+  C -->|"no"| D{"Namespace class?"}
+
+  D -->|"core"| CORE["platform-core-sre"]
+  D -->|"critical-app"| APPCRIT["app-critical-sre"]
+  D -->|"standard-app"| APPSTD["app-standard-sre"]
+  D -->|"housekeeping"| HOUSE["housekeeping-sre"]
+  D -->|"unknown"| FALL["sre-triage-agent\nor quarantine review"]
+
+  NET -. "handoff if app config root cause" .-> NS
+  SCHED -. "handoff if namespace quota/root cause" .-> NS
+  PROV -. "handoff if app deploy root cause" .-> NS
+  SEC -. "handoff after policy finding" .-> NS

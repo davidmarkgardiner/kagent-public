@@ -1,0 +1,83 @@
+flowchart LR
+  subgraph Inputs["Alert inputs"]
+    APP["Applications\nlogs, metrics, events"]
+    GRAF["Grafana / Prometheus rules\nlabels + annotations"]
+    AM["Alertmanager\nroutes/groups, then webhook"]
+  end
+
+  subgraph Vector["Vector routing boundary"]
+    RAW["raw webhook payload"]
+    LABELS["label extraction\ncluster, namespace, service\nseverity, owner_team"]
+    CLASS["classification\nnamespace_class\nroute_domain\ntarget_agent\nqueue_priority"]
+    DEDUPE["dedupe + noise filter\ndedupe_key\nresolved drop\nquarantine decision"]
+  end
+
+  subgraph Kafka["Confluent topics"]
+    ACTION["incident-triage-requests\ncurrent: alertmanager-events-triage"]
+    DLQ["incident-triage-dlq"]
+    RESULTS["incident-triage-results"]
+  end
+
+  subgraph Argo["Argo Events coarse routing"]
+    ES["one Kafka EventSource\none consumer group"]
+    S0["Sensor p0/p1\ncoarse platform lane"]
+    S1["Sensor p0/p1\ncoarse critical-app lane"]
+    S2["Sensor p2\ncoarse standard-app lane"]
+    S3["Sensor p3\ncoarse housekeeping lane"]
+    SQ["Sensor quarantine\ncoarse manual review lane"]
+  end
+
+  subgraph Workflows["Workflow final delegation"]
+    W0["critical-platform-triage\nreads full payload"]
+    W1["critical-app-triage\nreads full payload"]
+    W2["standard-app-triage\nreads full payload"]
+    W3["housekeeping-triage\nreads full payload"]
+    WQ["quarantine-review\nhuman triage"]
+    D["delegate by\nnamespace + event_type\nevent_reason/message\nroute_domain + target_agent"]
+  end
+
+  subgraph Agents["Agent specialists"]
+    NET["networking-triage-agent"]
+    SCHED["platform-scheduling-agent"]
+    PROV["platform-provisioning-agent"]
+    SEC["security-hardening-agent"]
+    NS["namespace specialist"]
+    APPAG["app critical/standard SRE"]
+    FALL["fallback SRE"]
+  end
+
+  APP --> GRAF --> AM --> RAW
+  RAW --> LABELS --> CLASS --> DEDUPE
+
+  DEDUPE -->|"valid actionable"| ACTION
+  DEDUPE -->|"malformed, unknown, unsafe"| DLQ
+
+  ACTION --> ES
+  DLQ --> SQ
+
+  ES -->|"filter queue_priority=p0/p1\nroute_domain=platform/security/network"| S0
+  ES -->|"filter namespace_class=critical-app\nqueue_priority=p0/p1"| S1
+  ES -->|"filter route_domain=application\nqueue_priority=p2"| S2
+  ES -->|"filter namespace_class=housekeeping\nor queue_priority=p3"| S3
+
+  S0 --> W0 --> D
+  S1 --> W1 --> D
+  S2 --> W2 --> D
+  S3 --> W3 --> D
+  SQ --> WQ --> RESULTS
+
+  D -->|"DNS / ingress / network"| NET
+  D -->|"FailedScheduling / capacity"| SCHED
+  D -->|"Flux / Helm / KRO / ASO"| PROV
+  D -->|"policy / admission / security"| SEC
+  D -->|"registered namespace owner"| NS
+  D -->|"application lane"| APPAG
+  D -->|"unknown owner"| FALL
+
+  NET --> RESULTS
+  SCHED --> RESULTS
+  PROV --> RESULTS
+  SEC --> RESULTS
+  NS --> RESULTS
+  APPAG --> RESULTS
+  FALL --> RESULTS

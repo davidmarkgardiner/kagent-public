@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catent Alert Routing Architecture</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17201b;
+      --muted: #667069;
+      --line: #d8ded5;
+      --platform: #315c73;
+      --vector: #6f4d8f;
+      --kafka: #8a5a2b;
+      --argo: #336b58;
+      --workflow: #934b42;
+      --agent: #394b7a;
+      --warn: #b87428;
+      --bad: #a23c38;
+      --good: #4f7d52;
+      --soft-platform: #e5eef2;
+      --soft-vector: #eee8f5;
+      --soft-kafka: #f2eadf;
+      --soft-argo: #e4f0ea;
+      --soft-workflow: #f5e7e5;
+      --soft-agent: #e9ecf6;
+      --shadow: 0 16px 38px rgba(34, 43, 37, 0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(23, 32, 27, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(23, 32, 27, 0.04) 1px, transparent 1px),
+        var(--bg);
+      background-size: 32px 32px;
+    }
+
+    .page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 34px 28px 48px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 3px;
+      background: var(--workflow);
+      border-radius: 99px;
+    }
+
+    h1 {
+      max-width: 880px;
+      margin: 0;
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      font-size: 54px;
+      line-height: 1.04;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .summary {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .decision {
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+    }
+
+    .decision strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .decision p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .board {
+      position: relative;
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr 0.95fr 1.05fr 1.15fr 1.1fr;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .lane {
+      min-height: 640px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(34, 43, 37, 0.05);
+    }
+
+    .lane h2 {
+      margin: 0 0 14px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .card {
+      position: relative;
+      margin-bottom: 12px;
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--platform);
+      border-radius: 8px;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .card.vector { border-left-color: var(--vector); background: var(--soft-vector); }
+    .card.kafka { border-left-color: var(--kafka); background: var(--soft-kafka); }
+    .card.argo { border-left-color: var(--argo); background: var(--soft-argo); }
+    .card.workflow { border-left-color: var(--workflow); background: var(--soft-workflow); }
+    .card.agent { border-left-color: var(--agent); background: var(--soft-agent); }
+    .card.platform { background: var(--soft-platform); }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      border: 1px solid rgba(23, 32, 27, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #29312c;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .chip.p0 { background: #f8dedb; color: #76201e; border-color: #e7b6b2; }
+    .chip.p1 { background: #f4e1c5; color: #75450f; border-color: #e3bf88; }
+    .chip.p2 { background: #e5edf8; color: #234a78; border-color: #bdcfe9; }
+    .chip.p3 { background: #e9efe5; color: #365d37; border-color: #c9d7c4; }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 26px;
+      margin: 8px 0 12px;
+      color: var(--muted);
+      font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .arrow::before,
+    .arrow::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: var(--line);
+    }
+
+    .arrow span {
+      padding: 0 8px;
+    }
+
+    .rule-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rule {
+      padding: 9px 10px;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(23,32,27,0.1);
+      font-size: 12px;
+      line-height: 1.32;
+      color: #29312c;
+    }
+
+    .rule b {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--ink);
+    }
+
+    .delegate {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #fffaf6;
+      border: 2px solid #e2b59e;
+    }
+
+    .delegate h3 {
+      margin: 0;
+      font-size: 17px;
+      color: #753c2d;
+    }
+
+    .delegate p {
+      margin: 0;
+      color: #694f46;
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .agent-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .agent-row {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      padding: 9px 10px;
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(23,32,27,0.1);
+      border-radius: 7px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 3px;
+      border-radius: 50%;
+      background: var(--agent);
+    }
+
+    .dot.net { background: var(--platform); }
+    .dot.sched { background: var(--warn); }
+    .dot.sec { background: var(--bad); }
+    .dot.ns { background: var(--good); }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .note {
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .note h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      color: #26352e;
+      background: rgba(23, 32, 27, 0.06);
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    @media (max-width: 1180px) {
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .decision {
+        max-width: 720px;
+      }
+
+      .board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .lane {
+        min-height: auto;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        padding: 24px 16px 32px;
+      }
+
+      h1 {
+        font-size: 38px;
+      }
+
+      .board {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="eyebrow">Catent alert routing</div>
+        <h1>From alert noise to the right first agent.</h1>
+        <p class="summary">Alertmanager sends the webhook into Vector. Vector normalizes and labels the event. Argo Sensors do coarse lane filtering. The Workflow receives the full envelope and performs the final delegation to the best specialist.</p>
+      </div>
+      <aside class="decision">
+        <strong>Operating decision</strong>
+        <p>Keep one normalized actionable topic first. Use fields like <code>queue_priority</code>, <code>route_domain</code>, <code>namespace_class</code>, and <code>target_agent</code> to route before splitting Kafka topics.</p>
+      </aside>
+    </header>
+
+    <section class="board" aria-label="Catent routing architecture">
+      <div class="lane">
+        <h2>1. Signals</h2>
+        <div class="card platform">
+          <h3>Applications</h3>
+          <p>Logs, metrics, Kubernetes events, policy events, and application health signals.</p>
+          <div class="chips">
+            <span class="chip">logs</span>
+            <span class="chip">metrics</span>
+            <span class="chip">events</span>
+          </div>
+        </div>
+        <div class="arrow"><span>rules</span></div>
+        <div class="card platform">
+          <h3>Grafana / Prometheus</h3>
+          <p>Rules attach durable labels and annotations: cluster, namespace, service, severity, owner, runbook, dashboard link.</p>
+        </div>
+        <div class="arrow"><span>webhook</span></div>
+        <div class="card platform">
+          <h3>Alertmanager</h3>
+          <p>Routes and groups. It should not be the primary enrichment engine.</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h2>2. Vector boundary</h2>
+        <div class="card vector">
+          <h3>Normalize</h3>
+          <p>Map all source shapes into <code>observability.triage.v1</code>.</p>
+          <div class="chips">
+            <span class="chip">schema_version</span>
+            <span class="chip">alert_status</span>
+            <span class="chip">raw</span>
+          </div>
+        </div>
+        <div class="card vector">
+          <h3>Classify</h3>
+          <p>Set route fields once, before Kafka and Argo consume the event.</p>
+          <div class="chips">
+            <span class="chip">namespace_class</span>
+            <span class="chip">route_domain</span>
+            <span class="chip">target_agent</span>
+            <span class="chip">workflow_class</span>
+          </div>
+        </div>
+        <div class="card vector">
+          <h3>Dedupe and quarantine</h3>
+          <p>Suppress duplicate noise and route malformed or unsafe events away from the actionable queue.</p>
+          <div class="chips">
+            <span class="chip">dedupe_key</span>
+            <span class="chip">normalization_gap</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h2>3. Kafka</h2>
+        <div class="card kafka">
+          <h3>Actionable topic</h3>
+          <p><code>incident-triage-requests</code><br>Current equivalent: <code>alertmanager-events-triage</code>.</p>
+        </div>
+        <div class="card kafka">
+          <h3>DLQ / quarantine</h3>
+          <p>Invalid, unknown, unsafe, or not-yet-owned records.</p>
+        </div>
+        <div class="card kafka">
+          <h3>Results topic</h3>
+          <p>Workflow state, agent verdict, approval state, and audit output.</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h2>4. Sensors filter</h2>
+        <div class="card argo">
+          <h3>One Kafka EventSource</h3>
+          <p>One consumer group reads the normalized topic. Sensors subscribe to the EventBus.</p>
+        </div>
+        <div class="rule-list">
+          <div class="rule"><b>P0/P1 platform</b><span><code>queue_priority</code> p0/p1 + platform/security/network.</span></div>
+          <div class="rule"><b>P0/P1 critical apps</b><span>Critical app namespace class.</span></div>
+          <div class="rule"><b>P2 standard apps</b><span>Application route with standard priority.</span></div>
+          <div class="rule"><b>P3 housekeeping</b><span>Low-risk operational noise and batch namespaces.</span></div>
+          <div class="rule"><b>Quarantine</b><span>Malformed, unknown owner, missing fields, unsafe labels.</span></div>
+        </div>
+        <div class="chips">
+          <span class="chip p0">p0</span>
+          <span class="chip p1">p1</span>
+          <span class="chip p2">p2</span>
+          <span class="chip p3">p3</span>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h2>5. Workflow delegates</h2>
+        <div class="delegate">
+          <h3>Final routing decision</h3>
+          <p>The Sensor starts the right lane. The Workflow reads the full normalized payload and chooses the first specialist.</p>
+          <div class="chips">
+            <span class="chip">namespace</span>
+            <span class="chip">event_type</span>
+            <span class="chip">event_reason</span>
+            <span class="chip">message</span>
+            <span class="chip">target_agent</span>
+          </div>
+        </div>
+        <div class="arrow"><span>decision order</span></div>
+        <div class="rule-list">
+          <div class="rule"><b>Symptom override</b><span>DNS, network, scheduling, provisioning, policy.</span></div>
+          <div class="rule"><b>Namespace expert</b><span>Use registered namespace specialist where ownership is obvious.</span></div>
+          <div class="rule"><b>Class fallback</b><span>Core, critical app, standard app, housekeeping, unknown.</span></div>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h2>6. Agents</h2>
+        <div class="agent-grid">
+          <div class="agent-row"><span class="dot net"></span><span><b>networking-triage-agent</b><br>DNS, ingress, service discovery, network policy.</span></div>
+          <div class="agent-row"><span class="dot sched"></span><span><b>platform-scheduling-agent</b><br>FailedScheduling, capacity, quota, node pressure.</span></div>
+          <div class="agent-row"><span class="dot"></span><span><b>platform-provisioning-agent</b><br>Flux, Helm, KRO, ASO, onboarding workflows.</span></div>
+          <div class="agent-row"><span class="dot sec"></span><span><b>security-hardening-agent</b><br>Policy, admission, image, vulnerability alerts.</span></div>
+          <div class="agent-row"><span class="dot ns"></span><span><b>namespace specialist</b><br>cert-manager, flux-system, app team agents.</span></div>
+          <div class="agent-row"><span class="dot"></span><span><b>app SRE / fallback SRE</b><br>App incidents, unknown owner, human escalation.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer-grid" aria-label="Implementation notes">
+      <div class="note">
+        <h3>Sensors stay simple</h3>
+        <p>Sensors filter by schema, firing state, priority, and coarse lane. They should not parse every event message or own the full routing policy.</p>
+      </div>
+      <div class="note">
+        <h3>Workflow owns delegation</h3>
+        <p>Workflow receives the whole normalized envelope and decides the first specialist using namespace, event type, reason, message, and Vector hints.</p>
+      </div>
+      <div class="note">
+        <h3>Split topics later</h3>
+        <p>Only split Kafka topics when priority traffic is delayed, ownership/ACLs differ, or retention/compliance needs a hard boundary.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

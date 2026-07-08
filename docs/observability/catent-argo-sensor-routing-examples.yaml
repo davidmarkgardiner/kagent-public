@@ -1,0 +1,341 @@
+---
+# Example pattern: one normalized Kafka EventSource, multiple Sensors.
+# This is documentation/reference YAML. Validate against the installed Argo
+# Events version before applying in a real cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: catent-triage-kafka
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: catent-alert-routing
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  kafka:
+    incident-triage-requests:
+      url: "{{CONFLUENT_BOOTSTRAP}}"
+      topic: "incident-triage-requests"
+      consumerGroup:
+        groupName: "catent-triage-router"
+      tls:
+        caCertSecret:
+          name: confluent-public-ca
+          key: ca.pem
+      sasl:
+        mechanism: "PLAIN"
+        userSecret:
+          name: confluent-credentials
+          key: key
+        passwordSecret:
+          name: confluent-credentials
+          key: secret
+      jsonBody: true
+      partition: ""
+      version: "2.5.0"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: catent-p0-platform-critical
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: catent-alert-routing
+    catent.routing/lane: p0-platform-critical
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: platform-critical
+      eventSourceName: catent-triage-kafka
+      eventName: incident-triage-requests
+      filters:
+        data:
+          - path: body.schema_version
+            type: string
+            value: ["observability.triage.v1"]
+          - path: body.alert_status
+            type: string
+            value: ["firing"]
+          - path: body.queue_priority
+            type: string
+            value: ["p0", "p1"]
+          - path: body.route_domain
+            type: string
+            value: ["platform", "security", "network"]
+  triggers:
+    - template:
+        name: critical-platform-triage
+        conditions: "platform-critical"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: catent-platform-critical-
+                namespace: argo-events
+                labels:
+                  catent.routing/lane: p0-platform-critical
+              spec:
+                workflowTemplateRef:
+                  name: critical-platform-triage
+                arguments:
+                  parameters:
+                    - name: triage-payload
+          parameters:
+            - src:
+                dependencyName: platform-critical
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      rateLimit:
+        requestsPerUnit: 30
+        unit: Minute
+      retryStrategy:
+        steps: 5
+        duration: 5s
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: catent-p1-app-critical
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: catent-alert-routing
+    catent.routing/lane: p1-app-critical
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: app-critical
+      eventSourceName: catent-triage-kafka
+      eventName: incident-triage-requests
+      filters:
+        data:
+          - path: body.schema_version
+            type: string
+            value: ["observability.triage.v1"]
+          - path: body.alert_status
+            type: string
+            value: ["firing"]
+          - path: body.queue_priority
+            type: string
+            value: ["p0", "p1"]
+          - path: body.namespace_class
+            type: string
+            value: ["critical-app"]
+  triggers:
+    - template:
+        name: critical-app-triage
+        conditions: "app-critical"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: catent-app-critical-
+                namespace: argo-events
+                labels:
+                  catent.routing/lane: p1-app-critical
+              spec:
+                workflowTemplateRef:
+                  name: critical-app-triage
+                arguments:
+                  parameters:
+                    - name: triage-payload
+          parameters:
+            - src:
+                dependencyName: app-critical
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      rateLimit:
+        requestsPerUnit: 20
+        unit: Minute
+      retryStrategy:
+        steps: 4
+        duration: 10s
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: catent-p2-standard-app
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: catent-alert-routing
+    catent.routing/lane: p2-standard-app
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: standard-app
+      eventSourceName: catent-triage-kafka
+      eventName: incident-triage-requests
+      filters:
+        data:
+          - path: body.schema_version
+            type: string
+            value: ["observability.triage.v1"]
+          - path: body.alert_status
+            type: string
+            value: ["firing"]
+          - path: body.queue_priority
+            type: string
+            value: ["p2"]
+          - path: body.route_domain
+            type: string
+            value: ["application"]
+  triggers:
+    - template:
+        name: standard-app-triage
+        conditions: "standard-app"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: catent-app-standard-
+                namespace: argo-events
+                labels:
+                  catent.routing/lane: p2-standard-app
+              spec:
+                workflowTemplateRef:
+                  name: standard-app-triage
+                arguments:
+                  parameters:
+                    - name: triage-payload
+          parameters:
+            - src:
+                dependencyName: standard-app
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      rateLimit:
+        requestsPerUnit: 10
+        unit: Minute
+      retryStrategy:
+        steps: 3
+        duration: 20s
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: catent-p3-housekeeping
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: catent-alert-routing
+    catent.routing/lane: p3-housekeeping
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: housekeeping
+      eventSourceName: catent-triage-kafka
+      eventName: incident-triage-requests
+      filters:
+        data:
+          - path: body.schema_version
+            type: string
+            value: ["observability.triage.v1"]
+          - path: body.alert_status
+            type: string
+            value: ["firing"]
+          - path: body.namespace_class
+            type: string
+            value: ["housekeeping"]
+  triggers:
+    - template:
+        name: housekeeping-triage
+        conditions: "housekeeping"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: catent-housekeeping-
+                namespace: argo-events
+                labels:
+                  catent.routing/lane: p3-housekeeping
+              spec:
+                workflowTemplateRef:
+                  name: housekeeping-triage
+                arguments:
+                  parameters:
+                    - name: triage-payload
+          parameters:
+            - src:
+                dependencyName: housekeeping
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      rateLimit:
+        requestsPerUnit: 3
+        unit: Minute
+      retryStrategy:
+        steps: 2
+        duration: 30s
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: catent-quarantine-review
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: catent-alert-routing
+    catent.routing/lane: quarantine-review
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: quarantine
+      eventSourceName: catent-triage-kafka
+      eventName: incident-triage-requests
+      filters:
+        data:
+          - path: body.schema_version
+            type: string
+            value: ["observability.triage.v1"]
+          - path: body.workflow_class
+            type: string
+            value: ["quarantine-review"]
+  triggers:
+    - template:
+        name: quarantine-review
+        conditions: "quarantine"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: catent-quarantine-
+                namespace: argo-events
+                labels:
+                  catent.routing/lane: quarantine-review
+              spec:
+                workflowTemplateRef:
+                  name: quarantine-review
+                arguments:
+                  parameters:
+                    - name: triage-payload
+          parameters:
+            - src:
+                dependencyName: quarantine
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      rateLimit:
+        requestsPerUnit: 5
+        unit: Minute
+      retryStrategy:
+        steps: 2
+        duration: 30s
