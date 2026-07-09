@@ -1,0 +1,191 @@
+# AgentgatewayBackends - OpenAI-compatible external model providers
+#
+# DEPLOY ON: cluster where agentgateway runs.
+#
+# Purpose:
+#   kagent -> ModelConfig -> agentgateway -> Kimi / Z.AI GLM / MiniMax
+#
+# This keeps kagent on its standard `provider: OpenAI` ModelConfig while
+# agentgateway owns provider credentials, routing, telemetry, rate limits, and
+# future failover policy. Do not store API keys in this file.
+#
+# Verification status: Kimi was proven through the 2026-07-09 POC path. Z.AI
+# GLM and MiniMax are candidate OpenAI-compatible routes and must pass a
+# low-token route smoke before being used by triage agents.
+#
+# Before apply, create provider auth secrets from a local env file without
+# printing values:
+#
+#   set -a
+#   . /path/to/provider.env
+#   set +a
+#
+#   kubectl -n agentgateway-system create secret generic kimi-api-secret \
+#     --from-literal=Authorization="Bearer ${KIMI_API_KEY}" \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+#   kubectl -n agentgateway-system create secret generic zai-api-secret \
+#     --from-literal=Authorization="Bearer ${ZAI_API_KEY}" \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+#   kubectl -n agentgateway-system create secret generic minimax-api-secret \
+#     --from-literal=Authorization="Bearer ${MINIMAX_API_KEY}" \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+# Replace `parentRefs[0].name` if your Gateway is not `ai-gateway`.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: kimi-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: kimi
+spec:
+  ai:
+    provider:
+      openai:
+        model: kimi-for-coding
+      host: api.kimi.com
+      port: 443
+  policies:
+    auth:
+      secretRef:
+        name: kimi-api-secret
+    http:
+      requestTimeout: 90s
+    tls: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kimi-route
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: kimi
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /kimi/v1
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /coding/v1
+      backendRefs:
+        - name: kimi-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: zai-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: zai
+spec:
+  ai:
+    provider:
+      openai:
+        model: glm-4.6
+      host: api.z.ai
+      port: 443
+  policies:
+    auth:
+      secretRef:
+        name: zai-api-secret
+    http:
+      requestTimeout: 180s
+    tls: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: zai-route
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: zai
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /zai/v1
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /api/paas/v4
+      backendRefs:
+        - name: zai-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: minimax-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: minimax
+spec:
+  ai:
+    provider:
+      openai:
+        model: MiniMax-M2.7
+      host: api.minimax.io
+      port: 443
+  policies:
+    auth:
+      secretRef:
+        name: minimax-api-secret
+    http:
+      requestTimeout: 180s
+    tls: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: minimax-route
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: agentgateway
+    platform.com/provider: minimax
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /minimax/v1
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /v1
+      backendRefs:
+        - name: minimax-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend

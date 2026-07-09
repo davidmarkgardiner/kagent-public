@@ -1,0 +1,68 @@
+# kagent ModelConfigs - OpenAI-compatible external providers via agentgateway
+#
+# DEPLOY ON: cluster where kagent runs.
+#
+# These configs deliberately use `provider: OpenAI`; Kimi, Z.AI GLM, and
+# MiniMax are reached through agentgateway routes that expose OpenAI-compatible
+# `/v1/chat/completions` APIs.
+#
+# The secret below is a client-side placeholder because agentgateway holds the
+# real provider credentials. If your agentgateway enforces a real client key,
+# replace the value out of band.
+#
+#   kubectl -n kagent create secret generic agentgateway-client-key \
+#     --from-literal=api-key="not-required" \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+# Patch a single smoke-test Agent to one of these names first. Avoid changing
+# `default-model-config` until the provider path has passed a low-token smoke.
+#
+# kagent v1alpha2 defines `openAI.temperature` as a string in the ModelConfig
+# CRD, so quoted values such as "0.2" are intentional.
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: agentgateway-kimi
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: kimi-for-coding
+  apiKeySecret: agentgateway-client-key # pragma: allowlist secret
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: http://ai-gateway.agentgateway-system.svc.cluster.local/kimi/v1
+    timeout: 90
+    maxTokens: 2048
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: agentgateway-zai-glm
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: glm-4.6
+  apiKeySecret: agentgateway-client-key # pragma: allowlist secret
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: http://ai-gateway.agentgateway-system.svc.cluster.local/zai/v1
+    timeout: 180
+    temperature: "0.2"
+    maxTokens: 2048
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: agentgateway-minimax
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: MiniMax-M2.7
+  apiKeySecret: agentgateway-client-key # pragma: allowlist secret
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: http://ai-gateway.agentgateway-system.svc.cluster.local/minimax/v1
+    timeout: 180
+    temperature: "0.2"
+    maxTokens: 2048
