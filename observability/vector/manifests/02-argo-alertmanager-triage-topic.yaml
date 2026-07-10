@@ -81,7 +81,7 @@ spec:
               - "firing"
   triggers:
     - template:
-        name: alertmanager-triage
+        name: agentic-triage-tier-two
         conditions: "alertmanager-triage-alert"
         k8s:
           operation: create
@@ -90,23 +90,25 @@ spec:
               apiVersion: argoproj.io/v1alpha1
               kind: Workflow
               metadata:
-                generateName: alert-triage-vector-
-                namespace: argo-events
+                generateName: agentic-triage-tier-two-
+                namespace: argo
                 labels:
                   app.kubernetes.io/part-of: confluent-cloud-pipeline
                   event-type: prometheus-alert
                   event-source: vector
               spec:
                 workflowTemplateRef:
-                  name: alertmanager-triage
+                  name: agentic-triage-tier-two
                 arguments:
                   parameters:
-                    - name: alert-payload
+                    - name: alert_source
+                      value: vector-kafka
+                    - name: alert_payload
           parameters:
             - src:
                 dependencyName: alertmanager-triage-alert
                 dataKey: body.alertmanager
-              dest: spec.arguments.parameters.0.value
+              dest: spec.arguments.parameters.1.value
       rateLimit:
         requestsPerUnit: 5
         unit: Minute

@@ -6,6 +6,7 @@ repo_root="$(cd "$bundle_dir/../.." && pwd)"
 
 required_files=(
   "README.md"
+  "DESIRED-STATE.md"
   "FRONT-SHEET.md"
   "SMOKE-RUNBOOK.md"
   "ALERTMANAGER-EVENT-ROUTING.md"
@@ -15,6 +16,8 @@ required_files=(
   "SCORECARD.md"
   "evidence/EVIDENCE-TEMPLATE.md"
   "evidence/PROXMOX-EVENT-ALERTMANAGER-ROUTING-2026-07-09.md"
+  "evidence/PROXMOX-TIER-TWO-MCP-TRIAGE-2026-07-10.md"
+  "evidence/PROXMOX-TIER-TWO-KAFKA-E2E-2026-07-10.md"
   "examples/k8s/failed-scheduling-smoke-target.yaml"
   "examples/monitoring/agentic-triage-event-routing.yaml"
   "examples/score/proxmox-2026-07-09-smoke-run.json"
@@ -27,6 +30,10 @@ required_files=(
   "examples/alertmanager-payloads/event-failedscheduling.json"
   "examples/alertmanager-payloads/trace-latency.json"
   "examples/monitoring/agentic-triage-smoke-rules.yaml"
+  "examples/kagent/aks-mcp-readonly-values.yaml"
+  "examples/kagent/grafana-mcp-host-validation-values.yaml"
+  "examples/kagent/tier-two-mcp-triage-agent.yaml"
+  "examples/argo/tier-two-mcp-triage-workflow-template.yaml"
   "scripts/score-smoke-run.py"
   "scripts/replay-alert-payload.sh"
 )
@@ -54,6 +61,9 @@ if command -v python3 >/dev/null 2>&1; then
 from pathlib import Path
 root = Path("$bundle_dir")
 needles = [
+    "DS-16",
+    "tier-two-continuous",
+    "7/7",
     "metric-crashloop",
     "log-errorburst",
     "event-failedscheduling",

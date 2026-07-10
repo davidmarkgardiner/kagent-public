@@ -41,7 +41,9 @@ data:
           .namespace = "unknown"
           .object_kind = "Unknown"
           .pod = ""
+          .container = ""
           .service = "unknown"
+          .run_id = ""
           .alert_name = "unknown"
           .reason = "unknown"
           .alert_status = "firing"
@@ -56,8 +58,12 @@ data:
             .alert_name = to_string(.alertmanager.alerts[0].labels.alertname) ?? to_string(.alertmanager.commonLabels.alertname) ?? "AlertmanagerAlert"
             .severity = to_string(.alertmanager.alerts[0].labels.severity) ?? to_string(.alertmanager.commonLabels.severity) ?? "warning"
             .namespace = to_string(.alertmanager.alerts[0].labels.namespace) ?? to_string(.alertmanager.commonLabels.namespace) ?? "unknown"
+            alert_cluster = to_string(.alertmanager.alerts[0].labels.cluster) ?? to_string(.alertmanager.commonLabels.cluster) ?? ""
+            .cluster = if alert_cluster != "" { alert_cluster } else { .cluster }
             .pod = to_string(.alertmanager.alerts[0].labels.pod) ?? ""
-            .service = to_string(.alertmanager.alerts[0].labels.service) ?? to_string(.alertmanager.commonLabels.service) ?? "unknown"
+            .container = to_string(.alertmanager.alerts[0].labels.container) ?? ""
+            .service = to_string(.alertmanager.alerts[0].labels.service) ?? to_string(.alertmanager.alerts[0].labels.service_name) ?? to_string(.alertmanager.commonLabels.service) ?? "unknown"
+            .run_id = to_string(.alertmanager.alerts[0].labels.run_id) ?? ""
             .environment = to_string(.alertmanager.alerts[0].labels.environment) ?? "unknown"
             .object_kind = if .pod != "" { "Pod" } else { "Service" }
             .reason = .alert_name
@@ -67,8 +73,12 @@ data:
             .alert_name = to_string(.alertmanager.alerts[0].labels.alertname) ?? to_string(.alertmanager.commonLabels.alertname) ?? "AlertmanagerAlert"
             .severity = to_string(.alertmanager.alerts[0].labels.severity) ?? to_string(.alertmanager.commonLabels.severity) ?? "warning"
             .namespace = to_string(.alertmanager.alerts[0].labels.namespace) ?? to_string(.alertmanager.commonLabels.namespace) ?? "unknown"
+            alert_cluster = to_string(.alertmanager.alerts[0].labels.cluster) ?? to_string(.alertmanager.commonLabels.cluster) ?? ""
+            .cluster = if alert_cluster != "" { alert_cluster } else { .cluster }
             .pod = to_string(.alertmanager.alerts[0].labels.pod) ?? ""
-            .service = to_string(.alertmanager.alerts[0].labels.service) ?? to_string(.alertmanager.commonLabels.service) ?? "unknown"
+            .container = to_string(.alertmanager.alerts[0].labels.container) ?? ""
+            .service = to_string(.alertmanager.alerts[0].labels.service) ?? to_string(.alertmanager.alerts[0].labels.service_name) ?? to_string(.alertmanager.commonLabels.service) ?? "unknown"
+            .run_id = to_string(.alertmanager.alerts[0].labels.run_id) ?? ""
             .environment = to_string(.alertmanager.alerts[0].labels.environment) ?? "unknown"
             .object_kind = if .pod != "" { "Pod" } else { "Service" }
             .reason = .alert_name
@@ -126,7 +136,8 @@ data:
 
           service_for_key = if .service == "" { "unknown" } else { .service }
           .route_key = join!([.route_domain, .environment, .namespace, service_for_key, .severity, .target_agent], ".")
-          .dedupe_key = join!([.cluster, .namespace, service_for_key, .alert_name], ":")
+          run_for_key = if .run_id == "" { "no-run-id" } else { .run_id }
+          .dedupe_key = join!([.cluster, .namespace, service_for_key, .alert_name, run_for_key], ":")
 
       accepted_events:
         type: filter

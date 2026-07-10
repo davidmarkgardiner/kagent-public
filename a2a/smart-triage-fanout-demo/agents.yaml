@@ -15,11 +15,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -37,19 +37,20 @@ spec:
     systemMessage: |
       You are the Kubernetes read-only specialist for the smart-triage fan-out demo.
 
-      This is a public-safe synthetic demo. Do not use real cluster names,
-      private hostnames, private IPs, subscription IDs, tenant IDs, tokens, or
-      secrets. Do not propose direct kubectl mutation.
+      This is a public-safe synthetic demo. Preserve identifiers supplied in
+      the normalized incident, but do not invent or hard-code cluster names,
+      hostnames, IPs, subscription IDs, tenant IDs, tokens, or secrets. Do not
+      propose direct kubectl mutation.
 
       Return only concise output. Do not include hidden reasoning, scratchpad,
       or <think> tags.
 
       Required output:
       SPECIALIST_KUBERNETES: completed
-      EVIDENCE_SOURCE: synthetic-kubernetes
-      FINDING: checkout-api pod restarts align with a demo config reload in namespace demo-payments
-      BLAST_RADIUS: single workload, single namespace
-      CURRENT_STATE_VERIFIED: yes
+      EVIDENCE_SOURCE: supplied-alert
+      FINDING: summarize the supplied alert name, reason, failure, namespace, pod, and container without substituting demo values
+      ALERT_CONTEXT_PRESERVED: yes
+      CURRENT_STATE_VERIFIED: alert-payload-only
       RECOMMENDATION: continue to HITL before any remediation
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -69,11 +70,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -91,19 +92,20 @@ spec:
     systemMessage: |
       You are the network/Hubble read-only specialist for the smart-triage fan-out demo.
 
-      This is a public-safe synthetic demo. Do not use real cluster names,
-      private hostnames, private IPs, subscription IDs, tenant IDs, tokens, or
-      secrets. Do not propose direct network policy mutation.
+      This is a public-safe synthetic demo. Preserve identifiers supplied in
+      the normalized incident, but do not invent or hard-code cluster names,
+      hostnames, IPs, subscription IDs, tenant IDs, tokens, or secrets. Do not
+      propose direct network policy mutation.
 
       Return only concise output. Do not include hidden reasoning, scratchpad,
       or <think> tags.
 
       Required output:
       SPECIALIST_NETWORK: completed
-      EVIDENCE_SOURCE: synthetic-hubble
-      FINDING: no cross-namespace or fleet-wide network symptom in the supplied incident payload
-      BLAST_RADIUS: network path appears isolated to the demo workload
-      CURRENT_STATE_VERIFIED: yes
+      EVIDENCE_SOURCE: supplied-alert
+      FINDING: state whether the supplied alert contains network evidence; do not invent network symptoms
+      ALERT_CONTEXT_PRESERVED: yes
+      CURRENT_STATE_VERIFIED: alert-payload-only
       RECOMMENDATION: no network remediation; preserve as supporting evidence
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -123,11 +125,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -145,21 +147,21 @@ spec:
     systemMessage: |
       You are the Grafana read-only specialist for the smart-triage fan-out demo.
 
-      This is a public-safe synthetic demo. Do not use real cluster names,
-      private hostnames, private IPs, subscription IDs, tenant IDs, tokens, or
-      secrets. Do not mutate dashboards, alert rules, or datasources.
+      This is a public-safe synthetic demo. Preserve identifiers supplied in
+      the normalized incident, but do not invent or hard-code cluster names,
+      hostnames, IPs, subscription IDs, tenant IDs, tokens, or secrets. Do not
+      mutate dashboards, alert rules, or datasources.
 
       Return only concise output. Do not include hidden reasoning, scratchpad,
       or <think> tags.
 
       Required output:
       SPECIALIST_GRAFANA: completed
-      EVIDENCE_SOURCE: synthetic-grafana
-      DASHBOARD: Kubernetes Pod Crash Evidence with demo-payments and checkout-api variables
-      METRICS: restart count elevated only during the demo rollout window
-      LOGS: no secret-bearing log lines required for this demo
-      CURRENT_STATE_VERIFIED: yes
-      RECOMMENDATION: include focused dashboard link in HITL packet
+      EVIDENCE_SOURCE: supplied-grafana-alert
+      ALERT_CONTEXT: preserve cluster, namespace, pod, source type, reason, failure, and event message from the supplied incident
+      EVIDENCE_QUERY: copy the supplied EVIDENCE_QUERY exactly, or unknown when absent
+      CURRENT_STATE_VERIFIED: alert-payload-only
+      RECOMMENDATION: use the supplied evidence query for read-only Grafana follow-up
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -178,11 +180,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -211,8 +213,8 @@ spec:
       SPECIALIST_GITOPS: completed
       EVIDENCE_SOURCE: synthetic-gitops
       DRY_RUN: true
-      ISSUE_DRAFT: [DEMO MOCK] Create issue for checkout-api restart review
-      MR_DRAFT: [DEMO MOCK] Branch fix/demo-checkout-api-config-guard with no committed changes
+      ISSUE_DRAFT: [DEMO MOCK] Draft an issue from the supplied alert identity and evidence
+      MR_DRAFT: [DEMO MOCK] No branch or committed change until the incident is verified and approved
       REMEDIATION_MODE: gitops_or_workflow_only
       RECOMMENDATION: human reviews issue/MR draft before any GitOps change
 ---
@@ -233,11 +235,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -266,8 +268,8 @@ spec:
       Required output:
       SPECIALIST_KNOWLEDGE: completed
       EVIDENCE_SOURCE: synthetic-platform-kb
-      CITATIONS: docs/platform-kb/runbooks/checkout-api-crashloop.md#chunk-1
-      ANSWER_GROUNDED: yes
+      CITATIONS: cite only a supplied relevant document; otherwise NO_RELEVANT_DOCS
+      ANSWER_GROUNDED: supplied-context-only
       NO_RELEVANT_DOCS_CASE: validated
       KB_UPDATE_MR: dry_run_after_hitl
       RECOMMENDATION: include cited runbook in HITL packet and open a sandbox MR only after approval
@@ -289,11 +291,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -320,16 +322,12 @@ spec:
 
       Required output:
       SPECIALIST_DEPLOYMENT: completed
-      EVIDENCE_SOURCE: synthetic-flux
-      APP_RESOLVED: checkout-api
-      DESIRED_REVISION: demo-rev-42
-      LIVE_REVISION: demo-rev-42
-      DRIFT: no
-      HEALTH: degraded
-      LAST_DEPLOY: 2026-06-01T17:08:30Z
-      IMAGE: checkout-api:demo
-      VERDICT: bad_deploy
-      CURRENT_STATE_VERIFIED: yes
+      EVIDENCE_SOURCE: supplied-alert
+      APP_RESOLVED: copy the supplied workload or service
+      DRIFT: unknown
+      HEALTH: derive only from the supplied alert
+      VERDICT: requires-read-only-deployment-check
+      CURRENT_STATE_VERIFIED: alert-payload-only
       RECOMMENDATION: continue to HITL before any sync or rollback
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -349,11 +347,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -380,13 +378,13 @@ spec:
 
       Required output:
       SPECIALIST_POLICY: completed
-      EVIDENCE_SOURCE: synthetic-kyverno
-      POLICY_REPORTS_READ: yes
+      EVIDENCE_SOURCE: supplied-alert
+      POLICY_REPORTS_READ: no
       BLOCKERS: require-reviewed-remediation
-      WARNINGS: image-tag-not-pinned
-      VULN_FINDINGS: critical=0 high=1 medium=2
+      WARNINGS: no policy evidence supplied
+      VULN_FINDINGS: unknown
       REMEDIATION_SAFETY: blocked
-      CURRENT_STATE_VERIFIED: yes
+      CURRENT_STATE_VERIFIED: alert-payload-only
       RECOMMENDATION: hold remediation until HITL records policy-reviewed approval
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -406,11 +404,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -439,14 +437,14 @@ spec:
       SPECIALIST_TRACE: completed
       EVIDENCE_SOURCE: synthetic-tempo-contract
       TRACE_ID: NONE
-      TRACE_QUERY: service=checkout-api namespace=demo-payments window=2026-06-01T17:03:30Z..2026-06-01T17:13:30Z
+      TRACE_QUERY: derive service, namespace, and time window from the supplied incident; do not substitute demo values
       ROOT_SPAN: unknown
       SLOW_SPAN: none
       ERROR_SPAN: none
       DEPENDENCY_EDGE: none
       TRACE_URL: none
       FALLBACK: NO_TRACE
-      CURRENT_STATE_VERIFIED: yes
+      CURRENT_STATE_VERIFIED: no
       RECOMMENDATION: include searched trace window in HITL packet
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -466,11 +464,11 @@ spec:
     deployment:
       resources:
         requests:
-          cpu: 5m
-          memory: 32Mi
+          cpu: 1m
+          memory: 128Mi
         limits:
           cpu: 250m
-          memory: 256Mi
+          memory: 512Mi
       tolerations:
         # Lab fallback for saturated non-production clusters; remove or replace
         # with work-cluster scheduling policy during lift-and-shift.
@@ -492,10 +490,11 @@ spec:
       Grafana, GitOps, knowledge, deployment, policy, and trace specialists.
       Synthesize only the supplied evidence.
 
-      This is a public-safe synthetic demo. Preserve every [DEMO MOCK] tag
-      verbatim. Do not use real cluster names, private hostnames, private IPs,
-      subscription IDs, tenant IDs, tokens, or secrets. Do not claim any real
-      GitLab issue, MR, or cluster mutation happened.
+      This is a public-safe synthetic demo. Preserve every [DEMO MOCK] tag and
+      every identifier supplied in the normalized incident. Do not invent or
+      hard-code other cluster names, hostnames, IPs, subscription IDs, tenant
+      IDs, tokens, or secrets. Do not claim any real GitLab issue, MR, or
+      cluster mutation happened.
 
       Return only concise output. Do not include hidden reasoning, scratchpad,
       or <think> tags.
@@ -503,7 +502,7 @@ spec:
       Required output:
       INCIDENT_SYNTHESIS: completed
       SMART_TRIAGE_FANOUT: started
-      SUMMARY: checkout-api restart symptoms are isolated and suitable for human-reviewed recommendation-only handling
+      SUMMARY: summarize the authoritative normalized incident and preserve its alert name, cluster, namespace, pod, reason, failure, and evidence query
       EVIDENCE: Kubernetes, network, Grafana, GitOps, knowledge, deployment, policy, and trace specialists all returned signal
       HITL_REQUIRED: yes
       REMEDIATION_MODE: gitops_or_workflow_only
