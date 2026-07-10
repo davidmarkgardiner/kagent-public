@@ -11,6 +11,9 @@ rules:
   resources: ["pods", "services", "endpoints", "nodes", "namespaces", "events"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]
+- apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get", "list", "watch"]
 {{- if .Values.rbac.includeSecrets }}
@@ -36,12 +39,11 @@ rules:
 - apiGroups: ["metrics.k8s.io"]
   resources: ["pods", "nodes"]
   verbs: ["get", "list"]
-# Inspektor Gadget permissions
+{{- if or (eq .Values.app.accessLevel "readwrite") (eq .Values.app.accessLevel "admin") }}
+# Additional write permissions for readwrite and admin access levels
 - apiGroups: [""]
   resources: ["pods/portforward"]
   verbs: ["create"]
-{{- if or (eq .Values.app.accessLevel "readwrite") (eq .Values.app.accessLevel "admin") }}
-# Additional write permissions for readwrite and admin access levels
 - apiGroups: [""]
   resources: ["pods", "services", "endpoints", "persistentvolumeclaims"]
   verbs: ["create", "update", "patch", "delete"]

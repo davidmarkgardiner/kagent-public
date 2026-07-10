@@ -52,6 +52,8 @@ spec:
         value: "http://smart-triage-trace-specialist.kagent:8080/"
       - name: commander_url
         value: "http://smart-triage-incident-commander.kagent:8080/"
+      - name: tier_two_url
+        value: "http://agentic-triage-tier-two-poc.kagent:8080/"
       - name: scenario
         value: "CrashLoopBackOff for deployment checkout-api in namespace demo-payments after a demo config rollout"
       - name: fingerprint
@@ -81,8 +83,7 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: Kubernetes.
                     Return the required Kubernetes evidence marker exactly.
           - name: fanout-network
@@ -100,8 +101,7 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: network/Hubble.
                     Return the required network evidence marker exactly.
           - name: fanout-grafana
@@ -119,8 +119,7 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: Grafana evidence.
                     Return the required Grafana evidence marker exactly.
           - name: fanout-gitops
@@ -138,8 +137,7 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: GitOps dry-run.
                     Return the required GitOps dry-run marker exactly.
                     Do not claim any real issue, MR, branch, commit, or cluster mutation happened.
@@ -158,8 +156,7 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: knowledge/runbook retrieval.
                     Return the required citation and knowledge evidence marker exactly.
                     Do not claim that a real repository or MR was updated.
@@ -178,8 +175,7 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: deployment state.
                     Return the required deployment-state marker exactly.
                     Read only. Do not propose sync, rollback, restart, patch, apply, or delete.
@@ -198,8 +194,7 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: policy and security context.
                     Return the required policy/security marker exactly.
                     Read only. Do not mutate policies, admission rules, images, or workloads.
@@ -218,11 +213,18 @@ spec:
                 - name: prompt
                   value: |
                     {{tasks.normalize-incident.outputs.parameters.normalized}}
-                    Scenario: {{workflow.parameters.scenario}}
-                    Fingerprint: {{workflow.parameters.fingerprint}}
+                    The normalized incident above is authoritative. Do not substitute demo defaults.
                     Specialist: trace context.
                     Return the required trace marker exactly.
                     This public repo has no live app trace backend; use the explicit fallback contract if needed.
+          - name: fanout-tier-two
+            template: call-tier-two
+            dependencies: [normalize-incident]
+            when: "{{tasks.normalize-incident.outputs.parameters.duplicate}} == false"
+            arguments:
+              parameters:
+                - name: normalized_incident
+                  value: "{{tasks.normalize-incident.outputs.parameters.normalized}}"
           - name: synthesize-incident
             template: call-commander
             when: "{{tasks.normalize-incident.outputs.parameters.duplicate}} == false"
@@ -235,6 +237,7 @@ spec:
               - fanout-deployment
               - fanout-policy
               - fanout-trace
+              - fanout-tier-two
             arguments:
               parameters:
                 - name: normalized_incident
@@ -255,6 +258,8 @@ spec:
                   value: "{{tasks.fanout-policy.outputs.parameters.response}}"
                 - name: trace_output
                   value: "{{tasks.fanout-trace.outputs.parameters.response}}"
+                - name: tier_two_output
+                  value: "{{tasks.fanout-tier-two.outputs.parameters.response}}"
           - name: wait-for-human-review
             template: human-review
             when: "{{tasks.normalize-incident.outputs.parameters.duplicate}} == false"
@@ -287,6 +292,8 @@ spec:
                   value: "{{tasks.fanout-policy.outputs.parameters.response}}"
                 - name: trace_output
                   value: "{{tasks.fanout-trace.outputs.parameters.response}}"
+                - name: tier_two_output
+                  value: "{{tasks.fanout-tier-two.outputs.parameters.response}}"
                 - name: synthesis_output
                   value: "{{tasks.synthesize-incident.outputs.parameters.response}}"
           - name: evaluate-lifecycle
@@ -362,7 +369,7 @@ spec:
           echo "false" > /tmp/duplicate.txt
           alert_count="$(jq '.alerts // [] | length' /tmp/alert-payload.json 2>/dev/null || echo 0)"
           if [ "$alert_count" -gt 0 ]; then
-            fingerprint="$(jq -r '.alerts[0].fingerprint // "{{workflow.parameters.fingerprint}}"' /tmp/alert-payload.json)"
+            fingerprint="$(jq -r '((.alerts | map(select(.status == "firing")) | .[0]) // .alerts[0]).fingerprint // "{{workflow.parameters.fingerprint}}"' /tmp/alert-payload.json)"
             dedup_key="$(printf '%s:%s' "{{workflow.parameters.alert_source}}" "$fingerprint" | sha256sum | awk '{print substr($1,1,16)}')"
             dedup_name="smart-triage-alert-${dedup_key}"
 
@@ -415,7 +422,7 @@ spec:
             fi
 
             jq -r --arg source "{{workflow.parameters.alert_source}}" --arg duplicate "$duplicate_label" '
-              .alerts[0] as $a |
+              ((.alerts | map(select(.status == "firing")) | .[0]) // .alerts[0]) as $a |
               [
                 "SMART_TRIAGE_FANOUT: started",
                 "ALERT_INGESTED: yes",
@@ -423,16 +430,24 @@ spec:
                 "INCIDENT_NORMALIZED: yes",
                 "ALERT_DUPLICATE: " + $duplicate,
                 "ALERT_NAME: " + ($a.labels.alertname // "unknown"),
-                "ALERT_STATUS: " + (.status // $a.status // "unknown"),
+                "ALERT_STATUS: " + ($a.status // .status // "unknown"),
                 "SEVERITY: " + ($a.labels.severity // "unknown"),
+                "SOURCE_TYPE: " + ($a.labels.source_type // "unknown"),
                 "CLUSTER: " + ($a.labels.cluster // "unknown"),
                 "ENVIRONMENT: " + ($a.labels.environment // $a.labels.env // "unknown"),
                 "NAMESPACE: " + ($a.labels.namespace // "unknown"),
                 "WORKLOAD: " + ($a.labels.workload // $a.labels.deployment // $a.labels.app // "unknown"),
                 "POD: " + ($a.labels.pod // "unknown"),
                 "CONTAINER: " + ($a.labels.container // "unknown"),
-                "SERVICE: " + ($a.labels.service // "unknown"),
-                "NODE: " + ($a.labels.node // "unknown"),
+                "SERVICE: " + ($a.labels.service_name // $a.labels.service // "unknown"),
+                "NODE: " + ($a.labels.node_name // $a.labels.node // "unknown"),
+                "EVENT_TYPE: " + ($a.labels.event_type // "unknown"),
+                "EVENT_REASON: " + ($a.labels.event_reason // $a.annotations.event_reason // "unknown"),
+                "LOG_REASON: " + ($a.labels.reason // $a.annotations.log_reason // "unknown"),
+                "FAILURE: " + ($a.labels.failure // $a.annotations.failure // "unknown"),
+                "EVENT_MESSAGE: " + ($a.annotations.event_message // $a.labels.event_message // "unknown"),
+                "EVIDENCE_QUERY: " + ($a.annotations.evidence_query // "unknown"),
+                "RUN_ID: " + ($a.labels.run_id // "unknown"),
                 "STARTS_AT: " + ($a.startsAt // "unknown"),
                 "ENDS_AT: " + ($a.endsAt // "unknown"),
                 "RUNBOOK_URL: " + ($a.annotations.runbook_url // "unknown"),
@@ -531,6 +546,110 @@ spec:
             echo "SPECIALIST_CONTRACT_FAILED: reasoning tag leaked" >&2
             exit 1
           fi
+    - name: call-tier-two
+      inputs:
+        parameters:
+          - name: normalized_incident
+      outputs:
+        parameters:
+          - name: response
+            valueFrom:
+              path: /tmp/agent_response.sanitized.txt
+          - name: task-id
+            valueFrom:
+              path: /tmp/task_id.txt
+          - name: transport
+            valueFrom:
+              path: /tmp/transport.txt
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl jq coreutils >/dev/null
+
+          context_id="$(cat /proc/sys/kernel/random/uuid)"
+
+          cat > /tmp/prompt.txt <<'PROMPT'
+          Investigate this alert using the required Grafana MCP and AKS MCP
+          reads. Use ALERT_QUERY_START and ALERT_QUERY_END as the exact Loki
+          window; do not use STARTS_AT as the query start. The normalized alert
+          metadata below is authoritative. It does
+          not contain the underlying log lines, Kubernetes event output, exit
+          code, restart count, image details, or root cause.
+
+          {{inputs.parameters.normalized_incident}}
+          PROMPT
+          printf '\nALERT_QUERY_START: %s\nALERT_QUERY_END: %s\n' \
+            "$(date -u -d '15 minutes ago' +%Y-%m-%dT%H:%M:%SZ)" \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> /tmp/prompt.txt
+
+          jq -n \
+            --arg id "tier-two-{{workflow.name}}" \
+            --arg message_id "msg-tier-two-{{workflow.name}}" \
+            --arg context_id "$context_id" \
+            --arg text "$(cat /tmp/prompt.txt)" \
+            '{
+              jsonrpc: "2.0",
+              id: $id,
+              method: "message/send",
+              params: {
+                message: {
+                  messageId: $message_id,
+                  contextId: $context_id,
+                  role: "user",
+                  parts: [{kind: "text", text: $text}]
+                }
+              }
+            }' > /tmp/request.json
+
+          http_code="$(curl -sS -m 240 -w '%{http_code}' \
+            -X POST "{{workflow.parameters.tier_two_url}}" \
+            -H 'Content-Type: application/json' \
+            -d @/tmp/request.json \
+            -o /tmp/a2a-response.json || true)"
+
+          if [ "$http_code" = "200" ] && jq -e '.result' /tmp/a2a-response.json >/dev/null 2>&1; then
+            jq '.result' /tmp/a2a-response.json > /tmp/task.json
+            echo direct > /tmp/transport.txt
+          else
+            echo controller-poll > /tmp/transport.txt
+            attempt=0
+            while [ "$attempt" -lt 48 ]; do
+              attempt=$((attempt + 1))
+              if curl -fsS -m 10 \
+                "http://kagent-controller.kagent:8083/api/sessions/${context_id}/tasks?user_id=A2A_USER_${context_id}" \
+                -o /tmp/task-response.json && \
+                jq -e '(.data | length) > 0 and ((.data[-1].status.state == "completed") or (.data[-1].status.state == "failed"))' \
+                  /tmp/task-response.json >/dev/null 2>&1; then
+                jq '.data[-1]' /tmp/task-response.json > /tmp/task.json
+                break
+              fi
+              sleep 5
+            done
+          fi
+
+          test -s /tmp/task.json
+          jq -r '.id' /tmp/task.json > /tmp/task_id.txt
+          jq -r '.status.state // "unknown"' /tmp/task.json > /tmp/state.txt
+          jq -r '
+            if (.artifacts // [] | length) > 0 then
+              [.artifacts[]?.parts[]? | select(.kind == "text") | .text] | join("\n")
+            else
+              [.status.message.parts[]? | select(.kind == "text") | .text] | join("\n")
+            end
+          ' /tmp/task.json > /tmp/agent_response.txt
+          awk 'BEGIN{skip=0} /<think>/{skip=1; next} /<\/think>/{skip=0; next} skip==0{print}' \
+            /tmp/agent_response.txt | sed 's/[*`]//g' > /tmp/agent_response.sanitized.txt
+
+          echo "TIER_TWO_TASK_ID: $(cat /tmp/task_id.txt)"
+          echo "TIER_TWO_TRANSPORT: $(cat /tmp/transport.txt)"
+          echo "TIER_TWO_STATE: $(cat /tmp/state.txt)"
+          cat /tmp/agent_response.sanitized.txt
+
+          test "$(cat /tmp/state.txt)" = "completed"
+          grep -Fq 'TIER_TWO_MCP_TRIAGE: completed' /tmp/agent_response.sanitized.txt
+          grep -Fq 'MUTATION_PERFORMED: no' /tmp/agent_response.sanitized.txt
     - name: call-commander
       inputs:
         parameters:
@@ -543,6 +662,7 @@ spec:
           - name: deployment_output
           - name: policy_output
           - name: trace_output
+          - name: tier_two_output
       outputs:
         parameters:
           - name: response
@@ -558,8 +678,7 @@ spec:
           cat > /tmp/prompt.txt <<'PROMPT'
           SMART_TRIAGE_FANOUT: started
           {{inputs.parameters.normalized_incident}}
-          Scenario: {{workflow.parameters.scenario}}
-          Fingerprint: {{workflow.parameters.fingerprint}}
+          The normalized incident above is authoritative. Do not substitute demo defaults.
 
           ## EVIDENCE FROM smart-triage-kubernetes-specialist
           {{inputs.parameters.kubernetes_output}}
@@ -584,6 +703,9 @@ spec:
 
           ## EVIDENCE FROM smart-triage-trace-specialist
           {{inputs.parameters.trace_output}}
+
+          ## EVIDENCE FROM agentic-triage-tier-two-poc
+          {{inputs.parameters.tier_two_output}}
 
           Synthesize this incident. Return the required INCIDENT_SYNTHESIS,
           REMEDIATION_MODE, and OUTPUT_SANITIZED markers exactly.
@@ -655,6 +777,7 @@ spec:
           - name: deployment_output
           - name: policy_output
           - name: trace_output
+          - name: tier_two_output
           - name: synthesis_output
       outputs:
         parameters:
@@ -679,6 +802,7 @@ spec:
           {{inputs.parameters.deployment_output}}
           {{inputs.parameters.policy_output}}
           {{inputs.parameters.trace_output}}
+          {{inputs.parameters.tier_two_output}}
           {{inputs.parameters.synthesis_output}}
           OUTPUTS
 
@@ -693,14 +817,15 @@ spec:
           grep -Fq "INCIDENT_SYNTHESIS: completed" /tmp/all.txt
           grep -Fq "REMEDIATION_MODE: gitops_or_workflow_only" /tmp/all.txt
           grep -Fq "OUTPUT_SANITIZED: yes" /tmp/all.txt
-          grep -Fq "CITATIONS: docs/platform-kb/runbooks/checkout-api-crashloop.md#chunk-1" /tmp/all.txt
-          grep -Fq "VERDICT: bad_deploy" /tmp/all.txt
+          grep -Eq "CITATIONS:|NO_RELEVANT_DOCS" /tmp/all.txt
+          grep -Fq "VERDICT:" /tmp/all.txt
           grep -Fq "REMEDIATION_SAFETY: blocked" /tmp/all.txt
           grep -Fq "FALLBACK: NO_TRACE" /tmp/all.txt
 
           cat > /tmp/markers.txt <<'MARKERS'
           SMART_TRIAGE_FANOUT: started
-          Scenario: checkout-api in demo-payments entered CrashLoopBackOff after a config rollout changed an environment variable.
+          INCIDENT_CONTEXT_SOURCE: normalized_alert_payload
+          ALERT_CONTEXT_PRESERVED: yes
           SPECIALIST_KUBERNETES: completed
           SPECIALIST_NETWORK: completed
           SPECIALIST_GRAFANA: completed
@@ -709,9 +834,9 @@ spec:
           SPECIALIST_DEPLOYMENT: completed
           SPECIALIST_POLICY: completed
           SPECIALIST_TRACE: completed
-          CITATIONS: docs/platform-kb/runbooks/checkout-api-crashloop.md#chunk-1
+          KNOWLEDGE_RESULT: citation_or_no_relevant_docs_recorded
           KNOWLEDGE_NO_RELEVANT_DOCS_CASE: validated
-          DEPLOYMENT_VERDICT: bad_deploy
+          DEPLOYMENT_VERDICT: recorded_from_specialist
           POLICY_REMEDIATION_SAFETY: blocked
           TRACE_FALLBACK: NO_TRACE
           INCIDENT_SYNTHESIS: completed
