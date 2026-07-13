@@ -1,0 +1,2 @@
+{"source_type":"pod-log","cluster":"{{CLUSTER_NAME}}","environment":"lab","namespace":"payments","service":"checkout-api","pod":"checkout-api-abc","container":"checkout-api","message":"ERROR database authentication failed password=placeholder-credential"}
+{"source_type":"kubernetes-event","cluster":"{{CLUSTER_NAME}}","environment":"lab","namespace":"payments","service":"checkout-api","pod":"checkout-api-abc","container":"checkout-api","event_reason":"BackOff","message":"Back-off restarting failed container checkout-api"}

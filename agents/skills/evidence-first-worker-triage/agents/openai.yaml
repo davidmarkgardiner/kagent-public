@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evidence-First Worker Triage"
+  short_description: "Replicate safe worker evidence triage"
+  default_prompt: "Use $evidence-first-worker-triage to prepare and validate a guarded worker-to-management evidence triage pilot."

@@ -1,0 +1,117 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: telemetry-triage-kafka
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  kafka:
+    incident-triage-requests:
+      url: "{{KAFKA_BOOTSTRAP}}"
+      topic: incident-triage-requests
+      consumerGroup:
+        groupName: "{{INCIDENT_TRIAGE_CONSUMER_GROUP}}"
+      tls:
+        caCertSecret:
+          name: kafka-public-ca
+          key: ca.pem
+      sasl:
+        mechanism: PLAIN
+        userSecret:
+          name: kafka-credentials
+          key: username
+        passwordSecret:
+          name: kafka-credentials
+          key: password
+      jsonBody: true
+      version: "2.5.0"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: telemetry-triage
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: enriched-incident
+      eventSourceName: telemetry-triage-kafka
+      eventName: incident-triage-requests
+      filters:
+        data:
+          - path: body.schema_version
+            type: string
+            value: ["observability.triage.v2"]
+          - path: body.automation_allowed
+            type: bool
+            value: ["false"]
+  triggers:
+    - template:
+        name: evidence-package-verification
+        conditions: enriched-incident
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: telemetry-triage-
+                namespace: argo-events
+                labels:
+                  app.kubernetes.io/part-of: alloy-vector-kafka-triage
+                  event-source: alloy-vector-kafka
+              spec:
+                workflowTemplateRef:
+                  name: evidence-package-verification
+                arguments:
+                  parameters:
+                    - name: incident
+          parameters:
+            - src:
+                dependencyName: enriched-incident
+                dataKey: body
+              dest: spec.arguments.parameters.0.value
+      rateLimit:
+        requestsPerUnit: 5
+        unit: Minute
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: evidence-package-verification
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+spec:
+  entrypoint: verify
+  arguments:
+    parameters:
+      - name: incident
+  templates:
+    - name: verify
+      script:
+        image: badouralix/curl-jq:alpine
+        command: [sh]
+        source: |
+          set -eu
+          cat > /tmp/incident.json <<'EOF'
+          {{workflow.parameters.incident}}
+          EOF
+          jq -e '
+            .schema_version == "observability.triage.v2" and
+            .automation_allowed == false and
+            (.cluster | length > 0) and
+            (.namespace | length > 0) and
+            (.evidence.representative_log_lines | length > 0) and
+            (.evidence.event_summary | length > 0)
+          ' /tmp/incident.json
+          echo "EVIDENCE_PACKAGE_VERIFIED"

@@ -61,6 +61,8 @@ examples/           Quickstart and sample payloads
 | Explain the Kagent platform value story to stakeholders | [`WORK-KAGENT-VALUE-STORY-ONE-PAGER.md`](WORK-KAGENT-VALUE-STORY-ONE-PAGER.md) |
 | Present the Kagent v2 stakeholder demo | [`WORK-STAKEHOLDER-DEMO-RUNBOOK.html`](WORK-STAKEHOLDER-DEMO-RUNBOOK.html) |
 | Compare worker-local vs management-cluster triage (blast-radius briefing) | [`WORK-KAGENT-TRIAGE-DEPLOYMENT-MODELS.html`](WORK-KAGENT-TRIAGE-DEPLOYMENT-MODELS.html) |
+| Review the evidence-first worker-to-management triage decision | [`WORK-WORKER-TO-MANAGEMENT-EVIDENCE-TRIAGE.html`](WORK-WORKER-TO-MANAGEMENT-EVIDENCE-TRIAGE.html) |
+| Ask Fable to critique the future office replication design | [`docs/observability/FABLE-WORKER-TO-MANAGEMENT-TRIAGE-CRITIQUE-PROMPT.md`](docs/observability/FABLE-WORKER-TO-MANAGEMENT-TRIAGE-CRITIQUE-PROMPT.md) |
 | Start the Kagent triage v2 handoff | [`WORK-KAGENT-TRIAGE-V2-FRONT-SHEET.md`](WORK-KAGENT-TRIAGE-V2-FRONT-SHEET.md) |
 | Hand a start prompt to the work agent | [`WORK-KAGENT-TRIAGE-V2-WORK-AGENT-START-PROMPT.md`](WORK-KAGENT-TRIAGE-V2-WORK-AGENT-START-PROMPT.md) |
 | Run the local handoff verifier | [`scripts/verify-kagent-triage-v2-handoff.sh`](scripts/verify-kagent-triage-v2-handoff.sh) |

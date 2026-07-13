@@ -1,0 +1,117 @@
+---
+# Apply this ConfigMap content through the red-cluster Alloy release overlay.
+# It deliberately has no cluster-specific endpoint or credential values.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-vector-triage-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+data:
+  config.alloy: |
+    // This is an additive proof configuration. Merge its components into the
+    // managed Alloy configuration; do not deploy a second DaemonSet.
+    discovery.kubernetes "triage_pods" {
+      role = "pod"
+    }
+
+    discovery.relabel "triage_pod_logs" {
+      targets = discovery.kubernetes.triage_pods.targets
+
+      rule { source_labels = ["__meta_kubernetes_namespace"]; target_label = "namespace" }
+      rule { source_labels = ["__meta_kubernetes_pod_name"]; target_label = "pod" }
+      rule { source_labels = ["__meta_kubernetes_pod_container_name"]; target_label = "container" }
+      rule { source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]; target_label = "service" }
+    }
+
+    loki.source.kubernetes "triage_pod_logs" {
+      targets    = discovery.relabel.triage_pod_logs.output
+      forward_to = [loki.process.triage_pod_logs.receiver]
+    }
+
+    loki.source.kubernetes_events "triage_events" {
+      namespaces  = []
+      job_name    = "kubernetes-events"
+      log_format  = "json"
+      forward_to  = [loki.process.triage_events.receiver]
+    }
+
+    // Core proof path: export both sources to Vector. A Loki mirror is
+    // intentionally not a dependency here, because Grafana/Loki may be down
+    // while the red-cluster triage path is still required.
+    loki.process "triage_pod_logs" {
+      stage.static_labels {
+        values = {
+          cluster     = sys.env("CLUSTER_NAME"),
+          environment = sys.env("ENVIRONMENT"),
+          source_type = "pod-log",
+        }
+      }
+      forward_to = [
+        otelcol.receiver.loki.vector_triage.receiver,
+      ]
+    }
+
+    loki.process "triage_events" {
+      stage.json {
+        expressions = {
+          event_reason = "reason",
+          event_type   = "type",
+          obj_kind     = "involvedObject.kind",
+          namespace    = "involvedObject.namespace",
+          pod          = "involvedObject.name",
+        }
+      }
+      stage.labels {
+        values = {
+          event_reason = "",
+          event_type   = "",
+        }
+      }
+      stage.static_labels {
+        values = {
+          cluster     = sys.env("CLUSTER_NAME"),
+          environment = sys.env("ENVIRONMENT"),
+          source_type = "kubernetes-event",
+        }
+      }
+      forward_to = [
+        otelcol.receiver.loki.vector_triage.receiver,
+      ]
+    }
+
+    otelcol.receiver.loki "vector_triage" {
+      output {
+        logs = [otelcol.processor.batch.vector_triage.input]
+      }
+    }
+
+    otelcol.processor.batch "vector_triage" {
+      timeout             = "2s"
+      send_batch_size     = 100
+      send_batch_max_size = 200
+      output {
+        logs = [otelcol.exporter.otlphttp.vector_triage.input]
+      }
+    }
+
+    otelcol.exporter.otlphttp "vector_triage" {
+      client {
+        // The proof manifest uses in-cluster HTTP. The red-cluster overlay
+        // must enforce a NetworkPolicy; switch to a mesh or TLS endpoint when
+        // that trust boundary is available.
+        endpoint = "http://vector-triage.argo-events.svc:4318"
+      }
+      sending_queue {
+        enabled = true
+        queue_size = 1000
+      }
+      retry_on_failure {
+        enabled          = true
+        initial_interval = "1s"
+        max_interval     = "30s"
+        max_elapsed_time = "5m"
+      }
+    }

@@ -1,0 +1,9 @@
+// Optional post-Proxmox mirror. Add loki.write.retained_logs.receiver to both
+// `forward_to` lists in 01-alloy-config.yaml only after the Loki endpoint and
+// auth are available. This mirror never feeds agent triage.
+loki.write "retained_logs" {
+  endpoint {
+    url          = sys.env("LOKI_PUSH_URL")
+    bearer_token = sys.env("LOKI_BEARER_TOKEN")
+  }
+}

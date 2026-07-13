@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evidence-first triage: worker clusters to management</title>
+  <style>
+    :root{--ivory:#faf9f5;--paper:#fff;--ink:#171716;--muted:#66645f;--line:#dedbd2;--clay:#c76548;--blue:#28628d;--green:#35745d;--amber:#9c6719;--rose:#9e3d39;--pale:#f1eee6;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;--sans:system-ui,-apple-system,"Segoe UI",sans-serif;--serif:ui-serif,Georgia,serif}*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--ink);font-family:var(--sans);line-height:1.55}.page{max-width:1160px;margin:auto;padding:46px 30px 80px}.eyebrow{font:700 .74rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}.eyebrow:before{content:"";display:inline-block;width:27px;height:3px;margin:0 10px 3px 0;background:var(--clay)}h1{font:clamp(2.7rem,5vw,4.5rem)/1.02 var(--serif);letter-spacing:-.035em;margin:15px 0 18px;max-width:800px}h1 em{color:var(--blue)}h2{font:1.65rem/1.15 var(--sans);letter-spacing:-.025em;margin:0 0 14px}h3{font-size:1rem;margin:0 0 7px}p{margin:0 0 14px}.lead{max-width:780px;font-size:1.12rem;color:#34332f}.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:30px;align-items:end;border-bottom:1px solid var(--line);padding-bottom:38px}.verdict{background:var(--paper);border:1px solid var(--line);border-top:5px solid var(--green);padding:23px;box-shadow:0 14px 35px #433d3110}.verdict strong{color:var(--green)}.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}.chip{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:.8rem;background:var(--pale)}section{padding:44px 0;border-bottom:1px solid var(--line)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.card{padding:20px;background:var(--paper);border:1px solid var(--line)}.card h3{color:var(--blue)}.flow{padding:25px;background:#182b36;color:#eef3f0;border:1px solid #10212a}.flow svg{width:100%;height:auto;display:block}.flow text{font-family:var(--sans);font-size:13px;fill:#ecf2f0}.flow .sub{fill:#afc0bd;font-size:11px}.flow .box{fill:#254654;stroke:#60919d}.flow .arrow{stroke:#e2ad72;stroke-width:2.2;marker-end:url(#arrow)}.flow .safe{fill:#315e50;stroke:#76aa92}.flow .warn{fill:#754c27;stroke:#d09a56}.compare{width:100%;border-collapse:collapse;background:var(--paper)}.compare th,.compare td{padding:13px;vertical-align:top;text-align:left;border:1px solid var(--line)}.compare th{background:var(--pale);font-size:.88rem}.yes{color:var(--green);font-weight:700}.no{color:var(--rose);font-weight:700}.lane{display:grid;grid-template-columns:1fr 1fr;gap:16px}.lane>div{padding:22px;border:1px solid var(--line);background:var(--paper)}.worker{border-top:5px solid var(--blue)!important}.mgmt{border-top:5px solid var(--green)!important}ol{margin:0;padding-left:22px}li{margin:7px 0}.callout{border-left:5px solid var(--amber);padding:13px 18px;background:#fff5e2}.small{font-size:.88rem;color:var(--muted)}@media(max-width:800px){.page{padding:28px 18px 55px}.hero,.grid,.lane{grid-template-columns:1fr}h1{font-size:2.8rem}.compare{font-size:.88rem;display:block;overflow:auto;white-space:normal}.flow{padding:12px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Architecture decision · evidence-first agent triage</div>
+        <h1>Keep the <em>evidence</em> with the incident.</h1>
+        <p class="lead">Worker clusters collect, redact and correlate logs and Kubernetes events locally. A management cluster consumes the bounded evidence stream, performs durable deduplication, calls the read-only triage agent and creates one auditable ticket.</p>
+      </div>
+      <aside class="verdict"><strong>Decision</strong><p>Use Alloy → Vector → Kafka as the primary trigger path for log and Kubernetes-event triage. Keep Grafana/Loki for search and Alertmanager for human-facing metric paging.</p><div class="chips"><span class="chip">Source evidence preserved</span><span class="chip">Target: one call per fingerprint / 24h</span><span class="chip">No Grafana first-lookup dependency</span></div></aside>
+    </header>
+
+    <section>
+      <h2>The proposed fleet path</h2>
+      <div class="flow"><svg viewBox="0 0 1040 250" role="img" aria-label="Worker clusters process evidence locally then send it to management cluster triage">
+        <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e2ad72"/></marker></defs>
+        <rect x="12" y="20" width="464" height="206" rx="10" fill="#1d3541" stroke="#466774"/><text x="32" y="48">WORKER CLUSTER · repeated per cluster</text><text class="sub" x="32" y="68">low-latency collection · bounded local buffer · no agent credentials</text>
+        <rect class="box" x="35" y="110" width="110" height="62" rx="7"/><text x="57" y="138">Alloy</text><text class="sub" x="47" y="157">logs + events</text>
+        <line class="arrow" x1="147" y1="141" x2="194" y2="141"/><rect class="box" x="198" y="96" width="150" height="90" rx="7"/><text x="231" y="126">Vector</text><text class="sub" x="212" y="146">redact · normalise</text><text class="sub" x="220" y="164">correlate · cap</text>
+        <line class="arrow" x1="351" y1="141" x2="411" y2="141"/><rect class="warn" x="414" y="110" width="43" height="62" rx="7"/><text x="424" y="134">K</text><text class="sub" x="419" y="153">keyed</text>
+        <line class="arrow" x1="474" y1="141" x2="548" y2="141"/>
+        <rect x="558" y="20" width="470" height="206" rx="10" fill="#263d37" stroke="#66927e"/><text x="579" y="48">MANAGEMENT CLUSTER · central policy and audit</text><text class="sub" x="579" y="68">durable idempotency · controlled concurrency · ticket ownership</text>
+        <rect class="safe" x="580" y="110" width="96" height="62" rx="7"/><text x="597" y="138">Kafka</text><text class="sub" x="588" y="157">consumer</text>
+        <line class="arrow" x1="678" y1="141" x2="720" y2="141"/><rect class="safe" x="724" y="96" width="125" height="90" rx="7"/><text x="744" y="126">Argo</text><text class="sub" x="736" y="146">24h claim</text><text class="sub" x="734" y="164">enrich + route</text>
+        <line class="arrow" x1="851" y1="141" x2="892" y2="141"/><rect class="safe" x="896" y="96" width="112" height="90" rx="7"/><text x="917" y="126">kagent</text><text class="sub" x="911" y="146">read-only</text><text class="sub" x="909" y="164">GitLab ticket</text>
+      </svg></div>
+    </section>
+
+    <section>
+      <h2>Why not use Alertmanager as this trigger?</h2>
+      <table class="compare"><thead><tr><th>Question</th><th>Alertmanager metric-alert path</th><th>Evidence-first Kafka path</th></tr></thead><tbody>
+        <tr><td>Primary input</td><td>Rule result and alert labels after evaluation.</td><td>Redacted source log/event plus Kubernetes identity at occurrence.</td></tr>
+        <tr><td>Best at</td><td><span class="yes">Human routing:</span> grouping, inhibition, escalation and repeat policy.</td><td><span class="yes">Agent triage:</span> evidence preservation, buffering and controlled replay.</td></tr>
+        <tr><td>Raw log/event context</td><td><span class="no">Usually absent</span>; agent often needs a follow-up lookup.</td><td><span class="yes">Included</span> as a bounded envelope from the worker.</td></tr>
+        <tr><td>Duplicate control</td><td>Alert grouping semantics; not an agent/ticket idempotency store.</td><td>Local burst suppression + central atomic 24-hour claim.</td></tr>
+        <tr><td>Decision</td><td>Keep for metric paging and operators.</td><td>Use for logs/events that initiate agent triage.</td></tr>
+      </tbody></table>
+      <p class="callout"><strong>Important nuance:</strong> this is not an argument to remove Alertmanager. It is an argument not to force log/event triage through an alert abstraction that has already discarded the explaining evidence.</p>
+    </section>
+
+    <section>
+      <h2>Responsibility split contains alert storms</h2>
+      <div class="lane"><div class="worker"><h3>Worker: keep egress small and useful</h3><ol><li>Attach cluster, namespace, workload, pod and container identity.</li><li>Redact secrets/PII and cap lines/bytes before Kafka.</li><li>Merge matching log and event candidates under a stable fingerprint.</li><li>Drop normal lifecycle noise; buffer boundedly if Kafka is unavailable.</li></ol></div><div class="mgmt"><h3>Management: make the only durable decision</h3><ol><li>Validate schema, cluster identity, time and evidence size.</li><li>Atomically claim the fingerprint for 24 hours.</li><li>Enrich with inventory, deployment and approved-runbook context.</li><li>Throttle agents by priority and write an idempotent ticket.</li></ol></div></div>
+    </section>
+
+    <section>
+      <h2>Controls that matter</h2>
+      <div class="grid"><article class="card"><h3>Correlate</h3><p>Use a stable incident fingerprint, not individual log lines. The same crash-loop log and BackOff event should become one candidate.</p></article><article class="card"><h3>Deduplicate durably</h3><p>Vector’s cache reduces an immediate burst. A central TTL store is the authority that prevents repeat agent spend and duplicate tickets.</p></article><article class="card"><h3>Protect the agent</h3><p>Use Kafka lag, priority lanes, Argo parallelism, per-cluster quotas and a circuit breaker for model/A2A failure.</p></article><article class="card"><h3>Quarantine safely</h3><p>Unknown schema, over-sized payloads and parse failures go to a DLQ with metrics and replay—not silent discard.</p></article><article class="card"><h3>Isolate tenants</h3><p>Authenticated worker identities can publish only to their scoped topics. Management validates topic-to-cluster mapping.</p></article><article class="card"><h3>Measure it</h3><p>Track collection-to-Kafka time, oldest-message age, suppression rate, redaction failures, agent latency and ticket retries.</p></article></div>
+    </section>
+
+    <section>
+      <h2>What the red proof establishes—and what it does not</h2>
+      <div class="grid"><article class="card"><h3>Proven on red</h3><p>Alloy → Vector → Redpanda → Argo → read-only kagent → GitLab worked for an actual log and a Kubernetes BackOff event. A replay skipped agent and ticket steps.</p></article><article class="card"><h3>Must be designed for fleet</h3><p>Cross-cluster identity, ACLs/mTLS, topic ownership, external durable TTL store, retention/data classification, network partitions and SLOs.</p></article><article class="card"><h3>Deliberately not included</h3><p>Automatic remediation. The agent triages only; all mutation remains an explicit, policy- and human-approved workflow.</p></article></div>
+      <p class="small">Detailed decision record: <code>docs/observability/worker-to-management-evidence-triage.md</code>. The next step is independent critique before creating an office work bundle or skill.</p>
+    </section>
+  </main>
+</body>
+</html>

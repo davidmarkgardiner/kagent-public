@@ -13,3 +13,4 @@ confluent.io/
 
 # Local downloaded CLIs.
 bin/confluent
+.env

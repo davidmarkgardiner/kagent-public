@@ -1,0 +1,68 @@
+sources:
+  input:
+    type: stdin
+    decoding:
+      codec: json
+
+transforms:
+  normalize:
+    type: remap
+    inputs: [input]
+    source: |
+      message = to_string(.message) ?? ""
+      .message = truncate(redact(message, filters: [
+        r'(?i)(password|passwd|pwd|token|api[_-]?key|secret|client_secret)\s*[=:]\s*[^\s,;]+',
+        r'(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+',
+        r'(?i)(cookie|set-cookie)\s*[:=]\s*[^\r\n]+'
+      ]), 512, suffix: "…")
+      .event_reason = to_string(.event_reason) ?? ""
+      .service = to_string(.service) ?? "unknown"
+      .source_type = to_string(.source_type) ?? "pod-log"
+      .is_incident_signal = .source_type == "kubernetes-event" || match(.message, r'(?i)(error|exception|fatal|failed|back-off|crashloop)')
+
+  incident_signals:
+    type: filter
+    inputs: [normalize]
+    condition: '.is_incident_signal == true'
+
+  correlate:
+    type: reduce
+    inputs: [incident_signals]
+    group_by: [cluster, namespace, service, pod, container]
+    expire_after_ms: 100
+    flush_period_ms: 10
+    max_events: 10
+    merge_strategies:
+      message: concat_newline
+      event_reason: concat_newline
+      source_type: concat
+
+  evidence_package:
+    type: remap
+    inputs: [correlate]
+    source: |
+      evidence = truncate(.message, 4096, suffix: "…")
+      reason = if .event_reason != "" { .event_reason } else { "log-error-signature" }
+      service_for_key = if .service == "" { "unknown" } else { .service }
+      . = {
+        "schema_version": "observability.triage.v2",
+        "cluster": .cluster,
+        "namespace": .namespace,
+        "service": service_for_key,
+        "pod": .pod,
+        "reason": reason,
+        "evidence": {
+          "event_summary": reason,
+          "representative_log_lines": evidence
+        },
+        "automation_allowed": false,
+        "dedupe_key": sha2(join!([.cluster, .namespace, service_for_key, .pod, reason], ":"))
+      }
+
+sinks:
+  stdout:
+    type: console
+    inputs: [evidence_package]
+    target: stdout
+    encoding:
+      codec: json

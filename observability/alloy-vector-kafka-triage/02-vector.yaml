@@ -1,0 +1,206 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-telemetry-triage-config
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: vector-telemetry-triage
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+data:
+  vector.yaml: |
+    api:
+      enabled: true
+      address: 0.0.0.0:8686
+
+    sources:
+      alloy_otlp:
+        type: opentelemetry
+        http:
+          address: 0.0.0.0:4318
+
+    transforms:
+      normalize:
+        type: remap
+        inputs: [alloy_otlp.logs]
+        source: |
+          # The exact OTLP field layout is validated on the red cluster. These
+          # fallbacks support the canonical fixture and Alloy's OTLP attributes.
+          source_type = to_string(.source_type) ?? to_string(.attributes.source_type) ?? "pod-log"
+          cluster = to_string(.cluster) ?? to_string(.attributes.cluster) ?? "unknown"
+          environment = to_string(.environment) ?? to_string(.attributes.environment) ?? "unknown"
+          namespace = to_string(.namespace) ?? to_string(.attributes.namespace) ?? "unknown"
+          pod = to_string(.pod) ?? to_string(.attributes.pod) ?? ""
+          container = to_string(.container) ?? to_string(.attributes.container) ?? ""
+          service = to_string(.service) ?? to_string(.attributes.service) ?? "unknown"
+          event_reason = to_string(.event_reason) ?? to_string(.attributes.event_reason) ?? ""
+          message = to_string(.message) ?? to_string(.body) ?? ""
+
+          .cluster = cluster
+          .environment = environment
+          .namespace = namespace
+          .pod = pod
+          .container = container
+          .service = service
+          .source_type = source_type
+          .event_reason = event_reason
+          .message = truncate(redact(message, filters: [
+            r'(?i)(password|passwd|pwd|token|api[_-]?key|secret|client_secret)\s*[=:]\s*[^\s,;]+',
+            r'(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+',
+            r'(?i)(cookie|set-cookie)\s*[:=]\s*[^\r\n]+'
+          ]), 512, suffix: "…")
+          .is_incident_signal = source_type == "kubernetes-event" || match(.message, r'(?i)(error|exception|fatal|failed|back-off|crashloop)')
+          .dedupe_key = join!([cluster, namespace, service, pod, event_reason], ":")
+
+      incident_signals:
+        type: filter
+        inputs: [normalize]
+        condition: '.is_incident_signal == true'
+
+      correlate:
+        type: reduce
+        inputs: [incident_signals]
+        group_by: [cluster, namespace, service, pod, container]
+        expire_after_ms: 300000
+        flush_period_ms: 5000
+        max_events: 10
+        merge_strategies:
+          message: concat_newline
+          event_reason: concat_newline
+          source_type: concat
+
+      evidence_package:
+        type: remap
+        inputs: [correlate]
+        source: |
+          evidence = truncate(.message, 4096, suffix: "…")
+          reason = if .event_reason != "" { .event_reason } else { "log-error-signature" }
+          severity = if match(evidence, r'(?i)(fatal|crashloop|back-off)') { "critical" } else { "warning" }
+          service_for_key = if .service == "" { "unknown" } else { .service }
+          . = {
+            "schema_version": "observability.triage.v2",
+            "incident_id": sha2(join!([.cluster, .namespace, service_for_key, .pod, reason], ":")),
+            "source_types": .source_type,
+            "cluster": .cluster,
+            "environment": .environment,
+            "namespace": .namespace,
+            "service": service_for_key,
+            "pod": .pod,
+            "container": .container,
+            "severity": severity,
+            "reason": reason,
+            "observed_at": now(),
+            "evidence": {
+              "event_summary": reason,
+              "matching_log_count": 1,
+              "representative_log_lines": evidence,
+              "logql": join!(["{cluster=\"", .cluster, "\", namespace=\"", .namespace, "\", pod=\"", .pod, "\"}"], ""),
+              "suggested_kubectl": join!(["kubectl -n", .namespace, "describe pod", .pod], " ")
+            },
+            "target_agent": "sre-triage-agent",
+            "route_key": join!(["triage", .environment, .namespace, service_for_key, severity], "."),
+            "dedupe_key": sha2(join!([.cluster, .namespace, service_for_key, .pod, reason], ":")),
+            "automation_allowed": false
+          }
+
+      suppress_duplicates:
+        type: dedupe
+        inputs: [evidence_package]
+        fields:
+          match: [dedupe_key]
+        cache:
+          num_events: 1000
+
+    sinks:
+      incident_triage_requests:
+        type: kafka
+        inputs: [suppress_duplicates]
+        bootstrap_servers: "${KAFKA_BOOTSTRAP}"
+        topic: incident-triage-requests
+        encoding:
+          codec: json
+        librdkafka_options:
+          security.protocol: sasl_ssl
+          sasl.mechanism: PLAIN
+          sasl.username: "${KAFKA_SASL_USERNAME}"
+          sasl.password: "${KAFKA_SASL_PASSWORD}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vector-telemetry-triage
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: vector-telemetry-triage
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vector-telemetry-triage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vector-telemetry-triage
+        app.kubernetes.io/part-of: alloy-vector-kafka-triage
+    spec:
+      containers:
+        - name: vector
+          image: timberio/vector:0.45.0-debian
+          args: ["--config", "/etc/vector/vector.yaml"]
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: api
+              containerPort: 8686
+          envFrom:
+            - secretRef:
+                name: vector-telemetry-triage-kafka
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vector
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: vector-telemetry-triage-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vector-triage
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: vector-telemetry-triage
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+spec:
+  selector:
+    app.kubernetes.io/name: vector-telemetry-triage
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+    - name: api
+      port: 8686
+      targetPort: api
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vector-telemetry-triage-ingress
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: alloy-vector-kafka-triage
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: vector-telemetry-triage
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4318
