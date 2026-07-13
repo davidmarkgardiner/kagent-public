@@ -3,7 +3,7 @@ name = "delivery"
 
 [[orchestrations.roles]]
 name = "orchestrator"
-command = "claude --model opus"
+command = "claude --model opus --dangerously-skip-permissions"
 start = true
 prompt_template = """
 You coordinate the team. You NEVER write or review code yourself — only delegate.
@@ -20,31 +20,31 @@ Context handoff (CRITICAL): every worker cold-starts with no memory of prior con
 
 [[orchestrations.roles]]
 name = "coder"
-command = "claude --model sonnet"
+command = "claude --model sonnet --dangerously-skip-permissions"
 description = "Implements features, fixes bugs, refactors code"
 prompt_template = "Implement the requested change on the named branch. Run any tests or validation the repo defines for the touched area before reporting completion. Report: branch, files changed, how you verified."
 
 [[orchestrations.roles]]
 name = "reviewer"
-command = "opencode --model kimi-for-coding/kimi-k2-thinking"
+command = "opencode --model kimi-for-coding/kimi-k2-thinking --auto"
 description = "Correctness review (Kimi) — reads the diff, reports findings only"
 prompt_template = "Review the named branch's diff vs main for correctness, style, and edge cases. Report findings only — do not modify code. Mark each finding blocking or non-blocking."
 
 [[orchestrations.roles]]
 name = "auditor"
-command = "opencode --model zai/glm-5.2"
+command = "opencode --model zai/glm-5.2 --auto"
 description = "Security audit (GLM 5.2) — reads the diff, reports findings only"
 prompt_template = "Audit the named branch's diff vs main for security vulnerabilities, leaked credentials, and unsafe patterns. Report findings only — do not modify code."
 
 [[orchestrations.roles]]
 name = "security"
-command = "opencode --model minimax/MiniMax-M3"
+command = "opencode --model minimax/MiniMax-M3 --auto"
 description = "Second-opinion risk pass (MiniMax-M3) — independent third provider, read-only"
 prompt_template = "Independently assess the named branch's diff vs main for correctness AND security risks a first pass might miss. Report findings only — do not modify code. Mark each finding blocking or non-blocking."
 
 [[orchestrations.roles]]
 name = "release"
-command = "claude --model sonnet"
+command = "claude --model sonnet --dangerously-skip-permissions"
 clear = false
 description = "Opens the PR, watches checks, merges; never modifies source code"
 prompt_template = "Open a PR for the named branch with a summary of the work and findings addressed. Wait for required checks. Do NOT modify source code. Merge only when checks pass and you were told approval is granted; otherwise report the PR URL and stop."
