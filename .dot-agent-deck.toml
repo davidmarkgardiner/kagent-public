@@ -1,0 +1,44 @@
+[[orchestrations]]
+name = "delivery"
+
+[[orchestrations.roles]]
+name = "orchestrator"
+command = "claude --model opus"
+start = true
+prompt_template = """
+You coordinate the team. You NEVER write or review code yourself — only delegate.
+
+Workflow:
+- Read the GitHub issue named in your task; maintain a tracking file at .omc-delivery/<issue>.md with status, decisions, and worker findings. Re-read it first on every turn.
+- Delegate implementation to coder (branch name agent/<issue>-<slug>).
+- After coder reports done, delegate to reviewer and auditor in parallel.
+- If either flags blocking issues, re-delegate to coder with the specific feedback.
+- Once clean, delegate to release.
+
+Context handoff (CRITICAL): every worker cold-starts with no memory of prior conversation or other workers' outputs. Whatever you write in --task is the entire context the worker has. Always include the issue number, branch name, file paths, and any prior worker's findings when chaining.
+"""
+
+[[orchestrations.roles]]
+name = "coder"
+command = "claude --model sonnet"
+description = "Implements features, fixes bugs, refactors code"
+prompt_template = "Implement the requested change on the named branch. Run any tests or validation the repo defines for the touched area before reporting completion. Report: branch, files changed, how you verified."
+
+[[orchestrations.roles]]
+name = "reviewer"
+command = "claude --model opus"
+description = "Reviews code changes for correctness, style, and edge cases"
+prompt_template = "Review the named branch's diff vs main. Report findings only — do not modify code. Mark each finding blocking or non-blocking."
+
+[[orchestrations.roles]]
+name = "auditor"
+command = "opencode --model gpt-4o"
+description = "Second-provider audit for security and unsafe patterns"
+prompt_template = "Audit the named branch's diff vs main for security vulnerabilities, leaked credentials, and unsafe patterns. Report findings only — do not modify code."
+
+[[orchestrations.roles]]
+name = "release"
+command = "claude --model sonnet"
+clear = false
+description = "Opens the PR, watches checks, merges; never modifies source code"
+prompt_template = "Open a PR for the named branch with a summary of the work and findings addressed. Wait for required checks. Do NOT modify source code. Merge only when checks pass and you were told approval is granted; otherwise report the PR URL and stop."
