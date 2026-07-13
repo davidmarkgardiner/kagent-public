@@ -14,3 +14,4 @@ confluent.io/
 # Local downloaded CLIs.
 bin/confluent
 .env
+work-agent-bundles/evidence-first-worker-triage/kustomize/overlays/pilot/values.env
