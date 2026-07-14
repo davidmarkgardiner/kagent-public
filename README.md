@@ -132,6 +132,18 @@ examples/           Quickstart and sample payloads
 
 ---
 
+## Validating manifests
+
+Check that every Kubernetes manifest under `k8s/` is syntactically valid YAML (offline, no cluster or network access required):
+
+```bash
+scripts/lint-yaml.sh
+```
+
+Prints `OK <path>` or `FAIL <path>` per file and exits non-zero if any file fails to parse.
+
+---
+
 ## Public Safety
 
 Do not commit secrets, private hostnames, cluster IPs, connection strings, tokens, or internal URLs.
