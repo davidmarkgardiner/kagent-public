@@ -3,7 +3,7 @@ name = "delivery"
 
 [[orchestrations.roles]]
 name = "orchestrator"
-command = "claude --model opus --dangerously-skip-permissions"
+command = "CLAUDE_CONFIG_DIR=/home/david/.claude-lean claude --model opus --dangerously-skip-permissions"
 start = true
 prompt_template = """
 You coordinate the team. You NEVER write or review code yourself — only delegate.
@@ -20,7 +20,7 @@ Context handoff (CRITICAL): every worker cold-starts with no memory of prior con
 
 [[orchestrations.roles]]
 name = "coder"
-command = "claude --model sonnet --dangerously-skip-permissions"
+command = "CLAUDE_CONFIG_DIR=/home/david/.claude-lean claude --model sonnet --dangerously-skip-permissions"
 description = "Implements features, fixes bugs, refactors code"
 prompt_template = "Implement the requested change on the named branch. Run any tests or validation the repo defines for the touched area before reporting completion. Report: branch, files changed, how you verified."
 
@@ -44,7 +44,7 @@ prompt_template = "Independently assess the named branch's diff vs main for corr
 
 [[orchestrations.roles]]
 name = "release"
-command = "claude --model sonnet --dangerously-skip-permissions"
+command = "CLAUDE_CONFIG_DIR=/home/david/.claude-lean claude --model sonnet --dangerously-skip-permissions"
 clear = false
 description = "Opens the PR, watches checks, merges; never modifies source code"
 prompt_template = "Open a PR for the named branch with a summary of the work and findings addressed. Wait for required checks. Do NOT modify source code. Merge only when checks pass and you were told approval is granted; otherwise report the PR URL and stop."
