@@ -140,7 +140,7 @@ Check that every Kubernetes manifest under `k8s/` is syntactically valid YAML (o
 scripts/lint-yaml.sh
 ```
 
-Prints `OK <path>` or `FAIL <path>` per file and exits non-zero if any file fails to parse.
+Prints `OK <path>` or `FAIL <path>` per file and exits non-zero if any file fails to parse. Use the `--quiet` flag to print only failures and a final summary line.
 
 ---
 
