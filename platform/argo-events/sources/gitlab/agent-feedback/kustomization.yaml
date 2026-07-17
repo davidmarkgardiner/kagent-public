@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - feedback-eventsource.yaml
+  - feedback-sensor.yaml
+  - feedback-rbac.yaml
+  - feedback-agent.yaml
+  - feedback-workflow-template.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: gitlab-agent-feedback-runtime
+    namespace: argo
+    files:
+      - validate-feedback.py=scripts/validate-feedback.py
