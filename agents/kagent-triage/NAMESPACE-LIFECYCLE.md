@@ -18,13 +18,11 @@
 ## Step 1: WORK — Build the Agent
 
 ```bash
-cd ~/repos/argo-workflow/kagent-triage
-
-# Use the skill script to generate manifests
-~/clawd/skills/kagent-namespace-agent/scripts/create-agent.sh \
+# Run from the repo root; the skill script generates the manifests
+agents/skills/kagent-namespace-agent/scripts/create-agent.sh \
   --namespace <NAMESPACE> \
   --description "<what this namespace does, failure modes, key commands>" \
-  --output-dir . \
+  --output-dir agents/kagent-triage \
   --deploy
 ```
 

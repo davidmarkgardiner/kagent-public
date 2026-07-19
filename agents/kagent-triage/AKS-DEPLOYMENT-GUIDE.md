@@ -21,7 +21,7 @@ Use the `uk8scluster-public` ResourceGraphDefinition — it has security default
 kubectx {{CLUSTER_NAME}}
 
 # Review the RGD
-cat infra-stack/kro-stack/definitions/uk8scluster-public.yaml
+cat infra/kro-stack/definitions/uk8scluster-public.yaml
 
 # Create the cluster instance (EDIT values first)
 kubectl apply -f - <<'EOF'
@@ -367,7 +367,7 @@ az group delete -g example-rg-triage --yes --no-wait
 | `kagent-triage/02-workflow-kagent-triage.yaml` | Shared WorkflowTemplate (A2A + Logic App) |
 | `kagent-triage/logic-app/` | Azure Logic App for Teams notifications |
 | `kagent-triage/HANDOVER-2026-03-16.md` | Full session handover |
-| `infra-stack/kro-stack/definitions/uk8scluster-public.yaml` | Standard RGD for AKS clusters |
+| `infra/kro-stack/definitions/uk8scluster-public.yaml` | Standard RGD for AKS clusters |
 
 ## Tested Agents
 

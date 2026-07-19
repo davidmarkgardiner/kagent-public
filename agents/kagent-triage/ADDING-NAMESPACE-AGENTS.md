@@ -133,7 +133,7 @@ This will:
   --namespace istio-system \
   --description "Istio service mesh control plane" \
   --context aks-prod \
-  --output-dir ~/repos/argo-workflow/kagent-triage/ \
+  --output-dir agents/kagent-triage/ \
   --deploy
 ```
 

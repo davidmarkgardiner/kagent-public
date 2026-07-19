@@ -175,7 +175,7 @@ See [SENSOR-SAFEGUARDS.md](./SENSOR-SAFEGUARDS.md) for full details and emergenc
 - [kagent GitHub](https://github.com/kagent-dev/kagent) — CNCF Sandbox project
 - [Argo Events Docs](https://argoproj.github.io/argo-events/)
 - [Argo Workflows Docs](https://argoproj.github.io/argo-workflows/)
-- [OpenClaw Skill](~/clawd/skills/kagent-namespace-agent/) — Automation for creating namespace agents
+- [kagent-namespace-agent skill](../skills/kagent-namespace-agent/) — Automation for creating namespace agents
 
 ---
 
