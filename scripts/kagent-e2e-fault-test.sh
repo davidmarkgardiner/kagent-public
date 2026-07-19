@@ -38,6 +38,7 @@
 #   3  no workflow fired within the timeout (sensor/filter problem)
 #   4  workflow fired but failed (diagnosis problem — hand to the model)
 #   5  cascade detected after cleanup
+#   6  workflow fired but did not complete within the timeout
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -167,6 +168,7 @@ fi
 echo "WORKFLOW $WF_NAME fired; waiting for completion"
 
 PHASE=""
+DEADLINE=$(( $(date +%s) + WF_TIMEOUT ))
 while [[ $(date +%s) -lt $DEADLINE ]]; do
   PHASE=$("${KUBECTL[@]}" get workflow "$WF_NAME" -n "$ARGO_NS" -o jsonpath='{.status.phase}' 2>/dev/null || true)
   case "$PHASE" in
@@ -200,8 +202,11 @@ EXIT_CODE=0
 if [[ "$CASCADE" == "true" ]]; then
   echo "POSTCHECK fail — workflow count still rising after cleanup ($BEFORE_POST -> $AFTER_POST): possible cascade" >&2
   EXIT_CODE=5
-elif [[ "$PHASE" != "Succeeded" ]]; then
+elif [[ "$PHASE" == "Failed" || "$PHASE" == "Error" ]]; then
   EXIT_CODE=4
+elif [[ "$PHASE" != "Succeeded" ]]; then
+  echo "WORKFLOW $WF_NAME did not complete within ${WF_TIMEOUT}s (phase: ${PHASE:-none}): timed out" >&2
+  EXIT_CODE=6
 else
   echo "POSTCHECK ok — sensor idle"
 fi
