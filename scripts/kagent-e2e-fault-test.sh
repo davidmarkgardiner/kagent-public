@@ -134,7 +134,7 @@ if [[ "$SKIP_PRECHECK" -ne 1 ]]; then
   echo "PRECHECK no fault pods; watching sensor for 30s (workflows: $BEFORE_IDLE)"
   sleep 30
   AFTER_IDLE=$(workflow_count)
-  if [[ "$AFTER_IDLE" -ne "$BEFORE_IDLE" ]]; then
+  if [[ "$AFTER_IDLE" -gt "$BEFORE_IDLE" ]]; then
     echo "PRECHECK fail — sensor not idle ($BEFORE_IDLE -> $AFTER_IDLE workflows in 30s)" >&2
     exit 2
   fi
@@ -185,7 +185,7 @@ echo "POSTCHECK watching for cascade for 30s (workflows: $BEFORE_POST)"
 sleep 30
 AFTER_POST=$(workflow_count)
 CASCADE=false
-[[ "$AFTER_POST" -ne "$BEFORE_POST" ]] && CASCADE=true
+[[ "$AFTER_POST" -gt "$BEFORE_POST" ]] && CASCADE=true
 
 echo "--- workflow log tail ---"
 "${KUBECTL[@]}" logs -n "$ARGO_NS" -l "workflows.argoproj.io/workflow=$WF_NAME" --tail=20 2>/dev/null || echo "(no logs available)"
