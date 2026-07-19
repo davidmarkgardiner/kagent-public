@@ -44,14 +44,12 @@ Chat with a builder agent directly in the KAgent UI. No YAML knowledge required.
 **Start a session:**
 
 ```bash
-# Port-forward if needed
-kubectl port-forward -n kagent svc/kagent-controller 8083:8083
-
-# Expert builder — or open the KAgent UI and select byoa-builder-expert
-curl -s -X POST http://localhost:8083/api/a2a/kagent/byoa-builder-expert/ \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"Build me a triage agent for my namespace"}]}}}' \
-  | jq -r '.result.history[-1].parts[].text // .result.status.message.parts[].data.args.originalFunctionCall.args.questions[].question'
+# Expert builder — or open the KAgent UI and select byoa-builder-expert.
+# The helper (run from the repo root) manages the port-forward, JSON-RPC
+# framing, and reply extraction; add --raw to see the builder's structured
+# question payload.
+scripts/kagent-a2a-invoke.sh --agent byoa-builder-expert \
+  --text 'Build me a triage agent for my namespace'
 ```
 
 The builder conducts a structured interview:
@@ -75,7 +73,7 @@ or just describe what you need:
 Build me a triage agent for the payments namespace
 ```
 
-The skill lives at `skills/byoa-agent-builder/` and contains the same interview logic plus reference docs for tool selection and system prompt patterns.
+The skill lives at `agents/skills/byoa-agent-builder/` and contains the same interview logic plus reference docs for tool selection and system prompt patterns.
 
 ---
 
@@ -203,14 +201,14 @@ Alerts route to agents based on namespace annotations (priority order):
 ## Testing Your Agent
 
 ```bash
-# Verify agent is running
-kubectl get agent {agent-name} -n kagent
+# Verify readiness and send a test query in one call (run from the repo root):
+# gates on Accepted -> Ready -> listed by the controller API -> smoke reply
+scripts/kagent-verify-agent.sh --agent {agent-name} \
+  --smoke 'What is the health of namespace {namespace}?'
 
-# Send a test query directly via A2A
-curl -s -X POST http://localhost:8083/api/a2a/kagent/{agent-name}/ \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"What is the health of namespace {namespace}?"}]}}}' \
-  | jq -r '.result.artifacts[].parts[].text'
+# Or just query it via A2A
+scripts/kagent-a2a-invoke.sh --agent {agent-name} \
+  --text 'What is the health of namespace {namespace}?'
 
 # Collect diagnostics if not responding
 kagent bug-report
@@ -222,10 +220,10 @@ kagent bug-report
 
 | File | Purpose |
 |------|---------|
-| `kagent-triage/byoa-builder-expert.yaml` | Expert builder agent CRD |
-| `kagent-triage/byoa-builder-guided.yaml` | Guided builder agent CRD |
-| `skills/byoa-agent-builder/SKILL.md` | Claude Code skill |
-| `skills/byoa-agent-builder/references/tool-catalog.md` | Full tool list with risk ratings |
-| `skills/byoa-agent-builder/references/system-prompt-patterns.md` | Proven system prompt patterns |
-| `skills/byoa-agent-builder/assets/agent-template.yaml` | Base Agent CRD template |
+| `agents/kagent-triage/byoa-builder-expert.yaml` | Expert builder agent CRD |
+| `agents/kagent-triage/byoa-builder-guided.yaml` | Guided builder agent CRD |
+| `agents/skills/byoa-agent-builder/SKILL.md` | Claude Code skill |
+| `agents/skills/byoa-agent-builder/references/tool-catalog.md` | Full tool list with risk ratings |
+| `agents/skills/byoa-agent-builder/references/system-prompt-patterns.md` | Proven system prompt patterns |
+| `agents/skills/byoa-agent-builder/assets/agent-template.yaml` | Base Agent CRD template |
 | `aks-mgmt-stack/holmes-argoworkflows/BYOA-AGENT-PLATFORM-PROPOSAL.md` | Original proposal + architecture |

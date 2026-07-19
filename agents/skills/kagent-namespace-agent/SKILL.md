@@ -16,11 +16,12 @@ Each namespace gets its own agent with domain-specific knowledge, wired into the
 ## Quick Start
 
 ```bash
+# From the repo root (script ships inside this skill directory)
 # Create a new namespace agent (interactive)
-~/clawd/skills/kagent-namespace-agent/scripts/create-agent.sh --namespace cert-manager --description "TLS certificate lifecycle management"
+agents/skills/kagent-namespace-agent/scripts/create-agent.sh --namespace cert-manager --description "TLS certificate lifecycle management"
 
 # Create + deploy + test in one go
-~/clawd/skills/kagent-namespace-agent/scripts/create-agent.sh --namespace cert-manager --description "TLS certificate lifecycle management" --deploy --test
+agents/skills/kagent-namespace-agent/scripts/create-agent.sh --namespace cert-manager --description "TLS certificate lifecycle management" --deploy --test
 ```
 
 ## What It Does
@@ -79,13 +80,11 @@ kubectl apply -f cert-manager-sensor.yaml
 
 ### Step 3: Test
 ```bash
-# Inject a test error
-kubectl apply -f cert-manager-test-error.yaml
+# Safe end-to-end fault test: pre-checks the sensor is idle, injects the
+# generated fixture, waits for the kagent-triage workflow, and always cleans up
+scripts/kagent-e2e-fault-test.sh --namespace cert-manager --fixture cert-manager-test-error.yaml
 
-# Watch for the workflow trigger
-kubectl get workflows -n argo-events -w
-
-# Check kagent UI for the conversation
+# Then check the kagent UI for the conversation
 ```
 
 ## Lift-and-Shift to AKS
@@ -104,4 +103,4 @@ The Agent CRs and Sensors are portable as-is.
 - Argo Workflows + Argo Events running
 - EventBus (NATS) configured
 - k8s-warning-events EventSource watching all namespaces
-- kagent-triage WorkflowTemplate deployed (see /home/david/repos/argo-workflow/kagent-triage/)
+- kagent-triage WorkflowTemplate deployed (see `agents/kagent-triage/02-workflow-kagent-triage.yaml`)

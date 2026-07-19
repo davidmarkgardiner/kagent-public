@@ -32,8 +32,8 @@ AI-powered Kubernetes event triage using [kagent](https://github.com/kagent-dev/
 │           Argo WorkflowTemplate: kagent-triage       │
 │                                                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────┐ │
-│  │ 1. Find Agent│─▶│ 2. Chat API  │─▶│ 3. Telegram│ │
-│  │ (GET /agents)│  │ (POST /chat) │  │ Notify     │ │
+│  │ 1. Find Agent│─▶│ 2. A2A invoke│─▶│ 3. Telegram│ │
+│  │ (GET /agents)│  │(message/send)│  │ Notify     │ │
 │  └──────────────┘  └──────────────┘  └────────────┘ │
 └──────────┬──────────────────┬───────────────────────┘
            │                  │
@@ -89,15 +89,12 @@ for f in 00-test-namespace.yaml 01-test-agent.yaml 02-workflow-kagent-triage.yam
   kubectl --context {{CLUSTER_NAME}} apply -f "$f"
 done
 
-# Wait for agent to be ready
-kubectl --context {{CLUSTER_NAME}} wait agent/test-ns-agent -n kagent \
-  --for=condition=Ready --timeout=60s
+# Verify the agent (Accepted -> Ready -> listed by API; run from repo root)
+scripts/kagent-verify-agent.sh --agent test-ns-agent --context {{CLUSTER_NAME}}
 
-# Inject test errors
-kubectl --context {{CLUSTER_NAME}} apply -f 05-test-error-injection.yaml
-
-# Watch workflows fire
-kubectl --context {{CLUSTER_NAME}} get workflows -n argo-events -w
+# Safe end-to-end fault test: injects, waits for the workflow, always cleans up
+scripts/kagent-e2e-fault-test.sh --namespace test-ns --context {{CLUSTER_NAME}} \
+  --fixture 05-test-error-injection.yaml
 ```
 
 ## Prerequisites

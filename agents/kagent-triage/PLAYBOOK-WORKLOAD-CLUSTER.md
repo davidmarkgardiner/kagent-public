@@ -203,23 +203,10 @@ kubectl get pods -n kagent -l agent-name=kyverno-agent
 #### B. Smoke Test the Agent (recommended)
 
 ```bash
-# Port-forward kagent controller
-kubectl port-forward -n kagent svc/kagent-controller 8083:8083 &
-
-# A2A call to verify the agent responds
-curl -s -X POST http://localhost:8083/api/a2a/kagent/kyverno-agent/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": "test-1",
-    "method": "message/send",
-    "params": {
-      "message": {
-        "role": "user",
-        "parts": [{"kind": "text", "text": "Check the kyverno namespace for any warnings or issues"}]
-      }
-    }
-  }' | jq '.result.artifacts[0].parts[0].text' -r | head -20
+# Run from the repo root. The helper manages the port-forward, JSON-RPC
+# framing, required trailing slash, and artifact extraction.
+scripts/kagent-a2a-invoke.sh --agent kyverno-agent \
+  --text 'Check the kyverno namespace for any warnings or issues' | head -20
 ```
 
 #### C. Deploy the Sensor
@@ -237,20 +224,15 @@ kubectl get pods -n argo-events -l sensor-name=kagent-triage-kyverno
 Inject a fault to trigger the full pipeline:
 
 ```bash
-# Create a crashlooping pod in the target namespace
-kubectl run crashloop-test --image=busybox --restart=Always \
-  -n kyverno -- sh -c "exit 1"
+# Run from the repo root. Pre-checks the sensor is idle, injects the fault,
+# waits for the workflow, ALWAYS cleans up, and confirms no cascade — the
+# SENSOR-SAFEGUARDS.md sequence.
+scripts/kagent-e2e-fault-test.sh --namespace kyverno
 
-# Watch for workflow to fire
-kubectl get workflows -n argo-events -w
-
-# Once workflow shows Succeeded, verify:
+# Once the workflow shows Succeeded, verify:
 # 1. Logic App: Azure Portal → Logic App → Run History
 # 2. Teams: check the channel (if wired)
 # 3. GitLab: check for new issue
-
-# Clean up
-kubectl delete pod crashloop-test -n kyverno
 ```
 
 #### E. Confirm ✓

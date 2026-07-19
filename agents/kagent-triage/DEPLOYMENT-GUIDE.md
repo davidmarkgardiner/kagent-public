@@ -107,32 +107,13 @@ Create the namespace-specific AI agent with a diagnostic system prompt.
 kubectl --context $CONTEXT apply -f 01-test-agent.yaml
 ```
 
-**Verify:**
+**Verify** (gates on Accepted → Ready → listed by the controller API):
 ```bash
-# Check agent was created
-kubectl --context $CONTEXT get agent test-ns-agent -n kagent
-# NAME            AGE
-# test-ns-agent   5s
-
-# Wait for Ready state
-kubectl --context $CONTEXT wait agent/test-ns-agent -n kagent \
-  --for=condition=Ready --timeout=60s
-# agent.kagent.dev/test-ns-agent condition met
-
-# Check agent status detail
-kubectl --context $CONTEXT get agent test-ns-agent -n kagent \
-  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
-# True
-
-# Verify agent appears in API
-kubectl --context $CONTEXT port-forward svc/kagent-controller -n kagent 8083:8083 &
-curl -s http://localhost:8083/api/agents | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for a in data.get('agents', []):
-    print(f\"  {a['name']} (Ready: {a.get('status', {}).get('conditions', [{}])[0].get('status', 'Unknown')})\")
-"
-kill %1
+# Run from the repo root
+scripts/kagent-verify-agent.sh --agent test-ns-agent --context $CONTEXT
+# PASS accepted
+# PASS ready
+# PASS api-listed
 ```
 
 **What this creates:**
@@ -248,13 +229,18 @@ curl -sf https://{{INGRESS_DOMAIN}} && echo "UI accessible"
 
 ## Step 6: Test the Pipeline
 
-### 6a. Inject Test Errors
+### 6a. Run the Safe End-to-End Fault Test
 
 ```bash
-kubectl --context $CONTEXT apply -f 05-test-error-injection.yaml
+# Run from the repo root. Pre-checks that no fault pods exist and the sensor is
+# idle, injects the fixture, waits for the kagent-triage workflow, ALWAYS
+# deletes the fixture (even on Ctrl-C), and confirms no cascade afterwards —
+# the sequence SENSOR-SAFEGUARDS.md requires.
+scripts/kagent-e2e-fault-test.sh --namespace test-ns --context $CONTEXT \
+  --fixture 05-test-error-injection.yaml
 ```
 
-This creates:
+The fixture creates:
 | Resource | Type | Error Triggered |
 |----------|------|-----------------|
 | `bad-image-deployment` | Deployment | `ImagePullBackOff` (invalid tag) |
@@ -262,7 +248,7 @@ This creates:
 | `crashloop-test-pod` | Pod | `CrashLoopBackOff` (exit 1 command) |
 | `resource-pressure-deployment` | Deployment | CPU throttling (stress test) |
 
-### 6b. Watch Events
+### 6b. Watch Events (optional, while the test runs)
 
 ```bash
 # Watch K8s warning events in test-ns
@@ -313,6 +299,10 @@ Verify notifications arrived in the configured Telegram channel (ID: `{{REMOVED}
 
 ### 6f. Cleanup Test Resources
 
+`kagent-e2e-fault-test.sh` deletes the fixture automatically (that cleanup is
+the safeguard that prevents sensor cascades — see SENSOR-SAFEGUARDS.md). If you
+injected manually instead, delete it now:
+
 ```bash
 kubectl --context $CONTEXT delete -f 05-test-error-injection.yaml
 ```
@@ -331,8 +321,8 @@ for f in 00-test-namespace.yaml 01-test-agent.yaml 02-workflow-kagent-triage.yam
   kubectl --context $CONTEXT apply -f "$f"
 done
 
-# Wait for agent
-kubectl --context $CONTEXT wait agent/test-ns-agent -n kagent --for=condition=Ready --timeout=60s
+# Verify the agent (Accepted -> Ready -> listed by the controller API)
+scripts/kagent-verify-agent.sh --agent test-ns-agent --context $CONTEXT
 
 # Wait for sensor pod
 kubectl --context $CONTEXT wait pod -n argo-events -l sensor-name=kagent-triage-sensor \
