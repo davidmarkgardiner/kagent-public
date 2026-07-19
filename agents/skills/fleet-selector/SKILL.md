@@ -12,16 +12,25 @@ request into an auditable lower-env cluster set.
 - quiet-period policy
 - optional random seed or selection reason
 
-## Rules
+## How to select
 
-- Reject production for v1.
-- Reject a requested count above `{{MAX_SELECTED_CLUSTERS}}`.
-- Select only clusters with `reliability.platform/chaos-optin="true"`.
-- Exclude clusters in blackout, incident, release, or quiet-period windows.
-- Record the candidate pool, exclusions, random seed or deterministic reason,
-  final cluster list, and approver.
-- Return a dry-run plan unless the caller supplies an approved GitOps/HITL
-  reference.
+Gather the inputs above, build the cluster inventory JSON, then run the
+selection script — do not re-derive the rules by hand:
+
+```bash
+scripts/select-clusters.sh --tier dev --count 3 --inventory clusters.json \
+  --seed 20260719 [--labels k=v,...] [--blackout-file blackout.txt] \
+  [--approval <GitOps/HITL ref>]
+```
+
+The script enforces the rules (reject production; cap the count at
+`{{MAX_SELECTED_CLUSTERS}}`; select only clusters with
+`reliability.platform/chaos-optin="true"`; exclude blackout, incident,
+release, and quiet-period windows), records pool/exclusions/seed, and prints
+the output contract below. Without `--approval` it emits a dry-run plan.
+
+Your judgment is confined to the inputs: which tier and count are appropriate,
+which labels apply, whether the request should be refused outright.
 
 ## Output Contract
 
