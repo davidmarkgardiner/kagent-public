@@ -72,6 +72,18 @@ git clone --depth 1 https://github.com/<org>/<repo>.git ../<repo>
 - For ASO changes, verify the exact CRD API version and reconcile/adoption behavior in the upstream ASO docs before changing lifecycle manifests.
 - For KRO changes, validate ResourceGraphDefinition schema and CEL expressions against the KRO version in use.
 
+## Shared Helper Scripts
+
+Call these instead of hand-rolling the equivalent command sequences:
+
+- `scripts/kagent-a2a-invoke.sh` — invoke a kagent agent (A2A JSON-RPC; owns the port-forward, trailing slash, `"kind":"text"`; the chat/session API is broken on kagent v0.8.0-beta4).
+- `scripts/kagent-verify-agent.sh` — gate an Agent CR on Accepted → Ready → controller API → optional smoke.
+- `scripts/kagent-e2e-fault-test.sh` — safe fault-injection e2e test with the SENSOR-SAFEGUARDS ordering and guaranteed cleanup.
+- `scripts/public-safe-scan.sh` — the public-safety scan shared by bundle verifiers.
+- `scripts/validate-agent-cr.py` — BYOA Agent CRD checklist as a lint.
+- `scripts/check-skill-refs.sh` — reference-rot lint for `agents/skills/`; keep it green.
+- `scripts/tests/smoke-helpers.sh` — offline smoke test for all of the above; run it after editing any helper.
+
 ## Common Validation
 
 Use the narrowest validation that proves the change:
@@ -82,3 +94,10 @@ Use the narrowest validation that proves the change:
 - JSON schemas: validate sample payloads against the schema in the same directory.
 - Docs-only changes: check links and keep examples placeholder-safe.
 
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.
