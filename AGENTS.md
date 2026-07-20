@@ -71,6 +71,9 @@ git clone --depth 1 https://github.com/<org>/<repo>.git ../<repo>
 - For agentgateway changes, validate CRD schema and runtime behavior against the installed version before assuming examples from older docs still apply.
 - For ASO changes, verify the exact CRD API version and reconcile/adoption behavior in the upstream ASO docs before changing lifecycle manifests.
 - For KRO changes, validate ResourceGraphDefinition schema and CEL expressions against the KRO version in use.
+- For Argo Workflow templates: a step's `when` clause that references another step's outputs breaks with a hard template error if that other step was skipped (an unresolved `{{steps...}}` reference is not a clean short-circuit). Isolate a chain of steps that may all be skipped together into its own sub-template gated by a single `when`, rather than repeating the same guard on every step in the chain. See `work-agent-bundles/evidence-first-worker-triage/next-phase-end-to-end/evidence/phase5-backend-drills.md` for a live repro and fix.
+- For Vector sinks: do not assume a `buffer: {type: disk}` on a `kafka` sink works by default — on `timberio/vector:0.45.0-debian` it accepted writes into the buffer but never drained them to the broker (`vector_kafka_produced_messages_total` stayed at 0), silently stalling delivery. Verify with an actual produced/consumed message, not just buffer-accepted metrics, before relying on it. See `work-agent-bundles/evidence-first-worker-triage/next-phase-end-to-end/evidence/phase2-vector-config.md`.
+- For incident/ticket fingerprint or dedupe keys derived from Kubernetes identity: a key built from the literal pod name breaks under normal pod churn (Deployment/ReplicaSet reschedules generate a new pod name each time). Prefer a stable workload identity, but note that Kubernetes Events do not reliably carry a `service`/`app` label the way pod logs do — a fix must derive the same stable string from a field both logs and events actually carry. See `work-agent-bundles/evidence-first-worker-triage/next-phase-end-to-end/evidence/phase4-payload-contract.md`.
 
 ## Common Validation
 
@@ -82,3 +85,10 @@ Use the narrowest validation that proves the change:
 - JSON schemas: validate sample payloads against the schema in the same directory.
 - Docs-only changes: check links and keep examples placeholder-safe.
 
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.
