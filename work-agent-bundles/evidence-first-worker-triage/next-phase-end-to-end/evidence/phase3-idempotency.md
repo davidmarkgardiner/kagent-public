@@ -62,15 +62,60 @@ claimed-but-unticketed path (`state=claimed-retry`) and call
 for the same incident.
 
 Fix: `create-gitlab-issue` now searches GitLab for an open issue labeled
-`triage-fingerprint-<dedupe_key[0:16]>` before creating anything. Drill
-procedure and expected result:
+`triage-fingerprint-<dedupe_key[0:16]>` before creating anything, and
+reuses/appends to it instead of blind-creating. Drill: manually create a
+GitLab issue for a synthetic fingerprint (simulating the POST that already
+succeeded), pre-create the matching claim ConfigMap in `state=claimed` with
+no `issue_iid` (simulating the death before the PATCH-back), then submit the
+same incident via `argo submit --from workflowtemplate/red-agentic-triage`
+and observe what `create-gitlab-issue` actually does.
+
+**Run 1 — against the WorkflowTemplate before this fix was `kubectl apply`'d
+(genuinely reproduced the defect this drill exists to catch):** dedupe key
+`drillunconfirm45...`, pod `retry-unconfirmed-drill-v1`. Pre-created ticket
+[#495](https://gitlab.com/davidmarkgardiner/mcp-test-repo/-/work_items/495)
+labeled `triage-fingerprint-drillunconfirm45`, pre-created claim
+`triage-dedupe-drillunconfirm45...` (`state=claimed`, no `issue_iid`).
+Workflow `retry-unconfirmed-drill-tc8s7` ran the CAS claimed-but-unticketed
+retry path (`"Claimed-but-unticketed incident retried, no evidence lost"`)
+and `create-gitlab-issue` blind-created a **second** ticket,
+[#496](https://gitlab.com/davidmarkgardiner/mcp-test-repo/-/work_items/496)
+(`"GitLab issue created: .../496"`) — both #495 and #496 carry the identical
+`triage-fingerprint-drillunconfirm45` label, i.e. exactly the two-tickets-
+for-one-incident defect this fix targets, live and reproduced. Root cause:
+the fixed template was edited in the worktree but had not yet been applied
+to the live `red` cluster's `WorkflowTemplate/red-agentic-triage` object —
+`kubectl diff` confirmed the running template still lacked the fingerprint
+search before this point.
+
+**Fix applied live:** `kubectl apply -f applied-config/03-argo-augmented.yaml`
+(`workflowtemplate.argoproj.io/red-agentic-triage configured`; the two
+`Sensor` objects in the same file were unchanged, confirmed via `kubectl
+diff` first).
+
+**Run 2 — against the patched WorkflowTemplate (proves the fix):** fresh
+dedupe key `drillconfirmedv2...`, pod `retry-unconfirmed-drill-v2`.
+Pre-created ticket
+[#497](https://gitlab.com/davidmarkgardiner/mcp-test-repo/-/work_items/497)
+labeled `triage-fingerprint-drillconfirmedv2`, pre-created matching claim
+(`state=claimed`, no `issue_iid`). Workflow
+`retry-unconfirmed-drill-v2-gzs6v` again hit the claimed-but-unticketed CAS
+retry path, then `create-gitlab-issue` logged `"Reused existing GitLab issue
+on retry (fingerprint match, no blind-create): .../497"` — no new issue was
+created. Confirmed via the GitLab API directly: only one open issue
+(#497) carries `triage-fingerprint-drillconfirmedv2`; a note titled "Reused
+existing ticket (retry after unconfirmed claim update)" was appended to
+#497; and the claim ConfigMap now reads
+`{"issue_iid":"497","issue_url":".../497","state":"ticket-created",...}`
+(previously empty `issue_iid`).
 
 | Step | Claim | GitLab |
 |---|---|---|
-| Simulate failure: `create-gitlab-issue` POSTs successfully, PATCH-back is killed before it runs | `state=claimed`, no `issue_iid` (identical shape to the pre-existing drill) | issue open, labeled `triage-fingerprint-<fp>` |
-| Retry submission | CAS-guarded retry-claim wins, `state=claimed-retry` -> re-enters `create-gitlab-issue` | fingerprint-label search finds the already-open issue instead of POSTing a new one; note appended, claim PATCHed to `state=ticket-created` with the *existing* `issue_iid` |
-| Second identical submission | `duplicate=true` (has `issue_iid` now) | appended to the same issue, `issue_iid` unchanged |
+| Simulate failure: issue pre-exists, claim `state=claimed`, no `issue_iid` | pre-created manually (same shape as the pre-existing drill) | issue open, labeled `triage-fingerprint-<fp>` |
+| Retry submission (patched template) | CAS-guarded retry-claim wins, `state=claimed-retry` -> re-enters `create-gitlab-issue` | fingerprint-label search finds the already-open issue instead of POSTing a new one; note appended, claim PATCHed to `state=ticket-created` with the *existing* `issue_iid` (observed: #497, unchanged) |
 
 ```text
-GITLAB_TICKET_RETRY_AFTER_UNCONFIRMED_PATCH_NO_DUPLICATE: yes (fingerprint-label reuse, applied-config/03-argo-augmented.yaml create-gitlab-issue)
+GITLAB_TICKET_RETRY_AFTER_UNCONFIRMED_PATCH_NO_DUPLICATE: yes — observed live on `red`
+  before-fix repro: workflow retry-unconfirmed-drill-tc8s7, fingerprint drillunconfirm45, tickets #495+#496 (duplicate, defect confirmed)
+  after-fix proof:  workflow retry-unconfirmed-drill-v2-gzs6v, fingerprint drillconfirmedv2, ticket #497 (reused, no duplicate)
 ```
