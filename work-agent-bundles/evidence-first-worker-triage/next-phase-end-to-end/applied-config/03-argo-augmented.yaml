@@ -383,6 +383,54 @@ spec:
           {{inputs.parameters.diagnosis}}
           EOF
           now_iso="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          fingerprint="$(jq -r '.dedupe_key[0:16]' /tmp/incident.json)"
+
+          # A workflow can die/be evicted after the GitLab issue POST below
+          # succeeds but before the claim ConfigMap is PATCHed with
+          # issue_iid. A retry then finds "claimed, no issue_iid" and lands
+          # back here. Search for an already-open issue carrying this
+          # incident's fingerprint label first, so that retry reuses/appends
+          # to the existing ticket instead of blind-creating a second one.
+          existing_issues="$(curl --fail --silent --show-error --retry 3 --retry-all-errors \
+            -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+            --get --data-urlencode "labels=triage-fingerprint-${fingerprint}" --data-urlencode "state=opened" --data-urlencode "per_page=1" \
+            "$GITLAB_URL/api/v4/projects/$GITLAB_PROJECT_ID/issues")"
+          existing_iid="$(printf '%s' "$existing_issues" | jq -r '.[0].iid // empty')"
+          existing_url="$(printf '%s' "$existing_issues" | jq -r '.[0].web_url // empty')"
+
+          if [ -n "$existing_iid" ]; then
+            jq -n --arg first_seen "{{inputs.parameters.first-seen}}" --arg last_seen "$now_iso" \
+              --slurpfile incident /tmp/incident.json --rawfile diagnosis /tmp/diagnosis.txt '
+              def scrub:
+                gsub("(?i)(password|passwd|pwd|token|api[_-]?key|secret|client_secret)\\s*[=:]\\s*[^\\s,;]+"; "[REDACTED]") |
+                gsub("(?i)(authorization\\s*[:=]\\s*bearer\\s+)[^\\s,;]+"; "[REDACTED]") |
+                gsub("(?i)(cookie|set-cookie)\\s*[:=]\\s*[^\\r\\n]+"; "[REDACTED]");
+              ($incident[0]) as $i |
+              {
+                body: (
+                  "### Reused existing ticket (retry after unconfirmed claim update)\n\n" +
+                  "A prior workflow attempt created this ticket but the workflow died before the " +
+                  "24h claim record was confirmed with the ticket ID. This retry reused the existing " +
+                  "open issue for fingerprint `" + $i.dedupe_key[0:16] + "` instead of opening a new one.\n\n" +
+                  "| Field | Value |\n|---|---|\n" +
+                  "| First seen (UTC) | " + $first_seen + " |\n" +
+                  "| Last seen (UTC) | " + $last_seen + " |\n" +
+                  "| Ticket state | updated (reused on retry) |\n\n" +
+                  "### Redacted evidence\n```\n" + ($i.evidence.representative_log_lines | scrub) + "\n```\n\n" +
+                  "### Read-only kagent triage (includes confidence)\n" + ($diagnosis | scrub) + "\n"
+                )
+              }' > /tmp/note.json
+            curl --fail --silent --show-error --retry 3 --retry-all-errors -H "PRIVATE-TOKEN: $GITLAB_TOKEN" -H 'Content-Type: application/json' \
+              --data @/tmp/note.json "$GITLAB_URL/api/v4/projects/$GITLAB_PROJECT_ID/issues/${existing_iid}/notes" > /dev/null
+            token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+            curl --fail --silent --show-error --retry 3 --retry-all-errors --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+              -X PATCH "https://kubernetes.default.svc/api/v1/namespaces/argo-events/configmaps/{{inputs.parameters.dedupe-name}}" \
+              -H "Authorization: Bearer $token" -H 'Content-Type: application/merge-patch+json' \
+              --data "{\"data\":{\"state\":\"ticket-created\",\"issue_url\":\"$existing_url\",\"issue_iid\":\"$existing_iid\"}}" > /dev/null
+            echo "Reused existing GitLab issue on retry (fingerprint match, no blind-create): $existing_url"
+            exit 0
+          fi
+
           title="[Automated triage] $(jq -r '(.severity // "error") + " " + .signal_kind + ": " + .namespace + "/" + .pod + " (" + .reason + ")"' /tmp/incident.json)"
           jq -n --arg title "$title" --arg first_seen "{{inputs.parameters.first-seen}}" --arg last_seen "$now_iso" \
             --slurpfile incident /tmp/incident.json --rawfile diagnosis /tmp/diagnosis.txt '
