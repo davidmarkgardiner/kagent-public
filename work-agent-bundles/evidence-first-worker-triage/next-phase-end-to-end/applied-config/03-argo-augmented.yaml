@@ -403,6 +403,7 @@ spec:
               --slurpfile incident /tmp/incident.json --rawfile diagnosis /tmp/diagnosis.txt '
               def scrub:
                 gsub("(?i)(password|passwd|pwd|token|api[_-]?key|secret|client_secret)\\s*[=:]\\s*[^\\s,;]+"; "[REDACTED]") |
+                gsub("(?i)\\b[\\w-]*(?:password|passwd|pwd|token|secret|bearer|api[-_]?key)[\\w-]*\\b"; "[REDACTED]") |
                 gsub("(?i)(authorization\\s*[:=]\\s*bearer\\s+)[^\\s,;]+"; "[REDACTED]") |
                 gsub("(?i)(cookie|set-cookie)\\s*[:=]\\s*[^\\r\\n]+"; "[REDACTED]");
               ($incident[0]) as $i |
@@ -436,6 +437,7 @@ spec:
             --slurpfile incident /tmp/incident.json --rawfile diagnosis /tmp/diagnosis.txt '
             def scrub:
               gsub("(?i)(password|passwd|pwd|token|api[_-]?key|secret|client_secret)\\s*[=:]\\s*[^\\s,;]+"; "[REDACTED]") |
+              gsub("(?i)\\b[\\w-]*(?:password|passwd|pwd|token|secret|bearer|api[-_]?key)[\\w-]*\\b"; "[REDACTED]") |
               gsub("(?i)(authorization\\s*[:=]\\s*bearer\\s+)[^\\s,;]+"; "[REDACTED]") |
               gsub("(?i)(cookie|set-cookie)\\s*[:=]\\s*[^\\r\\n]+"; "[REDACTED]");
             ($incident[0]) as $i |
@@ -501,6 +503,7 @@ spec:
           jq -n --arg first_seen "{{inputs.parameters.first-seen}}" --arg last_seen "$now_iso" --slurpfile incident /tmp/incident.json '
             def scrub:
               gsub("(?i)(password|passwd|pwd|token|api[_-]?key|secret|client_secret)\\s*[=:]\\s*[^\\s,;]+"; "[REDACTED]") |
+              gsub("(?i)\\b[\\w-]*(?:password|passwd|pwd|token|secret|bearer|api[-_]?key)[\\w-]*\\b"; "[REDACTED]") |
               gsub("(?i)(authorization\\s*[:=]\\s*bearer\\s+)[^\\s,;]+"; "[REDACTED]") |
               gsub("(?i)(cookie|set-cookie)\\s*[:=]\\s*[^\\r\\n]+"; "[REDACTED]");
             ($incident[0]) as $i |
