@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Evidence-First Worker Triage — delivery TL;DR</title>
+  <style>
+    :root { --ivory:#faf9f5; --paper:#fff; --ink:#171716; --muted:#68655d; --line:#dedbd2; --clay:#c76548; --blue:#28628d; --olive:#35745d; --amber:#98651d; --rose:#a5443d; --soft-green:#ebf4ee; --soft-amber:#fff3dc; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; --sans:system-ui,-apple-system,"Segoe UI",sans-serif; --serif:ui-serif,Georgia,serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--ivory); font:16px/1.55 var(--sans); }
+    .page { max-width:1180px; margin:auto; padding:48px 30px 80px; }
+    .eyebrow { color:var(--muted); font:700 .75rem var(--mono); letter-spacing:.1em; text-transform:uppercase; }
+    .eyebrow::before { content:""; display:inline-block; height:3px; width:27px; margin:0 10px 3px 0; background:var(--clay); }
+    h1 { max-width:960px; margin:14px 0 18px; padding-right:12px; font:clamp(2.8rem,5.8vw,5.4rem)/1.01 var(--serif); letter-spacing:-.04em; }
+    h1 em { color:var(--blue); }
+    h2 { margin:0 0 14px; font-size:1.65rem; letter-spacing:-.025em; }
+    h3 { margin:0 0 8px; font-size:1.05rem; }
+    p { margin:0 0 12px; }
+    .lead { max-width:820px; font-size:1.14rem; }
+    .decision, .callout { max-width:960px; padding:19px 22px; border-left:5px solid var(--olive); background:var(--soft-green); }
+    .callout { border-color:var(--amber); background:var(--soft-amber); }
+    section { padding:48px 0; border-bottom:1px solid var(--line); }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .card { min-width:0; padding:20px; border:1px solid var(--line); background:var(--paper); }
+    .card h3 { color:var(--blue); }
+    .kicker { color:var(--muted); font:700 .75rem var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+    .flow { overflow:auto; padding:22px; border:1px solid #142027; background:#202b32; }
+    .flow .mermaid { min-width:760px; }
+    .flow svg { max-width:100%; height:auto; }
+    .table-wrap { overflow-x:auto; border:1px solid var(--line); background:var(--paper); }
+    table { width:100%; min-width:720px; border-collapse:collapse; }
+    th, td { padding:14px 16px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+    th { background:#f0eee6; font-size:.76rem; letter-spacing:.07em; text-transform:uppercase; }
+    tbody tr:last-child td { border-bottom:0; }
+    .badge { display:inline-block; padding:3px 8px; border-radius:999px; font:700 .75rem var(--mono); white-space:nowrap; }
+    .proven { color:#175c42; background:#dceddf; }
+    .validate { color:#745008; background:#ffe5af; }
+    .boundary { color:#7b302c; background:#f8dfdc; }
+    .steps { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; counter-reset:step; }
+    .step { position:relative; min-width:0; padding:18px 16px 16px 56px; background:var(--paper); border:1px solid var(--line); }
+    .step::before { counter-increment:step; content:counter(step); position:absolute; left:16px; top:15px; display:grid; place-items:center; width:27px; height:27px; border-radius:50%; background:var(--blue); color:white; font:700 .8rem var(--mono); }
+    .sources { color:var(--muted); font-size:.9rem; }
+    code { font: .88em var(--mono); }
+    @media (max-width:850px) { .page { padding:32px 18px 56px; } .grid, .steps { grid-template-columns:1fr; } h1 { font-size:3rem; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="eyebrow">Work delivery · Evidence-first worker triage</div>
+    <h1>Turn raw worker signals into <em>safe, actionable human triage.</em></h1>
+    <p class="lead">This work delivers a repeatable path for Kubernetes logs and events to arrive at a central, read-only triage agent with enough context to produce one clear GitLab ticket a human can act on—without making the path depend on Alertmanager or Grafana.</p>
+
+    <div class="decision"><strong>Delivery goal:</strong> every worker can send a redacted, bounded, correctly labelled evidence package to the management cluster. The management side correlates it, prevents duplicate ticket storms, asks a read-only agent to diagnose it, and presents the result in a human-readable GitLab ticket with the exact cluster, namespace, pod, container when known, signal and safe evidence.</div>
+
+    <section>
+      <h2>What happens, end to end</h2>
+      <div class="flow">
+        <pre class="mermaid">flowchart LR
+          subgraph W[Each worker cluster]
+            L[Pod log or Kubernetes event] --> A[Alloy\ncollects source + metadata]
+            A --> V[Vector\nredacts · bounds · normalises\nadds worker identity]
+          end
+          V --> K[(Kafka\ncross-cluster handoff + replay)]
+          subgraph M[Central management cluster]
+            K --> G[Argo\nvalidates · durable idempotency\ncontrols concurrency]
+            G --> R[Read-only kagent\ndiagnoses supplied evidence]
+            R --> T[GitLab ticket\nhuman-readable incident record]
+          end
+          classDef worker fill:#30594d,stroke:#76a992,color:#fff;
+          classDef central fill:#334953,stroke:#7b9198,color:#fff;
+          classDef handoff fill:#7a5423,stroke:#e2ad72,color:#fff;
+          class A,V worker;
+          class G,R,T central;
+          class K handoff;
+        </pre>
+      </div>
+      <p class="callout"><strong>Key placement decision:</strong> raw/noisy evidence is prepared locally in each worker before it crosses the cluster boundary. The agent, ticket credentials, durable incident state and policy stay central.</p>
+    </section>
+
+    <section>
+      <h2>What the delivery should achieve</h2>
+      <div class="grid">
+        <article class="card"><div class="kicker">For SREs</div><h3>Faster first understanding</h3><p>A ticket says where the failure happened and what was observed, so the human starts with evidence rather than reconstructing it from dashboards and alerts.</p></article>
+        <article class="card"><div class="kicker">For workers</div><h3>Local safety before egress</h3><p>Vector redacts, caps, normalises and buffers evidence locally. A worker outage or burst should not become uncontrolled agent work or a raw-log export.</p></article>
+        <article class="card"><div class="kicker">For the platform</div><h3>One governed triage plane</h3><p>Management owns replay handling, durable duplicate control, read-only agent access, workflow audit and ticket creation—rather than reproducing those controls in every worker.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>What has been proven versus what work must prove</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Area</th><th>Current evidence</th><th>Work delivery requirement</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Single-cluster signal path</strong></td><td><span class="badge proven">Proven on red</span> Log and Kubernetes <code>BackOff</code> paths reached a read-only agent and ticket.</td><td>Repeat for the real worker → management topology.</td></tr>
+            <tr><td><strong>Alloy event enrichment</strong></td><td><span class="badge proven">Raw capture verified</span> Kubernetes events arrive flattened; container is best-effort parsed from event message where available.</td><td>Prove required event/log fields arrive correctly in the work ticket.</td></tr>
+            <tr><td><strong>Human ticket format</strong></td><td><span class="badge proven">Reviewed in proof</span> Ticket is intended to show worker cluster, node, pod, container, reason, severity, evidence and reach-back commands.</td><td>Capture work-side tickets and have the operating human confirm readability and correctness.</td></tr>
+            <tr><td><strong>Multi-worker delivery</strong></td><td><span class="badge validate">Validate at work</span> The red proof was single cluster only.</td><td>Stamp each worker identity at Alloy and prove distinct workers retain their own labels through Kafka, Argo, agent and ticket.</td></tr>
+            <tr><td><strong>Fleet resilience</strong></td><td><span class="badge validate">Validate at work</span> No fleet-scale HA, broker replay or capacity claim.</td><td>Prove buffers, replay, durable TTL idempotency, concurrency and outage recovery.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>How the work agent delivers it</h2>
+      <div class="steps">
+        <div class="step"><h3>Reproduce safely</h3><p>Deploy one additive, non-production worker path. Merge the Alloy fragment into the existing Alloy release; do not create a competing collector.</p></div>
+        <div class="step"><h3>Prove evidence</h3><p>Generate an approved application-log signal and Kubernetes event. Capture the payload at each boundary and verify field completeness and redaction.</p></div>
+        <div class="step"><h3>Prove the human outcome</h3><p>Confirm the central agent creates or updates one readable GitLab ticket, with safe evidence and practical reach-back details.</p></div>
+        <div class="step"><h3>Scale deliberately</h3><p>Add workers and namespaces only after replay, duplicate handling, access boundaries and ticket quality meet the desired-state gates.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>What this explicitly does not do</h2>
+      <div class="grid">
+        <article class="card"><div class="kicker">Boundary</div><h3>No autonomous remediation</h3><p>The agent diagnoses and advises. It does not mutate worker clusters.</p></article>
+        <article class="card"><div class="kicker">Boundary</div><h3>No replacement for human paging</h3><p>Alertmanager can continue to page humans. Grafana/Loki remain useful for dashboards and follow-up investigation.</p></article>
+        <article class="card"><div class="kicker">Boundary</div><h3>No blind fleet rollout</h3><p>A Ready pod or rendered YAML is not success. Each gate needs direct evidence before another worker or namespace is onboarded.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Plain-English TL;DR</h2>
+      <p class="decision">Instead of waiting for an alert to lose its useful context and then asking an agent to hunt it down, the worker sends a small, safe evidence package at the moment the log or event occurs. The central platform turns that into one useful ticket for a human—while preserving existing alerting and keeping the agent read-only.</p>
+      <p class="sources">Grounded in <code>FRONT-SHEET.md</code>, <code>FLEET-TOPOLOGY.md</code>, <code>DESIRED-STATE.md</code>, and <code>next-phase-end-to-end/README.md</code>. Design follows the bundle’s existing warm-neutral stakeholder visual style.</p>
+    </section>
+  </main>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad:true, theme:"dark", securityLevel:"strict", flowchart:{curve:"basis", useMaxWidth:true} });
+  </script>
+</body>
+</html>
