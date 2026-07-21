@@ -157,34 +157,30 @@ if [[ "$TEST" == "true" ]]; then
   PF_PID=$!
   sleep 2
 
-  # Find agent ID
-  AGENT_ID=$(curl -s "http://localhost:18083/api/agents" 2>/dev/null | python3 -c "
+  # Test: send a diagnostic query via A2A. The session/chat API is broken on
+  # kagent v0.8.0-beta4; the trailing slash and "kind":"text" are required.
+  RESPONSE=$(curl -s --max-time 60 -X POST \
+    "http://localhost:18083/api/a2a/${KAGENT_NS}/${NAMESPACE}-agent/" \
+    -H "Content-Type: application/json" \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":\"create-agent-test\",\"method\":\"message/send\",\"params\":{\"message\":{\"role\":\"user\",\"parts\":[{\"kind\":\"text\",\"text\":\"List all pods in the ${NAMESPACE} namespace and report their status.\"}]}}}" 2>/dev/null)
+
+  REPLY=$(echo "$RESPONSE" | python3 -c "
 import json, sys
-agents = json.load(sys.stdin)
-for a in agents.get('data', agents):
-    agent = a.get('agent', a)
-    meta = agent.get('metadata', {})
-    if meta.get('name') == '${NAMESPACE}-agent':
-        print(a.get('id', meta.get('name', '')))
-        break
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+parts = [p.get('text', '') for a in d.get('result', {}).get('artifacts', [])
+         for p in a.get('parts', [])]
+print(' '.join(parts)[:200])
 " 2>/dev/null)
 
-  if [[ -n "$AGENT_ID" ]]; then
-    echo "   Found agent: $AGENT_ID"
-
-    # Test: send a diagnostic query
-    RESPONSE=$(curl -s -X POST "http://localhost:18083/api/chat/${AGENT_ID}" \
-      -H "Content-Type: application/json" \
-      -d "{\"message\": \"List all pods in the ${NAMESPACE} namespace and report their status.\"}" 2>/dev/null)
-
-    if [[ -n "$RESPONSE" ]]; then
-      echo "   ✅ Agent responded to test query"
-      echo "   Response preview: $(echo "$RESPONSE" | python3 -c "import json,sys; r=json.load(sys.stdin); print(str(r)[:200])" 2>/dev/null)"
-    else
-      echo "   ⚠️  No response from agent"
-    fi
+  if [[ -n "$REPLY" ]]; then
+    echo "   ✅ Agent responded to test query"
+    echo "   Response preview: $REPLY"
   else
-    echo "   ⚠️  Could not find agent ID for ${NAMESPACE}-agent"
+    echo "   ⚠️  No A2A reply from ${NAMESPACE}-agent"
+    echo "   Check: kubectl --context $CONTEXT get agent ${NAMESPACE}-agent -n $KAGENT_NS -o yaml"
   fi
 
   kill $PF_PID 2>/dev/null

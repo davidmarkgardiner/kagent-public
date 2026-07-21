@@ -151,32 +151,21 @@ When creating issues for AKS failures:
 ## Health Check Scripts
 
 ### Full Cluster Certification
+
+Run the shipped script instead of retyping the checks:
+
 ```bash
-#!/bin/bash
-# Run all health checks
-
-echo "=== API Server ===" 
-kubectl cluster-info
-
-echo "=== Nodes ==="
-kubectl get nodes
-kubectl top nodes
-
-echo "=== System Pods ==="
-kubectl get pods -n kube-system | grep -v Running
-
-echo "=== Problem Pods ==="
-kubectl get pods -A | grep -E "CrashLoop|Error|Pending|ImagePull"
-
-echo "=== Recent Events ==="
-kubectl get events -A --sort-by='.lastTimestamp' | tail -20
-
-echo "=== PVC Status ==="
-kubectl get pvc -A | grep -v Bound
-
-echo "=== Resource Quotas ==="
-kubectl describe resourcequotas -A 2>/dev/null | grep -A5 "Used"
+# From the repo root (script ships inside this skill directory)
+agents/skills/aks-specialist/scripts/aks-cert-check.sh [--context CTX] [--json]
 ```
+
+It runs the sectioned health sweep (API server, nodes, system pods, problem
+pods, recent events, PVC status, resource quotas) and exits non-zero when it
+detects problem pods or unbound PVCs, so it can gate automation. Interpret the
+findings with the diagnostics sections above.
+
+For the full Argo-based certification workflow, use
+`infra/kro-stack/certification/` (`deploy-certification.sh`, `example-run.sh`).
 
 ## Integration with Existing Workflows
 
@@ -188,7 +177,8 @@ This skill integrates with:
 
 ## References
 
-- `references/common_issues.md` - K8s issue catalog
-- `references/incident_response.md` - Incident playbooks
-- `references/aks_specific.md` - Azure-specific issues
-- `scripts/` - Automated diagnostic scripts
+- `scripts/aks-cert-check.sh` - full cluster certification health check (in this skill)
+- `agents/skills/k8s-troubleshooter/` - general K8s diagnostic scripts and issue patterns
+- `agents/kagent-triage/PLAYBOOK-WORKLOAD-CLUSTER.md` and `PLAYBOOK-MANAGEMENT-CLUSTER.md` - incident playbooks
+- `agents/kagent-triage/LIFT-AND-SHIFT-AKS.md` - Azure-specific migration and configuration issues
+- `infra/kro-stack/certification/` - Argo-based cluster certification workflows

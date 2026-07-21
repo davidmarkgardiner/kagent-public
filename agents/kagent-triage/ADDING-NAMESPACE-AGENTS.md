@@ -31,14 +31,11 @@ Two builder agents are deployed on the cluster and accessible via the KAgent UI 
 **`byoa-builder-guided`** — for teams new to the platform. Plain-English 7-topic flow, output goes via PR review.
 
 ```bash
-# Start a session (port-forward if no external IP)
-kubectl port-forward -n kagent svc/kagent-controller 8083:8083
-
-# Chat with the expert builder
-curl -s -X POST http://localhost:8083/api/a2a/kagent/byoa-builder-expert/ \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"Build me a triage agent for my namespace"}]}}}' \
-  | jq -r '.result.status.message.parts[].data.args.originalFunctionCall.args.questions[].question // .result.history[-1].parts[].text'
+# Chat with the expert builder. The helper handles the port-forward, JSON-RPC
+# framing, required trailing slash, and reply extraction; use --raw when you
+# need the builder's structured question payload.
+scripts/kagent-a2a-invoke.sh --agent byoa-builder-expert \
+  --text 'Build me a triage agent for my namespace'
 ```
 
 See [BYOA-SELF-SERVICE.md](./BYOA-SELF-SERVICE.md) for the full guide including the onboarding contract, routing, and testing.
@@ -53,7 +50,7 @@ In Claude Code, invoke the `byoa-agent-builder` skill. It runs the same structur
 /byoa-agent-builder
 ```
 
-or just describe what you need in natural language. The skill lives at `skills/byoa-agent-builder/`.
+or just describe what you need in natural language. The skill lives at `agents/skills/byoa-agent-builder/`.
 
 ---
 
@@ -61,12 +58,12 @@ or just describe what you need in natural language. The skill lives at `skills/b
 
 The `create-agent.sh` script automates manifest generation, deployment, and testing.
 
-**Location:** `~/clawd/skills/kagent-namespace-agent/scripts/create-agent.sh`
+**Location:** `agents/skills/kagent-namespace-agent/scripts/create-agent.sh` (run from the repo root)
 
 ### Generate Manifests Only
 
 ```bash
-~/clawd/skills/kagent-namespace-agent/scripts/create-agent.sh \
+agents/skills/kagent-namespace-agent/scripts/create-agent.sh \
   --namespace cert-manager \
   --description "TLS certificate lifecycle management using cert-manager. Handles Certificate, Issuer, ClusterIssuer, CertificateRequest resources. Common issues: failed ACME challenges, expired certificates, issuer not ready, secret not found."
 ```
@@ -86,7 +83,7 @@ The `create-agent.sh` script automates manifest generation, deployment, and test
 ### Generate, Deploy, and Test
 
 ```bash
-~/clawd/skills/kagent-namespace-agent/scripts/create-agent.sh \
+agents/skills/kagent-namespace-agent/scripts/create-agent.sh \
   --namespace cert-manager \
   --description "TLS certificate lifecycle management using cert-manager" \
   --deploy \
@@ -136,7 +133,7 @@ This will:
   --namespace istio-system \
   --description "Istio service mesh control plane" \
   --context aks-prod \
-  --output-dir ~/repos/argo-workflow/kagent-triage/ \
+  --output-dir agents/kagent-triage/ \
   --deploy
 ```
 
@@ -346,37 +343,26 @@ kubectl apply -f cert-manager-sensor.yaml
 ### Step 4: Verify
 
 ```bash
-# Agent ready
-kubectl wait agent/cert-manager-agent -n kagent --for=condition=Ready --timeout=60s
+# Gates on Accepted -> Ready -> listed by the controller API -> smoke reply,
+# one PASS/FAIL line per gate
+scripts/kagent-verify-agent.sh --agent cert-manager-agent \
+  --smoke 'Check the status of all certificates in cert-manager namespace'
 
 # Sensor pod running
 kubectl get pods -n argo-events -l sensor-name=kagent-triage-cert-manager
-
-# Agent discoverable via API
-kubectl port-forward svc/kagent-controller -n kagent 8083:8083 &
-curl -s http://localhost:8083/api/agents | python3 -c "
-import json, sys
-for a in json.load(sys.stdin).get('agents', []):
-    if 'cert-manager' in a.get('name', ''):
-        print(f\"Found: {a['name']} (Ready)\")"
-kill %1
 ```
 
 ### Step 5: Test
 
 ```bash
-# Apply test error injection (from the generated test file)
-kubectl apply -f cert-manager-test-error.yaml
+# Safe end-to-end fault test: pre-checks the sensor is idle, injects the
+# fixture, waits for the triage workflow, and ALWAYS cleans up the fixture
+scripts/kagent-e2e-fault-test.sh --namespace cert-manager --fixture cert-manager-test-error.yaml
 
-# Watch for workflows
-kubectl get workflows -n argo-events -w
-
-# Or test directly via API
-kubectl port-forward svc/kagent-controller -n kagent 8083:8083 &
-curl -s -X POST http://localhost:8083/api/chat/cert-manager-agent \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Check the status of all certificates in cert-manager namespace", "conversation_id": null}' | jq .response
-kill %1
+# Or query the agent directly (the session/chat API is broken on kagent
+# v0.8.0-beta4 — the helper uses the working A2A protocol)
+scripts/kagent-a2a-invoke.sh --agent cert-manager-agent \
+  --text 'Check the status of all certificates in cert-manager namespace'
 ```
 
 ---
@@ -396,7 +382,7 @@ To ensure your agent is discovered correctly, use **either** the naming conventi
 
 ## Template Reference
 
-The skill uses three templates located at `~/clawd/skills/kagent-namespace-agent/templates/`:
+The skill uses three templates located at `agents/skills/kagent-namespace-agent/templates/`:
 
 ### `agent.yaml.tmpl`
 - kagent Agent CR with placeholder system prompt

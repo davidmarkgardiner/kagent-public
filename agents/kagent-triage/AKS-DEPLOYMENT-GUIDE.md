@@ -21,7 +21,7 @@ Use the `uk8scluster-public` ResourceGraphDefinition — it has security default
 kubectx {{CLUSTER_NAME}}
 
 # Review the RGD
-cat infra-stack/kro-stack/definitions/uk8scluster-public.yaml
+cat infra/kro-stack/definitions/uk8scluster-public.yaml
 
 # Create the cluster instance (EDIT values first)
 kubectl apply -f - <<'EOF'
@@ -297,11 +297,12 @@ AKS=example-aks-triage-admin
 cd kagent-triage/aks
 ./deploy-all.sh $AKS
 
-# Wait for agents to be ready
+# Wait for all agents, then deep-verify one (Accepted -> Ready -> listed by
+# the controller API; run from the kagent-public repo root)
 kubectl --context $AKS wait agent --all -n kagent --for=condition=Ready --timeout=120s
+scripts/kagent-verify-agent.sh --agent flux-system-agent --context $AKS
 
-# Verify
-kubectl --context $AKS get agents -n kagent
+# Verify sensors
 kubectl --context $AKS get sensors -n argo-events
 ```
 
@@ -310,27 +311,11 @@ kubectl --context $AKS get sensors -n argo-events
 ```bash
 AKS=example-aks-triage-admin
 
-cat <<'SCRIPT' | kubectl --context $AKS run smoke-test --image=python:3.11-slim --rm -i --restart=Never -n kagent -- python3
-import json, urllib.request, sys
-base = "http://kagent-controller.kagent:8083"
-payload = json.dumps({
-    "jsonrpc": "2.0", "id": "smoke-1",
-    "method": "message/send",
-    "params": {"message": {"role": "user", "parts": [{"kind": "text", "text": "Check health of all pods in flux-system namespace."}]}}
-}).encode()
-req = urllib.request.Request(f"{base}/api/a2a/kagent/flux-system-agent/", data=payload,
-    headers={"Content-Type": "application/json"}, method="POST")
-try:
-    with urllib.request.urlopen(req, timeout=300) as r:
-        result = json.loads(r.read().decode())
-        status = result.get("result", {}).get("status", {}).get("state", "unknown")
-        for a in result.get("result", {}).get("artifacts", []):
-            for p in a.get("parts", []):
-                if p.get("text"): print(p["text"][:1500])
-        print(f"\nStatus: {status}", file=sys.stderr)
-except Exception as e:
-    print(f"Error: {e}")
-SCRIPT
+# Run from the kagent-public repo root. The helper port-forwards, frames the
+# JSON-RPC call (trailing slash, "kind":"text"), and extracts the reply.
+# --timeout 300: the first LLM call on a fresh cluster can be slow.
+scripts/kagent-a2a-invoke.sh --agent flux-system-agent --context $AKS --timeout 300 \
+  --text 'Check health of all pods in flux-system namespace.'
 ```
 
 ## Step 7: Shut Down When Done
@@ -382,7 +367,7 @@ az group delete -g example-rg-triage --yes --no-wait
 | `kagent-triage/02-workflow-kagent-triage.yaml` | Shared WorkflowTemplate (A2A + Logic App) |
 | `kagent-triage/logic-app/` | Azure Logic App for Teams notifications |
 | `kagent-triage/HANDOVER-2026-03-16.md` | Full session handover |
-| `infra-stack/kro-stack/definitions/uk8scluster-public.yaml` | Standard RGD for AKS clusters |
+| `infra/kro-stack/definitions/uk8scluster-public.yaml` | Standard RGD for AKS clusters |
 
 ## Tested Agents
 

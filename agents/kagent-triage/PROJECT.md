@@ -47,8 +47,9 @@ K8s Warning Event (any namespace)
 
 ## API Reference
 - List agents: GET http://kagent-controller.kagent:8083/api/agents
-- Create conversation: POST http://kagent-controller.kagent:8083/api/chat
-- Agent invoke expects: agent_id, message, conversation_id
+- Invoke agent: POST http://kagent-controller.kagent:8083/api/a2a/kagent/{agent-name}/
+  (JSON-RPC 2.0 `message/send`; trailing slash required; parts need `"kind":"text"`;
+  use `scripts/kagent-a2a-invoke.sh` — the chat/session API is broken on v0.8.0-beta4)
 
 ## Files
 - 00-test-namespace.yaml       - Test namespace + RBAC

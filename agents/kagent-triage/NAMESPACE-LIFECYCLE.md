@@ -18,13 +18,11 @@
 ## Step 1: WORK — Build the Agent
 
 ```bash
-cd ~/repos/argo-workflow/kagent-triage
-
-# Use the skill script to generate manifests
-~/clawd/skills/kagent-namespace-agent/scripts/create-agent.sh \
+# Run from the repo root; the skill script generates the manifests
+agents/skills/kagent-namespace-agent/scripts/create-agent.sh \
   --namespace <NAMESPACE> \
   --description "<what this namespace does, failure modes, key commands>" \
-  --output-dir . \
+  --output-dir agents/kagent-triage \
   --deploy
 ```
 
@@ -34,10 +32,10 @@ cd ~/repos/argo-workflow/kagent-triage
 - `<namespace>-test-error.yaml` — Generic test errors
 - `<namespace>-fault-injection.yaml` — Domain-specific faults (create manually)
 
-**Verify:**
+**Verify** (run from the repo root; gates on Accepted → Ready → listed by API):
 ```bash
-kubectl get agent <namespace>-agent -n kagent -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
-# Must return: True
+scripts/kagent-verify-agent.sh --agent <namespace>-agent
+# PASS accepted / PASS ready / PASS api-listed — exit 0
 ```
 
 ---
@@ -66,9 +64,10 @@ kubectl get workflows -n argo-events --watch
 
 **If events are `type: Normal` (like cert-manager):** Test via direct A2A call instead:
 ```bash
-curl -s -X POST "http://kagent-controller.kagent:8083/api/a2a/kagent/<namespace>-agent/" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":"test-1","method":"message/send","params":{"message":{"role":"user","parts":[{"text":"Diagnose issues in the <namespace> namespace"}]}}}'
+# Run from the repo root; the helper adds the required "kind":"text" part
+# field and trailing slash that hand-rolled curls tend to drop
+scripts/kagent-a2a-invoke.sh --agent <namespace>-agent \
+  --text 'Diagnose issues in the <namespace> namespace'
 ```
 
 ---

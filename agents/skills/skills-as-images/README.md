@@ -252,12 +252,10 @@ kubectl logs -n kagent $POD -c skills-init
 kubectl exec -n kagent $POD -c kagent -- ls -la /skills/
 # Expected: a directory per skill ref, each containing SKILL.md
 
-# 4. Agent reports the skills as available
-kubectl port-forward -n kagent svc/kagent-controller 8083:8083 &
-curl -s -X POST "http://localhost:8083/api/a2a/kagent/<agent-name>/" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"What skills do you have loaded?"}]}}}' \
-  -m 30 | jq -r '.result.artifacts[0].parts[0].text'
+# 4. Agent reports the skills as available (helper manages the port-forward,
+#    JSON-RPC framing, and trailing slash; run from the repo root)
+scripts/kagent-a2a-invoke.sh --agent <agent-name> --timeout 30 \
+  --text 'What skills do you have loaded?'
 ```
 
 ## Gotchas

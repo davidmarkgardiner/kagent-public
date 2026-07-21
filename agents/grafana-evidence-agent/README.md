@@ -40,34 +40,19 @@ domain triage agent
 
 ```bash
 kubectl apply -f agents/grafana-evidence-agent/agent.yaml
-kubectl wait --for=condition=Accepted agent/grafana-evidence-agent -n kagent --timeout=120s
-kubectl wait --for=condition=Ready agent/grafana-evidence-agent -n kagent --timeout=180s
+
+# Gates on Accepted -> Ready -> listed by the controller API
+scripts/kagent-verify-agent.sh --agent grafana-evidence-agent --timeout 180
 ```
 
 ## Smoke
 
-Send a small A2A request through the kagent controller:
+Send a small A2A request through the kagent controller (the helper manages
+the port-forward, JSON-RPC framing, and trailing slash):
 
 ```bash
-kubectl -n kagent port-forward svc/kagent-controller 18083:8083
-
-jq -cn '{
-  jsonrpc: "2.0",
-  id: "grafana-evidence-smoke",
-  method: "message/send",
-  params: {
-    message: {
-      role: "user",
-      parts: [{
-        kind: "text",
-        text: "Build a brief evidence pack for namespace chaos-demo, workload chaos-target, pod regex chaos-target.*, time window now-30m to now. Use observe_only if the workload is healthy."
-      }]
-    }
-  }
-}' | curl -fsS -X POST \
-  http://127.0.0.1:18083/api/a2a/kagent/grafana-evidence-agent/ \
-  -H 'Content-Type: application/json' \
-  --data-binary @-
+scripts/kagent-a2a-invoke.sh --agent grafana-evidence-agent \
+  --text 'Build a brief evidence pack for namespace chaos-demo, workload chaos-target, pod regex chaos-target.*, time window now-30m to now. Use observe_only if the workload is healthy.'
 ```
 
 ## Contract

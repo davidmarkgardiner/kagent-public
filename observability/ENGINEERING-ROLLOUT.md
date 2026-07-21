@@ -169,17 +169,10 @@ Work through one namespace end-to-end, document everything, create GitLab ticket
 
 3. **Run KAgent triage on existing issues**
    ```bash
-   curl -s -X POST "http://kagent-controller.kagent:8083/api/a2a/kagent/sre-triage-agent/" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "jsonrpc":"2.0",
-       "id":"rollout-cert-manager-1",
-       "method":"message/send",
-       "params":{"message":{"role":"user","parts":[{
-         "kind":"text",
-         "text":"Investigate all Warning events in the cert-manager namespace. Check pod health, certificate status, and any recurring issues. Report findings with evidence."
-       }]}}
-     }' | jq '.result.artifacts[0].parts[0].text'
+   # Run from the repo root; in-cluster callers can pass
+   # --url http://kagent-controller.kagent.svc.cluster.local:8083 to skip the port-forward
+   scripts/kagent-a2a-invoke.sh --agent sre-triage-agent \
+     --text 'Investigate all Warning events in the cert-manager namespace. Check pod health, certificate status, and any recurring issues. Report findings with evidence.'
    ```
 
 4. **Inject test faults** — see [Chaos Injection](#chaos-injection-framework) below

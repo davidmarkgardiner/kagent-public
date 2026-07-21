@@ -377,26 +377,11 @@ kubectl get agents -n kagent -w
 ```
 
 ```bash
-# Port-forward and test
-kubectl port-forward -n kagent svc/kagent-controller 8083:8083 &
-sleep 3
-
-curl -s --max-time 30 -X POST "http://localhost:8083/api/a2a/kagent/test-llm-connection/" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":"test","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"Hello"}]}}}' | python3 -c "
-import json,sys
-d=json.loads(sys.stdin.read(),strict=False)
-if 'error' in d:
-    print('ERROR:', json.dumps(d['error'],indent=2))
-else:
-    for a in d.get('result',{}).get('artifacts',[]):
-        for p in a.get('parts',[]):
-            if p.get('kind')=='text': print(p['text'][:200])
-    print('Status:', d.get('result',{}).get('status',{}).get('state','?'))
-"
-
-# Kill port-forward
-pkill -f "port-forward.*kagent-controller.*8083"
+# Run from the kagent-public repo root. The helper manages the port-forward
+# lifecycle, JSON-RPC framing, trailing slash, and artifact extraction, and
+# prints the JSON-RPC error if the LLM call fails (add --raw for the full
+# response including status.state).
+scripts/kagent-a2a-invoke.sh --agent test-llm-connection --text 'Hello' --timeout 30
 ```
 
 **If this fails:** Check ModelConfig baseUrl, API key secret, network connectivity to LLM endpoint. Fix before proceeding.
@@ -543,23 +528,12 @@ kubectl get agents -n kagent
 
 ## Step 11: Test the Agent Manually (No Events Yet)
 
-Port-forward to kagent and send a manual A2A call to confirm the agent works:
+Send a manual A2A call to confirm the agent works (run from the kagent-public
+repo root — the helper manages the port-forward lifecycle for you):
 
 ```bash
-kubectl port-forward -n kagent svc/kagent-controller 8083:8083 &
-
-curl -s --max-time 120 -X POST "http://localhost:8083/api/a2a/kagent/cert-manager-agent/" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":"test-1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"Check the health of the cert-manager namespace. List any issues you find."}]}}}' | python3 -c "
-import json,sys
-d=json.loads(sys.stdin.read(),strict=False)
-for a in d.get('result',{}).get('artifacts',[]):
-    for p in a.get('parts',[]):
-        if p.get('kind')=='text': print(p['text'][:1000])
-"
-
-# Kill port-forward when done
-pkill -f "port-forward.*kagent-controller.*8083"
+scripts/kagent-a2a-invoke.sh --agent cert-manager-agent --timeout 120 \
+  --text 'Check the health of the cert-manager namespace. List any issues you find.'
 ```
 
 - [ ] Agent responds with cert-manager namespace analysis

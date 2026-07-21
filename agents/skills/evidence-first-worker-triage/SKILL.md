@@ -32,7 +32,8 @@ mutation tools, or deploy to production.
    credentials, CA references, topic, EventBus and service accounts rather
    than installing duplicates.
 5. Create an approved values file from
-   `templates/pilot-values.env.example`; keep it outside Git.
+   `work-agent-bundles/evidence-first-worker-triage/templates/pilot-values.env.example`;
+   keep it outside Git.
 6. Run the gate and renderer from the bundle:
 
    ```bash

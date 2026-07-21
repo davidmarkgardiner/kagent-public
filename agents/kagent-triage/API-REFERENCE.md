@@ -77,6 +77,11 @@ curl -s http://localhost:8083/api/agents/test-ns-agent | jq
 
 ## Conversations (Chat)
 
+> **⚠️ BROKEN on kagent v0.8.0-beta4.** The session/chat API below is
+> documented for reference only — on the deployed version it does not work.
+> Use the A2A protocol instead: `scripts/kagent-a2a-invoke.sh --agent <name>
+> --text '...'` (see [A2A Protocol](#usage-in-argo-workflows) below).
+
 ### Create Conversation / Send Message
 
 ```
@@ -274,17 +279,30 @@ for agent in agents["agents"]:
 # Fallback: k8s-agent (cluster-wide)
 ```
 
-### Step 2: Create Conversation
+### Step 2: Send the Event via A2A
+
+> The session/chat API (`/api/chat/...`, `/api/sessions/...`) is **broken on
+> kagent v0.8.0-beta4** — the workflow uses the A2A protocol. From a shell,
+> use `scripts/kagent-a2a-invoke.sh` instead of hand-rolling this call.
+
 ```python
-# POST /api/chat/{agent_name}
+# POST /api/a2a/kagent/{agent_name}/ — JSON-RPC 2.0, trailing slash REQUIRED
 response = requests.post(
-    f"http://kagent-controller.kagent:8083/api/chat/{agent_name}",
+    f"http://kagent-controller.kagent:8083/api/a2a/kagent/{agent_name}/",
     json={
-        "message": f"K8s event in {namespace}: {reason} on {kind}/{name}. Message: {message}. Please diagnose and suggest remediation.",
-        "conversation_id": None
-    }
+        "jsonrpc": "2.0",
+        "id": "triage-1",
+        "method": "message/send",
+        "params": {"message": {"role": "user", "parts": [{
+            # every part must carry "kind": "text"
+            "kind": "text",
+            "text": f"K8s event in {namespace}: {reason} on {kind}/{name}. "
+                    f"Message: {message}. Please diagnose and suggest remediation.",
+        }]}},
+    },
 )
-diagnosis = response.json()["response"]
+artifacts = response.json()["result"]["artifacts"]
+diagnosis = "\n".join(p["text"] for a in artifacts for p in a["parts"] if "text" in p)
 ```
 
 ---

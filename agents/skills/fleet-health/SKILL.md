@@ -15,7 +15,8 @@ Monitors all agent gateways, detects failures, auto-remediates where possible, a
 
 ## Quick Check
 ```bash
-~/clawd/skills/fleet-health/scripts/fleet-check.sh
+# From the repo root (script ships inside this skill directory)
+agents/skills/fleet-health/scripts/fleet-check.sh
 ```
 
 ## What It Monitors

@@ -103,11 +103,9 @@ kubectl get agent {agent-name} -n kagent
 # 4. Test the agent with the kagent CLI (preferred)
 kagent invoke -t 'What is the health of namespace {namespace}?' --agent {agent-name} --stream
 
-# 5. Or test the agent directly via A2A
-curl -s -X POST http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent/{agent-name}/ \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"test-1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"What is the health of namespace {namespace}?"}]}}}' \
-  | jq -r '.result.artifacts[].parts[].text'
+# 5. Or test via A2A with the repo helper (handles port-forward, JSON-RPC
+#    framing, the required trailing slash, and artifact extraction)
+scripts/kagent-a2a-invoke.sh --agent {agent-name} --text 'What is the health of namespace {namespace}?'
 
 # 6. Collect diagnostics if the agent is not responding
 kagent bug-report
@@ -125,19 +123,25 @@ Apply requested changes and re-output only the affected sections. Continue until
 
 ## Validation Checklist
 
-Before finalising output, verify:
-- [ ] `toolNames` list is not empty and contains only names from `references/tool-catalog.md`
-- [ ] System prompt includes `CRITICAL: always use exact namespace` line for every namespace
-- [ ] Triage agents have NO write tools (`k8s_apply_manifest`, `k8s_patch_resource`, `k8s_delete_resource`, `k8s_create_resource`, `k8s_execute_command`)
-- [ ] Remediation agents include at least the core write tools
-- [ ] `platform.com/team` and `platform.com/type` labels are present
-- [ ] `a2aConfig.skills` has at least one skill entry
-- [ ] `modelConfig` field matches an available ModelConfig (not `modelConfigRef` — that field was deprecated)
-- [ ] `systemMessage` is used for the prompt field (live CRD confirmed) — NOT `systemPrompt`
-- [ ] Every A2A message part includes `"kind": "text"` alongside `"text"`
-- [ ] A2A tests use `method: "message/send"` and extract `.result.artifacts[].parts[].text`
-- [ ] Session API is not used for kagent v0.8.0-beta4 — it is broken there; only the A2A protocol works
+Before finalising output, run the mechanical lint (from the repo root — this
+skill depends on the repo-level `scripts/` helpers):
+
+```bash
+scripts/validate-agent-cr.py {agent-name}.yaml
+```
+
+It enforces the static checklist: toolNames non-empty and only from
+`references/tool-catalog.md`, no write tools on triage agents, core write
+tools on remediation agents, `platform.com/team`/`platform.com/type` labels,
+≥1 `a2aConfig.skills` entry, `modelConfig` (not deprecated `modelConfigRef`),
+`systemMessage` (not `systemPrompt`), and the
+`CRITICAL: always use exact namespace` anchor line. Fix every FAIL before
+delivering.
+
+Then verify the checks a lint cannot do:
+- [ ] The namespace-anchor line appears for **every** target namespace (the lint only proves at least one)
 - [ ] Live CRD schema has been checked with `kubectl explain agent.spec.declarative`
+- [ ] A2A tests go through `scripts/kagent-a2a-invoke.sh` — never the session/chat API, which is broken on kagent v0.8.0-beta4
 - [ ] `kagent bug-report` is available in apply instructions for diagnostics
 
 ---
@@ -163,30 +167,22 @@ Then provide a one-paragraph summary of what was generated and the recommended n
 
 ## Deployed Builder Agents
 
-Two ready-to-use interactive builder agents are already deployed in `kagent-triage/`. Recommend these to users who want to build agents via the KAgent UI chat interface instead of through this Claude skill.
+Two ready-to-use interactive builder agents are already deployed in `agents/kagent-triage/`. Recommend these to users who want to build agents via the KAgent UI chat interface instead of through this Claude skill.
 
 | Agent | File | For |
 |-------|------|-----|
-| `byoa-builder-expert` | `kagent-triage/byoa-builder-expert.yaml` | Engineers who know Kubernetes — fast 3-round interview, generates YAML, can apply directly |
-| `byoa-builder-guided` | `kagent-triage/byoa-builder-guided.yaml` | Platform newcomers — plain-English 7-topic flow, explanations at each step, output goes via PR review |
+| `byoa-builder-expert` | `agents/kagent-triage/byoa-builder-expert.yaml` | Engineers who know Kubernetes — fast 3-round interview, generates YAML, can apply directly |
+| `byoa-builder-guided` | `agents/kagent-triage/byoa-builder-guided.yaml` | Platform newcomers — plain-English 7-topic flow, explanations at each step, output goes via PR review |
 
 ### Testing the deployed builders
 
 ```bash
-# Port-forward if no LoadBalancer
-kubectl port-forward -n kagent svc/kagent-controller 8083:8083 &
+# The helper manages the port-forward, JSON-RPC framing, and extraction
+scripts/kagent-a2a-invoke.sh --agent byoa-builder-expert \
+  --text 'Build me a triage agent for the payments namespace'
 
-# Test expert builder
-curl -s -X POST http://localhost:8083/api/a2a/kagent/byoa-builder-expert/ \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"Build me a triage agent for the payments namespace"}]}}}' \
-  | jq -r '.result.artifacts[].parts[].text'
-
-# Test guided builder
-curl -s -X POST http://localhost:8083/api/a2a/kagent/byoa-builder-guided/ \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"Hi, I want to set up an agent for my team"}]}}}' \
-  | jq -r '.result.artifacts[].parts[].text'
+scripts/kagent-a2a-invoke.sh --agent byoa-builder-guided \
+  --text 'Hi, I want to set up an agent for my team'
 ```
 
 ### Key differences from this Claude skill

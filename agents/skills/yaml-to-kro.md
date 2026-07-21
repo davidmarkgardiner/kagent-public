@@ -532,10 +532,10 @@ resources:
 
 ## Reference Files in This Repo
 
-- **Definitions:** `infra-stack/kro-stack/definitions/` -- All production RGDs
+- **Definitions:** `infra/kro-stack/definitions/` -- All production RGDs
 - **Simple example:** `uk8s-litellm.yaml` -- agentgateway (Namespace + SA + FedCred + ConfigMap + Deployment + Service + PDB + HPA)
 - **Complex example:** `uk8scluster-public.yaml` -- Full AKS cluster with nested RGDs and ASO resources
 - **Event collector:** `uk8s-kro-worker-alloy.yaml` -- Alloy deployment with HCL config templating
 - **AI stack:** `uk8s-kro-ai-stack.yaml` -- Argo Events + Sensor + WorkflowTemplate composition
 - **Instances:** `kro/instance.yaml`, `application-stack/apps/kagent/instance.yaml`
-- **KRO patterns reference:** `.claude/skills/k8s-specialist/kro-stack-builder/references/kro_patterns.md`
+- **KRO patterns reference:** the gotchas list above plus the RGDs in `infra/kro-stack/definitions/`

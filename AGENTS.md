@@ -75,6 +75,18 @@ git clone --depth 1 https://github.com/<org>/<repo>.git ../<repo>
 - For Vector sinks: do not assume a `buffer: {type: disk}` on a `kafka` sink works by default — on `timberio/vector:0.45.0-debian` it accepted writes into the buffer but never drained them to the broker (`vector_kafka_produced_messages_total` stayed at 0), silently stalling delivery. Verify with an actual produced/consumed message, not just buffer-accepted metrics, before relying on it. See `work-agent-bundles/evidence-first-worker-triage/next-phase-end-to-end/evidence/phase2-vector-config.md`.
 - For incident/ticket fingerprint or dedupe keys derived from Kubernetes identity: a key built from the literal pod name breaks under normal pod churn (Deployment/ReplicaSet reschedules generate a new pod name each time). Prefer a stable workload identity, but note that Kubernetes Events do not reliably carry a `service`/`app` label the way pod logs do — a fix must derive the same stable string from a field both logs and events actually carry. See `work-agent-bundles/evidence-first-worker-triage/next-phase-end-to-end/evidence/phase4-payload-contract.md`.
 
+## Shared Helper Scripts
+
+Call these instead of hand-rolling the equivalent command sequences:
+
+- `scripts/kagent-a2a-invoke.sh` — invoke a kagent agent (A2A JSON-RPC; owns the port-forward, trailing slash, `"kind":"text"`; the chat/session API is broken on kagent v0.8.0-beta4).
+- `scripts/kagent-verify-agent.sh` — gate an Agent CR on Accepted → Ready → controller API → optional smoke.
+- `scripts/kagent-e2e-fault-test.sh` — safe fault-injection e2e test with the SENSOR-SAFEGUARDS ordering and guaranteed cleanup.
+- `scripts/public-safe-scan.sh` — the public-safety scan shared by bundle verifiers.
+- `scripts/validate-agent-cr.py` — BYOA Agent CRD checklist as a lint.
+- `scripts/check-skill-refs.sh` — reference-rot lint for `agents/skills/`; keep it green.
+- `scripts/tests/smoke-helpers.sh` — offline smoke test for all of the above; run it after editing any helper.
+
 ## Common Validation
 
 Use the narrowest validation that proves the change:

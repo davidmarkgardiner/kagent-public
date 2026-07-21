@@ -79,7 +79,7 @@ Patch the `argo-workflows` ConfigMap or Helm values to use MinIO as artifact rep
 
 ### 3. Deploy all IDP resources
 
-Source files: `/home/david/repos/argo-workflow/idp-namespace-service/`
+Source files: `{{IDP_MANIFEST_DIR}}` (your rendered idp-namespace-service manifests)
 
 ```bash
 kubectl apply -f 00-eventsource-port-webhook.yaml
@@ -215,7 +215,7 @@ stern -n argo-events "ns-create\|app-deploy" --since 5m
 
 ## File Reference
 
-All in `/home/david/repos/argo-workflow/idp-namespace-service/`:
+All in `{{IDP_MANIFEST_DIR}}` (your rendered idp-namespace-service manifests):
 
 | File | Purpose |
 |------|---------|
