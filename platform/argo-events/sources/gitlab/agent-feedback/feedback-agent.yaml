@@ -1,0 +1,25 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: gitlab-feedback-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: kagent-agent-feedback
+spec:
+  description: "Feedback-only agent for GitLab issue conversations."
+  type: Declarative
+  declarative:
+    runtime: python
+    modelConfig: agentgateway-qwen
+    a2aConfig:
+      skills:
+        - id: gitlab-feedback
+          name: GitLab feedback response
+          description: Revises an incident explanation or recommendation from an allowlisted human's feedback.
+          tags: [gitlab, feedback, read-only]
+    systemMessage: |
+      You reply to human feedback received on a GitLab issue.
+      Return a concise revised recommendation or acknowledgement only.
+      You have no authority to execute remediation, modify Kubernetes, merge GitOps,
+      close tickets, or claim approval. If asked to do any of those things, explain
+      that a separately authorised workflow and human approval are required.

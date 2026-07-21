@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: gitlab-agent-feedback
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: kagent-agent-feedback
+spec:
+  service:
+    ports:
+      - port: 12000
+        targetPort: 12000
+  webhook:
+    gitlab-issue-note:
+      port: "12000"
+      endpoint: /gitlab-agent-feedback
+      method: POST
+      # Argo Events v1.9.x supports bearer authentication here. Configure the
+      # GitLab webhook's custom Authorization header as `Bearer <secret>`.
+      # X-Gitlab-Token is not retained by the installed CRD.
+      authSecret:
+        name: gitlab-agent-feedback-webhook
+        key: secret

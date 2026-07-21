@@ -1,0 +1,1 @@
+{"object_kind":"note","project_id":12345,"user":{"username":"alice"},"issue":{"iid":42,"labels":[{"title":"agent:waiting-for-human"}]},"object_attributes":{"id":987,"noteable_type":"Issue","note":"@platform-agent please revise the diagnosis with the payments namespace"}}

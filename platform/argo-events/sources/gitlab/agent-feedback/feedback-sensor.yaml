@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: gitlab-agent-feedback
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: kagent-agent-feedback
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: gitlab-issue-note
+      eventSourceName: gitlab-agent-feedback
+      eventName: gitlab-issue-note
+      filters:
+        data:
+          - path: body.object_kind
+            type: string
+            comparator: "="
+            value: [note]
+          - path: body.object_attributes.noteable_type
+            type: string
+            comparator: "="
+            value: [Issue]
+  triggers:
+    - template:
+        name: start-gitlab-agent-feedback
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: gitlab-agent-feedback-
+                namespace: argo
+              spec:
+                workflowTemplateRef:
+                  name: gitlab-agent-feedback
+                arguments:
+                  parameters:
+                    - name: event_payload
+                      value: "{}"
+          parameters:
+            - src:
+                dependencyName: gitlab-issue-note
+                dataKey: body
+              dest: spec.arguments.parameters.0.value

@@ -1,0 +1,193 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: gitlab-agent-feedback
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: kagent-agent-feedback
+spec:
+  entrypoint: feedback-loop
+  serviceAccountName: gitlab-agent-feedback
+  arguments:
+    parameters:
+      - name: event_payload
+      - name: allowed_users
+        value: "{{GITLAB_ALLOWED_USERNAMES}}"
+      - name: bot_username
+        value: platform-agent
+      - name: feedback_agent_url
+        value: "http://{{FEEDBACK_AGENT_SERVICE}}.kagent:8080/"
+      - name: gitlab_api_url
+        value: "https://gitlab.com/api/v4"
+  volumes:
+    - name: runtime
+      configMap:
+        name: gitlab-agent-feedback-runtime
+        defaultMode: 0555
+  templates:
+    - name: feedback-loop
+      dag:
+        tasks:
+          - name: validate
+            template: validate
+            arguments:
+              parameters:
+                - name: event_payload
+                  value: "{{workflow.parameters.event_payload}}"
+                - name: allowed_users
+                  value: "{{workflow.parameters.allowed_users}}"
+                - name: bot_username
+                  value: "{{workflow.parameters.bot_username}}"
+          - name: claim-note
+            dependencies: [validate]
+            when: "{{tasks.validate.outputs.parameters.accepted}} == true"
+            template: claim-note
+            arguments:
+              parameters:
+                - name: note_id
+                  value: "{{tasks.validate.outputs.parameters.note_id}}"
+          - name: ask-agent
+            dependencies: [claim-note]
+            when: "\"{{tasks.claim-note.outputs.parameters.claimed}}\" == \"true\""
+            template: ask-agent
+            arguments:
+              parameters:
+                - name: feedback
+                  value: "{{tasks.validate.outputs.parameters.feedback}}"
+                - name: issue_iid
+                  value: "{{tasks.validate.outputs.parameters.issue_iid}}"
+                - name: action
+                  value: "{{tasks.validate.outputs.parameters.action}}"
+                - name: agent_url
+                  value: "{{workflow.parameters.feedback_agent_url}}"
+          - name: post-response
+            dependencies: [ask-agent]
+            when: "\"{{tasks.claim-note.outputs.parameters.claimed}}\" == \"true\""
+            template: post-response
+            arguments:
+              parameters:
+                - name: project_id
+                  value: "{{tasks.validate.outputs.parameters.project_id}}"
+                - name: issue_iid
+                  value: "{{tasks.validate.outputs.parameters.issue_iid}}"
+                - name: note_id
+                  value: "{{tasks.validate.outputs.parameters.note_id}}"
+                - name: response
+                  value: "{{tasks.ask-agent.outputs.parameters.response}}"
+                - name: gitlab_api_url
+                  value: "{{workflow.parameters.gitlab_api_url}}"
+    - name: validate
+      inputs:
+        parameters:
+          - name: event_payload
+          - name: allowed_users
+          - name: bot_username
+      script:
+        image: python:3.12-alpine
+        command: [sh]
+        volumeMounts:
+          - name: runtime
+            mountPath: /opt/runtime
+            readOnly: true
+        source: |
+          set -eu
+          cat > /tmp/event.json <<'PAYLOAD'
+          {{inputs.parameters.event_payload}}
+          PAYLOAD
+          python3 /opt/runtime/validate-feedback.py "$(cat /tmp/event.json)" "{{inputs.parameters.allowed_users}}" "{{inputs.parameters.bot_username}}" > /tmp/decision.json
+          python3 - <<'PY'
+          import json
+          result = json.load(open('/tmp/decision.json'))
+          for key in ('accepted', 'action', 'note_id', 'issue_iid', 'project_id', 'feedback'):
+              open('/tmp/' + key, 'w').write(str(result[key]).lower() if key == 'accepted' else result[key])
+          PY
+      outputs:
+        parameters:
+          - name: accepted
+            valueFrom: {path: /tmp/accepted}
+          - name: action
+            valueFrom: {path: /tmp/action}
+          - name: note_id
+            valueFrom: {path: /tmp/note_id}
+          - name: issue_iid
+            valueFrom: {path: /tmp/issue_iid}
+          - name: project_id
+            valueFrom: {path: /tmp/project_id}
+          - name: feedback
+            valueFrom: {path: /tmp/feedback}
+    - name: claim-note
+      inputs:
+        parameters:
+          - name: note_id
+      script:
+        image: alpine:3.19
+        command: [sh]
+        source: |
+          set -eu
+          apk add --no-cache curl >/dev/null
+          token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+          body="{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"gitlab-agent-feedback-{{inputs.parameters.note_id}}\",\"namespace\":\"argo\"}}"
+          status="$(curl -sk -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${token}" -H 'Content-Type: application/json' -X POST https://kubernetes.default.svc/api/v1/namespaces/argo/configmaps -d "$body")"
+          test "$status" = 201 && echo true > /tmp/claimed || { test "$status" = 409 && echo false > /tmp/claimed || exit 1; }
+      outputs:
+        parameters:
+          - name: claimed
+            valueFrom: {path: /tmp/claimed}
+    - name: ask-agent
+      inputs:
+        parameters:
+          - name: feedback
+          - name: issue_iid
+          - name: action
+          - name: agent_url
+      script:
+        image: alpine:3.19
+        command: [sh]
+        env:
+          - name: FEEDBACK
+            value: "{{inputs.parameters.feedback}}"
+          - name: ISSUE_IID
+            value: "{{inputs.parameters.issue_iid}}"
+          - name: ACTION
+            value: "{{inputs.parameters.action}}"
+          - name: AGENT_URL
+            value: "{{inputs.parameters.agent_url}}"
+        source: |
+          set -eu
+          apk add --no-cache curl jq >/dev/null
+          jq -n --arg feedback "$FEEDBACK" --arg iid "$ISSUE_IID" --arg action "$ACTION" '{jsonrpc:"2.0",id:("gitlab-feedback-" + $iid),method:"message/send",params:{message:{role:"user",parts:[{kind:"text",text:("Human GitLab feedback for issue #" + $iid + " (" + $action + "): " + $feedback + ". Respond with a revised recommendation only.")}]}}}' > /tmp/request.json
+          curl -fsS -m 120 -H 'Content-Type: application/json' -d @/tmp/request.json "$AGENT_URL" > /tmp/response.json
+          jq -r '[.result.artifacts[]?.parts[]?.text] | join("\n")' /tmp/response.json > /tmp/response.txt
+      outputs:
+        parameters:
+          - name: response
+            valueFrom: {path: /tmp/response.txt}
+    - name: post-response
+      inputs:
+        parameters:
+          - name: project_id
+          - name: issue_iid
+          - name: note_id
+          - name: response
+          - name: gitlab_api_url
+      script:
+        image: python:3.12-alpine
+        command: [sh]
+        env:
+          - name: GITLAB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: gitlab-agent-feedback-writer
+                key: api-token
+          - name: RESPONSE
+            value: "{{inputs.parameters.response}}"
+        source: |
+          set -eu
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          body = "Agent feedback response to note {{inputs.parameters.note_id}}:\n\n" + os.environ["RESPONSE"] + "\n\n_Acknowledged only; no remediation or GitOps action was executed._"
+          url = "{{inputs.parameters.gitlab_api_url}}/projects/{{inputs.parameters.project_id}}/issues/{{inputs.parameters.issue_iid}}/notes"
+          request = urllib.request.Request(url, data=json.dumps({"body": body}).encode(), headers={"PRIVATE-TOKEN": os.environ["GITLAB_TOKEN"], "Content-Type": "application/json"}, method="POST")
+          with urllib.request.urlopen(request, timeout=30) as response:
+              print(response.status)
+          PY
