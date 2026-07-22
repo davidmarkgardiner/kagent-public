@@ -57,10 +57,10 @@ audience: api://AzureADTokenExchange
 UAMI:     {{UAMI_NAME}}
 ```
 
-The management-cluster ASO examples automate one `FederatedIdentityCredential`
-per target cluster and ServiceAccount. See
-[`infra/workload-identity/README.md`](../../infra/workload-identity/README.md)
-and [`infra/workload-identity/02-federated-credentials.yaml`](../../infra/workload-identity/02-federated-credentials.yaml).
+The ASO examples in
+[`infra/workload-identity/`](../../infra/workload-identity/README.md) show the
+same issuer-and-subject mechanics for per-cluster workloads. For the central
+deployment described below, use the **management-cluster issuer** instead.
 
 ## Deployment models
 
@@ -69,11 +69,42 @@ and [`infra/workload-identity/02-federated-credentials.yaml`](../../infra/worklo
 | Per-worker-cluster | Each worker cluster | That worker cluster's OIDC issuer → its local `aks-mcp` ServiceAccount | UAMI Azure roles and local Kubernetes RBAC |
 | Central MCP | Management cluster | The management cluster's OIDC issuer → the central `aks-mcp` ServiceAccount | UAMI Azure roles, remote-cluster credential/context or supported connection path, and remote Kubernetes authorization |
 
-Therefore, federating all worker-cluster issuers is sufficient only for the
-first model. It does **not** automatically authorize a management-cluster MCP
-pod to call worker-cluster Kubernetes APIs. The central deployment option is
-explicitly treated as a separate readiness item in
-[`observability/PRODUCTION-READINESS.md`](../../observability/PRODUCTION-READINESS.md).
+## Recommended central-MCP topology
+
+The intended design is one AKS-MCP deployment on the management cluster which
+reaches worker-cluster APIs. In this model, create **one federated credential
+on the UAMI for the management cluster's issuer**:
+
+```text
+issuer:   {{MANAGEMENT_CLUSTER_OIDC_ISSUER}}
+subject:  system:serviceaccount:aks-mcp:aks-mcp
+audience: api://AzureADTokenExchange
+UAMI:     {{AKS_MCP_UAMI_NAME}}
+```
+
+Do not add worker-cluster issuer federations merely because the central MCP
+will call those clusters. A federated credential is only needed for a cluster
+that issues the token used by a workload becoming the UAMI. Here, that
+workload is AKS-MCP and it runs on the management cluster.
+
+```
+management cluster                                      worker cluster
+──────────────────                                      ──────────────
+AKS-MCP pod (SA: aks-mcp/aks-mcp)
+  │ projected token issued by management OIDC
+  ▼
+UAMI token exchange
+  │ Azure and Kubernetes authorization for target cluster
+  └──────────────────────────────────────────────────► worker API server
+                                                       │
+                                                       ▼
+                                                allowed read-only actions
+```
+
+Worker-cluster federation is only required if another workload running in a
+worker cluster also needs to become that UAMI, such as a per-worker MCP or an
+Azure-calling operator. The central deployment option is separately called out
+in [`observability/PRODUCTION-READINESS.md`](../../observability/PRODUCTION-READINESS.md).
 
 ## Required authorization bindings
 
@@ -82,13 +113,36 @@ Federation is authentication only. Configure both authorization planes:
 | Plane | Required binding | Why |
 |---|---|---|
 | Azure | Assign the UAMI least-privilege Azure roles at the AKS resource or resource-group scope. `Reader` supports discovery; choose appropriate AKS cluster-user/admin and/or Azure Kubernetes RBAC permissions for the required operation. | AKS-MCP Azure/AKS API calls otherwise return authorization failures. |
-| Kubernetes | Bind the AKS-MCP ServiceAccount to the required Kubernetes `Role`/`ClusterRole` on every API server it operates. | Kubernetes API authorization is independent of Azure token exchange. |
+| Worker Kubernetes APIs | Authorize the identity presented to each worker API server. For Azure Kubernetes RBAC this is normally the UAMI principal (or a mapped Azure AD group); for a kubeconfig using another credential it is that credential's subject. | Kubernetes API authorization is independent of the management pod's token exchange. |
 | Agent-to-tool | Give the agent an explicit tool allowlist through its MCP server reference. | A tool executes with AKS-MCP's permissions, not the agent pod's ServiceAccount permissions. |
 
 The packaged chart creates a read-only `ClusterRole` and `ClusterRoleBinding`
-by default. It deliberately excludes Secret reads unless
-`rbac.includeSecrets=true` is explicitly approved. See
+by default. That binding governs the MCP's **management-cluster** Kubernetes
+ServiceAccount; it does not grant access to worker APIs. It deliberately
+excludes Secret reads unless `rbac.includeSecrets=true` is explicitly approved. See
 [`chart/templates/rbac.yaml`](chart/templates/rbac.yaml).
+
+### Central-MCP worker-cluster prerequisites
+
+For every worker cluster, complete all of these independently of federation:
+
+1. Assign the UAMI the least-privilege Azure role needed to discover/use that
+   AKS cluster. Do not use a broad subscription role when a cluster or
+   resource-group scope suffices.
+2. Grant the identity presented to the worker Kubernetes API the required
+   read-only Kubernetes authorization. With Azure Kubernetes RBAC this is an
+   Azure RBAC assignment at the appropriate AKS scope; with native Kubernetes
+   RBAC it is the appropriate `RoleBinding` or `ClusterRoleBinding` for the
+   identity in the selected credential path.
+3. Give AKS-MCP a deliberate worker-cluster connection path. The current chart
+   can mount a kubeconfig Secret with `kubeconfig.enabled=true`, but federation
+   alone neither creates that kubeconfig nor selects worker contexts.
+4. Permit management-cluster-to-worker API connectivity: private DNS,
+   routing/peering, firewall rules, and namespace egress `NetworkPolicy` must
+   allow the target API endpoints.
+
+No worker federation is necessary for any of the four steps unless a pod on
+that worker itself must exchange a token for the UAMI.
 
 ## Configuration
 
