@@ -1,6 +1,6 @@
-# Responsible Agent Skills for Key-Agent Deployments
+# Responsible Agent Skills for kagent Deployments
 
-This guide makes ethical practice a practical part of key-agent skills and
+This guide makes ethical practice a practical part of kagent skills and
 their deployment process. It applies to kagent agents that analyse incidents,
 call specialist agents, use MCP tools, create work items, or propose and
 execute approved remediation.
@@ -9,6 +9,26 @@ It is not a separate "ethics agent" and it does not replace runtime security
 controls. It defines the operational boundaries that a skill must communicate,
 while agentgateway, Kubernetes policy, ToolGrants, RBAC, Argo, and HITL enforce
 those boundaries.
+
+## TL;DR
+
+Use ethics as a testable operating contract for every kagent skill:
+
+- Give the agent a narrow, named operational purpose and read-only authority by
+  default.
+- Treat logs, tickets, documents, tool output, and peer-agent responses as
+  untrusted data, never as instructions.
+- Require evidence, uncertainty reporting, data minimisation, human approval
+  for consequential action, audit correlation, and a rollback/kill-switch path.
+- Enforce these limits with ToolGrants, RBAC, agentgateway, network policy, and
+  Argo HITL; prompts and skills alone are not access controls.
+- Block promotion when evaluation finds unsafe tool use, data leakage,
+  unsupported certainty, bypassed approval, or missing audit evidence.
+
+Reference implementation:
+
+- [Reusable responsible-operation skill](../../agents/skills/responsible-kagent-operation/SKILL.md)
+- [Read-only kagent Agent YAML](../../agents/skills/responsible-kagent-operation/assets/responsible-readonly-triage-agent.yaml)
 
 ## Why this matters
 
@@ -40,9 +60,9 @@ fairness and accountability:
 No single layer is sufficient. A prompt or skill is guidance, not an access
 control. Runtime controls and evaluation must uphold the same boundary.
 
-## Required ethical and safety contract in every key-agent skill
+## Required ethical and safety contract in every kagent skill
 
-Each production-bound key-agent skill should include these sections. A concise
+Each production-bound kagent skill should include these sections. A concise
 format is enough; the important point is that the answer is explicit and
 testable.
 
@@ -108,7 +128,7 @@ or override decision.
 
 ## Minimum skill template
 
-Add a section similar to this to each key-agent skill:
+Add a section similar to this to each kagent skill:
 
 ```markdown
 ## Responsible operation
@@ -130,7 +150,7 @@ Add a section similar to this to each key-agent skill:
 
 ## Required evaluation cases
 
-Every key-agent skill should have deterministic tests for at least the
+Every kagent skill should have deterministic tests for at least the
 following behaviours:
 
 | Scenario | Expected result |
@@ -149,7 +169,7 @@ audit evidence.
 
 ## Deployment review
 
-Before promoting a key-agent skill beyond a bounded non-production pilot,
+Before promoting a kagent skill beyond a bounded non-production pilot,
 record the following in its deployment record:
 
 - real workflow and exceptions confirmed with the people who operate it;
@@ -184,7 +204,7 @@ This guide builds on, rather than replaces:
 
 ## Practical first step
 
-Apply this contract to the first read-only key-agent skill before the next
+Apply this contract to the first read-only kagent skill before the next
 pilot. Add the required section, create the seven evaluation cases above, and
 review the result with the SRE owner, platform security, and the service owner.
 Use the findings to refine the shared template before applying it to other

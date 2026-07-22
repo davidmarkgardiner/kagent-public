@@ -5,7 +5,8 @@ This is an isolated, comment-driven human-to-agent feedback loop for GitLab issu
 ```text
 GitLab issue note: @platform-agent <feedback>
   -> GitLab Note Hook -> Argo Events EventSource -> feedback Workflow
-  -> read-only kagent A2A feedback agent -> one GitLab response note
+  -> fetch bounded Issue/thread context -> read-only kagent A2A feedback agent
+  -> one GitLab response note
 ```
 
 ## Interaction contract
@@ -23,19 +24,42 @@ workflow must own any of those actions.
 
 ## Install
 
-Replace every `{{PLACEHOLDER}}` and create the two secrets out of band:
+Replace every `{{PLACEHOLDER}}` and create three separate secrets out of band:
 
 ```bash
 kubectl -n argo-events create secret generic gitlab-agent-feedback-webhook \
   --from-literal=secret={{GITLAB_WEBHOOK_SECRET}}
 kubectl -n argo create secret generic gitlab-agent-feedback-writer \
   --from-literal=api-token={{GITLAB_NOTE_WRITER_TOKEN}}
+kubectl -n argo create secret generic gitlab-agent-feedback-reader \
+  --from-literal=api-token={{GITLAB_ISSUE_READER_TOKEN}}
 kubectl apply -f platform/argo-events/sources/gitlab/agent-feedback/
 ```
 
 The GitLab project webhook points to `https://{{ARGO_EVENTS_HOSTNAME}}/gitlab-agent-feedback`, enables **Comment events**, and sends `Authorization: Bearer {{GITLAB_WEBHOOK_SECRET}}` as a custom header. The installed Argo Events CRD supports `authSecret`; it prunes the older `X-Gitlab-Token` fields. Put an HMAC-signature verifier in front of it before using GitLab's newer signing-token mode in production.
 
-The writer token must be project-scoped and able only to create issue notes. Do not reuse a token that can push branches, merge MRs, or manage project settings.
+The reader token uses `read_api` for the target project. The direct writer POC
+uses a project-scoped `api` token to create Issue notes. GitLab `api` scope is
+not endpoint-scoped, so it is not a technical "notes only" boundary. For a
+production no-other-writes guarantee, put a small writer adapter in front of
+GitLab that accepts only a validated response and only calls the Issue-notes
+endpoint. Do not reuse either token for branch pushes, merge requests, or
+project settings.
+
+## Agent context and workflow lifetime
+
+The workflow does **not** suspend while waiting for a human. It finishes after
+creating or updating the Issue. Each new eligible note starts a short,
+deduplicated workflow that fetches the current Issue plus the newest ten notes,
+then sends bounded context to the read-only agent.
+
+An originating workflow writes a bounded `agent-feedback-run-{{RUN_ID}}`
+ConfigMap (see `run-state.example.yaml`) then includes
+`agent-run-id: {{RUN_ID}}` in the Issue description. During hydration, the
+feedback workflow reads that state if it exists and sends it alongside the
+current Issue/thread. A missing run-state record is not fatal; the agent gets
+the ticket context and a `missing` state status. Do not put credentials, raw
+cluster dumps, or unbounded logs in either location.
 
 ## Validate without a cluster or GitLab
 

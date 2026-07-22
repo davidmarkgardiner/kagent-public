@@ -1,0 +1,47 @@
+# The schedule.
+#
+# The certification workflow is on-demand without this. Same workflow, the
+# cadence decides the question:
+#   run on provision  -> certification gate
+#   run every 15 min  -> health monitor
+#
+# Single cluster. This runs against the cluster it is deployed on.
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: cluster-certification
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+spec:
+  # 15 minutes matches the collector's event window. Picked to be sane, not from
+  # evidence — tune it once observe mode has produced some.
+  schedule: "*/15 * * * *"
+  timezone: "UTC"
+  # Overlapping runs race the baseline pointer ConfigMap and can corrupt the
+  # transition state, which is what keeps this from becoming a ticket loop.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  # Start suspended. Turn it on deliberately, after a manual run has been read.
+  suspend: true
+  workflowSpec:
+    workflowTemplateRef:
+      name: cluster-certification
+    serviceAccountName: argo-events-sa
+    # A hung check must not hold the mutex and block every later run.
+    activeDeadlineSeconds: 1200
+    ttlStrategy:
+      secondsAfterSuccess: 3600
+      secondsAfterFailure: 86400
+    synchronization:
+      # One certification run at a time.
+      mutex:
+        name: cluster-certification
+    arguments:
+      parameters:
+        - name: cluster-name
+          value: "red"

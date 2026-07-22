@@ -1,0 +1,1128 @@
+# Phase 1+2 — the snapshot collector and baseline detector.
+#
+# Single source of truth for collect.py. Deploy with `kubectl apply -f`;
+# the CronJob (03-cronjob.yaml) mounts this ConfigMap at /scripts.
+#
+# Design constraints (WORK-CLUSTER-HEALTH-SENTINEL-PLAN.md §3-4, §10):
+#   - stdlib only, no pip deps (image is bare python:3.11-slim)
+#   - every section reports status ok|unavailable; an API error never
+#     crashes the run and never reads as healthy/zero (finding 13)
+#   - snapshots are immutable ConfigMaps + a mutable pointer (finding 5)
+#   - 200KB serialized cap with explicit truncation markers (finding 10)
+#   - detector fires on transition only, never every 10 minutes (§4)
+# DEPLOYED TO argo-events, NOT kagent.
+#
+# A ConfigMap volume can only be mounted by a pod in the SAME namespace. The
+# check-baseline step runs inside the cluster-certification workflow, which runs
+# in argo-events — so the script has to live there. Putting it in kagent (where
+# the snapshots it writes live) leaves the pod stuck in PodInitializing forever
+# with no useful error, which is exactly how this was found.
+#
+# The snapshot ConfigMaps it WRITES still go to kagent (SNAPSHOT_NAMESPACE) —
+# that is an API call, not a mount, so it crosses namespaces fine.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-health-collector-script
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: cluster-health-collector
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+data:
+  collect.py: |
+    #!/usr/bin/env python3
+    """Cluster health snapshot collector + baseline detector.
+
+    Writes an immutable snapshot ConfigMap per run, updates a pointer
+    ConfigMap, garbage-collects old snapshots, and POSTs a breach event to
+    the sentinel webhook on a health-state transition.
+
+    Stdlib only. In-cluster REST via the ServiceAccount token.
+    """
+
+    import json
+    import os
+    import ssl
+    import sys
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    from collections import Counter, defaultdict
+    from datetime import datetime, timedelta, timezone
+
+    SA_DIR = "/var/run/secrets/kubernetes.io/serviceaccount"
+    NAMESPACE = os.environ.get("SNAPSHOT_NAMESPACE", "kagent")
+    POINTER_CM = "cluster-health-snapshot-latest"
+    SNAPSHOT_PREFIX = "cluster-health-snapshot-"
+    BASELINE_CM = os.environ.get("BASELINE_CONFIGMAP", "cluster-health-baselines")
+    WEBHOOK_URL = os.environ.get("SENTINEL_WEBHOOK_URL", "")
+    RETAIN = int(os.environ.get("SNAPSHOT_RETAIN", "24"))
+    MAX_BYTES = int(os.environ.get("SNAPSHOT_MAX_BYTES", str(200 * 1024)))
+    TOP_N = int(os.environ.get("SNAPSHOT_TOP_N", "20"))
+    EVENT_WINDOW_MIN = int(os.environ.get("EVENT_WINDOW_MINUTES", "15"))
+    ADDON_NAMESPACES = [
+        n.strip()
+        for n in os.environ.get(
+            "ADDON_NAMESPACES",
+            "kube-system,cert-manager,external-secrets,kyverno,kagent",
+        ).split(",")
+        if n.strip()
+    ]
+
+    LABELS = {
+        "app.kubernetes.io/name": "cluster-health-collector",
+        "app.kubernetes.io/part-of": "cluster-health-sentinel",
+        "platform.com/team": "platform",
+        "platform.com/type": "observability",
+    }
+
+    # Carried over from agents/kagent-triage/SENSOR-SAFEGUARDS.md. These are
+    # excluded from the event signal, NOT from the cluster: they are counted
+    # separately under events.excluded so the volume stays visible.
+    EXCLUDED_EVENT_REASONS = set(
+        r.strip() for r in os.environ.get(
+            "EXCLUDED_EVENT_REASONS", "PolicyViolation"
+        ).split(",") if r.strip()
+    )
+    EXCLUDED_EVENT_NAMESPACES = set(
+        n.strip() for n in os.environ.get(
+            "EXCLUDED_EVENT_NAMESPACES", "argo,argo-events"
+        ).split(",") if n.strip()
+    )
+
+    # ---------------------------------------------------------------- api
+
+    def _api_base():
+        host = os.environ.get("KUBERNETES_SERVICE_HOST", "kubernetes.default.svc")
+        port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
+        return "https://{}:{}".format(host, port)
+
+    def _token():
+        with open(os.path.join(SA_DIR, "token"), "r", encoding="utf-8") as fh:
+            return fh.read().strip()
+
+    def _ssl_context():
+        ca = os.path.join(SA_DIR, "ca.crt")
+        if os.path.exists(ca):
+            return ssl.create_default_context(cafile=ca)
+        return ssl.create_default_context()
+
+    _CTX = None
+    _TOKEN = None
+
+    def api(path, method="GET", body=None, content_type="application/json"):
+        """Call the Kubernetes API. Raises on HTTP error; caller decides."""
+        global _CTX, _TOKEN
+        if _CTX is None:
+            _CTX = _ssl_context()
+        if _TOKEN is None:
+            _TOKEN = _token()
+        url = _api_base() + path
+        data = json.dumps(body).encode() if body is not None else None
+        req = urllib.request.Request(url, data=data, method=method)
+        req.add_header("Authorization", "Bearer " + _TOKEN)
+        req.add_header("Accept", "application/json")
+        if data is not None:
+            req.add_header("Content-Type", content_type)
+        with urllib.request.urlopen(req, timeout=30, context=_CTX) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {}
+
+    def api_raw(path):
+        """Non-JSON GET (e.g. /readyz). Returns text."""
+        global _CTX, _TOKEN
+        if _CTX is None:
+            _CTX = _ssl_context()
+        if _TOKEN is None:
+            _TOKEN = _token()
+        req = urllib.request.Request(_api_base() + path)
+        req.add_header("Authorization", "Bearer " + _TOKEN)
+        with urllib.request.urlopen(req, timeout=30, context=_CTX) as resp:
+            return resp.read().decode()
+
+    def section(fn):
+        """Run a collector fn; on any failure mark the section unavailable.
+
+        An unavailable section is NEVER treated as healthy or as zero by the
+        detector — it is skipped and surfaced as collector-health signal.
+        """
+        try:
+            return {"status": "ok", "data": fn()}
+        except Exception as exc:  # noqa: BLE001 - deliberate catch-all
+            return {"status": "unavailable", "error": "{}: {}".format(type(exc).__name__, exc)[:300]}
+
+    # ------------------------------------------------------------ helpers
+
+    def _now():
+        return datetime.now(timezone.utc)
+
+    def _parse_ts(value):
+        """Parse a Kubernetes RFC3339 timestamp.
+
+        MUST handle fractional seconds. The core/v1 Event `eventTime` field is
+        a MicroTime — "2026-07-15T10:27:13.173860Z" — while `lastTimestamp`
+        (often null on modern events) is a whole-second Time. A strptime that
+        only accepts "%Y-%m-%dT%H:%M:%SZ" silently returns None for every
+        MicroTime, and since callers guard with `if ts and ts < cutoff`, a
+        None sails straight past the age filter and the event is counted
+        regardless of age. That turns every advertised time window into a
+        no-op. Verified on RED: lastTimestamp was null on 1192/1192 events, so
+        the 15-minute window was in fact counting all retained history.
+        """
+        if not value:
+            return None
+        try:
+            # 3.11's fromisoformat handles both the 'Z' suffix and fractional
+            # seconds; keep an explicit UTC default for offset-naive input.
+            ts = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+
+    def _event_ts(ev):
+        """Best available timestamp for a core/v1 Event.
+
+        Order matters. On modern clusters `lastTimestamp`/`firstTimestamp` are
+        frequently null and only `eventTime` (a MicroTime) is populated —
+        RED had lastTimestamp null on 1192/1192 events. Checking eventTime
+        first and falling back keeps this working on both shapes. Returns None
+        only when the event genuinely carries no usable time, which callers
+        must treat as "cannot date", never as "in window".
+        """
+        for field in ("eventTime", "lastTimestamp", "firstTimestamp"):
+            ts = _parse_ts(ev.get(field))
+            if ts is not None:
+                return ts
+        series = ev.get("series") or {}
+        return _parse_ts(series.get("lastObservedTime"))
+
+    def _cpu_to_milli(value):
+        if not value:
+            return 0
+        value = str(value)
+        if value.endswith("m"):
+            return int(float(value[:-1]))
+        if value.endswith("n"):
+            return int(float(value[:-1]) / 1_000_000)
+        if value.endswith("u"):
+            return int(float(value[:-1]) / 1000)
+        return int(float(value) * 1000)
+
+    _MEM_UNITS = {
+        "Ki": 1024, "Mi": 1024 ** 2, "Gi": 1024 ** 3, "Ti": 1024 ** 4,
+        "K": 1000, "M": 1000 ** 2, "G": 1000 ** 3, "T": 1000 ** 4,
+    }
+
+    def _mem_to_bytes(value):
+        if not value:
+            return 0
+        value = str(value)
+        for suffix, mult in _MEM_UNITS.items():
+            if value.endswith(suffix):
+                return int(float(value[: -len(suffix)]) * mult)
+        try:
+            return int(float(value))
+        except ValueError:
+            return 0
+
+    def _list_pods():
+        """Cached cluster-wide pod list — several sections need it."""
+        if not hasattr(_list_pods, "_cache"):
+            _list_pods._cache = api("/api/v1/pods?limit=5000").get("items", [])
+        return _list_pods._cache
+
+    # --------------------------------------------------------- collectors
+
+    def collect_nodes():
+        nodes = api("/api/v1/nodes").get("items", [])
+        pods = _list_pods()
+
+        requests_by_node = defaultdict(lambda: {"cpu_milli": 0, "memory_bytes": 0})
+        for pod in pods:
+            node_name = pod.get("spec", {}).get("nodeName")
+            if not node_name:
+                continue
+            if pod.get("status", {}).get("phase") in ("Succeeded", "Failed"):
+                continue
+            for container in pod.get("spec", {}).get("containers", []):
+                req = container.get("resources", {}).get("requests", {})
+                requests_by_node[node_name]["cpu_milli"] += _cpu_to_milli(req.get("cpu"))
+                requests_by_node[node_name]["memory_bytes"] += _mem_to_bytes(req.get("memory"))
+
+        summary = []
+        not_ready = []
+        pressure = []
+        unschedulable = 0
+        for node in nodes:
+            name = node.get("metadata", {}).get("name", "unknown")
+            spec = node.get("spec", {})
+            status = node.get("status", {})
+            conditions = {c.get("type"): c for c in status.get("conditions", [])}
+
+            ready_cond = conditions.get("Ready", {})
+            ready = ready_cond.get("status") == "True"
+            if not ready:
+                since = _parse_ts(ready_cond.get("lastTransitionTime"))
+                age = int((_now() - since).total_seconds()) if since else None
+                not_ready.append({"node": name, "not_ready_seconds": age})
+
+            for cond_type in ("MemoryPressure", "DiskPressure", "PIDPressure"):
+                if conditions.get(cond_type, {}).get("status") == "True":
+                    pressure.append({"node": name, "condition": cond_type})
+
+            if spec.get("unschedulable"):
+                unschedulable += 1
+
+            alloc = status.get("allocatable", {})
+            alloc_cpu = _cpu_to_milli(alloc.get("cpu"))
+            alloc_mem = _mem_to_bytes(alloc.get("memory"))
+            req = requests_by_node[name]
+            summary.append({
+                "node": name,
+                "ready": ready,
+                "unschedulable": bool(spec.get("unschedulable")),
+                "allocatable_cpu_milli": alloc_cpu,
+                "allocatable_memory_bytes": alloc_mem,
+                "requested_cpu_milli": req["cpu_milli"],
+                "requested_memory_bytes": req["memory_bytes"],
+                "cpu_commit_pct": round(100.0 * req["cpu_milli"] / alloc_cpu, 1) if alloc_cpu else None,
+                "memory_commit_pct": round(100.0 * req["memory_bytes"] / alloc_mem, 1) if alloc_mem else None,
+            })
+
+        # Commit stats are derived from the FULL node list before the display
+        # list is truncated to TOP_N. Detecting off the truncated list would
+        # silently stop checking node 21+ on a large cluster.
+        summary.sort(key=lambda n: (n["cpu_commit_pct"] or 0), reverse=True)
+        return {
+            "total": len(nodes),
+            "ready": sum(1 for n in summary if n["ready"]),
+            "not_ready": not_ready,
+            "unschedulable_count": unschedulable,
+            "pressure_conditions": pressure,
+            # Every node's commit percentages, for the detector. Small: two
+            # floats and a name per node.
+            "commit": [
+                {
+                    "node": n["node"],
+                    "cpu_commit_pct": n["cpu_commit_pct"],
+                    "memory_commit_pct": n["memory_commit_pct"],
+                }
+                for n in summary
+            ],
+            # Full detail for the top-committed nodes only, for the report.
+            "nodes": summary[:TOP_N],
+            "nodes_truncated": len(summary) > TOP_N,
+        }
+
+    def collect_scheduling():
+        pods = _list_pods()
+        pending = [p for p in pods if p.get("status", {}).get("phase") == "Pending"]
+
+        oldest = 0
+        pending_detail = []
+        for pod in pending:
+            created = _parse_ts(pod.get("metadata", {}).get("creationTimestamp"))
+            age = int((_now() - created).total_seconds()) if created else 0
+            oldest = max(oldest, age)
+            pending_detail.append({
+                "namespace": pod.get("metadata", {}).get("namespace"),
+                "pod": pod.get("metadata", {}).get("name"),
+                "pending_seconds": age,
+            })
+        pending_detail.sort(key=lambda p: p["pending_seconds"], reverse=True)
+
+        reasons = Counter()
+        field = urllib.parse.quote("reason=FailedScheduling")
+        events = api("/api/v1/events?fieldSelector={}&limit=500".format(field)).get("items", [])
+        cutoff = _now() - timedelta(minutes=EVENT_WINDOW_MIN)
+        for ev in events:
+            # Same strict-window rule as collect_events: undated means we
+            # cannot claim it is inside the window, so it does not count.
+            ts = _event_ts(ev)
+            if ts is None or ts < cutoff:
+                continue
+            reasons[(ev.get("message") or "unknown")[:200]] += 1
+
+        return {
+            "pending_count": len(pending),
+            "oldest_pending_seconds": oldest,
+            "pending_pods": pending_detail[:TOP_N],
+            "failed_scheduling_messages": [
+                {"message": m, "count": c} for m, c in reasons.most_common(TOP_N)
+            ],
+        }
+
+    def collect_addons():
+        degraded = []
+        checked = 0
+        skipped = []
+        for ns in ADDON_NAMESPACES:
+            try:
+                deps = api("/apis/apps/v1/namespaces/{}/deployments".format(ns)).get("items", [])
+                dss = api("/apis/apps/v1/namespaces/{}/daemonsets".format(ns)).get("items", [])
+            except urllib.error.HTTPError as exc:
+                if exc.code == 404:
+                    skipped.append(ns)
+                    continue
+                raise
+
+            for dep in deps:
+                checked += 1
+                name = dep.get("metadata", {}).get("name")
+                spec_replicas = dep.get("spec", {}).get("replicas", 0)
+                ready = dep.get("status", {}).get("readyReplicas", 0)
+                if spec_replicas and ready < spec_replicas:
+                    degraded.append({
+                        "namespace": ns, "kind": "Deployment", "name": name,
+                        "desired": spec_replicas, "ready": ready,
+                    })
+            for ds in dss:
+                checked += 1
+                name = ds.get("metadata", {}).get("name")
+                status = ds.get("status", {})
+                desired = status.get("desiredNumberScheduled", 0)
+                ready = status.get("numberReady", 0)
+                if desired and ready < desired:
+                    degraded.append({
+                        "namespace": ns, "kind": "DaemonSet", "name": name,
+                        "desired": desired, "ready": ready,
+                    })
+
+        return {
+            "checked": checked,
+            "namespaces_absent": skipped,
+            "degraded_count": len(degraded),
+            "degraded": degraded[:TOP_N],
+        }
+
+    def collect_events():
+        field = urllib.parse.quote("type=Warning")
+        events = api("/api/v1/events?fieldSelector={}&limit=2000".format(field)).get("items", [])
+        cutoff = _now() - timedelta(minutes=EVENT_WINDOW_MIN)
+
+        by_reason = Counter()
+        by_namespace = Counter()
+        total = 0
+        excluded = Counter()
+        undated = 0
+        for ev in events:
+            ts = _event_ts(ev)
+            # STRICT window. An event we cannot date is NOT counted, because
+            # counting it would silently inflate a rate that claims to cover
+            # `window_minutes`. Undated events are surfaced below instead of
+            # being folded into the total.
+            if ts is None:
+                undated += 1
+                continue
+            if ts < cutoff:
+                continue
+
+            reason = ev.get("reason") or "unknown"
+            ns = ev.get("involvedObject", {}).get("namespace") or "cluster-scoped"
+
+            # SENSOR-SAFEGUARDS.md exclusions, enforced at the source.
+            # Without these the signal drowns: on a Kyverno-audited cluster
+            # PolicyViolation alone is ~99% of warning events, which pins the
+            # rate baseline so high that a real storm can never trip it, and
+            # buries every genuine reason in the by_reason ranking. Argo's own
+            # namespaces are excluded because triage workflows emit events,
+            # which would feed back into the detector that spawned them.
+            if reason in EXCLUDED_EVENT_REASONS:
+                excluded[reason] += 1
+                continue
+            if ns in EXCLUDED_EVENT_NAMESPACES:
+                excluded["ns:" + ns] += 1
+                continue
+
+            total += 1
+            by_reason[reason] += 1
+            by_namespace[ns] += 1
+
+        return {
+            "window_minutes": EVENT_WINDOW_MIN,
+            "warning_total": total,
+            "by_reason": [{"reason": r, "count": c} for r, c in by_reason.most_common(TOP_N)],
+            "by_namespace": [{"namespace": n, "count": c} for n, c in by_namespace.most_common(TOP_N)],
+            # Kept visible, not silently dropped: a spike in excluded volume is
+            # itself worth seeing even though it must not drive the detector.
+            "excluded": [{"filter": f, "count": c} for f, c in excluded.most_common(TOP_N)],
+            "excluded_total": sum(excluded.values()),
+            # Non-zero here means the window is not covering everything and
+            # warning_total understates reality. Visible rather than silent.
+            "undated": undated,
+        }
+
+    def collect_workload_stress():
+        pods = _list_pods()
+        oom = 0
+        crashloop = 0
+        restarts = []
+        evicted = 0
+
+        for pod in pods:
+            meta = pod.get("metadata", {})
+            status = pod.get("status", {})
+            if status.get("reason") == "Evicted":
+                evicted += 1
+            total_restarts = 0
+            for cs in status.get("containerStatuses", []) or []:
+                total_restarts += cs.get("restartCount", 0)
+                waiting = (cs.get("state", {}) or {}).get("waiting") or {}
+                if waiting.get("reason") == "CrashLoopBackOff":
+                    crashloop += 1
+                last = (cs.get("lastState", {}) or {}).get("terminated") or {}
+                if last.get("reason") == "OOMKilled":
+                    oom += 1
+            if total_restarts:
+                restarts.append({
+                    "namespace": meta.get("namespace"),
+                    "pod": meta.get("name"),
+                    "restarts": total_restarts,
+                })
+
+        restarts.sort(key=lambda r: r["restarts"], reverse=True)
+        return {
+            "oom_killed_containers": oom,
+            "crashloop_containers": crashloop,
+            "evicted_pods": evicted,
+            "top_restarts": restarts[:TOP_N],
+        }
+
+    def collect_storage():
+        pvcs = api("/api/v1/persistentvolumeclaims").get("items", [])
+        pending = [
+            {
+                "namespace": p.get("metadata", {}).get("namespace"),
+                "pvc": p.get("metadata", {}).get("name"),
+            }
+            for p in pvcs
+            if p.get("status", {}).get("phase") != "Bound"
+        ]
+        return {
+            "total": len(pvcs),
+            "not_bound_count": len(pending),
+            "not_bound": pending[:TOP_N],
+        }
+
+    def collect_control_plane():
+        body = api_raw("/readyz?verbose")
+        failures = [
+            line for line in body.splitlines()
+            if line.startswith("[-]") or ("failed" in line and not line.startswith("[+]"))
+        ]
+        return {
+            "readyz": "ok" if not failures else "fail",
+            "failing_checks": failures[:TOP_N],
+        }
+
+    def collect_ip_capacity():
+        """Pod-IP and max-pods headroom per node.
+
+        The first version of this raised immediately, on the grounds that IP
+        exhaustion is an Azure-subnet question needing workload identity. That
+        was wrong, and the orchestrator agent caught it: every node publishes
+        `spec.podCIDR` and `status.allocatable.pods`, so the per-node headroom
+        that actually causes "no IPs left, pod won't start" is computable from
+        the API alone, on any cluster.
+
+        What still needs Azure is the SUBNET-level view — whether the VNet
+        subnet backing the node pool is exhausted across all nodes. That stays
+        unavailable until workload identity is wired, and is reported as such
+        rather than implied by these numbers.
+        """
+        nodes = api("/api/v1/nodes").get("items", [])
+        pods = _list_pods()
+
+        by_node = Counter()
+        for pod in pods:
+            name = pod.get("spec", {}).get("nodeName")
+            if not name:
+                continue
+            if pod.get("status", {}).get("phase") in ("Succeeded", "Failed"):
+                continue
+            # hostNetwork pods do not consume a pod-CIDR address
+            if pod.get("spec", {}).get("hostNetwork"):
+                continue
+            by_node[name] += 1
+
+        def cidr_size(cidr):
+            if not cidr or "/" not in cidr:
+                return None
+            try:
+                prefix = int(cidr.rsplit("/", 1)[1])
+            except ValueError:
+                return None
+            bits = 128 if ":" in cidr else 32
+            if not 0 <= prefix <= bits:
+                return None
+            return 2 ** (bits - prefix)
+
+        entries = []
+        for node in nodes:
+            name = node.get("metadata", {}).get("name", "unknown")
+            cidr = node.get("spec", {}).get("podCIDR")
+            total = cidr_size(cidr)
+            used = by_node.get(name, 0)
+            try:
+                max_pods = int(node.get("status", {}).get("allocatable", {}).get("pods", 0))
+            except (TypeError, ValueError):
+                max_pods = 0
+
+            entry = {
+                "node": name,
+                "pod_cidr": cidr,
+                "pods_scheduled": used,
+                "max_pods": max_pods or None,
+                "cidr_total_ips": total,
+                # The binding constraint is whichever runs out first.
+                "ip_free_pct": round(100.0 * (total - used) / total, 1) if total else None,
+                "max_pods_free_pct": round(100.0 * (max_pods - used) / max_pods, 1) if max_pods else None,
+            }
+            entries.append(entry)
+
+        entries.sort(key=lambda e: e["ip_free_pct"] if e["ip_free_pct"] is not None else 999)
+        return {
+            "scope": "node-pod-cidr",
+            "subnet_scope": "unavailable: azure workload identity not configured",
+            "nodes": entries[:TOP_N],
+            "nodes_truncated": len(entries) > TOP_N,
+        }
+
+    def collect_triage_storm():
+        # Phase 4 storm signal: how many per-namespace triage workflows fired
+        # recently. A burst is itself a cluster-scope signal.
+        cutoff = _now() - timedelta(minutes=30)
+        wfs = api("/apis/argoproj.io/v1alpha1/workflows?limit=500").get("items", [])
+        recent = []
+        for wf in wfs:
+            meta = wf.get("metadata", {})
+            name = meta.get("name", "")
+            if not name.startswith("kagent-triage-"):
+                continue
+            created = _parse_ts(meta.get("creationTimestamp"))
+            if created and created >= cutoff:
+                recent.append(name)
+        return {"window_minutes": 30, "recent_triage_workflows": len(recent)}
+
+    # ---------------------------------------------------------- detection
+
+    DEFAULT_BASELINES = {
+        "node_not_ready_seconds": 300,
+        "pending_pods": 10,
+        "oldest_pending_seconds": 600,
+        "addon_degraded": 1,
+        "pvc_not_bound": 1,
+        "warning_rate_multiplier": 3.0,
+        "oom_killed_containers": 5,
+        "crashloop_containers": 3,
+        "triage_storm_workflows": 5,
+        "ip_free_pct": 10,
+        # Commit = sum of pod REQUESTS vs node allocatable. This is the
+        # scheduler's own view, so crossing it predicts FailedScheduling
+        # before any pod is actually pending — the "brewing" case. It is not
+        # a utilisation metric and does not need metrics-server.
+        "node_cpu_commit_pct": 90,
+        "node_memory_commit_pct": 90,
+    }
+
+    def load_baselines():
+        try:
+            cm = api("/api/v1/namespaces/{}/configmaps/{}".format(NAMESPACE, BASELINE_CM))
+            raw = (cm.get("data") or {}).get("baselines.json")
+            if raw:
+                merged = dict(DEFAULT_BASELINES)
+                merged.update(json.loads(raw))
+                return merged
+        except Exception:  # noqa: BLE001 - absent/unreadable ConfigMap is fine
+            pass
+        return dict(DEFAULT_BASELINES)
+
+    def detect_baseline_breaches(snapshot, history, baselines):
+        """Return a list of breached checks.
+
+        Sections whose status is not "ok" are SKIPPED, never breached, never
+        treated as healthy (plan §10 finding 13). Relative checks need a
+        median over history; with too little history they are skipped.
+        """
+        breaches = []
+        sections = snapshot["sections"]
+
+        def ok(name):
+            return sections.get(name, {}).get("status") == "ok"
+
+        def data(name):
+            return sections[name]["data"]
+
+        if ok("nodes"):
+            nodes = data("nodes")
+            for entry in nodes["not_ready"]:
+                secs = entry.get("not_ready_seconds")
+                if secs is None or secs >= baselines["node_not_ready_seconds"]:
+                    breaches.append({
+                        "check": "node_not_ready",
+                        "severity": "critical",
+                        "detail": "node {} NotReady for {}s".format(entry["node"], secs),
+                    })
+            for entry in nodes["pressure_conditions"]:
+                breaches.append({
+                    "check": "node_pressure",
+                    "severity": "warning",
+                    "detail": "node {} reports {}".format(entry["node"], entry["condition"]),
+                })
+            # Scheduling headroom. Fires BEFORE pods go pending, which is the
+            # point: by the time FailedScheduling appears the cluster is
+            # already wedged. Reads "commit" (every node), not "nodes" (top 20).
+            for entry in nodes.get("commit", []):
+                cpu_pct = entry.get("cpu_commit_pct")
+                mem_pct = entry.get("memory_commit_pct")
+                if cpu_pct is not None and cpu_pct >= baselines["node_cpu_commit_pct"]:
+                    breaches.append({
+                        "check": "node_cpu_commit",
+                        "severity": "warning",
+                        "detail": "node {} CPU requests at {}% of allocatable".format(
+                            entry["node"], cpu_pct
+                        ),
+                    })
+                if mem_pct is not None and mem_pct >= baselines["node_memory_commit_pct"]:
+                    breaches.append({
+                        "check": "node_memory_commit",
+                        "severity": "warning",
+                        "detail": "node {} memory requests at {}% of allocatable".format(
+                            entry["node"], mem_pct
+                        ),
+                    })
+
+        if ok("scheduling"):
+            sched = data("scheduling")
+            if sched["pending_count"] >= baselines["pending_pods"]:
+                breaches.append({
+                    "check": "pending_pods",
+                    "severity": "warning",
+                    "detail": "{} pods pending".format(sched["pending_count"]),
+                })
+            if sched["oldest_pending_seconds"] >= baselines["oldest_pending_seconds"]:
+                breaches.append({
+                    "check": "stuck_scheduling",
+                    "severity": "warning",
+                    "detail": "oldest pending pod {}s".format(sched["oldest_pending_seconds"]),
+                })
+
+        if ok("addons"):
+            addons = data("addons")
+            if addons["degraded_count"] >= baselines["addon_degraded"]:
+                names = ", ".join(
+                    "{}/{}".format(d["namespace"], d["name"]) for d in addons["degraded"][:5]
+                )
+                breaches.append({
+                    "check": "addon_degraded",
+                    "severity": "critical",
+                    "detail": "{} addon workloads degraded: {}".format(addons["degraded_count"], names),
+                })
+
+        # IP / max-pods headroom. Fires before "no IPs left" becomes a pod that
+        # will not start — the same brewing case as node_cpu_commit, one layer
+        # down. The `ip_free_pct` baseline existed from the start but had
+        # nothing to check against until the section was implemented.
+        if ok("ip_capacity"):
+            for entry in data("ip_capacity")["nodes"]:
+                free = entry.get("ip_free_pct")
+                if free is not None and free <= baselines["ip_free_pct"]:
+                    breaches.append({
+                        "check": "ip_exhaustion",
+                        "severity": "critical",
+                        "detail": "node {} has {}% of its pod CIDR {} free ({}/{} used)".format(
+                            entry["node"], free, entry.get("pod_cidr"),
+                            entry["pods_scheduled"], entry.get("cidr_total_ips"),
+                        ),
+                    })
+                mp_free = entry.get("max_pods_free_pct")
+                if mp_free is not None and mp_free <= baselines["ip_free_pct"]:
+                    breaches.append({
+                        "check": "max_pods_headroom",
+                        "severity": "warning",
+                        "detail": "node {} at {}/{} pods ({}% headroom)".format(
+                            entry["node"], entry["pods_scheduled"],
+                            entry.get("max_pods"), mp_free,
+                        ),
+                    })
+
+        if ok("storage"):
+            storage = data("storage")
+            if storage["not_bound_count"] >= baselines["pvc_not_bound"]:
+                breaches.append({
+                    "check": "pvc_not_bound",
+                    "severity": "warning",
+                    "detail": "{} PVCs not Bound".format(storage["not_bound_count"]),
+                })
+
+        if ok("control_plane") and data("control_plane")["readyz"] != "ok":
+            breaches.append({
+                "check": "control_plane_not_ready",
+                "severity": "critical",
+                "detail": "apiserver /readyz reports failures",
+            })
+
+        if ok("workload_stress"):
+            stress = data("workload_stress")
+            if stress["oom_killed_containers"] >= baselines["oom_killed_containers"]:
+                breaches.append({
+                    "check": "oom_kills",
+                    "severity": "warning",
+                    "detail": "{} containers OOMKilled".format(stress["oom_killed_containers"]),
+                })
+            if stress["crashloop_containers"] >= baselines["crashloop_containers"]:
+                breaches.append({
+                    "check": "crashloop",
+                    "severity": "warning",
+                    "detail": "{} containers in CrashLoopBackOff".format(stress["crashloop_containers"]),
+                })
+
+        if ok("triage_storm"):
+            storm = data("triage_storm")
+            if storm["recent_triage_workflows"] >= baselines["triage_storm_workflows"]:
+                breaches.append({
+                    "check": "triage_storm",
+                    "severity": "warning",
+                    "detail": "{} namespace triage workflows in {}m".format(
+                        storm["recent_triage_workflows"], storm["window_minutes"]
+                    ),
+                })
+
+        # Relative drift: warning-event rate vs median of retained history.
+        if ok("events") and len(history) >= 3:
+            rates = []
+            for past in history:
+                past_events = past.get("sections", {}).get("events", {})
+                if past_events.get("status") == "ok":
+                    rates.append(past_events["data"]["warning_total"])
+            if len(rates) >= 3:
+                rates.sort()
+                median = rates[len(rates) // 2]
+                current = data("events")["warning_total"]
+                if median > 0 and current >= median * baselines["warning_rate_multiplier"]:
+                    breaches.append({
+                        "check": "warning_event_spike",
+                        "severity": "warning",
+                        "detail": "{} warnings vs baseline median {}".format(current, median),
+                    })
+
+        return breaches
+
+    # Sections without which "healthy" cannot honestly be claimed. If any is
+    # unavailable the collector is partially blind, and absence of breaches
+    # says nothing about cluster health.
+    CORE_SECTIONS = ("nodes", "scheduling", "control_plane")
+
+    def verdict_of(breaches, snapshot=None):
+        """Map breaches to a verdict.
+
+        Returns "unknown" rather than "healthy" when a core section could not
+        be collected. Without this, a blind collector reports healthy, and a
+        warning->healthy transition dispatches a RESOLVED event claiming a
+        recovery that never happened.
+        """
+        if any(b["severity"] == "critical" for b in breaches):
+            return "critical"
+        if breaches:
+            return "warning"
+        if snapshot is not None:
+            sections = snapshot.get("sections", {})
+            blind = [
+                name for name in CORE_SECTIONS
+                if sections.get(name, {}).get("status") != "ok"
+            ]
+            if blind:
+                return "unknown"
+        return "healthy"
+
+    # ------------------------------------------------------------ storage
+
+    def get_pointer():
+        try:
+            cm = api("/api/v1/namespaces/{}/configmaps/{}".format(NAMESPACE, POINTER_CM))
+            return json.loads((cm.get("data") or {}).get("pointer.json") or "{}"), True
+        except Exception:  # noqa: BLE001 - first run has no pointer
+            return {}, False
+
+    def list_snapshots():
+        selector = urllib.parse.quote("sentinel-snapshot=true")
+        cms = api(
+            "/api/v1/namespaces/{}/configmaps?labelSelector={}".format(NAMESPACE, selector)
+        ).get("items", [])
+        out = []
+        for cm in cms:
+            name = cm.get("metadata", {}).get("name", "")
+            if not name.startswith(SNAPSHOT_PREFIX):
+                continue
+            suffix = name[len(SNAPSHOT_PREFIX):]
+            if suffix.isdigit():
+                out.append((int(suffix), name, cm))
+        out.sort(key=lambda t: t[0], reverse=True)
+        return out
+
+    def load_history(limit=24):
+        history = []
+        for _seq, name, cm in list_snapshots()[:limit]:
+            raw = (cm.get("data") or {}).get("snapshot.json")
+            if raw:
+                try:
+                    history.append(json.loads(raw))
+                except ValueError:
+                    continue
+        return history
+
+    def enforce_size_cap(snapshot):
+        """Trim top-N lists until the doc fits MAX_BYTES. Marks truncated."""
+        trimmable = [
+            ("nodes", "nodes"),
+            # "commit" is trimmed LAST-resort only; the detector reads it, so
+            # trimming it blinds the check. It is 3 small fields per node.
+            ("scheduling", "pending_pods"),
+            ("scheduling", "failed_scheduling_messages"),
+            ("events", "by_reason"),
+            ("events", "by_namespace"),
+            ("workload_stress", "top_restarts"),
+            ("addons", "degraded"),
+            ("storage", "not_bound"),
+        ]
+        limit = TOP_N
+        while len(json.dumps(snapshot).encode()) > MAX_BYTES and limit > 1:
+            limit = max(1, limit // 2)
+            snapshot["truncated"] = True
+            for sec_name, key in trimmable:
+                sec = snapshot["sections"].get(sec_name, {})
+                if sec.get("status") == "ok" and isinstance(sec.get("data", {}).get(key), list):
+                    sec["data"][key] = sec["data"][key][:limit]
+        return snapshot
+
+    def write_snapshot(snapshot, seq):
+        name = "{}{}".format(SNAPSHOT_PREFIX, seq)
+        labels = dict(LABELS)
+        labels["sentinel-snapshot"] = "true"
+        labels["snapshot-seq"] = str(seq)
+        body = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": name, "namespace": NAMESPACE, "labels": labels},
+            "immutable": True,
+            "data": {"snapshot.json": json.dumps(snapshot, separators=(",", ":"))},
+        }
+        api("/api/v1/namespaces/{}/configmaps".format(NAMESPACE), method="POST", body=body)
+        return name
+
+    def write_pointer(pointer, exists):
+        body = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": POINTER_CM, "namespace": NAMESPACE, "labels": dict(LABELS)},
+            "data": {"pointer.json": json.dumps(pointer, separators=(",", ":"))},
+        }
+        if exists:
+            api(
+                "/api/v1/namespaces/{}/configmaps/{}".format(NAMESPACE, POINTER_CM),
+                method="PUT",
+                body=body,
+            )
+        else:
+            api("/api/v1/namespaces/{}/configmaps".format(NAMESPACE), method="POST", body=body)
+
+    def gc_snapshots(keep=RETAIN):
+        removed = []
+        for _seq, name, _cm in list_snapshots()[keep:]:
+            try:
+                api(
+                    "/api/v1/namespaces/{}/configmaps/{}".format(NAMESPACE, name),
+                    method="DELETE",
+                )
+                removed.append(name)
+            except Exception as exc:  # noqa: BLE001 - GC failure is not fatal
+                print("gc: failed to delete {}: {}".format(name, exc), file=sys.stderr)
+        return removed
+
+    def post_breach_event(payload):
+        if not WEBHOOK_URL:
+            print("no SENTINEL_WEBHOOK_URL set; breach event not dispatched", file=sys.stderr)
+            return False
+        data = json.dumps(payload).encode()
+        req = urllib.request.Request(WEBHOOK_URL, data=data, method="POST")
+        req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                print("breach event dispatched: HTTP {}".format(resp.status), file=sys.stderr)
+                return True
+        except Exception as exc:  # noqa: BLE001 - never fail the snapshot on this
+            print("breach dispatch failed: {}".format(exc), file=sys.stderr)
+            return False
+
+    # --------------------------------------------------------------- main
+
+    def emit_check_result(snapshot, verdict, previous_verdict, breaches, transitioned):
+        """Emit the aks-certification check contract to /tmp/result.json.
+
+        MODE=check makes this script a drop-in step inside the existing
+        `aks-certification` WorkflowTemplate rather than a standalone system.
+        That workflow's contract, verified against the live template:
+          - every check writes /tmp/result.json
+          - it is exposed via outputs.parameters[name=result], valueFrom.path
+          - generate-report collects each as <name>-result
+        So we match {"check", "status", "details"} exactly, and add the fields
+        only a baseline can know: the verdict, and whether it MOVED.
+
+        `transitioned` is the field that matters. Certification is pass/fail on
+        current state; a baseline is only meaningful against its previous
+        value, which a stateless workflow cannot know. That state lives in the
+        pointer ConfigMap.
+        """
+        result = {
+            "check": "baseline",
+            # "failed" whenever we are not healthy, so the existing report's
+            # pass/fail semantics keep working untouched. `verdict` carries the
+            # nuance for anything that wants it.
+            "status": "passed" if verdict == "healthy" else "failed",
+            "details": breaches,
+            "verdict": verdict,
+            "previous_verdict": previous_verdict,
+            "transitioned": transitioned,
+            "cluster": snapshot.get("cluster"),
+            "captured_at": snapshot.get("captured_at"),
+            "snapshot_ref": snapshot.get("_ref"),
+            "sections_unavailable": snapshot.get("collector_health", {}).get(
+                "sections_unavailable", []
+            ),
+        }
+        with open("/tmp/result.json", "w") as fh:
+            json.dump(result, fh)
+        print(json.dumps(result))
+        return result
+
+    def main():
+        mode = os.environ.get("MODE", "snapshot").strip()
+        pointer, pointer_exists = get_pointer()
+        seq = int(pointer.get("seq", 0)) + 1
+        previous_verdict = pointer.get("verdict", "healthy")
+
+        snapshot = {
+            "schema_version": 1,
+            # Which cluster this describes. Meaningless on a single cluster,
+            # load-bearing the moment snapshots or verdicts cross a boundary:
+            # a fleet agent receiving five verdicts must know which is which,
+            # and "the payload said so" is not an identity claim — the
+            # transport (Istio mTLS / IP allowlist) is what authenticates it.
+            "cluster": os.environ.get("CLUSTER_NAME", "unknown"),
+            "seq": seq,
+            "captured_at": _now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "truncated": False,
+            "sections": {
+                "nodes": section(collect_nodes),
+                "scheduling": section(collect_scheduling),
+                "addons": section(collect_addons),
+                "events": section(collect_events),
+                "workload_stress": section(collect_workload_stress),
+                "storage": section(collect_storage),
+                "control_plane": section(collect_control_plane),
+                "ip_capacity": section(collect_ip_capacity),
+                "triage_storm": section(collect_triage_storm),
+            },
+        }
+
+        unavailable = [
+            name for name, sec in snapshot["sections"].items()
+            if sec["status"] != "ok"
+        ]
+        snapshot["collector_health"] = {
+            "sections_ok": len(snapshot["sections"]) - len(unavailable),
+            "sections_unavailable": unavailable,
+        }
+
+        history = load_history()
+        baselines = load_baselines()
+        breaches = detect_baseline_breaches(snapshot, history, baselines)
+        verdict = verdict_of(breaches, snapshot)
+        snapshot["verdict"] = verdict
+        snapshot["breached_checks"] = breaches
+
+        snapshot = enforce_size_cap(snapshot)
+        ref = write_snapshot(snapshot, seq)
+        snapshot["_ref"] = ref
+
+        # A blind run must not overwrite the last known verdict: otherwise a
+        # warning -> unknown -> warning sequence re-fires an alert that is
+        # already open. The snapshot records "unknown" for the record; the
+        # pointer keeps the incident state.
+        pointer_verdict = previous_verdict if verdict == "unknown" else verdict
+        write_pointer(
+            {
+                "seq": seq,
+                "capturedAt": snapshot["captured_at"],
+                "ref": ref,
+                "verdict": pointer_verdict,
+                "last_observed_verdict": verdict,
+            },
+            pointer_exists,
+        )
+        gc_snapshots()
+
+        # Fire on TRANSITION only — not every 10 minutes while degraded.
+        #
+        # "unknown" (collector partially blind) is NOT a rank on this scale: it
+        # can neither escalate nor resolve, because it carries no information
+        # about the cluster. It holds the previous verdict in the pointer so a
+        # blind run cannot silently clear a live incident.
+        severity_rank = {"healthy": 0, "warning": 1, "critical": 2}
+        if verdict == "unknown":
+            escalated = False
+            recovered = False
+            print(
+                "collector blind (core sections unavailable: {}); holding previous "
+                "verdict '{}' and dispatching nothing".format(
+                    ", ".join(n for n in CORE_SECTIONS if n in unavailable), previous_verdict
+                ),
+                file=sys.stderr,
+            )
+        else:
+            escalated = severity_rank[verdict] > severity_rank.get(previous_verdict, 0)
+            recovered = verdict == "healthy" and previous_verdict not in ("healthy", "unknown")
+
+        transitioned = escalated or recovered
+
+        # MODE=check — we are a step inside aks-certification. Emit the check
+        # contract and stop. The workflow decides what to do with it; we do not
+        # dispatch our own event, or the same incident would arrive twice.
+        if mode == "check":
+            emit_check_result(snapshot, verdict, previous_verdict, breaches, transitioned)
+            return
+
+        if transitioned:
+            post_breach_event({
+                "event": "resolved" if recovered else "breach",
+                "severity": verdict,
+                "previous_verdict": previous_verdict,
+                "breached_checks": breaches,
+                "snapshot_ref": ref,
+                "snapshot_seq": seq,
+                "captured_at": snapshot["captured_at"],
+                "summary": "cluster health {} -> {} ({} checks breached)".format(
+                    previous_verdict, verdict, len(breaches)
+                ),
+            })
+        else:
+            print(
+                "no transition ({} -> {}); no event dispatched".format(previous_verdict, verdict),
+                file=sys.stderr,
+            )
+
+        print(json.dumps({
+            "ref": ref,
+            "seq": seq,
+            "verdict": verdict,
+            "previous_verdict": previous_verdict,
+            "breaches": len(breaches),
+            "sections_unavailable": unavailable,
+            "truncated": snapshot["truncated"],
+            "bytes": len(json.dumps(snapshot).encode()),
+        }))
+
+    if __name__ == "__main__":
+        main()

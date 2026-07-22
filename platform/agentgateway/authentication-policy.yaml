@@ -1,0 +1,28 @@
+# Example only. Replace all {{PLACEHOLDER}} values before applying.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: agent-jwt-auth
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: ai-gateway
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      providers:
+        - issuer: "https://login.microsoftonline.com/{{TENANT_ID}}/v2.0"
+          audiences:
+            - "api://{{AGENTGATEWAY_APP_ID}}"
+          jwks:
+            remote:
+              jwksPath: "/common/discovery/v2.0/keys"
+              cacheDuration: "5m"
+              backendRef:
+                group: ""
+                kind: Service
+                name: oidc-proxy
+                namespace: agentgateway-system
+                port: 443

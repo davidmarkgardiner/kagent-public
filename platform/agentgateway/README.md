@@ -42,6 +42,7 @@ secret-rotation-safe UAMI custom-scope workflow.
 | First-time deploy at work | `DEPLOY.md` |
 | Validate mgmt cluster before worker | `VALIDATE-MGMT.md` |
 | Check required CRDs | `./preflight-check.sh` |
+| Configure agent authentication | [`AUTHENTICATION.md`](AUTHENTICATION.md) |
 | Understand why secret rotation is safe | `SECRET-ROTATION-TEST.md` |
 | See what the Factory review flagged | `FACTORY-REVIEW.md` |
 | TLS / connection errors from kagent | See [Troubleshooting](#troubleshooting) below |

@@ -1,0 +1,1 @@
+{"iid": 42, "title": "Agent needs human review", "description": "agent-run-id: run-abc-123\n\nOriginal investigation summary.", "labels": ["agent:waiting-for-human"], "web_url": "https://gitlab.example.invalid/group/project/-/issues/42"}

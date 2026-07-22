@@ -1,0 +1,11 @@
+# Written by the ticket-producing workflow, not by the read-only feedback agent.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-feedback-run-{{RUN_ID}}
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: kagent-agent-feedback
+data:
+  # Bounded, sanitized original context. Do not store credentials or raw logs.
+  context.json: '{"summary":"{{SANITIZED_ORIGINAL_CONTEXT}}","allowed_next_actions":["recommend_only"]}'

@@ -13,3 +13,4 @@ configMapGenerator:
     namespace: argo
     files:
       - validate-feedback.py=scripts/validate-feedback.py
+      - hydrate-feedback-context.py=scripts/hydrate-feedback-context.py

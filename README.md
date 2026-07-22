@@ -99,6 +99,8 @@ examples/           Quickstart and sample payloads
 | Set up AI triage for a namespace | [`agents/kagent-triage/`](agents/kagent-triage/README.md) |
 | Try the K-Agent knowledge-base UI POC | [`agents/kagent-knowledge-ui/`](agents/kagent-knowledge-ui/README.md) |
 | Wire K8s events → EventHub → AI diagnosis | [`observability/alloy-eventhub-pipeline/`](observability/alloy-eventhub-pipeline/) |
+| Decide Alertmanager metric vs Alloy/Vector event-log routing into kagent | [`docs/observability/dual-source-kafka-triage-routing.md`](docs/observability/dual-source-kafka-triage-routing.md) |
+| Translate Kafka portal producer/topic/consumer onboarding into the triage setup | [`docs/observability/work-confluent-onboarding-guide.md`](docs/observability/work-confluent-onboarding-guide.md) |
 | Monitor kagent + agentgateway with Alloy/Grafana | [`docs/observability/k-agent-alloy-grafana.md`](docs/observability/k-agent-alloy-grafana.md) |
 | Score whether agents are doing the right job | [`observability/agent-evals/`](observability/agent-evals/README.md) |
 | Lift the agent eval pattern into another environment | [`KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md`](KAGENT-EVAL-LIFT-AND-SHIFT-HANDOFF.md) |
