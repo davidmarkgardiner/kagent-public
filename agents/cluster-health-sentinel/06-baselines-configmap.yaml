@@ -1,0 +1,20 @@
+# Baseline thresholds for the certification workflow's check-baseline step.
+#
+# Tune from observe-mode data before letting this file tickets. Every value
+# here is currently an educated guess; node_cpu_commit at 90 is what fires on
+# RED, and it was picked by intuition, not evidence.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-health-baselines
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+data:
+  baselines.json: "{\n  \"node_not_ready_seconds\": 300,\n  \"pending_pods\": 10,\n\
+    \  \"oldest_pending_seconds\": 600,\n  \"addon_degraded\": 1,\n  \"pvc_not_bound\"\
+    : 1,\n  \"warning_rate_multiplier\": 3.0,\n  \"oom_killed_containers\": 5,\n \
+    \ \"crashloop_containers\": 3,\n  \"triage_storm_workflows\": 5,\n  \"ip_free_pct\"\
+    : 10\n}\n"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Responsible kagent Operation"
+  short_description: "Create safe, auditable kagent skills"
+  default_prompt: "Use $responsible-kagent-operation to create or review a safe kagent skill and read-only kagent manifest."

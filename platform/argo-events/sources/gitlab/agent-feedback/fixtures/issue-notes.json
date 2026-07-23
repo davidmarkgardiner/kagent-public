@@ -1,0 +1,1 @@
+[{"id": 10, "author": {"username": "alice"}, "created_at": "2026-01-01T00:00:00Z", "body": "@platform-agent revise the plan", "system": false}, {"id": 9, "author": {"username": "platform-agent"}, "created_at": "2025-12-31T00:00:00Z", "body": "Earlier read-only recommendation", "system": false}]

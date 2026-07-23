@@ -1,0 +1,149 @@
+# Phase 1 — read-only RBAC for the cluster-health snapshot collector.
+#
+# Scope rationale (see WORK-CLUSTER-HEALTH-SENTINEL-PLAN.md §10, finding 8):
+# cluster-wide read is a real privilege expansion, so the ClusterRole is an
+# explicit allowlist. Deliberately ABSENT: secrets, pods/log, pods/exec,
+# and every write verb. ConfigMap writes are namespaced to `kagent` only,
+# via a separate Role, so snapshot storage cannot become a cluster-wide grant.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-health-collector
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: cluster-health-collector
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-health-collector-readonly
+  labels:
+    app.kubernetes.io/name: cluster-health-collector
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+rules:
+  # Core cluster state. No secrets. No pods/log subresource.
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - pods
+      - events
+      - namespaces
+      - persistentvolumeclaims
+      - persistentvolumes
+      - services
+    verbs: ["get", "list"]
+  # Workload controllers — desired vs ready for addon health.
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - daemonsets
+      - replicasets
+      - statefulsets
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list"]
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+    verbs: ["get", "list"]
+  # Node/pod resource pressure.
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - nodes
+      - pods
+    verbs: ["get", "list"]
+  # Storm detector (phase 4): count recent triage Workflows. Read-only.
+  - apiGroups: ["argoproj.io"]
+    resources:
+      - workflows
+    verbs: ["get", "list"]
+  # Control-plane readiness probe.
+  - nonResourceURLs: ["/readyz", "/readyz/*", "/livez", "/healthz"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-health-collector-readonly
+  labels:
+    app.kubernetes.io/name: cluster-health-collector
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-collector-readonly
+subjects:
+  - kind: ServiceAccount
+    name: cluster-health-collector
+    namespace: kagent
+---
+# The certification workflow runs as argo-events-sa, and its checks read nodes,
+# pods, events, PVCs and /readyz. That SA has namespaced rights but NOT cluster
+# reads — verified: `kubectl auth can-i list nodes --as=...argo-events-sa` = no.
+#
+# Without this binding the checks do not fail loudly; they catch the 403, emit
+# `status: "error"`, and the step exits 0. The report then says "error" instead
+# of reporting real cluster state — correct behaviour (a check that could not
+# run must never look like one that passed), but useless. Bind the same
+# read-only ClusterRole rather than widening argo-events-sa generally.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-health-certification-readonly
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-collector-readonly
+subjects:
+  - kind: ServiceAccount
+    name: argo-events-sa
+    namespace: argo-events
+---
+# Snapshot storage. Namespaced to kagent, ConfigMaps only.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-health-snapshot-writer
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: cluster-health-collector
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-snapshot-writer
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: cluster-health-collector
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/team: platform
+    platform.com/type: observability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-health-snapshot-writer
+subjects:
+  - kind: ServiceAccount
+    name: cluster-health-collector
+    namespace: kagent
