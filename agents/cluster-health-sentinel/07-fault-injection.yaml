@@ -1,0 +1,170 @@
+# Fault injection for the cluster-health sentinel.
+#
+# Follows the pattern of agents/kagent-triage/*-fault-injection.yaml, with the
+# acceptance criteria the review said were missing (plan §10, finding 16).
+# Apply ONE case at a time into a scratch namespace and check the criteria in
+# its annotation before moving on.
+#
+# All cases are namespaced to `cluster-health-test` and are safe to delete.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cluster-health-test
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/type: fault-injection
+---
+# CASE 1 — scheduling pressure.
+# Requests more CPU than any node can satisfy, forcing FailedScheduling and a
+# growing Pending backlog.
+#
+# ACCEPTANCE CRITERIA:
+#   - within 2 snapshot cycles (20m), snapshot.sections.scheduling.data
+#     .pending_count >= 10 and oldest_pending_seconds >= 600
+#   - detector emits breached_checks containing "pending_pods" AND
+#     "stuck_scheduling"
+#   - EXACTLY ONE cluster-health-triage workflow is created (duplicate count
+#     must be 0) even though many FailedScheduling events fire
+#   - the per-namespace sensors do NOT also open a triage for these events
+#     (routing partition holds)
+#   - on `kubectl delete -f` of this case, the NEXT snapshot flips verdict to
+#     healthy and dispatches exactly one "resolved" event
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unschedulable-hog
+  namespace: cluster-health-test
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/type: fault-injection
+  annotations:
+    fault-injection/case: "scheduling-pressure"
+    fault-injection/expected-root-layer: "scheduling"
+spec:
+  replicas: 12
+  selector:
+    matchLabels:
+      app: unschedulable-hog
+  template:
+    metadata:
+      labels:
+        app: unschedulable-hog
+    spec:
+      containers:
+        - name: hog
+          image: registry.k8s.io/pause:3.9
+          resources:
+            requests:
+              # Deliberately larger than any realistic node allocatable.
+              cpu: "200"
+              memory: 400Gi
+---
+# CASE 2 — workload stress (OOMKilled + CrashLoopBackOff).
+#
+# ACCEPTANCE CRITERIA:
+#   - snapshot.sections.workload_stress.data.crashloop_containers >= 3
+#   - detector emits breached_checks containing "crashloop"
+#   - ROOT_LAYER in the orchestrator verdict is app-local, NOT node-pressure
+#     (this is the false-positive check: a local problem must not be reported
+#     as a cluster-wide cause)
+#   - SEVERITY is warning, not critical
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crashloop-injector
+  namespace: cluster-health-test
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/type: fault-injection
+  annotations:
+    fault-injection/case: "workload-stress"
+    fault-injection/expected-root-layer: "app-local"
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: crashloop-injector
+  template:
+    metadata:
+      labels:
+        app: crashloop-injector
+    spec:
+      containers:
+        - name: crasher
+          image: busybox:1.36
+          command: ["sh", "-c", "echo starting; sleep 5; exit 1"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+---
+# CASE 3 — storage pressure.
+#
+# ACCEPTANCE CRITERIA:
+#   - snapshot.sections.storage.data.not_bound_count >= 1
+#   - detector emits breached_checks containing "pvc_not_bound"
+#   - ROOT_LAYER is storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: unbindable-claim
+  namespace: cluster-health-test
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/type: fault-injection
+  annotations:
+    fault-injection/case: "storage-pressure"
+    fault-injection/expected-root-layer: "storage"
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # A storage class that does not exist — the claim can never bind.
+  storageClassName: nonexistent-storage-class
+  resources:
+    requests:
+      storage: 1Gi
+---
+# CASE 4 — collector resilience (NOT a cluster fault).
+#
+# This is a procedure, not a manifest. Verify the collector's missing-data
+# semantics (finding 13) by temporarily removing a permission:
+#
+#   kubectl patch clusterrole cluster-health-collector-readonly --type=json \
+#     -p='[{"op":"remove","path":"/rules/0"}]'
+#
+# ACCEPTANCE CRITERIA:
+#   - the CronJob run SUCCEEDS (exit 0) — a permission loss must not crash it
+#   - snapshot.sections.nodes.status == "unavailable" with an error string
+#   - snapshot.collector_health.sections_unavailable contains "nodes"
+#   - detector does NOT emit a node_not_ready breach (unavailable must never
+#     read as breached) and does NOT emit healthy-looking node data
+#   - verdict does not flip to healthy purely because a section vanished
+#
+# Restore with: kubectl apply -f 01-rbac.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-health-fault-injection-notes
+  namespace: cluster-health-test
+  labels:
+    app.kubernetes.io/part-of: cluster-health-sentinel
+    platform.com/type: fault-injection
+data:
+  README: |
+    Run one case at a time. Between cases:
+      kubectl delete -f 09-fault-injection.yaml
+      kubectl -n kagent delete cm -l sentinel-snapshot=true
+      kubectl -n kagent delete cm cluster-health-snapshot-latest
+    so the baseline history starts clean and transition logic is exercised
+    from a known verdict.
+
+    Force a snapshot without waiting for the schedule:
+      kubectl -n kagent create job --from=cronjob/cluster-health-collector \
+        cluster-health-manual-$(date +%s)
+
+    Read the latest snapshot:
+      REF=$(kubectl -n kagent get cm cluster-health-snapshot-latest \
+        -o jsonpath='{.data.pointer\.json}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["ref"])')
+      kubectl -n kagent get cm "$REF" -o jsonpath='{.data.snapshot\.json}' | python3 -m json.tool

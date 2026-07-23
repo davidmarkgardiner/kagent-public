@@ -36,6 +36,9 @@ thread continuity, native kagent memory, shared episodic memory, procedural
 memory, and Microsoft-aligned AKS deployment guidance, see
 [`platform-memory/README.md`](platform-memory/README.md).
 
+For the concrete durable development-and-production target, build phases, and
+proof gates, see [Durable Agent Memory Production Target](production-target/README.md).
+
 | Option | Best for | Storage / retrieval | Sharing model | Current status in this repo |
 |---|---|---|---|---|
 | A2A session memory | Remembering one conversation thread | Raw session events in the kagent database | Scoped to one A2A `contextId` | Works on `red` while the controller pod survives |
