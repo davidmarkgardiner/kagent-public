@@ -16,7 +16,8 @@ bash scripts/check-triage-and-tools.sh --values /secure/values.env --workflow {{
 The ticket must contain:
 
 - Safe original evidence: cluster, namespace, workload/pod, reason or log
-  signature, severity, container, observed time and bounded evidence.
+  signature, severity, observed time and bounded evidence. Include `container`
+  or `service` only where the source record actually provides them.
 - A useful diagnosis: likely cause, evidence used, risk, confidence and
   human-approved next steps.
 - Clear language that no remediation was executed.
