@@ -74,4 +74,6 @@ workflow was not sensor-triggered, return to the EventSource/Sensor boundary.
 Capture EventBus/EventSource/Sensor conditions, EventSource log window,
 consumer group offset evidence, workflow name, and a redacted incident payload
 showing schema version, cluster, namespace, workload/pod, reason/signature,
-severity, container and timestamp. Then proceed to ticket/tool-quality work.
+severity and timestamp. Capture `container`/`service` only when the source
+record genuinely contains them; event records should instead retain their
+native object and event metadata. Then proceed to ticket/tool-quality work.
