@@ -97,6 +97,7 @@ examples/           Quickstart and sample payloads
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
 | Onboard a namespace via PR | [`platform/argo-workflows/templates/namespace-onboarding/`](platform/argo-workflows/templates/namespace-onboarding/) |
 | Set up AI triage for a namespace | [`agents/kagent-triage/`](agents/kagent-triage/README.md) |
+| Build and validate Kubernetes delivery YAML with read-only kagent specialists | [`work-agent-bundles/kubernetes-delivery-harness/`](work-agent-bundles/kubernetes-delivery-harness/README.md) |
 | Try the K-Agent knowledge-base UI POC | [`agents/kagent-knowledge-ui/`](agents/kagent-knowledge-ui/README.md) |
 | Wire K8s events → EventHub → AI diagnosis | [`observability/alloy-eventhub-pipeline/`](observability/alloy-eventhub-pipeline/) |
 | Decide Alertmanager metric vs Alloy/Vector event-log routing into kagent | [`docs/observability/dual-source-kafka-triage-routing.md`](docs/observability/dual-source-kafka-triage-routing.md) |
