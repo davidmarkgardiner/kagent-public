@@ -14,7 +14,11 @@ from delivery_controller import IncomingTask, Ledger, handle, post_json
 
 def run_buzz(args: list[str], *, content: str | None = None) -> str:
     command = [os.environ.get("BUZZ_BIN", "buzz"), "--format", "json", *args]
-    completed = subprocess.run(command, input=content, text=True, capture_output=True, check=False)
+    timeout = int(os.environ.get("BUZZ_COMMAND_TIMEOUT", "20"))
+    try:
+        completed = subprocess.run(command, input=content, text=True, capture_output=True, check=False, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"Buzz command exceeded {timeout}s: {' '.join(args[:2])}") from exc
     if completed.returncode:
         raise RuntimeError(f"Buzz command failed ({completed.returncode}): {completed.stderr.strip()}")
     return completed.stdout

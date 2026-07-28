@@ -80,6 +80,11 @@ one schema-marked task, runs one bridge pass, verifies a threaded result, then
 deletes the channel and removes both relay memberships. Run it only from the
 trusted bridge host after a local port-forward to the fixed coordinator.
 
+Every Buzz command is independently bounded by `BUZZ_COMMAND_TIMEOUT` (20
+seconds by default). If kagent returns `input_required`, the bridge immediately
+posts `sdlc.approval_required` with the stored task/context correlation; it
+never waits for approval inside the worker or starts a new task.
+
 ## Cleanup
 
 ```bash
