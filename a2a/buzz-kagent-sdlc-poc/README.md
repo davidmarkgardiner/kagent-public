@@ -51,7 +51,21 @@ kubectl wait --for=condition=Ready -n kagent \
 ```
 
 `delivery_controller.py` takes a trusted, already-authenticated Buzz event JSON
-and prints the safe threaded reply payload. `KAGENT_A2A_URL` must be the fixed
+and prints the safe threaded reply payload. `buzz_bridge.py` is the production
+adapter seam: one supervised invocation reads one private channel, accepts only
+`buzz-kagent-sdlc.v1` `sdlc.task.request` messages, invokes the controller and
+posts a signed reply to the source event. It has no endpoint-selection field.
+Run it under a supervisor on the host holding the bridge identity; credentials
+remain environment variables, never task content or repository files.
+
+```bash
+BUZZ_BIN=/opt/buzz/buzz BUZZ_CHANNEL_ID={{PRIVATE_CHANNEL_UUID}} \
+KAGENT_A2A_URL=http://127.0.0.1:8083/api/a2a/kagent/buzz-sdlc-coordinator/ \
+LEDGER_PATH=/var/lib/buzz-kagent-sdlc/ledger.sqlite3 \
+python3 a2a/buzz-kagent-sdlc-poc/buzz_bridge.py
+```
+
+`KAGENT_A2A_URL` must be the fixed
 allowlisted coordinator endpoint, for example
 `http://127.0.0.1:8083/api/a2a/kagent/buzz-sdlc-coordinator/`; it is never
 accepted from an event.
