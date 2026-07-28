@@ -1,0 +1,72 @@
+# Isolated Kimi K2.7 Code route for the Buzz SDLC POC. It deliberately does
+# not alter `kimi-backend`, `/kimi/v1`, or `default-model-config`.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: buzz-sdlc-kimi-k2-7-code
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+spec:
+  ai:
+    provider:
+      openai:
+        model: kimi-k2.7-code
+      host: api.kimi.com
+      pathPrefix: /coding/v1
+      port: 443
+  policies:
+    auth:
+      secretRef:
+        name: kimi-api-secret
+    http:
+      requestTimeout: 180s
+    tls: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: buzz-sdlc-kimi-k2-7-code
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /buzz-sdlc-kimi-k2-7/v1
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /openai/v1
+      backendRefs:
+        - name: buzz-sdlc-kimi-k2-7-code
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: buzz-sdlc-kimi-k2-7-code
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+spec:
+  provider: OpenAI
+  model: kimi-k2.7-code
+  # This is the existing non-provider client key used by the current routed
+  # ModelConfigs. Provider credentials remain only in agentgateway.
+  apiKeySecret: agentgateway-qwen-key # pragma: allowlist secret
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: http://ai-gateway.agentgateway-system.svc.cluster.local/buzz-sdlc-kimi-k2-7/v1
+    timeout: 180
+    # Kimi K2.7 Code rejects any value other than 1.
+    temperature: "1"
+    maxTokens: 4096
