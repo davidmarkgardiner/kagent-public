@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-from delivery_controller import IncomingTask, Ledger, handle, post_json
+from delivery_controller import IncomingTask, Ledger, handle, post_json, resume
 
 
 def run_buzz(args: list[str], *, content: str | None = None) -> str:
@@ -41,17 +41,39 @@ def parse_task(event: dict[str, object], channel: str) -> IncomingTask | None:
     })
 
 
+def parse_decision(event: dict[str, object]) -> tuple[str, str] | None:
+    """Return (source_event_id, decision) only for strict threaded decisions."""
+    try:
+        content = json.loads(str(event["content"]))
+    except (KeyError, json.JSONDecodeError):
+        return None
+    if content.get("schema") != "buzz-kagent-sdlc.v1" or content.get("type") != "sdlc.approval.decision":
+        return None
+    decision = content.get("decision")
+    tags = event.get("tags", [])
+    parents = [tag[1] for tag in tags if isinstance(tag, list) and len(tag) > 1 and tag[0] == "e"]
+    if decision not in {"approve", "reject"} or not parents:
+        return None
+    return str(parents[-1]), str(decision)
+
+
 def process_once(channel: str, ledger: Ledger, invoke: Callable[[dict[str, object]], dict[str, object]], buzz: Callable[..., str] = run_buzz) -> int:
     events = json.loads(buzz(["messages", "get", "--channel", channel, "--limit", "50"]))
     processed = 0
     for event in events:
         task = parse_task(event, channel)
-        if task is None:
-            continue
-        reply = handle(task, ledger, invoke)
+        if task is not None:
+            reply = handle(task, ledger, invoke)
+            reply_to = task.source_event_id
+        else:
+            parsed = parse_decision(event)
+            if parsed is None:
+                continue
+            reply_to, decision = parsed
+            reply = resume(reply_to, decision, ledger, invoke)
         # Only publish after the durable ledger update. A crash after publish is
         # safe: replayed intake returns the stored result rather than reinvoking.
-        buzz(["messages", "send", "--channel", channel, "--reply-to", task.source_event_id, "--content", "-"], content=json.dumps(reply))
+        buzz(["messages", "send", "--channel", channel, "--reply-to", reply_to, "--content", "-"], content=json.dumps(reply))
         processed += 1
     return processed
 
