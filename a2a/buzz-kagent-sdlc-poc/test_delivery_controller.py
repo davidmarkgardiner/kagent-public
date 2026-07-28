@@ -5,10 +5,12 @@ import pathlib
 import sys
 import tempfile
 import unittest
+import json
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from delivery_controller import IncomingTask, Ledger, handle
+from buzz_bridge import process_once
 
 
 class DeliveryControllerTest(unittest.TestCase):
@@ -39,6 +41,21 @@ class DeliveryControllerTest(unittest.TestCase):
         reply = handle(self.task, self.ledger, self.invoke)
         self.assertTrue(reply["duplicate"])
         self.assertEqual(1, len(self.calls))
+
+    def test_private_buzz_task_is_replied_to_in_the_same_thread(self):
+        sent = []
+        event = {"id": "buzz-event-2", "content": json.dumps({
+            "schema": "buzz-kagent-sdlc.v1", "type": "sdlc.task.request",
+            "project": "sample", "issue_id": "#2", "title": "Hello", "body": "Add greeting",
+        })}
+        def buzz(args, *, content=None):
+            if args[1] == "get": return json.dumps([event])
+            sent.append((args, json.loads(content)))
+            return '{"event_id":"reply"}'
+        self.assertEqual(1, process_once("channel-1", self.ledger, self.invoke, buzz))
+        self.assertIn("--reply-to", sent[0][0])
+        self.assertEqual("buzz-event-2", sent[0][1]["reply_to"])
+        self.assertFalse(sent[0][1]["merge_eligible"])
 
 
 if __name__ == "__main__":
