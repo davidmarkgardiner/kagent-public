@@ -9,7 +9,7 @@ import json
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from delivery_controller import IncomingTask, Ledger, handle
+from delivery_controller import IncomingTask, Ledger, handle, resume
 from buzz_bridge import process_once
 
 
@@ -63,6 +63,14 @@ class DeliveryControllerTest(unittest.TestCase):
         reply = handle(self.task, self.ledger, pending)
         self.assertEqual("sdlc.approval_required", reply["type"])
         self.assertTrue(reply["approval"]["resume_same_a2a_task"])
+
+    def test_approval_resumes_the_same_task(self):
+        handle(self.task, self.ledger, lambda _: {"result": {"status": {"state": "input_required", "taskId": "pending-1"}}})
+        sent = []
+        reply = resume("buzz-event-1", "approve", self.ledger, lambda payload: (sent.append(payload) or {"result": {"status": {"state": "completed", "taskId": "pending-1"}}}))
+        self.assertEqual("pending-1", sent[0]["params"]["message"]["taskId"])
+        self.assertEqual("approve", sent[0]["params"]["message"]["parts"][0]["data"]["decision_type"])
+        self.assertEqual("completed", reply["state"])
 
 
 if __name__ == "__main__":
