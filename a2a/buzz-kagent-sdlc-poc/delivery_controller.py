@@ -135,6 +135,25 @@ def a2a_request(task: IncomingTask, record: dict[str, object]) -> dict[str, obje
     }
 
 
+def a2a_resume_request(record: dict[str, object], decision: str) -> dict[str, object]:
+    if decision not in {"approve", "reject"} or not record.get("a2a_task_id"):
+        raise ValueError("a pending A2A task and explicit approve/reject decision are required")
+    return {"jsonrpc": "2.0", "id": f"buzz-resume-{uuid.uuid4()}", "method": "message/send",
+            "params": {"message": {"kind": "message", "role": "user", "taskId": record["a2a_task_id"],
+            "messageId": f"buzz-decision-{uuid.uuid4()}", "parts": [
+                {"kind": "data", "data": {"decision_type": decision}, "metadata": {}},
+                {"kind": "text", "text": f"Buzz approval decision: {decision}"}]},
+            "metadata": {"contextId": record["a2a_context_id"], "conversationId": record["source_event_id"]}}}
+
+
+def resume(source_event_id: str, decision: str, ledger: Ledger, invoke: Callable[[dict[str, object]], dict[str, object]]) -> dict[str, object]:
+    record = ledger.get(source_event_id)
+    if record is None or record["state"] != "input_required":
+        raise ValueError("no pending approval for this source event")
+    state, task_id, result = normalize_a2a(invoke(a2a_resume_request(record, decision)))
+    return buzz_reply(ledger.update(source_event_id, state=state, task_id=task_id or str(record["a2a_task_id"]), result=result))
+
+
 def post_json(url: str, payload: dict[str, object], timeout: int) -> dict[str, object]:
     body = json.dumps(payload).encode()
     req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
