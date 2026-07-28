@@ -88,9 +88,50 @@ never waits for approval inside the worker or starts a new task.
 An approval reply must be a threaded `sdlc.approval.decision` envelope carrying
 the original `source_event_id` and an explicit `approve` or `reject` decision.
 
+## Deterministic approval proof
+
+`hitl_fixture/` is a purpose-built, non-mutating BYO A2A agent. Its first
+request returns the standard A2A wire state `input-required`; an explicit
+threaded Buzz decision resumes the same A2A task and returns `completed`. It
+has no model, filesystem, Git, Kubernetes, or network-writing capability.
+
+Build/load it only on the disposable Kind node, then apply the isolated agent:
+
+```bash
+docker build -t buzz-sdlc-hitl-fixture:poc-3 a2a/buzz-kagent-sdlc-poc/hitl_fixture
+kind load docker-image buzz-sdlc-hitl-fixture:poc-3 --name homelab
+kubectl apply -f a2a/buzz-kagent-sdlc-poc/k8s/hitl-fixture.yaml
+```
+
+From the trusted bridge host, with a local controller port-forward and the
+existing relay environment loaded, run `live_approval_smoke.py`. It creates
+three disposable private identities/channel members, proves the whole approval
+thread, and deletes those identities and the channel in `finally`.
+
+The proof passed against the live cluster on 2026-07-28 with source event
+`f6da21252c99d9098d3c3ed418ee04392b92805fc9397dd0fe879695b5ae13ca` and
+A2A task `663a51d3-3766-40ef-bf46-55f57a847804`; its final state was
+`completed`. These IDs are evidence only: the private Buzz channel was deleted.
+
+## Delivery gate
+
+`delivery_gate.py` is the deliberately narrow release boundary for one already
+created draft PR. It requires a clean checkout, a branch based on the requested
+base, one direct test command, and an open draft PR matching that branch/base.
+It emits a SHA-bound JSON receipt that is `ready_for_human_review: true` but
+always `merge_eligible: false`. It does not push, commit, create a PR, deploy,
+or merge.
+
+```bash
+python3 a2a/buzz-kagent-sdlc-poc/delivery_gate.py \
+  --repo "$PWD" --base main --pr 61 \
+  --test 'python3 -m unittest -v a2a/buzz-kagent-sdlc-poc/test_delivery_controller.py'
+```
+
 ## Cleanup
 
 ```bash
 kubectl delete -f a2a/buzz-kagent-sdlc-poc/k8s/agents.yaml --ignore-not-found
 kubectl delete -f a2a/buzz-kagent-sdlc-poc/k8s/model-route.yaml --ignore-not-found
+kubectl delete -f a2a/buzz-kagent-sdlc-poc/k8s/hitl-fixture.yaml --ignore-not-found
 ```

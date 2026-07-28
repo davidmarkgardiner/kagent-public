@@ -64,6 +64,13 @@ class DeliveryControllerTest(unittest.TestCase):
         self.assertEqual("sdlc.approval_required", reply["type"])
         self.assertTrue(reply["approval"]["resume_same_a2a_task"])
 
+    def test_a2a_wire_state_and_result_id_are_normalized_for_resume(self):
+        ledger = Ledger(":memory:")
+        task = IncomingTask("event-wire", "channel", "project", "#1", "title", "body")
+        reply = handle(task, ledger, lambda _: {"result": {"id": "wire-task", "status": {"state": "input-required"}}})
+        self.assertEqual("input_required", reply["state"])
+        self.assertEqual("wire-task", reply["a2a_task_id"])
+
     def test_approval_resumes_the_same_task(self):
         handle(self.task, self.ledger, lambda _: {"result": {"status": {"state": "input_required", "taskId": "pending-1"}}})
         sent = []

@@ -171,8 +171,12 @@ def normalize_a2a(response: dict[str, object]) -> tuple[str, str | None, str]:
     if not isinstance(result, dict):
         return "failed", None, "A2A response omitted result"
     status = result.get("status") if isinstance(result.get("status"), dict) else {}
-    state = str(status.get("state", "failed"))
-    task_id = status.get("taskId") or result.get("taskId")
+    # A2A uses wire values such as input-required; the controller ledger uses
+    # underscore names so internal approval handling is explicit and stable.
+    state = str(status.get("state", "failed")).replace("-", "_")
+    # kagent's BYO proxy returns the A2A task id in result.id; some runtimes
+    # also mirror it in status.taskId. Preserve either form for same-task resume.
+    task_id = status.get("taskId") or result.get("taskId") or result.get("id")
     artifacts = result.get("artifacts", [])
     parts = [part.get("text", "") for item in artifacts if isinstance(item, dict)
              for part in item.get("parts", []) if isinstance(part, dict) and part.get("text")]
