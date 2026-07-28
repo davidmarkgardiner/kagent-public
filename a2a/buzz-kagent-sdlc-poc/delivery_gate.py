@@ -21,7 +21,9 @@ def run(args: list[str], cwd: Path) -> str:
     if completed.returncode:
         detail = completed.stderr.strip() or completed.stdout.strip() or "command failed"
         raise RuntimeError(f"{' '.join(args[:3])}: {detail}")
-    return completed.stdout.strip()
+    # unittest and many test runners report successful summaries on stderr;
+    # retain both streams in the SHA-bound receipt.
+    return (completed.stdout + completed.stderr).strip()
 
 
 def gate(repo: Path, base: str, pr: str, test_command: str) -> dict[str, Any]:
