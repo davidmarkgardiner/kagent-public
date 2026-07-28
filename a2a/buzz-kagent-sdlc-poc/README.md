@@ -75,6 +75,11 @@ terminal result in SQLite. A repeated source event returns the original result
 without invoking kagent again. Its reply always has `merge_eligible: false`:
 the next issue adds the deterministic Git/test/staging gate before a real PR.
 
+`live_smoke.py` creates two disposable identities and a private channel, sends
+one schema-marked task, runs one bridge pass, verifies a threaded result, then
+deletes the channel and removes both relay memberships. Run it only from the
+trusted bridge host after a local port-forward to the fixed coordinator.
+
 ## Cleanup
 
 ```bash
