@@ -85,6 +85,9 @@ seconds by default). If kagent returns `input_required`, the bridge immediately
 posts `sdlc.approval_required` with the stored task/context correlation; it
 never waits for approval inside the worker or starts a new task.
 
+An approval reply must be a threaded `sdlc.approval.decision` envelope carrying
+the original `source_event_id` and an explicit `approve` or `reject` decision.
+
 ## Cleanup
 
 ```bash
