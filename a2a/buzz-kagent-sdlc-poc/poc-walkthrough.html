@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buzz-backed kagent SDLC POC</title>
+  <style>
+    :root { color-scheme: light dark; --ink:#172033; --muted:#5d687a; --line:#cdd4de; --paper:#f6f8fb; --accent:#066a76; --accent-soft:#d9f1f0; --ok:#16713d; --warn:#976100; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width:1120px; margin:0 auto; padding:48px 24px 72px; }
+    h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.65rem); line-height:1.02; letter-spacing:-.045em; }
+    h2 { margin:0 0 18px; font-size:1.35rem; }
+    p { margin:0; }
+    .lede { max-width:760px; color:var(--muted); font-size:1.12rem; }
+    .status { display:inline-flex; gap:9px; align-items:center; margin:24px 0 42px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:color-mix(in srgb, var(--paper), white 60%); font-weight:650; }
+    .dot { width:10px; height:10px; border-radius:50%; background:var(--ok); }
+    .flow { display:grid; grid-template-columns:repeat(5,minmax(130px,1fr)); gap:12px; align-items:stretch; margin:18px 0 48px; }
+    .stage { position:relative; padding:17px; border:1px solid var(--line); border-radius:14px; background:Canvas; min-height:150px; }
+    .stage:not(:last-child)::after { content:"→"; position:absolute; right:-20px; top:50%; z-index:2; transform:translateY(-50%); color:var(--accent); font-size:24px; font-weight:700; }
+    .stage b { display:block; font-size:1.05rem; }
+    .stage small { display:block; margin-top:8px; color:var(--muted); }
+    .stage.accent { border-color:var(--accent); background:var(--accent-soft); }
+    .split { display:grid; grid-template-columns:1.2fr .8fr; gap:22px; margin:44px 0; }
+    .panel { padding:24px; border:1px solid var(--line); border-radius:16px; background:Canvas; }
+    .sequence { display:grid; gap:0; }
+    .step { display:grid; grid-template-columns:38px 1fr; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); }
+    .step:last-child { border-bottom:0; padding-bottom:0; }
+    .num { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:var(--accent); color:white; font-size:.82rem; font-weight:700; }
+    .step strong, .step span { display:block; }
+    .step span { color:var(--muted); font-size:.92rem; }
+    .checks { display:grid; gap:12px; }
+    .check { display:grid; grid-template-columns:22px 1fr; gap:10px; align-items:start; }
+    .tick { color:var(--ok); font-weight:800; }
+    code { padding:2px 5px; border-radius:4px; background:color-mix(in srgb, var(--paper), black 3%); font-size:.86em; overflow-wrap:anywhere; }
+    .guardrails { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:42px 0; }
+    .guardrail { padding:18px; border-left:4px solid var(--accent); background:Canvas; }
+    .guardrail b, .guardrail span { display:block; }
+    .guardrail span { margin-top:5px; color:var(--muted); font-size:.93rem; }
+    .foot { margin-top:44px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem; }
+    @media (max-width:800px) { .flow { grid-template-columns:1fr; } .stage:not(:last-child)::after { content:"↓"; right:50%; top:auto; bottom:-28px; transform:translateX(50%); } .split,.guardrails { grid-template-columns:1fr; } .flow { gap:28px; } }
+    @media (prefers-color-scheme:dark) { :root { --ink:#edf2fa; --muted:#b8c3d1; --line:#384456; --paper:#111824; --accent:#53c4c8; --accent-soft:#163b40; --ok:#67d58a; } .num { color:#071416; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>One safe delivery, end to end.</h1>
+    <p class="lede">The proof of concept keeps Buzz as the signed human-facing thread and kagent as the bounded worker plane. It demonstrates a request, a pause for approval, a same-task resume, and a review-only delivery receipt.</p>
+    <div class="status"><span class="dot"></span> POC verified — human review remains the merge authority</div>
+
+    <h2>The path that was proven</h2>
+    <section class="flow" aria-label="Buzz to delivery flow">
+      <article class="stage"><b>1. Buzz request</b><small>A private, signed task event starts one bounded delivery.</small></article>
+      <article class="stage"><b>2. Durable bridge</b><small>SQLite records the source event, A2A context, task ID, and state. Replays are deduplicated.</small></article>
+      <article class="stage"><b>3. kagent workers</b><small>Coordinator → builder → verifier → documenter. No shell, Git-write, Kubernetes-write, or merge tools.</small></article>
+      <article class="stage accent"><b>4. Approval pause</b><small>The deterministic fixture returns A2A <code>input-required</code>; the bridge posts a threaded approval request.</small></article>
+      <article class="stage"><b>5. Evidence gate</b><small>A clean SHA, direct tests, and an existing draft PR produce a review-only receipt.</small></article>
+    </section>
+
+    <section class="split">
+      <div class="panel">
+        <h2>What the live approval proof did</h2>
+        <div class="sequence">
+          <div class="step"><span class="num">1</span><div><strong>Created a disposable private Buzz channel</strong><span>Three temporary identities: bridge, requester, and approver.</span></div></div>
+          <div class="step"><span class="num">2</span><div><strong>Sent a structured task</strong><span>The bridge forwarded it to the isolated A2A fixture and persisted the correlation.</span></div></div>
+          <div class="step"><span class="num">3</span><div><strong>Received an approval request</strong><span>The fixture returned <code>input-required</code>; Buzz received <code>sdlc.approval_required</code> in the source thread.</span></div></div>
+          <div class="step"><span class="num">4</span><div><strong>Approved in the same thread</strong><span>A threaded <code>approve</code> decision resumed the exact stored A2A task — it did not create a replacement task.</span></div></div>
+          <div class="step"><span class="num">5</span><div><strong>Finished and cleaned up</strong><span>The resumed task ended <code>completed</code>; the temporary channel and identities were removed.</span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Evidence that passed</h2>
+        <div class="checks">
+          <div class="check"><span class="tick">✓</span><span>Isolated Kimi K2.7 Code route verified without changing the shared default route.</span></div>
+          <div class="check"><span class="tick">✓</span><span>All four bounded kagent role agents and the approval fixture report ready.</span></div>
+          <div class="check"><span class="tick">✓</span><span>Private Buzz request → approval → same-task completion completed live.</span></div>
+          <div class="check"><span class="tick">✓</span><span>9 local controller and delivery-gate tests passed.</span></div>
+          <div class="check"><span class="tick">✓</span><span>Draft PR #61 matches the clean validated branch and has a passing GitHub security check.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <h2>What it deliberately does not do</h2>
+    <section class="guardrails">
+      <div class="guardrail"><b>No autonomous merge</b><span>The gate says <code>ready_for_human_review: true</code> but always <code>merge_eligible: false</code>.</span></div>
+      <div class="guardrail"><b>No hidden agent power</b><span>Role agents cannot run arbitrary shell, change Git, write Kubernetes, or create merges.</span></div>
+      <div class="guardrail"><b>No runaway loop</b><span>One task is handled at a time; a follow-up is proposed explicitly rather than silently injected.</span></div>
+    </section>
+
+    <p class="foot">Implementation, reproduction commands, and the formal completion record live alongside this page in <code>a2a/buzz-kagent-sdlc-poc/README.md</code> and <code>EVIDENCE.md</code>.</p>
+  </main>
+</body>
+</html>
