@@ -1,0 +1,18 @@
+# Isolated, disposable A2A approval fixture for the Buzz SDLC POC.
+# It implements the A2A approval/resume contract directly. The delete_file
+# action is simulated; the fixture has no model or system-writing capability.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: buzz-sdlc-hitl-fixture
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+    buzz.kagent.dev/role: approval-fixture
+spec:
+  description: Disposable A2A input_required and resume fixture for the Buzz SDLC POC.
+  type: BYO
+  byo:
+    deployment:
+      image: buzz-sdlc-hitl-fixture:poc-3
+      imagePullPolicy: IfNotPresent
