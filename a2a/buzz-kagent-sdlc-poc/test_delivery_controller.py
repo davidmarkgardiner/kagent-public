@@ -57,6 +57,13 @@ class DeliveryControllerTest(unittest.TestCase):
         self.assertEqual("buzz-event-2", sent[0][1]["reply_to"])
         self.assertFalse(sent[0][1]["merge_eligible"])
 
+    def test_input_required_becomes_a_structured_buzz_approval_request(self):
+        def pending(_):
+            return {"result": {"status": {"state": "input_required", "taskId": "a2a-pending"}}}
+        reply = handle(self.task, self.ledger, pending)
+        self.assertEqual("sdlc.approval_required", reply["type"])
+        self.assertTrue(reply["approval"]["resume_same_a2a_task"])
+
 
 if __name__ == "__main__":
     unittest.main()

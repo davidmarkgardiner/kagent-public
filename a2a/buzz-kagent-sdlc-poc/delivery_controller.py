@@ -161,20 +161,28 @@ def normalize_a2a(response: dict[str, object]) -> tuple[str, str | None, str]:
 
 
 def buzz_reply(record: dict[str, object], *, duplicate: bool = False) -> dict[str, object]:
-    return {
+    state = str(record["state"])
+    reply = {
         "schema": "buzz-kagent-sdlc.v1",
-        "type": "sdlc.result",
+        "type": "sdlc.approval_required" if state == "input_required" else "sdlc.result",
         "reply_to": record["source_event_id"],
         "channel_id": record["channel_id"],
         "duplicate": duplicate,
         "a2a_request_id": record["a2a_request_id"],
         "a2a_context_id": record["a2a_context_id"],
         "a2a_task_id": record.get("a2a_task_id"),
-        "state": record["state"],
+        "state": state,
         "attempts": record["attempts"],
         "result": safe_text(record.get("result", "accepted")),
         "merge_eligible": False,
     }
+    if state == "input_required":
+        reply["approval"] = {
+            "required": True,
+            "resume_same_a2a_task": True,
+            "instruction": "Reply with an explicit approved or rejected decision; the controller must resume the stored task/context.",
+        }
+    return reply
 
 
 def handle(task: IncomingTask, ledger: Ledger, invoke: Callable[[dict[str, object]], dict[str, object]]) -> dict[str, object]:
