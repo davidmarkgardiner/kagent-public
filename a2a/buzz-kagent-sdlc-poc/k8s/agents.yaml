@@ -1,0 +1,120 @@
+# The POC role agents only make bounded A2A calls.  They have no Git, shell,
+# Kubernetes-write, or merge tool. The external controller owns deterministic
+# Git/test/staging proof and emits the final Buzz event.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: buzz-sdlc-builder
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+    buzz.kagent.dev/role: builder
+spec:
+  type: Declarative
+  description: Bounded implementation planner for the Buzz SDLC POC.
+  declarative:
+    modelConfig: buzz-sdlc-kimi-k2-7-code
+    runtime: python
+    a2aConfig:
+      skills:
+        - id: bounded-build-plan
+          name: Bounded build plan
+          description: Produces a focused patch plan and acceptance evidence.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [buzz, sdlc, builder, bounded]
+    systemMessage: |
+      You are the builder stage. Produce a concise proposed patch and test plan.
+      Never claim code was committed or tested. Never run a tool or mutate a system.
+      End with BUILD_EVIDENCE and FOLLOWUP_PROPOSED: none or a concise proposal.
+    tools: []
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: buzz-sdlc-verifier
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+    buzz.kagent.dev/role: verifier
+spec:
+  type: Declarative
+  description: Evidence reviewer for the Buzz SDLC POC.
+  declarative:
+    modelConfig: buzz-sdlc-kimi-k2-7-code
+    runtime: python
+    a2aConfig:
+      skills:
+        - id: verify-delivery-evidence
+          name: Verify delivery evidence
+          description: Reviews supplied Git and test evidence without executing it.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [buzz, sdlc, verification, evidence]
+    systemMessage: |
+      You are the verifier stage. Assess only evidence included in the request.
+      If SHA, test output, or staging evidence is absent, return VERIFICATION: blocked.
+      Never invent execution or approve a merge. End with VERIFICATION and missing evidence.
+    tools: []
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: buzz-sdlc-documenter
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+    buzz.kagent.dev/role: documenter
+spec:
+  type: Declarative
+  description: Delivery-note author for the Buzz SDLC POC.
+  declarative:
+    modelConfig: buzz-sdlc-kimi-k2-7-code
+    runtime: python
+    a2aConfig:
+      skills:
+        - id: delivery-note
+          name: Delivery note
+          description: Creates a concise delivery note from supplied evidence.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [buzz, sdlc, documentation, evidence]
+    systemMessage: |
+      You are the documentation stage. Write a concise delivery note from supplied facts.
+      Mark unknown facts as unknown. Never say a PR is ready to merge.
+    tools: []
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: buzz-sdlc-coordinator
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: buzz-kagent-sdlc-poc
+    buzz.kagent.dev/role: coordinator
+spec:
+  type: Declarative
+  description: Bounded kagent role coordinator for one Buzz SDLC task.
+  declarative:
+    modelConfig: buzz-sdlc-kimi-k2-7-code
+    runtime: python
+    a2aConfig:
+      skills:
+        - id: buzz-sdlc-delivery
+          name: Buzz SDLC delivery
+          description: Coordinates one bounded build, verification, and documentation sequence.
+          inputModes: [text]
+          outputModes: [text]
+          tags: [buzz, sdlc, coordination, bounded]
+    systemMessage: |
+      You coordinate exactly one SDLC task. Call builder, verifier, and documenter in order.
+      Pass all available context to each. You may not call any worker more than once.
+      Return headings BUILD, VERIFICATION, DOCUMENTATION, and FOLLOWUP_PROPOSED.
+      Do not merge, deploy, create issues, or claim external execution occurred.
+    tools:
+      - type: Agent
+        agent: {name: buzz-sdlc-builder, namespace: kagent}
+      - type: Agent
+        agent: {name: buzz-sdlc-verifier, namespace: kagent}
+      - type: Agent
+        agent: {name: buzz-sdlc-documenter, namespace: kagent}
