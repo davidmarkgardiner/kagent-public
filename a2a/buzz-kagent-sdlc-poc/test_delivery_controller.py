@@ -75,7 +75,7 @@ class DeliveryControllerTest(unittest.TestCase):
     def test_threaded_buzz_approval_resumes_pending_work(self):
         handle(self.task, self.ledger, lambda _: {"result": {"status": {"state": "input_required", "taskId": "pending-2"}}})
         sent = []
-        decision = {"id": "decision-1", "content": json.dumps({"schema": "buzz-kagent-sdlc.v1", "type": "sdlc.approval.decision", "decision": "approve"}), "tags": [["e", "buzz-event-1"]]}
+        decision = {"id": "decision-1", "content": json.dumps({"schema": "buzz-kagent-sdlc.v1", "type": "sdlc.approval.decision", "source_event_id": "buzz-event-1", "decision": "approve"}), "tags": [["e", "approval-event-1"]]}
         def buzz(args, *, content=None):
             if args[1] == "get": return json.dumps([decision])
             sent.append((args, json.loads(content))); return '{"event_id":"reply"}'

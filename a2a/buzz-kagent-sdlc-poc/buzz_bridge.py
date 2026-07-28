@@ -52,9 +52,10 @@ def parse_decision(event: dict[str, object]) -> tuple[str, str] | None:
     decision = content.get("decision")
     tags = event.get("tags", [])
     parents = [tag[1] for tag in tags if isinstance(tag, list) and len(tag) > 1 and tag[0] == "e"]
-    if decision not in {"approve", "reject"} or not parents:
+    source_event_id = content.get("source_event_id")
+    if decision not in {"approve", "reject"} or not parents or not isinstance(source_event_id, str):
         return None
-    return str(parents[-1]), str(decision)
+    return source_event_id, str(decision)
 
 
 def process_once(channel: str, ledger: Ledger, invoke: Callable[[dict[str, object]], dict[str, object]], buzz: Callable[..., str] = run_buzz) -> int:
