@@ -115,6 +115,34 @@ The gate above only proves that the Agent is accepted, ready, controller-listed,
 and returns a reply. It does **not** prove the proposed YAML is correct; run the
 manifest gate on every proposal.
 
+## Prove a model route before assigning it specialist work
+
+`ModelConfig Accepted=True` and a resolved agentgateway route are configuration
+signals, not a model proof. Run the disposable A2A smoke for every model you
+intend to route to an agent. It creates a tool-less Agent with explicit
+resources and A2A skill tags, verifies an exact reply, then deletes it even on
+failure.
+
+```bash
+# Current RED examples. Substitute the ModelConfig names in another cluster.
+scripts/kagent-model-route-smoke.sh --context red \
+  --provider kimi --model-config buzz-sdlc-kimi-k2-7-code \
+  --expected KIMI_KAGENT_OK
+
+scripts/kagent-model-route-smoke.sh --context red \
+  --provider minimax --model-config minimax-model-config \
+  --expected MINIMAX_KAGENT_OK
+
+scripts/kagent-model-route-smoke.sh --context red \
+  --provider glm --model-config zai-model-config \
+  --expected GLM_KAGENT_OK
+```
+
+The test checks the **installed** ModelConfig. On RED, MiniMax and GLM are
+currently routed via the Hermes compatibility endpoints, while Kimi uses the
+dedicated K2.7 agentgateway route. Keep that distinction explicit in evidence;
+an accepted public `HTTPRoute` alone does not prove kagent uses it.
+
 | Agent | Job | Required hand-off |
 |---|---|---|
 | `k8s-delivery-intake` | Turn the issue into DoD, scope, risks and a test matrix. | `DELIVERY_BRIEF` |
