@@ -43,7 +43,7 @@ data:
       incident_signals:
         type: filter
         inputs: [normalize]
-        condition: "(.signal_kind == \"event\" && (.event_type == \"Warning\" || .event_type == \"\") && match(string!(.reason), r'^(OOMKilled|OOMKilling|FailedScheduling|Evicted|NodeNotReady|NetworkNotReady|FailedCreatePodSandBox)x27)) || (.signal_kind == \"log\" && match(string!(.evidence.representative_log_lines), r'(?i)(fatal|panic|critical|out of memory|segfault)'))"
+        condition: "(.signal_kind == \"event\" && (.event_type == \"Warning\" || .event_type == \"\") && match(string!(.reason), r'^(OOMKilled|OOMKilling|FailedScheduling|Evicted|NodeNotReady|NetworkNotReady|FailedCreatePodSandBox)$')) || (.signal_kind == \"log\" && match(string!(.evidence.representative_log_lines), r'(?i)(fatal|panic|critical|out of memory|segfault)'))"
       suppress_exact_repeats:
         type: dedupe
         inputs: [incident_signals]
@@ -104,7 +104,7 @@ metadata:
   name: application-triage-vector
   namespace: argo-events
 spec:
-  replicas: 0
+  replicas: 1
   selector: {matchLabels: {app: application-triage-vector}}
   template:
     metadata: {labels: {app: application-triage-vector, triage-scope: application}}

@@ -43,7 +43,7 @@ data:
       incident_signals:
         type: filter
         inputs: [normalize]
-        condition: "(.signal_kind == \"event\" && (.event_type == \"Warning\" || .event_type == \"\") && match(string!(.reason), r'^(BackOff|Failed|FailedScheduling|OOMKilled|OOMKilling|Unhealthy|Evicted|FailedMount|FailedAttachVolume|FailedCreatePodSandBox|NetworkNotReady|SpotEviction|ErrImagePull|ImagePullBackOff|NodeNotReady|Preempted|ProbeWarning|FailedSync|FailedKillPod|FailedCreate)$')) || (.signal_kind == \"log\" && match(string!(.evidence.representative_log_lines), r'(?i)(error|err|exception|fatal|panic|failed|fail|crashloop|back-?off|segfault|traceback|timeout|timed out|deadline exceeded|refused|unreachable|unavailable|denied|unauthorized|forbidden|deadlock|out of memory|oom|killed|500|502|503|504)'))"
+        condition: "(.signal_kind == \"event\" && (.event_type == \"Warning\" || .event_type == \"\") && match(string!(.reason), r'^(OOMKilled|FailedScheduling|Evicted|NodeNotReady|NetworkNotReady|FailedMount|FailedAttachVolume|ErrImagePull|ImagePullBackOff|Unhealthy)$')) || (.signal_kind == \"log\" && match(string!(.evidence.representative_log_lines), r'(?i)(error|exception|fatal|panic|failed|timeout|unavailable|denied|forbidden|out of memory)'))"
       suppress_exact_repeats:
         type: dedupe
         inputs: [incident_signals]

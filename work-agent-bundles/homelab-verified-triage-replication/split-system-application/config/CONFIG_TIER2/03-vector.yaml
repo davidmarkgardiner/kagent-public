@@ -43,7 +43,7 @@ data:
       incident_signals:
         type: filter
         inputs: [normalize]
-        condition: "(.signal_kind == \"event\" && (.event_type == \"Warning\" || .event_type == \"\") && match(string!(.reason), r'^(OOMKilled|OOMKilling|FailedScheduling|Evicted|NodeNotReady|NetworkNotReady|FailedCreatePodSandBox)x27)) || (.signal_kind == \"log\" && match(string!(.evidence.representative_log_lines), r'(?i)(fatal|panic|critical|out of memory|segfault)'))"
+        condition: "(.signal_kind == \"event\" && (.event_type == \"Warning\" || .event_type == \"\") && match(string!(.reason), r'^(OOMKilled|FailedScheduling|Evicted|NodeNotReady|NetworkNotReady|FailedMount|FailedAttachVolume|ErrImagePull|ImagePullBackOff|Unhealthy)$')) || (.signal_kind == \"log\" && match(string!(.evidence.representative_log_lines), r'(?i)(error|exception|fatal|panic|failed|timeout|unavailable|denied|forbidden|out of memory)'))"
       suppress_exact_repeats:
         type: dedupe
         inputs: [incident_signals]

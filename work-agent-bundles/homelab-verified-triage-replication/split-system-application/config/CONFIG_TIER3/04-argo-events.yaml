@@ -93,7 +93,7 @@ spec:
           - {path: body.automation_allowed, type: bool, value: ["false"]}
           - {path: body.scope, type: string, value: ["system"]}
           - {path: body.signal_kind, type: string, value: ["event"]}
-          - {path: body.reason, type: string, value: ["OOMKilled", "FailedScheduling", "Evicted", "NodeNotReady", "NetworkNotReady", "FailedMount", "FailedAttachVolume", "ErrImagePull", "ImagePullBackOff", "Unhealthy"]}
+          - {path: body.reason, type: string, value: ["BackOff", "Failed", "FailedScheduling", "OOMKilled", "OOMKilling", "Unhealthy", "Evicted", "FailedMount", "FailedAttachVolume", "FailedCreatePodSandBox", "NetworkNotReady", "SpotEviction", "ErrImagePull", "ImagePullBackOff", "NodeNotReady", "Preempted", "ProbeWarning", "FailedSync", "FailedKillPod", "FailedCreate"]}
   triggers:
     - template:
         name: system-event-workflow
@@ -160,7 +160,7 @@ spec:
           - {path: body.automation_allowed, type: bool, value: ["false"]}
           - {path: body.scope, type: string, value: ["application"]}
           - {path: body.signal_kind, type: string, value: ["event"]}
-          - {path: body.reason, type: string, value: ["OOMKilled", "FailedScheduling", "Evicted", "NodeNotReady", "NetworkNotReady", "FailedMount", "FailedAttachVolume", "ErrImagePull", "ImagePullBackOff", "Unhealthy"]}
+          - {path: body.reason, type: string, value: ["BackOff", "Failed", "FailedScheduling", "OOMKilled", "OOMKilling", "Unhealthy", "Evicted", "FailedMount", "FailedAttachVolume", "FailedCreatePodSandBox", "NetworkNotReady", "SpotEviction", "ErrImagePull", "ImagePullBackOff", "NodeNotReady", "Preempted", "ProbeWarning", "FailedSync", "FailedKillPod", "FailedCreate"]}
   triggers:
     - template:
         name: application-event-workflow
