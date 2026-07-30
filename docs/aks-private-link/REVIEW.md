@@ -401,6 +401,155 @@ concrete and mechanical — every one of these is a real failure mode with a rea
 
 ---
 
+## 9. Reference diagrams
+
+### Which pattern do I actually need?
+
+```mermaid
+flowchart TD
+  Q1{"Who needs to reach<br/>the application?"}
+  Q1 -->|"Only our own VNet<br/>or already-peered VNets"| Q2
+  Q1 -->|"Other subscriptions, other tenants,<br/>or Databricks serverless"| Q3
+  Q2{"Is peering already in place<br/>and acceptable?"}
+  Q2 -->|Yes| P4["<b>Pattern 4</b><br/>Internal ingress only<br/>No Private Link needed<br/>Simplest — many stop here"]
+  Q2 -->|"No, and we don't want it"| Q3
+  Q3{"Do we need a WAF, or a<br/>public internet edge?"}
+  Q3 -->|"No — private consumers only"| P2["<b>Pattern 2</b><br/>PLS + internal LB + Istio<br/><b>RECOMMENDED</b>"]
+  Q3 -->|"WAF, private consumers"| P3["<b>Pattern 3</b><br/>App Gateway Private Link<br/>Needs dedicated PL subnet"]
+  Q3 -->|"Public edge, private origin"| AFD["Front Door Premium<br/>private-link origin<br/>⚠ public edge, no mTLS to origin"]
+  P2 --> DBX{"Consumer is<br/>Databricks?"}
+  DBX -->|"Serverless"| NCC["NCC private endpoint rule<br/>+ registered domain names"]
+  DBX -->|"Classic, VNet-injected"| STD["Ordinary private endpoint<br/>in a routable VNet"]
+  DBX -->|No| PE["Consumer creates<br/>their own private endpoint"]
+
+  style P2 fill:#0b6a3a,stroke:#0b6a3a,color:#fff
+  style AFD fill:#7a4a00,stroke:#7a4a00,color:#fff
+```
+
+### The three Databricks traffic directions — don't conflate them
+
+```mermaid
+flowchart LR
+  subgraph A["Direction A — the primary path"]
+    direction LR
+    A1["Databricks serverless<br/>SQL warehouse, job,<br/>notebook, model serving"] -->|"NCC private endpoint rule<br/>targets YOUR PLS"| A2["Your PLS<br/>→ AKS app"]
+  end
+  subgraph B["Direction B"]
+    direction LR
+    B1["Databricks classic<br/>VNet-injected cluster"] -->|"ordinary PE, or skip<br/>Private Link if peered"| B2["Your PLS or ILB<br/>→ AKS app"]
+  end
+  subgraph C["Direction C — a different Azure feature"]
+    direction LR
+    C1["Your AKS pods"] -->|"PE, sub-resource<br/>databricks_ui_api"| C2["Databricks<br/>workspace / SQL"]
+  end
+  A -.->|"this is what you asked for"| B
+```
+
+### Idle timers — what actually expires, and when
+
+Both timers watch for **silence**, not elapsed connection age. Any byte in either direction resets them.
+
+```text
+  t=0s        t=120s       t=240s              t=300s
+   │            │            │                   │
+   ├────────────┼────────────┼───────────────────┤
+   │            │            │                   │
+   │            │            ▼                   ▼
+   │            │      LB idle timeout      PLS idle timeout
+   │            │      DEFAULT 4 min        FIXED ~5 min
+   │            │      tunable 4–100 min    NOT tunable
+   │            │
+   │            └── recommended keepalive / pool-eviction window
+   │                (120–180s — comfortably under both)
+   │
+   └── connection established
+
+  ACTIVE TRAFFIC  ──►  timers continuously reset  ──►  connection lives indefinitely
+  SILENT SOCKET   ──►  first timer to fire wins   ──►  connection closed (RST if TCP reset on)
+```
+
+The risk case is not a long connection. It is a **long silence** — e.g. a request where the server
+computes for six minutes and streams nothing back.
+
+### Private endpoint connection lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: consumer creates PE<br/>(or Databricks NCC rule)
+    Pending --> Approved: platform team approves
+    Pending --> Approved2: auto-approval list<br/>(requires visibility "*")
+    Pending --> Rejected: platform team rejects
+    Approved --> Connected: traffic flows
+    Approved2 --> Connected: traffic flows
+    Connected --> Disconnected: PLS or Service deleted
+    Disconnected --> [*]: ⚠ consumer must clean up<br/>the orphaned PE themselves
+    Rejected --> [*]
+    note right of Disconnected
+      Azure does not remove
+      consumer PEs for you.
+      Needs a runbook.
+    end note
+    note right of Pending
+      Not visible at all if the
+      consumer subscription is
+      outside the visibility list.
+    end note
+```
+
+### Where it breaks — diagnostic map
+
+Each hop fails with a different signature. Work left to right.
+
+```mermaid
+flowchart LR
+  S1["Consumer<br/>client"] --> S2["DNS"] --> S3["Private<br/>endpoint"] --> S4["PLS"] --> S5["Internal<br/>LB"] --> S6["Istio<br/>gateway"] --> S7["Pod"]
+
+  S2 -.-> F2["Resolves to ILB IP, or NXDOMAIN<br/>→ missing A record in consumer zone"]
+  S3 -.-> F3["Connection refused / timeout<br/>→ PE connection still Pending, or rejected"]
+  S4 -.-> F4["Timeout, no LB logs at all<br/>→ NAT subnet policies not disabled,<br/>NAT IPs exhausted, or nodeIP backend pool"]
+  S5 -.-> F5["Connection resets under load<br/>→ probe failing, or idle timeout"]
+  S6 -.-> F6["TLS error or HTTP 404 / 503<br/>→ cert SAN mismatch, or no Gateway<br/>host match for the requested name"]
+  S7 -.-> F7["HTTP 503 from Envoy<br/>→ no healthy endpoints, mTLS or<br/>AuthorizationPolicy denying"]
+
+  style F2 fill:#5a1a1a,stroke:#5a1a1a,color:#fff
+  style F3 fill:#5a1a1a,stroke:#5a1a1a,color:#fff
+  style F4 fill:#5a1a1a,stroke:#5a1a1a,color:#fff
+  style F5 fill:#5a1a1a,stroke:#5a1a1a,color:#fff
+  style F6 fill:#5a1a1a,stroke:#5a1a1a,color:#fff
+  style F7 fill:#5a1a1a,stroke:#5a1a1a,color:#fff
+```
+
+### Ownership split — who is on the hook for what
+
+```mermaid
+flowchart TB
+  subgraph PT["Platform team owns"]
+    direction TB
+    PT1["AKS cluster and node pools"]
+    PT2["Istio ingress gateway + TLS certs"]
+    PT3["PLS: name, NAT subnet, visibility"]
+    PT4["Approving PE connection requests"]
+    PT5["Gateway host routing + AuthorizationPolicy"]
+  end
+  subgraph CT["Consumer team owns"]
+    direction TB
+    CT1["Private endpoint in their VNet<br/>(or Databricks NCC rule)"]
+    CT2["DNS A record → PE private IP"]
+    CT3["Client keepalive + pool idle settings"]
+    CT4["Retry on connection reset"]
+  end
+  subgraph SH["Shared / needs a runbook"]
+    direction TB
+    SH1["Hostname and certificate SAN agreement"]
+    SH2["PE cleanup when a Service or PLS is deleted"]
+    SH3["Capacity: NAT IPs vs consumer count"]
+  end
+  PT --> SH
+  CT --> SH
+```
+
+---
+
 ## Sources
 
 - [Create an internal load balancer in AKS (PLS annotations)](https://learn.microsoft.com/en-us/azure/aks/internal-lb)

@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AKS + Azure Private Link — Reference Architecture</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-alt: #f6f8fa;
+    --bg-sunk: #eceff3;
+    --fg: #1c2128;
+    --fg-dim: #57606a;
+    --fg-faint: #8b949e;
+    --line: #d0d7de;
+    --line-soft: #e4e8ed;
+    --accent: #0a5fbf;
+    --ok: #0b6a3a;
+    --ok-bg: #e6f4ea;
+    --warn: #8a5300;
+    --warn-bg: #fdf3e2;
+    --bad: #a01b2b;
+    --bad-bg: #fceaec;
+    --ms: #0078d4;
+    --mesh: #7a3fbf;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(27,31,36,.06), 0 3px 8px rgba(27,31,36,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --bg-alt: #161b22; --bg-sunk: #010409;
+      --fg: #e6edf3; --fg-dim: #9198a1; --fg-faint: #6e7681;
+      --line: #30363d; --line-soft: #21262d;
+      --accent: #6cb0ff;
+      --ok: #4ddb8a; --ok-bg: #0c2919;
+      --warn: #e5a13a; --warn-bg: #2b2008;
+      --bad: #ff8891; --bad-bg: #33131a;
+      --ms: #4aa3e8;
+      --mesh: #c199f5;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 3px 10px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1117; --bg-alt: #161b22; --bg-sunk: #010409;
+    --fg: #e6edf3; --fg-dim: #9198a1; --fg-faint: #6e7681;
+    --line: #30363d; --line-soft: #21262d;
+    --accent: #6cb0ff;
+    --ok: #4ddb8a; --ok-bg: #0c2919;
+    --warn: #e5a13a; --warn-bg: #2b2008;
+    --bad: #ff8891; --bad-bg: #33131a;
+    --ms: #4aa3e8;
+    --mesh: #c199f5;
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --bg-alt: #f6f8fa; --bg-sunk: #eceff3;
+    --fg: #1c2128; --fg-dim: #57606a; --fg-faint: #8b949e;
+    --line: #d0d7de; --line-soft: #e4e8ed;
+    --accent: #0a5fbf;
+    --ok: #0b6a3a; --ok-bg: #e6f4ea;
+    --warn: #8a5300; --warn-bg: #fdf3e2;
+    --bad: #a01b2b; --bad-bg: #fceaec;
+    --ms: #0078d4;
+    --mesh: #7a3fbf;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--sans); font-size: 16px; line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- header ---------- */
+  header.hero { border-bottom: 1px solid var(--line); background: var(--bg-alt); margin-bottom: 40px; }
+  .hero-in { max-width: 1080px; margin: 0 auto; padding: 48px 24px 40px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--fg-faint); margin: 0 0 12px;
+  }
+  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 16px; letter-spacing: -.02em; }
+  .lede { font-size: clamp(17px, 2.2vw, 19px); color: var(--fg-dim); max-width: 68ch; margin: 0 0 28px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-family: var(--mono); font-size: 12.5px; color: var(--fg-faint); }
+
+  /* ---------- verdict ---------- */
+  .verdict {
+    border: 1px solid var(--ok); background: var(--ok-bg);
+    border-radius: var(--radius); padding: 22px 24px; margin: 0 0 12px;
+  }
+  .verdict h2 { margin: 0 0 8px; font-size: 20px; color: var(--ok); display: flex; align-items: center; gap: 10px; }
+  .verdict p { margin: 0; color: var(--fg); }
+  .verdict p + p { margin-top: 10px; }
+  .caveat {
+    border: 1px dashed var(--line); border-radius: var(--radius);
+    padding: 14px 18px; font-size: 14.5px; color: var(--fg-dim); background: var(--bg-alt);
+  }
+
+  /* ---------- sections ---------- */
+  section { margin: 56px 0 0; scroll-margin-top: 20px; }
+  h2.sec {
+    font-size: 13px; font-family: var(--mono); letter-spacing: .12em; text-transform: uppercase;
+    color: var(--fg-faint); margin: 0 0 6px; font-weight: 600;
+  }
+  h3.sec-title { font-size: clamp(21px, 3vw, 27px); margin: 0 0 10px; letter-spacing: -.01em; }
+  .sec-note { color: var(--fg-dim); max-width: 72ch; margin: 0 0 26px; }
+  h4 { font-size: 16px; margin: 32px 0 12px; }
+
+  /* ---------- answer cards ---------- */
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+  .card {
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 20px;
+    background: var(--bg-alt); box-shadow: var(--shadow); min-width: 0;
+  }
+  .card .q { font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-faint); margin: 0 0 8px; }
+  .card .a { font-size: 22px; font-weight: 650; margin: 0 0 8px; letter-spacing: -.01em; }
+  .card .a.yes { color: var(--ok); }
+  .card .a.no { color: var(--ok); }
+  .card .a.pending { color: var(--warn); }
+  .card p.why { margin: 0; font-size: 14.5px; color: var(--fg-dim); }
+
+  /* ---------- pipeline flow ---------- */
+  .flow {
+    display: flex; align-items: stretch; gap: 0; flex-wrap: wrap;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--bg-alt); padding: 18px; overflow-x: auto;
+  }
+  .node {
+    flex: 1 1 0; min-width: 128px; text-align: center; padding: 14px 10px;
+    border-radius: 8px; background: var(--bg); border: 1px solid var(--line-soft);
+  }
+  .node .nlabel { font-size: 14px; font-weight: 600; line-height: 1.3; }
+  .node .nsub {
+    font-family: var(--mono); font-size: 11px; color: var(--fg-faint); margin-top: 5px; line-height: 1.4;
+    overflow-wrap: anywhere; word-break: break-word; min-width: 0;
+  }
+  .node.ms { border-color: var(--ms); box-shadow: inset 0 -2px 0 var(--ms); }
+  .node.mesh { border-color: var(--mesh); box-shadow: inset 0 -2px 0 var(--mesh); }
+  .arrow {
+    flex: 0 0 26px; display: flex; align-items: center; justify-content: center;
+    color: var(--fg-faint); font-size: 18px; user-select: none;
+  }
+  .arrow .h { display: inline; }
+  .arrow .v { display: none; }
+  /* Below ~700px a wrapped row leaves arrows pointing at nothing. Stack instead. */
+  @media (max-width: 700px) {
+    .flow { flex-direction: column; align-items: stretch; overflow-x: visible; }
+    .node { flex: 0 0 auto; min-width: 0; }
+    .arrow { flex: 0 0 24px; }
+    .arrow .h { display: none; }
+    .arrow .v { display: inline; }
+  }
+
+  /* ---------- zones ---------- */
+  .zones { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+  .zone { border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; background: var(--bg-alt); min-width: 0; }
+  .zone h5 {
+    margin: 0 0 4px; font-size: 12px; font-family: var(--mono); letter-spacing: .08em;
+    text-transform: uppercase; color: var(--fg-faint);
+  }
+  .zone .zt { font-size: 16px; font-weight: 650; margin: 0 0 12px; }
+  .zone ul { margin: 0; padding-left: 18px; font-size: 14.5px; color: var(--fg-dim); }
+  .zone ul li { margin-bottom: 5px; }
+  .zone.primary { border-color: var(--ok); }
+  .zone.primary .zt { color: var(--ok); }
+
+  /* ---------- traps ---------- */
+  .trap {
+    border: 1px solid var(--line); border-left: 3px solid var(--fg-faint);
+    border-radius: 6px; padding: 16px 18px; margin-bottom: 12px; background: var(--bg-alt);
+  }
+  .trap.blocker { border-left-color: var(--bad); }
+  .trap.gotcha { border-left-color: var(--warn); }
+  .trap .thead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .trap .tnum { font-family: var(--mono); font-size: 12px; color: var(--fg-faint); }
+  .trap .ttitle { font-weight: 650; font-size: 15.5px; }
+  .tag {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px; font-weight: 600; white-space: nowrap;
+  }
+  .tag.blocker { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); }
+  .tag.gotcha { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); }
+  .tag.ok { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+  .trap p { margin: 0; font-size: 14.5px; color: var(--fg-dim); }
+  .trap p + p { margin-top: 8px; }
+
+  /* ---------- tables ---------- */
+  .tscroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 480px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    background: var(--bg-sunk); font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: .07em; text-transform: uppercase; color: var(--fg-faint); font-weight: 600;
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-family: var(--mono); white-space: nowrap; }
+
+  /* ---------- code ---------- */
+  pre {
+    background: var(--bg-sunk); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.55; margin: 0;
+  }
+  code { font-family: var(--mono); font-size: .92em; background: var(--bg-sunk); padding: 1.5px 5px; border-radius: 4px; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .cmt { color: var(--fg-faint); }
+  .key { color: var(--accent); }
+  .val { color: var(--ok); }
+
+  /* ---------- checklist ---------- */
+  .check { list-style: none; padding: 0; margin: 0; }
+  .check li {
+    border: 1px solid var(--line); border-radius: 8px; padding: 13px 16px 13px 44px;
+    margin-bottom: 8px; position: relative; background: var(--bg-alt); font-size: 14.5px;
+  }
+  .check li::before {
+    content: ""; position: absolute; left: 15px; top: 15px;
+    width: 15px; height: 15px; border: 1.5px solid var(--fg-faint); border-radius: 3px;
+  }
+
+  /* ---------- svg ---------- */
+  figure { margin: 0 0 8px; }
+  .svgbox { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-alt); padding: 18px; overflow-x: auto; }
+  .svgbox svg { display: block; width: 100%; height: auto; min-width: 560px; }
+  figcaption { font-size: 13.5px; color: var(--fg-faint); margin-top: 10px; }
+  .s-fg { fill: var(--fg); }
+  .s-dim { fill: var(--fg-dim); }
+  .s-faint { fill: var(--fg-faint); }
+  .s-mono { font-family: var(--mono); }
+  .s-box { fill: var(--bg); stroke: var(--line); }
+  .s-stroke { stroke: var(--fg-faint); }
+
+  /* ---------- misc ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--fg-dim); margin-top: 14px; }
+  .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+  a:hover { border-bottom-color: currentColor; }
+  hr.div { border: 0; border-top: 1px solid var(--line); margin: 56px 0 0; }
+  footer { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--line); font-size: 14px; color: var(--fg-dim); }
+  footer ul { padding-left: 18px; margin: 10px 0 0; }
+  footer li { margin-bottom: 5px; }
+  .kbd { font-family: var(--mono); font-size: 12.5px; background: var(--bg-sunk); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+  strong { font-weight: 650; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <p class="eyebrow">Reference architecture · kagent-public</p>
+    <h1>Exposing AKS applications over Azure Private Link</h1>
+    <p class="lede">
+      Private connectivity from other VNets, other subscriptions, other tenants and Azure Databricks
+      into applications running on AKS — with no public endpoint anywhere on the path.
+    </p>
+    <div class="meta">
+      <span>Verified 2026-07-30</span>
+      <span>Sources: Microsoft Learn + cloud-provider-azure</span>
+      <span>27 corrections to working notes</span>
+      <span>Status: not yet live-validated</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="verdict">
+    <h2>✓ Verdict — deployable today, first-party only</h2>
+    <p>
+      The whole path is Microsoft-supplied: Private Endpoint → Private Link Service → Standard internal
+      load balancer → Istio ingress gateway → Pods. <strong>No custom components, no third-party products,
+      nothing to build.</strong> The Private Link Service is created declaratively from Kubernetes by
+      annotating a Service.
+    </p>
+    <p>
+      <strong>Traffic is not dropped after five minutes.</strong> The timers on this path are <em>idle</em>
+      timeouts, not connection lifetime caps — active connections stay up indefinitely.
+    </p>
+  </div>
+  <p class="caveat">
+    <strong>Scope of this review:</strong> documentation and architecture only. Every claim is sourced to
+    Microsoft Learn, but nothing here has been validated against a live deployment. A small proof of concept
+    — one Private Link Service, one Databricks NCC rule, one query end to end — is what turns this from
+    sourced into proven.
+  </p>
+
+  <!-- ============ THE THREE QUESTIONS ============ -->
+  <section>
+    <h2 class="sec">The questions that were asked</h2>
+    <h3 class="sec-title">Short answers</h3>
+    <div class="cards">
+      <div class="card">
+        <p class="q">Can we deploy this?</p>
+        <p class="a yes">Yes</p>
+        <p class="why">Every component is generally available. The pattern is documented by Microsoft for
+          exactly this use case, including Databricks as a consumer.</p>
+      </div>
+      <div class="card">
+        <p class="q">Do we need to build anything, or buy third-party?</p>
+        <p class="a yes">No</p>
+        <p class="why">100% first-party. The only open source involved is Envoy/Istio inside the cluster,
+          and Microsoft ships and supports that as a managed add-on.</p>
+      </div>
+      <div class="card">
+        <p class="q">Will traffic drop after 5 minutes?</p>
+        <p class="a no">No</p>
+        <p class="why">Idle timeout, not a lifetime cap. Any byte in either direction resets it. One
+          keepalive setting covers the silent-socket edge case.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section>
+    <h2 class="sec">Target architecture</h2>
+    <h3 class="sec-title">The data path, end to end</h3>
+    <p class="sec-note">
+      Private Link is a layer-4 transport. It has no idea Istio exists — it hands a TCP connection to an
+      Azure load balancer, and Envoy takes over from there. That separation is the whole reason the pattern
+      is simple to operate.
+    </p>
+
+    <div class="flow">
+      <div class="node ms"><div class="nlabel">Consumer</div><div class="nsub">Databricks · other sub<br>other tenant</div></div>
+      <div class="arrow"><span class="h">→</span><span class="v">↓</span></div>
+      <div class="node ms"><div class="nlabel">Private Endpoint</div><div class="nsub">private IP in<br>consumer VNet</div></div>
+      <div class="arrow"><span class="h">→</span><span class="v">↓</span></div>
+      <div class="node ms"><div class="nlabel">Private Link Service</div><div class="nsub">L4 · NATs source IP<br>dedicated NAT subnet</div></div>
+      <div class="arrow"><span class="h">→</span><span class="v">↓</span></div>
+      <div class="node ms"><div class="nlabel">Internal LB</div><div class="nsub">Standard SKU<br>nodeIPConfiguration</div></div>
+      <div class="arrow"><span class="h">→</span><span class="v">↓</span></div>
+      <div class="node mesh"><div class="nlabel">Istio gateway</div><div class="nsub">TLS terminate<br>Host / SNI routing</div></div>
+      <div class="arrow"><span class="h">→</span><span class="v">↓</span></div>
+      <div class="node mesh"><div class="nlabel">Pods</div><div class="nsub">mTLS in mesh</div></div>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--ms)"></span>Azure networking — first-party</span>
+      <span><span class="swatch" style="background:var(--mesh)"></span>In-cluster L7 — Microsoft-managed add-on</span>
+    </div>
+
+    <h4>Control plane and data plane are separate problems</h4>
+    <p class="sec-note">
+      A frequent source of confusion in the working notes. A private cluster does not make your
+      applications private, and private applications do not require a private cluster. These two lanes
+      share nothing.
+    </p>
+    <div class="zones">
+      <div class="zone">
+        <h5>Lane 1 · control plane</h5>
+        <p class="zt">kubectl, ARM, GitOps</p>
+        <ul>
+          <li>Reached via Bastion, VPN, ExpressRoute or a self-hosted agent</li>
+          <li><code>--enable-private-cluster</code> (uses Private Link), <em>or</em> API Server VNet Integration (uses neither Private Link nor a tunnel)</li>
+          <li>Optionally <code>--disable-public-fqdn</code></li>
+          <li>Carries <strong>zero application traffic</strong></li>
+        </ul>
+      </div>
+      <div class="zone primary">
+        <h5>Lane 2 · data plane</h5>
+        <p class="zt">Application traffic — what we are building</p>
+        <ul>
+          <li>Private Endpoint → Private Link Service → internal LB → Istio → Pods</li>
+          <li>Works whether or not the cluster is private</li>
+          <li>No VNet peering required for consumers</li>
+          <li>Crosses subscriptions and tenants</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ IDLE TIMERS ============ -->
+  <section>
+    <h2 class="sec">The five-minute question, answered properly</h2>
+    <h3 class="sec-title">Two idle timers — and the load balancer's is the tighter one</h3>
+    <p class="sec-note">
+      Both timers watch for <strong>silence</strong>, not elapsed connection age. Any byte in either
+      direction resets them, so request/response traffic, pooled connections and streaming never hit them.
+      The genuine risk is a <em>long silence</em> — a request where the server computes for six minutes and
+      sends nothing back.
+    </p>
+
+    <figure>
+      <div class="svgbox">
+        <svg viewBox="0 0 900 260" role="img" aria-label="Timeline showing the load balancer idle timeout at 240 seconds and the Private Link Service idle timeout at 300 seconds, with a recommended keepalive window from 120 to 180 seconds.">
+          <!-- safe band -->
+          <rect x="60" y="70" width="360" height="34" rx="4" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1"/>
+          <!-- caution band -->
+          <rect x="420" y="70" width="180" height="34" rx="4" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="1"/>
+          <!-- danger band -->
+          <rect x="600" y="70" width="240" height="34" rx="4" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1"/>
+
+          <text x="240" y="92" text-anchor="middle" class="s-mono" font-size="12.5" fill="var(--ok)">connection healthy</text>
+          <text x="510" y="92" text-anchor="middle" class="s-mono" font-size="12.5" fill="var(--warn)">at risk</text>
+          <text x="720" y="92" text-anchor="middle" class="s-mono" font-size="12.5" fill="var(--bad)">closed if idle</text>
+
+          <!-- axis -->
+          <line x1="60" y1="140" x2="860" y2="140" class="s-stroke" stroke-width="1.5"/>
+          <!-- ticks -->
+          <g class="s-mono" font-size="11.5">
+            <line x1="60"  y1="134" x2="60"  y2="146" class="s-stroke" stroke-width="1.5"/>
+            <text x="60"  y="164" text-anchor="middle" class="s-faint">0s</text>
+            <line x1="240" y1="134" x2="240" y2="146" class="s-stroke" stroke-width="1.5"/>
+            <text x="240" y="164" text-anchor="middle" class="s-faint">120s</text>
+            <line x1="420" y1="134" x2="420" y2="146" class="s-stroke" stroke-width="1.5"/>
+            <text x="420" y="164" text-anchor="middle" class="s-faint">180s</text>
+            <line x1="600" y1="130" x2="600" y2="150" stroke="var(--warn)" stroke-width="2.5"/>
+            <text x="600" y="164" text-anchor="middle" fill="var(--warn)" font-weight="600">240s</text>
+            <line x1="750" y1="130" x2="750" y2="150" stroke="var(--bad)" stroke-width="2.5"/>
+            <text x="750" y="164" text-anchor="middle" fill="var(--bad)" font-weight="600">300s</text>
+            <line x1="860" y1="134" x2="860" y2="146" class="s-stroke" stroke-width="1.5"/>
+            <text x="860" y="164" text-anchor="middle" class="s-faint">360s</text>
+          </g>
+
+          <!-- callouts -->
+          <line x1="600" y1="172" x2="600" y2="192" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <text x="592" y="208" text-anchor="end" font-size="13" font-weight="650" fill="var(--warn)">Load balancer idle timeout</text>
+          <text x="592" y="226" text-anchor="end" font-size="12" class="s-mono s-dim">default 4 min · tunable 4–100 min</text>
+
+          <line x1="750" y1="172" x2="750" y2="192" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <text x="760" y="208" font-size="13" font-weight="650" fill="var(--bad)">Private Link Service</text>
+          <text x="760" y="226" font-size="12" class="s-mono s-dim">~5 min · FIXED</text>
+
+          <!-- keepalive window -->
+          <line x1="240" y1="40" x2="420" y2="40" stroke="var(--ok)" stroke-width="2.5"/>
+          <line x1="240" y1="34" x2="240" y2="46" stroke="var(--ok)" stroke-width="2.5"/>
+          <line x1="420" y1="34" x2="420" y2="46" stroke="var(--ok)" stroke-width="2.5"/>
+          <text x="330" y="26" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--ok)">put keepalive here (120–180s)</text>
+
+          <text x="60" y="26" font-size="12" class="s-mono s-faint">connection established</text>
+        </svg>
+      </div>
+      <figcaption>At stock settings the binding constraint is <strong>240 seconds, not 300</strong>. Raising the load balancer annotation removes that timer; the Private Link Service 300s remains a ceiling you cannot raise.</figcaption>
+    </figure>
+
+    <div class="tscroll" style="margin-top:20px">
+      <table>
+        <thead><tr><th>Timer</th><th>Default</th><th>Tunable?</th><th>How</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Standard load balancer rule</td>
+            <td class="num">4 min (240s)</td>
+            <td><span class="tag ok">yes</span></td>
+            <td class="num">azure-load-balancer-tcp-idle-timeout<br>4–100, integer minutes</td>
+          </tr>
+          <tr>
+            <td>Private Link Service</td>
+            <td class="num">~5 min (300s)</td>
+            <td><span class="tag blocker">no</span></td>
+            <td>Not exposed. Fixed platform behaviour.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Four levers, all managed-service configuration</h4>
+    <div class="zones">
+      <div class="zone primary">
+        <h5>Lever 1 — most robust</h5>
+        <p class="zt">Cap client pool idle time</p>
+        <ul><li>Evict idle sockets at 120–180s so a dead connection is never handed back</li>
+            <li><strong>The only lever that works on Databricks serverless</strong>, where you cannot set host socket options</li></ul>
+      </div>
+      <div class="zone">
+        <h5>Lever 2</h5>
+        <p class="zt">Application keepalive</p>
+        <ul><li>HTTP/2 PING, gRPC <code>keepalive_time</code>, or a cheap heartbeat</li>
+            <li>Keeps the connection genuinely non-idle rather than racing the timer</li></ul>
+      </div>
+      <div class="zone">
+        <h5>Lever 3</h5>
+        <p class="zt">Raise the LB timer</p>
+        <ul><li><code>azure-load-balancer-tcp-idle-timeout: "30"</code></li>
+            <li>Removes one timer. Does not remove the problem — do this <em>and</em> lever 1</li></ul>
+      </div>
+      <div class="zone">
+        <h5>Lever 4</h5>
+        <p class="zt">Fail fast, retry</p>
+        <ul><li>Enable TCP reset so expiry gives an RST instead of a hang</li>
+            <li>Retry idempotent requests on connection reset — with two timers, occasional resets are normal</li></ul>
+      </div>
+    </div>
+    <p class="caveat" style="margin-top:16px">
+      Deliberately <strong>not</strong> recommended: OS-level <code>SO_KEEPALIVE</code> / <code>TCP_KEEPIDLE</code>
+      on the gateway's downstream listener. That needs an <code>EnvoyFilter</code>, which sits outside the
+      Istio add-on's allow-listed customizations — the same wall as PROXY protocol. The four levers above are sufficient.
+    </p>
+  </section>
+
+  <!-- ============ DECISION ============ -->
+  <section>
+    <h2 class="sec">Choosing a pattern</h2>
+    <h3 class="sec-title">Which one do you actually need?</h3>
+    <p class="sec-note">Four patterns exist. Most teams need only one, and plenty legitimately stop at the simplest.</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>If…</th><th>Pattern</th><th>Private Link?</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Consumers are in your own VNet or already-peered VNets</td>
+            <td><strong>4 — internal ingress only</strong></td>
+            <td>No</td>
+            <td>Simplest. Many enterprises stop here, and that is a valid answer.</td>
+          </tr>
+          <tr style="background:var(--ok-bg)">
+            <td>Consumers span subscriptions or tenants, or are Databricks serverless, and you want to avoid peering</td>
+            <td><strong>2 — PLS + internal LB + Istio</strong> <span class="tag ok">recommended</span></td>
+            <td>Yes</td>
+            <td>What this document describes. Consumers create a private endpoint; no routing changes.</td>
+          </tr>
+          <tr>
+            <td>You need a WAF in front, consumers still private</td>
+            <td><strong>3 — App Gateway Private Link</strong></td>
+            <td>Yes</td>
+            <td>Needs a dedicated Private Link subnet with network policies disabled. WAF is a SKU of App Gateway, not a separate hop.</td>
+          </tr>
+          <tr>
+            <td>You want a public internet edge with a private origin</td>
+            <td>Front Door Premium private-link origin</td>
+            <td>Yes, to origin</td>
+            <td><span class="tag gotcha">caution</span> Re-introduces a public endpoint. No mTLS to private-link origins. Wrong tool for Databricks→AKS.</td>
+          </tr>
+          <tr>
+            <td>Only the control plane needs to be private</td>
+            <td><strong>1 — private API server</strong></td>
+            <td>Yes, or VNet Integration</td>
+            <td>Orthogonal to all of the above. Does nothing for application traffic.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ DATABRICKS ============ -->
+  <section>
+    <h2 class="sec">Azure Databricks</h2>
+    <h3 class="sec-title">Three traffic directions — do not conflate them</h3>
+    <p class="sec-note">
+      "Expose applications over Private Link into our Kubernetes clusters" splits into three different Azure
+      features depending on who is calling whom. Direction A is the one that was asked for.
+    </p>
+    <div class="zones">
+      <div class="zone primary">
+        <h5>Direction A · primary path</h5>
+        <p class="zt">Databricks serverless → your AKS app</p>
+        <ul>
+          <li>SQL warehouses, jobs, notebooks, pipelines, model serving</li>
+          <li><strong>NCC private endpoint rule</strong> targeting your Private Link Service resource ID</li>
+          <li>Plus <code>domain_names</code> — and this is where the <code>.internal</code> trap bites</li>
+          <li>You approve the pending connection on the PLS</li>
+        </ul>
+      </div>
+      <div class="zone">
+        <h5>Direction B</h5>
+        <p class="zt">Databricks classic → your AKS app</p>
+        <ul>
+          <li>VNet-injected workspace clusters</li>
+          <li>Ordinary private endpoint in a routable VNet</li>
+          <li>If VNets are already peered you can skip Private Link entirely and hit the internal LB</li>
+        </ul>
+      </div>
+      <div class="zone">
+        <h5>Direction C · different feature</h5>
+        <p class="zt">Your AKS pods → Databricks</p>
+        <ul>
+          <li>Calling the Databricks REST API or SQL endpoints privately</li>
+          <li>Private endpoint, sub-resource <code>databricks_ui_api</code></li>
+          <li>This is Databricks front-end/back-end Private Link. Nothing to do with your PLS.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h4>Direction A — the constraints that matter</h4>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Constraint</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Plan and role</td><td>Premium plan; account admin</td></tr>
+          <tr><td>NCCs per region</td><td class="num">10</td></tr>
+          <tr><td>Private endpoints per region</td><td class="num">100</td></tr>
+          <tr><td>Workspaces per NCC</td><td class="num">50</td></tr>
+          <tr><td>Domain names per rule</td><td class="num">100</td></tr>
+          <tr><td>DNS behaviour</td><td>Must resolve <strong>directly</strong> to the backend. No DNS chasing, no redirects, no CNAME chains.</td></tr>
+          <tr style="background:var(--bad-bg)"><td>Private-use TLDs</td><td><strong>Rejected.</strong> <code>.internal</code>, <code>.localhost</code>, <code>.test</code> are not accepted — use a registered domain.</td></tr>
+          <tr><td>Hostname granularity</td><td>Specific instance hostname. Not service-level, not wildcard.</td></tr>
+          <tr><td>Region</td><td>NCC region must match the workspace region</td></tr>
+          <tr><td>Cost</td><td>Databricks bills networking for serverless reaching customer resources</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ TRAPS ============ -->
+  <section>
+    <h2 class="sec">Before you start</h2>
+    <h3 class="sec-title">Seven traps, two of which stop the build dead</h3>
+
+    <div class="trap blocker">
+      <div class="thead"><span class="tnum">01</span><span class="ttitle">An internal-LB annotation alone does not create a Private Link Service</span><span class="tag blocker">blocker</span></div>
+      <p>The working notes show a Service with only <code>azure-load-balancer-internal: "true"</code> and claim Azure "then creates" a PLS. It does not — you get an internal load balancer and nothing else. Nothing creates a PLS implicitly.</p>
+      <p><strong>Fix:</strong> add <code>service.beta.kubernetes.io/azure-pls-create: "true"</code>.</p>
+    </div>
+
+    <div class="trap blocker">
+      <div class="thead"><span class="tnum">02</span><span class="ttitle">Databricks rejects private-use TLDs</span><span class="tag blocker">blocker</span></div>
+      <p><code>.internal</code>, <code>.localhost</code> and <code>.test</code> are not accepted in NCC private endpoint rules. Both draft documents use <code>api.company.internal</code>, which would fail at rule creation.</p>
+      <p><strong>Fix:</strong> use a registered domain hosted in a private DNS zone, e.g. <code>api.contoso.com</code>.</p>
+    </div>
+
+    <div class="trap gotcha">
+      <div class="thead"><span class="tnum">03</span><span class="ttitle">Private Link Service is unsupported on <code>nodeIP</code> backend pools</span><span class="tag gotcha">silent</span></div>
+      <p>Stay on the AKS default <code>nodeIPConfiguration</code>. The incompatibility is not loudly signposted, so verify it rather than assume it.</p>
+    </div>
+
+    <div class="trap gotcha">
+      <div class="thead"><span class="tnum">04</span><span class="ttitle">You own the DNS records — no zone is created for you</span><span class="tag gotcha">ongoing</span></div>
+      <p>Azure PaaS private endpoints get DNS integration free. Private endpoints to a <em>customer</em> PLS do not: there is no <code>privatelink.*</code> zone and no automatic DNS zone group. You maintain an A record → private endpoint IP, per consumer VNet, for the endpoint's lifetime.</p>
+      <p>This is the largest recurring operational cost of the pattern. Ongoing work, not hard work.</p>
+    </div>
+
+    <div class="trap gotcha">
+      <div class="thead"><span class="tnum">05</span><span class="ttitle">The source IP is always the PLS NAT IP</span><span class="tag gotcha">design</span></div>
+      <p>Private Link Service always destination-NATs. Your application never sees the consumer's IP. Allowlists must permit the PLS NAT subnet — never "the Databricks IPs".</p>
+      <p>Recovering the real client IP needs PROXY protocol v2, which then breaks <em>every</em> backend that does not parse it, health probes included. <strong>Derive identity from mTLS or JWT, not from the network.</strong></p>
+    </div>
+
+    <div class="trap gotcha">
+      <div class="thead"><span class="tnum">06</span><span class="ttitle">Pin the PLS name, or upgrades orphan your consumers</span><span class="tag gotcha">lifecycle</span></div>
+      <p>The PLS binds to the load balancer <em>frontend IP configuration</em>, not to the Service. An Istio add-on minor-revision upgrade creates a second gateway Service and frontend. When a Service is deleted the PLS may survive, active connections drop, and consumer private endpoints become obsolete — <strong>and Azure will not clean them up for you</strong>.</p>
+      <p><strong>Fix:</strong> set <code>azure-pls-name</code> and <code>azure-pls-resource-group</code> explicitly, and write a PE-cleanup runbook.</p>
+    </div>
+
+    <div class="trap gotcha">
+      <div class="thead"><span class="tnum">07</span><span class="ttitle"><code>azure-pls-*</code> is not in the Istio add-on's documented annotation set</span><span class="tag gotcha">path choice</span></div>
+      <p>The add-on documents a specific supported annotation list for its managed <code>aks-istio-ingressgateway-internal</code> Service, and no PLS annotation appears on it. Use the Gateway API <code>spec.infrastructure.annotations</code> route, a self-managed gateway Service, or create the PLS out-of-band against the load balancer frontend.</p>
+    </div>
+  </section>
+
+  <!-- ============ BUILD ============ -->
+  <section>
+    <h2 class="sec">Provider side</h2>
+    <h3 class="sec-title">What the Service actually looks like</h3>
+    <p class="sec-note">
+      The entire Azure-side build is this manifest. Applying it creates the internal load balancer and the
+      Private Link Service, and returns an alias you hand to consumers.
+    </p>
+<pre><code><span class="key">apiVersion</span>: v1
+<span class="key">kind</span>: Service
+<span class="key">metadata</span>:
+  <span class="key">name</span>: ingress-internal
+  <span class="key">namespace</span>: platform-ingress
+  <span class="key">annotations</span>:
+    service.beta.kubernetes.io/azure-load-balancer-internal: <span class="val">"true"</span>
+    service.beta.kubernetes.io/azure-load-balancer-internal-subnet: <span class="val">"ilb-subnet"</span>
+    <span class="cmt"># Without this line you get an internal LB and no Private Link Service.</span>
+    service.beta.kubernetes.io/azure-pls-create: <span class="val">"true"</span>
+    <span class="cmt"># Pin the identity so revision upgrades don't orphan consumer endpoints.</span>
+    service.beta.kubernetes.io/azure-pls-name: <span class="val">"pls-aks-platform-ingress"</span>
+    service.beta.kubernetes.io/azure-pls-resource-group: <span class="val">"rg-platform-network"</span>
+    <span class="cmt"># Dedicated NAT subnet. Required if externalTrafficPolicy is Local.</span>
+    service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: <span class="val">"pls-nat-subnet"</span>
+    service.beta.kubernetes.io/azure-pls-ip-configuration-ip-address-count: <span class="val">"8"</span>
+    <span class="cmt"># Subscription list, or "*" if you need auto-approval (a real trade-off).</span>
+    service.beta.kubernetes.io/azure-pls-visibility: <span class="val">"&lt;consumer-sub-id&gt; &lt;databricks-sub-id&gt;"</span>
+    <span class="cmt"># Move the LB idle timer out of the way; the fixed PLS 300s still binds.</span>
+    service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: <span class="val">"30"</span>
+<span class="key">spec</span>:
+  <span class="key">type</span>: LoadBalancer
+  <span class="key">selector</span>:
+    <span class="key">istio</span>: platform-ingress
+  <span class="key">ports</span>:
+    - <span class="key">name</span>: https
+      <span class="key">port</span>: 443
+      <span class="key">targetPort</span>: 8443</code></pre>
+
+    <h4>Who does what, in order</h4>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>#</th><th>Who</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td>Platform</td><td>Create dedicated PLS NAT subnet with <code>privateLinkServiceNetworkPolicies</code> disabled</td></tr>
+          <tr><td class="num">2</td><td>Platform</td><td>Apply the Service above</td></tr>
+          <tr><td class="num">3</td><td>Azure</td><td>Creates internal LB + PLS, returns the alias</td></tr>
+          <tr><td class="num">4</td><td>Platform</td><td>Share the PLS resource ID / alias with the consumer</td></tr>
+          <tr><td class="num">5</td><td>Consumer</td><td>Create private endpoint, or a Databricks NCC private endpoint rule</td></tr>
+          <tr><td class="num">6</td><td>Azure</td><td>Connection request appears as <strong>Pending</strong></td></tr>
+          <tr><td class="num">7</td><td>Platform</td><td>Approve — this is your gate. Keep it manual.</td></tr>
+          <tr><td class="num">8</td><td>Consumer</td><td>Create the DNS A record → private endpoint IP</td></tr>
+          <tr><td class="num">9</td><td>Both</td><td>Traffic flows. App sees the PLS NAT IP as source.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ DIAGNOSTIC ============ -->
+  <section>
+    <h2 class="sec">Operations</h2>
+    <h3 class="sec-title">Where it breaks, and what the failure looks like</h3>
+    <p class="sec-note">Each hop fails with a distinct signature. Work left to right along the path.</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Hop</th><th>Symptom</th><th>Likely cause</th></tr></thead>
+        <tbody>
+          <tr><td><strong>DNS</strong></td><td>Resolves to the internal LB IP, or NXDOMAIN</td><td>Missing or wrong A record in the consumer's zone</td></tr>
+          <tr><td><strong>Private endpoint</strong></td><td>Connection refused or timeout</td><td>Connection still <em>Pending</em>, or rejected; consumer subscription outside the visibility list</td></tr>
+          <tr><td><strong>Private Link Service</strong></td><td>Timeout, and no load balancer logs at all</td><td>NAT subnet policies not disabled, NAT IPs exhausted, or <code>nodeIP</code> backend pool</td></tr>
+          <tr><td><strong>Internal LB</strong></td><td>Resets under load, or drops after a pause</td><td>Health probe failing, or idle timeout with no keepalive</td></tr>
+          <tr><td><strong>Istio gateway</strong></td><td>TLS error, or HTTP 404</td><td>Certificate SAN mismatch, or no Gateway host matching the requested name</td></tr>
+          <tr><td><strong>Backend</strong></td><td>HTTP 503 from Envoy</td><td>No healthy endpoints, or mTLS / <code>AuthorizationPolicy</code> denying</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ FIRST PARTY ============ -->
+  <section>
+    <h2 class="sec">Tooling</h2>
+    <h3 class="sec-title">Is any of this open source or third-party?</h3>
+    <p class="sec-note">
+      No. The entire network path is first-party Azure. The only open source is inside the cluster — Envoy
+      and Istio — and Microsoft ships and supports that as a managed add-on.
+    </p>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Layer</th><th>Component</th><th>Supplier</th></tr></thead>
+        <tbody>
+          <tr><td>Consumer connection</td><td>Private Endpoint</td><td>Microsoft</td></tr>
+          <tr><td>Exposure</td><td>Private Link Service</td><td>Microsoft</td></tr>
+          <tr><td>Layer 4</td><td>Standard internal Load Balancer</td><td>Microsoft</td></tr>
+          <tr><td>Provisioning</td><td><code>cloud-provider-azure</code> — ships in AKS</td><td>Microsoft</td></tr>
+          <tr><td>Layer 7 in cluster</td><td>Istio service mesh add-on (Envoy)</td><td>CNCF open source, <strong>delivered and supported as a Microsoft managed add-on</strong></td></tr>
+          <tr><td>Certificates</td><td>Key Vault + Secrets Store CSI Driver add-on</td><td>Microsoft</td></tr>
+          <tr><td>DNS</td><td>Private DNS Zones, Azure DNS Private Resolver</td><td>Microsoft</td></tr>
+          <tr><td>Consumer side</td><td>Databricks Network Connectivity Configuration</td><td>Microsoft (first-party Azure Databricks)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caveat" style="margin-top:16px">
+      Optional convenience open source, none of it required: <code>external-dns</code> to write A records
+      into Azure private DNS zones, <code>cert-manager</code> if preferred over Key Vault + CSI.
+      <strong>Nothing here needs a third-party product.</strong>
+    </p>
+
+    <h4>Not candidates today</h4>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Option</th><th>Why not</th></tr></thead>
+        <tbody>
+          <tr><td>Application Gateway for Containers</td><td>Public frontends only. No private/internal frontend, no Private Link support.</td></tr>
+          <tr><td>Cilium Gateway API on managed AKS</td><td>Azure CNI Powered by Cilium does not expose Gateway API — AKS owns the config. Requires BYO CNI.</td></tr>
+          <tr><td>ingress-nginx</td><td>Upstream maintenance ended March 2026. AKS app routing add-on NGINX patched through November 2026 only.</td></tr>
+          <tr><td>Azure Front Door</td><td>Supports AKS internal LBs as a private-link origin, but is a public edge and does not support mTLS to private origins.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ CHECKLIST ============ -->
+  <section>
+    <h2 class="sec">Pre-flight</h2>
+    <h3 class="sec-title">Non-negotiables</h3>
+    <ul class="check">
+      <li>AKS load balancer backend pool type is <code>nodeIPConfiguration</code> (the default). PLS is unsupported on <code>nodeIP</code>.</li>
+      <li>Dedicated PLS NAT subnet, <code>privateLinkServiceNetworkPolicies</code> <strong>Disabled</strong>, 8+ free IPs, same VNet as the backend pool, <strong>different from the pod subnet</strong>.</li>
+      <li>PLS pinned by name and resource group so revision upgrades don't orphan consumer endpoints.</li>
+      <li>A real registered domain for consumer hostnames — never <code>.internal</code>.</li>
+      <li>DNS ownership documented per consumer: A record → private endpoint IP. No zone is created for you.</li>
+      <li>Idle-timeout hygiene in consumer onboarding: pool eviction under ~240s, app keepalive, LB timer raised, TCP reset on, retry on reset.</li>
+      <li>Identity from mTLS or JWT, never from source IP.</li>
+      <li>Manual private endpoint approval as the platform gate. Auto-approval only if you accept <code>visibility: "*"</code>.</li>
+      <li>Runbook for private endpoint cleanup when a Service or PLS is deleted — Azure will not do it.</li>
+      <li>Certificate SANs cover every hostname registered in every Databricks NCC rule.</li>
+    </ul>
+  </section>
+
+  <hr class="div">
+
+  <footer>
+    <p>
+      <strong>Companion documents.</strong> This page summarises
+      <a href="./REVIEW.md">REVIEW.md</a>, which carries the full correction tables, per-claim sources and
+      additional diagrams. The working notes — <a href="./rm.md">rm.md</a>,
+      <a href="./isito.md">isito.md</a>, <a href="./pls.md">pls.md</a> — are kept unmodified and should be
+      read alongside the review, not on their own.
+    </p>
+    <p><strong>Primary sources</strong> — all claims on this page trace to these:</p>
+    <ul>
+      <li><a href="https://learn.microsoft.com/en-us/azure/aks/internal-lb">AKS — internal load balancer &amp; Private Link Service annotations</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/private-link/private-link-service-overview">Azure Private Link service — properties, visibility, limitations</a></li>
+      <li><a href="https://cloud-provider-azure.sigs.k8s.io/topics/pls-integration/">cloud-provider-azure — PLS integration</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/security/network/serverless-network-security/pl-to-internal-network">Databricks — private connectivity to resources in your VNet</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-tcp-idle-timeout">Azure Load Balancer — TCP reset and idle timeout</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/aks/istio-gateway-api">AKS — Istio add-on Gateway API ingress</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/aks/private-clusters">AKS — private clusters</a></li>
+    </ul>
+    <p style="margin-top:20px; color:var(--fg-faint); font-size:13px">
+      Verified against Microsoft Learn on 2026-07-30. Documentation review only — not validated against a
+      live deployment. Open this file directly in a browser; it has no external dependencies.
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>
