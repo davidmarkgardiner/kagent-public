@@ -65,3 +65,10 @@ receives `scope` in the incident JSON and the Workflow itself is labelled with
 the scope. Add `scope::<value>` to the GitLab-label construction in that shared
 template when you promote this replacement path; it is intentionally not
 changed here because `../config/` remains the untouched single-path baseline.
+
+## Controlled rollout
+
+Use [`rollout-tiers/`](rollout-tiers/README.md) as the ordered policy source.
+It keeps these two deployment pairs in place and changes only their signal
+admission policy as capacity is proven: system-critical, then both lanes
+critical, then both lanes priority.
