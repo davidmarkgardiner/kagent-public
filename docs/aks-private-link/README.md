@@ -24,7 +24,13 @@ one Databricks NCC rule, one query end to end — is what turns this from source
 
 ## Read this first
 
-**[REVIEW.md](./REVIEW.md)** — the verified deep dive. Contains:
+**[index.html](./index.html)** — the visual version. Open it directly in a browser; it is a single
+self-contained file with no external dependencies, no CDN, no network access required. Renders in light or
+dark to match your system. Best starting point if you want the architecture, the timers and the traps at a
+glance.
+
+**[REVIEW.md](./REVIEW.md)** — the verified deep dive, with eight Mermaid diagrams that render inline on
+GitHub. Contains:
 
 | Section | Contents |
 |---|---|
@@ -35,6 +41,7 @@ one Databricks NCC rule, one query end to end — is what turns this from source
 | §6 | First-party vs open-source component breakdown |
 | §7 | Recommended architecture + pre-flight checklist |
 | §8 | Candidate automated validation checks (proposals, not built) |
+| §9 | Reference diagrams — pattern decision tree, Databricks directions, idle-timer timeline, private endpoint lifecycle, diagnostic map, ownership split |
 
 ## Drafts
 
