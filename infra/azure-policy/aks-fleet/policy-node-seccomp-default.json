@@ -1,0 +1,79 @@
+{
+  "name": "aks-node-seccomp-default-audit",
+  "type": "Microsoft.Authorization/policyDefinitions",
+  "properties": {
+    "displayName": "AKS Linux node pools should set a default seccomp profile at the kubelet",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Audits every AKS cluster and flags it when a Linux node pool does not set kubeletConfig.seccompDefault to an approved value. seccompDefault=RuntimeDefault makes the container runtime apply a seccomp profile to every pod that does not declare its own securityContext.seccompProfile, closing the gap left by workload-level policy alone. Windows node pools do not support seccomp and are excluded. IMPORTANT: kubeletConfig.seccompDefault is a recent AKS API property. Confirm the policy alias exists in your tenant before assigning (see README section 'Verifying aliases'). If the alias is absent, rely on the workload-level built-in 975ce327-682c-4f2e-aa46-b9598289b86c instead.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Kubernetes",
+      "owner": "platform-security"
+    },
+    "parameters": {
+      "allowedSeccompDefault": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Allowed kubelet seccompDefault values",
+          "description": "Node pools whose kubeletConfig.seccompDefault is unset or not in this list are non-compliant."
+        },
+        "defaultValue": [
+          "RuntimeDefault"
+        ]
+      },
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Audit flags non-compliant clusters. Deny blocks cluster or node pool writes that would leave seccompDefault unset. Start on Audit."
+        },
+        "allowedValues": [
+          "Audit",
+          "Deny",
+          "Disabled"
+        ],
+        "defaultValue": "Audit"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.ContainerService/managedClusters"
+          },
+          {
+            "count": {
+              "field": "Microsoft.ContainerService/managedClusters/agentPoolProfiles[*]",
+              "where": {
+                "allOf": [
+                  {
+                    "field": "Microsoft.ContainerService/managedClusters/agentPoolProfiles[*].osType",
+                    "notEquals": "Windows"
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "field": "Microsoft.ContainerService/managedClusters/agentPoolProfiles[*].kubeletConfig.seccompDefault",
+                        "exists": "false"
+                      },
+                      {
+                        "field": "Microsoft.ContainerService/managedClusters/agentPoolProfiles[*].kubeletConfig.seccompDefault",
+                        "notIn": "[parameters('allowedSeccompDefault')]"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "greater": 0
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

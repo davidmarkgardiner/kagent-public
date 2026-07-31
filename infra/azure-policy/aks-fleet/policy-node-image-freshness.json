@@ -1,0 +1,84 @@
+{
+  "name": "aks-node-image-freshness-audit",
+  "type": "Microsoft.Authorization/policyDefinitions",
+  "properties": {
+    "displayName": "AKS node images should be no older than the approved minimum build date",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Audits every AKS cluster and flags it as non-compliant when any Linux node pool is running a node image whose build date is older than the approved minimum. AKS node image versions are formatted as '<distro>-<sku>-<YYYYMM>.<DD>.<rev>' (for example 'AKSUbuntu-2204gen2containerd-202506.10.0'), so this policy extracts the leading YYYYMM build month and compares it ordinally against the minimumNodeImageDate parameter. Windows node pools use a different version format and are excluded. Effect is Audit only: nodeImageVersion is a read-only ARM property, so Deny is not meaningful.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Kubernetes",
+      "owner": "platform-security"
+    },
+    "parameters": {
+      "minimumNodeImageDate": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Minimum node image build month (YYYYMM)",
+          "description": "Six-digit YYYYMM string. Any Linux node pool whose node image build month sorts before this value is non-compliant. Bump this value on your patch cadence (for example monthly, to the previous month)."
+        },
+        "defaultValue": "202506"
+      },
+      "excludedClusterTagName": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Exemption tag name",
+          "description": "Clusters carrying this tag with the value 'true' are skipped. Set to an unused tag name to disable the escape hatch."
+        },
+        "defaultValue": "nodeImageFreshnessExempt"
+      },
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Audit flags non-compliant clusters. Disabled turns the policy off."
+        },
+        "allowedValues": [
+          "Audit",
+          "Disabled"
+        ],
+        "defaultValue": "Audit"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.ContainerService/managedClusters"
+          },
+          {
+            "field": "[concat('tags[', parameters('excludedClusterTagName'), ']')]",
+            "notEquals": "true"
+          },
+          {
+            "count": {
+              "field": "Microsoft.ContainerService/managedClusters/agentPoolProfiles[*]",
+              "where": {
+                "allOf": [
+                  {
+                    "field": "Microsoft.ContainerService/managedClusters/agentPoolProfiles[*].osType",
+                    "notEquals": "Windows"
+                  },
+                  {
+                    "field": "Microsoft.ContainerService/managedClusters/agentPoolProfiles[*].nodeImageVersion",
+                    "exists": "true"
+                  },
+                  {
+                    "value": "[first(split(last(split(current('Microsoft.ContainerService/managedClusters/agentPoolProfiles[*].nodeImageVersion'), '-')), '.'))]",
+                    "less": "[parameters('minimumNodeImageDate')]"
+                  }
+                ]
+              }
+            },
+            "greater": 0
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "name": "aks-fleet-patching-and-seccomp",
+  "type": "Microsoft.Authorization/policySetDefinitions",
+  "properties": {
+    "displayName": "AKS fleet: node patching currency and seccomp posture",
+    "policyType": "Custom",
+    "description": "Fleet-wide compliance view for two questions: (1) are AKS node images being patched and kept current, and (2) is seccomp actually enabled. Combines two custom definitions with three Azure built-ins. Assign at management group or subscription scope so every cluster is covered automatically as clusters are created. NOTE: the two custom entries carry a scope placeholder in their policyDefinitionId. Azure Policy does not allow ARM expressions there, so deploy.sh substitutes the placeholder with the real management group or subscription scope before creating the set.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Kubernetes",
+      "owner": "platform-security"
+    },
+    "parameters": {
+      "minimumNodeImageDate": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Minimum node image build month (YYYYMM)",
+          "description": "Bump on your patch cadence. Clusters with any Linux node pool older than this are flagged."
+        },
+        "defaultValue": "202506"
+      },
+      "nodeImageFreshnessEffect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": { "displayName": "Effect - node image freshness" }
+      },
+      "nodeOsAutoUpgradeEffect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": { "displayName": "Effect - node OS auto-upgrade enabled" }
+      },
+      "allowedNodeOsUpgradeChannels": {
+        "type": "Array",
+        "defaultValue": ["NodeImage", "SecurityPatch"],
+        "metadata": {
+          "displayName": "Allowed node OS upgrade channels",
+          "description": "Channels considered compliant for automatic node OS patching."
+        }
+      },
+      "clusterAutoUpgradeEffect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": { "displayName": "Effect - cluster auto-upgrade enabled" }
+      },
+      "allowedClusterAutoUpgradeChannels": {
+        "type": "Array",
+        "defaultValue": ["patch", "stable", "rapid", "node-image"],
+        "metadata": { "displayName": "Allowed cluster auto-upgrade channels" }
+      },
+      "seccompWorkloadEffect": {
+        "type": "String",
+        "allowedValues": ["audit", "Audit", "deny", "Deny", "disabled", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": {
+          "displayName": "Effect - allowed seccomp profiles (Gatekeeper)",
+          "description": "Requires the Azure Policy add-on on each cluster. Start on Audit."
+        }
+      },
+      "allowedSeccompProfiles": {
+        "type": "Array",
+        "defaultValue": ["runtime/default", "docker/default"],
+        "metadata": {
+          "displayName": "Allowed pod seccomp profiles",
+          "description": "Deliberately excludes 'unconfined'. Add 'localhost/*' only if you ship custom profiles."
+        }
+      },
+      "seccompExcludedNamespaces": {
+        "type": "Array",
+        "defaultValue": [
+          "kube-system",
+          "gatekeeper-system",
+          "azure-arc",
+          "azure-extensions-usage-system"
+        ],
+        "metadata": { "displayName": "Namespaces excluded from seccomp evaluation" }
+      },
+      "nodeSeccompDefaultEffect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": {
+          "displayName": "Effect - kubelet seccompDefault",
+          "description": "Set to Disabled if the kubeletConfig.seccompDefault alias is not available in your tenant."
+        }
+      },
+      "allowedSeccompDefault": {
+        "type": "Array",
+        "defaultValue": ["RuntimeDefault"],
+        "metadata": { "displayName": "Allowed kubelet seccompDefault values" }
+      }
+    },
+    "policyDefinitions": [
+      {
+        "policyDefinitionReferenceId": "nodeImageFreshness",
+        "policyDefinitionId": "__DEFINITION_SCOPE__/providers/Microsoft.Authorization/policyDefinitions/aks-node-image-freshness-audit",
+        "parameters": {
+          "minimumNodeImageDate": { "value": "[parameters('minimumNodeImageDate')]" },
+          "effect": { "value": "[parameters('nodeImageFreshnessEffect')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "nodeOsAutoUpgrade",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/04408ca5-aa10-42ce-8536-98955cdddd4c",
+        "parameters": {
+          "effect": { "value": "[parameters('nodeOsAutoUpgradeEffect')]" },
+          "allowedNodeOsUpgradeChannels": { "value": "[parameters('allowedNodeOsUpgradeChannels')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "clusterAutoUpgrade",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5c345cdf-2049-47e0-b8fe-b0e96bc2df35",
+        "parameters": {
+          "effect": { "value": "[parameters('clusterAutoUpgradeEffect')]" },
+          "allowedClusterAutoUpgradeChannels": { "value": "[parameters('allowedClusterAutoUpgradeChannels')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "seccompWorkloadProfiles",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/975ce327-682c-4f2e-aa46-b9598289b86c",
+        "parameters": {
+          "effect": { "value": "[parameters('seccompWorkloadEffect')]" },
+          "allowedProfiles": { "value": "[parameters('allowedSeccompProfiles')]" },
+          "excludedNamespaces": { "value": "[parameters('seccompExcludedNamespaces')]" }
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "nodeSeccompDefault",
+        "policyDefinitionId": "__DEFINITION_SCOPE__/providers/Microsoft.Authorization/policyDefinitions/aks-node-seccomp-default-audit",
+        "parameters": {
+          "effect": { "value": "[parameters('nodeSeccompDefaultEffect')]" },
+          "allowedSeccompDefault": { "value": "[parameters('allowedSeccompDefault')]" }
+        }
+      }
+    ]
+  }
+}
