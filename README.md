@@ -82,6 +82,7 @@ examples/           Quickstart and sample payloads
 | Check the HITL proof status | [`WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md`](WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md) |
 | Check the KB/querydoc proof status | [`WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md`](WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md) |
 | Prove KB docs can be updated through GitLab MCP and retrieved through querydoc | [`demos/kb-gitlab-mcp-update/`](demos/kb-gitlab-mcp-update/README.md) |
+| Demonstrate private code submissions evaluated in air-gapped GitLab | [`demos/gitlab-private-evaluation/`](demos/gitlab-private-evaluation/README.md) |
 | View the Kagent triage v2 proof board | [`WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html`](WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html) |
 | Follow the work-agent replication checklist | [`WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md`](WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md) |
 | Hand this zip to a work agent for lift-and-shift | [`WORK-ZIP-AGENT-HANDOFF.md`](WORK-ZIP-AGENT-HANDOFF.md) |
