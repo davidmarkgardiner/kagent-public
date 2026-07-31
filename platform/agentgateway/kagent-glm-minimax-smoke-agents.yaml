@@ -1,0 +1,74 @@
+# Dedicated, non-default kagent routes for provider verification.
+# Provider credentials stay in Agent Gateway; this namespace secret is only the
+# client credential required by kagent's OpenAI-compatible ModelConfig shape.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agentgateway-client-key
+  namespace: kagent
+type: Opaque
+stringData:
+  api-key: not-required
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: agentgateway-glm-5-2-smoke
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: agentgateway-model-smoke
+    platform.com/provider: zai
+spec:
+  type: Declarative
+  description: Smoke-tests kagent through Agent Gateway to Z.ai GLM-5.2.
+  declarative:
+    runtime: python
+    modelConfig: agentgateway-zai-glm
+    systemMessage: |
+      You are a concise route smoke-test agent. Reply exactly with the requested
+      fixed phrase and do not invoke tools.
+    deployment:
+      replicas: 1
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: agentgateway-minimax-m3-reviewer
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: agentgateway-model-smoke
+    platform.com/provider: minimax
+    role: peer-reviewer
+spec:
+  type: Declarative
+  description: Evidence-only peer reviewer backed by MiniMax-M3 through Agent Gateway.
+  declarative:
+    runtime: python
+    modelConfig: agentgateway-minimax
+    systemMessage: |
+      You are an evidence-only software peer reviewer. Assess only the supplied
+      patch summary and test evidence. List material defects first, then finish
+      with exactly one final line: VERDICT: PASS or VERDICT: NEEDS_CHANGES.
+      Do not claim repository or cluster access, request credentials, or invoke tools.
+    deployment:
+      replicas: 1
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: agentgateway-minimax-m3-smoke
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: agentgateway-model-smoke
+    platform.com/provider: minimax
+spec:
+  type: Declarative
+  description: Smoke-tests kagent through Agent Gateway to MiniMax-M3.
+  declarative:
+    runtime: python
+    modelConfig: agentgateway-minimax
+    systemMessage: |
+      You are a concise route smoke-test agent. Reply exactly with the requested
+      fixed phrase and do not invoke tools.
+    deployment:
+      replicas: 1

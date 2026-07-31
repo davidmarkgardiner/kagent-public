@@ -34,8 +34,8 @@ individual agent configs.
 | Provider | Gateway route | Upstream path prefix | Model |
 | --- | --- | --- | --- |
 | Kimi | `/kimi/v1` | `/coding/v1` | `kimi-for-coding` |
-| Z.AI GLM | `/zai/v1` | `/api/paas/v4` | `glm-4.6` |
-| MiniMax | `/minimax/v1` | `/v1` | `MiniMax-M2.7` |
+| Z.AI GLM | `/zai/v1` | `/api/paas/v4` | `glm-5.2` |
+| MiniMax | `/minimax/v1` | `/v1` | `MiniMax-M3` |
 
 ## Verification Status
 
@@ -93,11 +93,11 @@ curl -sS http://127.0.0.1:8081/kimi/v1/chat/completions \
 
 curl -sS http://127.0.0.1:8081/zai/v1/chat/completions \
   -H 'content-type: application/json' \
-  -d '{"model":"glm-4.6","messages":[{"role":"user","content":"Reply with OK only."}],"max_tokens":5,"temperature":0}'
+  -d '{"model":"glm-5.2","messages":[{"role":"user","content":"Reply with OK only."}],"max_tokens":5,"temperature":0}'
 
 curl -sS http://127.0.0.1:8081/minimax/v1/chat/completions \
   -H 'content-type: application/json' \
-  -d '{"model":"MiniMax-M2.7","messages":[{"role":"user","content":"Reply with OK only."}],"max_tokens":5,"temperature":0}'
+  -d '{"model":"MiniMax-M3","messages":[{"role":"user","content":"Reply with OK only."}],"max_tokens":5,"temperature":0}'
 ```
 
 Expected result for a working route is HTTP 200 and a short response. HTTP 401

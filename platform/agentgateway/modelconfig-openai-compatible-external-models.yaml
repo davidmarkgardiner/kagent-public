@@ -42,7 +42,7 @@ metadata:
   namespace: kagent
 spec:
   provider: OpenAI
-  model: glm-4.6
+  model: glm-5.2
   apiKeySecret: agentgateway-client-key # pragma: allowlist secret
   apiKeySecretKey: api-key
   openAI:
@@ -58,7 +58,7 @@ metadata:
   namespace: kagent
 spec:
   provider: OpenAI
-  model: MiniMax-M2.7
+  model: MiniMax-M3
   apiKeySecret: agentgateway-client-key # pragma: allowlist secret
   apiKeySecretKey: api-key
   openAI:
