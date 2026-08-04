@@ -136,9 +136,12 @@ if [[ -n "$PAYLOAD_FILE" ]]; then
   PAYLOAD=$(jq -c --arg id "$REQ_ID" '{jsonrpc:"2.0", id:$id, method:"message/send", params:.}' "$PAYLOAD_FILE")
 else
   # Footgun 2: each part must carry "kind":"text" or kagent rejects/ignores it.
-  PAYLOAD=$(jq -cn --arg id "$REQ_ID" --arg text "$TEXT" \
+  # Footgun 3: kagent rejects a message without a unique messageId.
+  MESSAGE_ID="${REQ_ID}-$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  PAYLOAD=$(jq -cn --arg id "$REQ_ID" --arg message_id "$MESSAGE_ID" --arg text "$TEXT" \
     '{jsonrpc:"2.0", id:$id, method:"message/send",
-      params:{message:{role:"user", parts:[{kind:"text", text:$text}]}}}')
+      params:{message:{kind:"message", role:"user", messageId:$message_id,
+      parts:[{kind:"text", text:$text}]}}}')
 fi
 
 agent_listed() {
