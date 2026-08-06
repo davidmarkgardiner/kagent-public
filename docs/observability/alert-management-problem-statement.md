@@ -51,6 +51,8 @@ reliable end-to-end delivery of the signals that the team has decided matter.
 
 ## Related work
 
+- [`GITLAB-ISSUE-VERIFY-ALERT-MANAGEMENT.md`](GITLAB-ISSUE-VERIFY-ALERT-MANAGEMENT.md)
+  is the copy-ready upstream-engineering issue.
 - [`../../work-agent-bundles/vector-kafka-routing-normalization/README.md`](../../work-agent-bundles/vector-kafka-routing-normalization/README.md)
   describes the normalization, filtering, dedupe, and Argo-routing pattern.
 - [`../../work-agent-bundles/vector-kafka-routing-normalization/RICH-ALERT-CONTEXT-README.md`](../../work-agent-bundles/vector-kafka-routing-normalization/RICH-ALERT-CONTEXT-README.md)
