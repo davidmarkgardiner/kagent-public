@@ -8,7 +8,7 @@ home directory, or shared mount.
 ## 1. Confirm what is full
 
 ```bash
-df -h && echo && sudo du -xhd1 / 2>/dev/null | sort -h
+df -h && echo && du -xhd1 / 2>/dev/null | sort -h
 ```
 
 Then check filesystem types and inode pressure:
@@ -28,7 +28,7 @@ the full mountpoint before investigating usage.
 Run these first. They do not delete anything.
 
 ```bash
-sudo du -xhd1 / 2>/dev/null | sort -h
+du -xhd1 / 2>/dev/null | sort -h
 
 for path in "$HOME" /workspaces /workspace /tmp /var/tmp /var/lib; do
   [ -d "$path" ] && du -xhd1 "$path" 2>/dev/null | sort -h
@@ -38,16 +38,16 @@ done
 For a single large directory, drill down one level at a time:
 
 ```bash
-sudo du -xhd1 /home 2>/dev/null | sort -h
-sudo du -xhd1 /var 2>/dev/null | sort -h
-sudo du -xhd1 <large-directory> 2>/dev/null | sort -h
+du -xhd1 /home 2>/dev/null | sort -h
+du -xhd1 /var 2>/dev/null | sort -h
+du -xhd1 <large-directory> 2>/dev/null | sort -h
 find <large-directory> -xdev -type f -size +500M -printf '%10s %p\n' 2>/dev/null | sort -n
 ```
 
 To list the 50 largest files on the DevPod filesystem:
 
 ```bash
-sudo find / -xdev -type f -printf '%s\t%p\n' 2>/dev/null \
+find / -xdev -type f -printf '%s\t%p\n' 2>/dev/null \
   | sort -nr \
   | head -50 \
   | numfmt --field=1 --to=iec
@@ -64,7 +64,7 @@ If space was deleted but not returned, identify processes still holding deleted
 files open. Restart only the owning process after confirming its purpose:
 
 ```bash
-sudo lsof +L1
+lsof +L1 2>/dev/null
 ```
 
 ## 3. Check common DevPod consumers
@@ -155,7 +155,7 @@ files and can delete local work.
 ### Logs and temporary files
 
 ```bash
-sudo journalctl --disk-usage
+journalctl --disk-usage 2>/dev/null
 du -sh /tmp /var/tmp 2>/dev/null
 find /tmp /var/tmp -xdev -type f -mtime +7 -printf '%TY-%Tm-%Td %10s %p\n' 2>/dev/null | sort
 ```
@@ -164,7 +164,7 @@ If the DevPod actually uses systemd journal logs and the retention policy allows
 it, reclaim old journal entries deliberately:
 
 ```bash
-sudo journalctl --vacuum-time=7d
+journalctl --vacuum-time=7d
 ```
 
 For `/tmp` and `/var/tmp`, delete only reviewed, old files owned by your user or
