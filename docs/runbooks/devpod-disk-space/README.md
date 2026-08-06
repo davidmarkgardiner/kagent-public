@@ -8,6 +8,12 @@ home directory, or shared mount.
 ## 1. Confirm what is full
 
 ```bash
+df -h && echo && sudo du -xhd1 / 2>/dev/null | sort -h
+```
+
+Then check filesystem types and inode pressure:
+
+```bash
 df -hT
 df -ih
 findmnt -D
@@ -32,8 +38,26 @@ done
 For a single large directory, drill down one level at a time:
 
 ```bash
-du -xhd1 <large-directory> 2>/dev/null | sort -h
+sudo du -xhd1 /home 2>/dev/null | sort -h
+sudo du -xhd1 /var 2>/dev/null | sort -h
+sudo du -xhd1 <large-directory> 2>/dev/null | sort -h
 find <large-directory> -xdev -type f -size +500M -printf '%10s %p\n' 2>/dev/null | sort -n
+```
+
+To list the 50 largest files on the DevPod filesystem:
+
+```bash
+sudo find / -xdev -type f -printf '%s\t%p\n' 2>/dev/null \
+  | sort -nr \
+  | head -50 \
+  | numfmt --field=1 --to=iec
+```
+
+When available, `ncdu` is the quickest interactive way to inspect the same
+filesystem without crossing into mounted volumes:
+
+```bash
+ncdu -x /
 ```
 
 If space was deleted but not returned, identify processes still holding deleted
@@ -74,8 +98,10 @@ DevPod, database, or test data is stored in Docker volumes.
 Inspect only caches that exist in the DevPod:
 
 ```bash
-du -sh "$HOME"/.cache "$HOME"/.npm "$HOME"/.pnpm-store "$HOME"/.local/share/pnpm/store \
-  "$HOME"/.cache/pip "$HOME"/.cargo/registry "$HOME"/.gradle/caches 2>/dev/null
+du -sh "$HOME"/.cache "$HOME"/.npm "$HOME"/.local "$HOME"/.cargo "$HOME"/.rustup \
+  "$HOME"/.pnpm-store "$HOME"/.local/share/pnpm/store "$HOME"/.vscode-server \
+  "$HOME"/.config/Code "$HOME"/go/pkg "$HOME"/.cache/pip \
+  "$HOME"/.cargo/registry "$HOME"/.gradle/caches 2>/dev/null
 
 command -v npm >/dev/null && npm cache verify
 command -v pnpm >/dev/null && pnpm store status
@@ -93,6 +119,17 @@ command -v yarn >/dev/null && yarn cache clean
 
 These commands may require downloads on the next build; they should not remove
 project source or lockfiles.
+
+If `$HOME/.cache` is confirmed to contain only disposable cache data, inspect
+the immediate contents, then clear it explicitly:
+
+```bash
+find "$HOME/.cache" -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort
+rm -rf -- "$HOME"/.cache/*
+```
+
+Do not run the removal command if the inspection shows a cache that must be
+preserved, or if the DevPod uses a shared home directory.
 
 ### Git repositories and worktrees
 
