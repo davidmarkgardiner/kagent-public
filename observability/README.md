@@ -15,6 +15,7 @@ Start with these documents for the current K-Agent / Agent Gateway path:
 
 | Goal | File |
 | --- | --- |
+| State the current alert-management problem and required proof | [`../docs/observability/alert-management-problem-statement.md`](../docs/observability/alert-management-problem-statement.md) |
 | Install and verify the observability bundle | [`../docs/observability/k-agent-agentgateway-observability.md`](../docs/observability/k-agent-agentgateway-observability.md) |
 | Replicate Grafana MCP enrichment on another cluster | [`../docs/observability/grafana-mcp-home-lab.md`](../docs/observability/grafana-mcp-home-lab.md) |
 | Understand the AI + Grafana triage pattern | [`../docs/ai-grafana/README.md`](../docs/ai-grafana/README.md) |
