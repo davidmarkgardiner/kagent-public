@@ -7,6 +7,7 @@ These planning guides accompany the [Hermes/Kanban Kubernetes workflow contract]
 | [Substrate, Hermes, and private networking](substrate-hermes-private-networking/README.md) | Can a stateful Hermes agent run privately on Agent Substrate? | Architecture guide; environment proof required. |
 | [Teams approval and session resume](teams-approval-session-resume/README.md) | Can an Approve/Deny card safely resume the correct agent session? | Proposed integration; native kagent UI approval is verified. |
 | [LangGraph versus kagent](langgraph-vs-kagent/README.md) | Which layer should own durable delivery workflow state and Kubernetes agent operations? | Decision guide. |
+| [Bring-your-own agent harness boundaries](byo-agent-harness-boundaries/README.md) | How can an external team's agent be constrained to approved skills, tools, network routes, and cluster actions? | Onboarding/security design. |
 
 ## Evidence rule
 
