@@ -21,6 +21,18 @@ None of these releases, by itself, proves that a cluster can safely host a parti
 
 As of 19 August 2026, Microsoft lists AKS 1.35 and 1.36 as generally available. Community support is listed through March 2027 for 1.35 and June 2027 for 1.36. With AKS long-term support enabled, the listed dates extend to March 2028 and June 2028 respectively. Microsoft's planned dates for AKS 1.37 are October 2027 for community end of life and October 2028 for LTS end of life, subject to the version reaching AKS GA as scheduled.
 
+## Three Priorities for the Current Platform
+
+For a platform that uses many Kyverno mutations, AKS node auto-provisioning, large numbers of namespaces, and VPA for cost reduction, prioritize these three capabilities:
+
+1. **CEL-based mutating admission policies in Kubernetes 1.36.** Move simple, deterministic, high-volume Kyverno mutations into the API server. This can reduce webhook calls, admission latency, controller resources, certificate management, and webhook availability dependencies. Keep image verification, reporting, generate/cleanup behaviour, external context, and complex rules in Kyverno.
+2. **Stable in-place Pod resize from Kubernetes 1.35 with AKS VPA `InPlaceOrRecreate`.** Let VPA improve CPU and memory requests without routinely restarting Pods, then allow node auto-provisioning to bin-pack and consolidate underused nodes. Measure realised node-hours and VM spend; lower requests alone are not proof of savings. Microsoft currently documents optimal AKS VPA support for up to 1,000 VPA-managed Pods per cluster, so use selected workload cohorts rather than enabling it indiscriminately across every namespace.
+3. **Stable Pressure Stall Information metrics in Kubernetes 1.36.** Use CPU, memory, and I/O stall time to distinguish safe utilisation from harmful contention. PSI provides evidence for reducing unjustified resource padding while protecting workloads from noisy neighbours. Validate Linux, cgroup v2, node-image, and metrics-pipeline support before relying on it.
+
+Together, these capabilities provide a practical efficiency loop: reduce admission overhead, improve resource requests, use PSI to protect the reliability boundary, and allow node auto-provisioning to turn freed capacity into fewer node-hours.
+
+See [AKS 1.35 and 1.36 efficiency priorities](../kubernetes-1.35-1.36-efficiency-priorities/README.md) for the migration experiments, separate version-ingestion tables, 90-day evaluation plan, success metrics, and go/no-go gates.
+
 ## Highest-Value Capabilities
 
 | Capability | Version and maturity | Platform value at fleet scale | Adoption note |
