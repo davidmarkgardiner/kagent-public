@@ -11,6 +11,7 @@ This index is the first stop for the platform knowledge-base agent. It maps user
 | Evaluate Azure Container Linux ACL | `docs/platform-kb/aks/azure-container-linux-acl/README.md` | ACL vs Azure Linux, known limitations, Nexus CA image-pull test, AKS 1.34 pilot plan |
 | Bring a custom domain | `docs/platform-kb/aks/custom-domains.md` | DNS, ingress host binding, TLS, validation |
 | Understand AKS node auto-provisioning | `docs/platform-kb/aks/node-auto-provisioning.md` | NAP/Karpenter overview, app-team contract, platform GitOps operating model, pilot checklist |
+| Prioritise AKS 1.35 and 1.36 efficiency features | `docs/platform-kb/aks/kubernetes-1.35-1.36-efficiency-priorities/README.md` | CEL mutation migration, VPA in-place resize with NAP, PSI metrics, separate version ingestion, and measurable cost gates |
 | Survive planned maintenance | `docs/platform-kb/aks/pod-disruption-budgets.md` | Replica assumptions, PDB examples, drain validation |
 | Know what teams can deploy | `docs/platform-kb/aks/shared-aks-resources.md` | Namespaced resources, platform-owned resources, exception path |
 
