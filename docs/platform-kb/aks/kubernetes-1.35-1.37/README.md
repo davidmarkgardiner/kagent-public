@@ -1,4 +1,4 @@
-# AKS Kubernetes 1.35 and 1.36 for Large Multi-Tenant Platforms
+# AKS Kubernetes 1.35, 1.36, and 1.37 for Large Multi-Tenant Platforms
 
 ## Executive Summary
 
@@ -6,22 +6,28 @@ For a platform team hosting thousands of namespaces across a fleet of AKS cluste
 
 Kubernetes 1.35 remains an important stepping stone. It brings stable in-place Pod resource resizing and Pod generation tracking, plus beta native storage-version migration. These improve workload rightsizing and controller correctness in object-dense clusters.
 
-Neither release, by itself, proves that a cluster can safely host a particular number of namespaces. Namespace density remains a measured scale-envelope decision involving API object count and churn, admission latency, watch traffic, controller queues, scheduler throughput, network policy scale, identity boundaries, and recovery objectives.
+Kubernetes 1.37 is a forward-looking evaluation target, not the current production recommendation. As of 19 August 2026, its upstream release is planned for 26 August 2026; Microsoft schedules AKS preview for September 2026 and AKS general availability for October 2026. The announced feature set can still change before the upstream release.
+
+None of these releases, by itself, proves that a cluster can safely host a particular number of namespaces. Namespace density remains a measured scale-envelope decision involving API object count and churn, admission latency, watch traffic, controller queues, scheduler throughput, network policy scale, identity boundaries, and recovery objectives.
 
 ## Recommendation
 
 1. Use AKS 1.36 as the target baseline for new clusters when the required region and AKS configuration support it.
 2. Upgrade existing supported non-LTS clusters one minor version at a time.
 3. Canary 1.36 on representative clusters before a staged fleet rollout.
-4. Prioritize stable and beta capabilities that AKS actually exposes; do not build a production dependency on upstream alpha feature gates.
-5. Treat upstream feature maturity and AKS product availability as separate gates.
+4. Track 1.37 in a separate evaluation lane, then reassess after the final upstream release notes, AKS preview component matrix, regional availability, and workload compatibility evidence exist.
+5. Prioritize stable and beta capabilities that AKS actually exposes; do not build a production dependency on upstream alpha feature gates.
+6. Treat upstream feature maturity and AKS product availability as separate gates.
 
-As of 19 August 2026, Microsoft lists AKS 1.35 and 1.36 as generally available. Community support is listed through March 2027 for 1.35 and June 2027 for 1.36. With AKS long-term support enabled, the listed dates extend to March 2028 and June 2028 respectively.
+As of 19 August 2026, Microsoft lists AKS 1.35 and 1.36 as generally available. Community support is listed through March 2027 for 1.35 and June 2027 for 1.36. With AKS long-term support enabled, the listed dates extend to March 2028 and June 2028 respectively. Microsoft's planned dates for AKS 1.37 are October 2027 for community end of life and October 2028 for LTS end of life, subject to the version reaching AKS GA as scheduled.
 
 ## Highest-Value Capabilities
 
 | Capability | Version and maturity | Platform value at fleet scale | Adoption note |
 | --- | --- | --- | --- |
+| Stable Metrics API | 1.37, planned stable upstream | Moves the widely used `metrics.k8s.io` API behind HPA and `kubectl top` from beta to `v1`, providing a durable API contract for platform integrations. | No major functional change is expected. Inventory clients pinned to `v1beta1` and wait for the final release and AKS component matrix. |
+| Rootless kubelet using a user namespace | 1.37, planned beta upstream | Reduces host-level privilege for a critical node component and could limit the impact of a kubelet vulnerability. | Treat as research until AKS explicitly documents node-image and support availability; customers do not configure the managed AKS node architecture solely from upstream feature status. |
+| Volume health monitor API | 1.37, planned alpha upstream | Proposes machine-readable PVC, Pod, and CSINode storage-health signals for automated diagnosis and remediation. | Evaluation only. It requires CSI driver support, is alpha, and was reset to alpha after an earlier implementation. |
 | Mutating admission policies using CEL | 1.36, stable upstream | Replaces many simple mutation webhooks with declarative API-server policy, reducing network hops, certificate management, latency, and webhook failure modes. | Inventory existing webhooks and confirm AKS exposure before migration. Keep complex external lookups in webhooks. |
 | User namespaces for Pods | 1.36, stable upstream | Maps container root to an unprivileged host user, adding defence in depth for multi-tenant nodes. | Validate the selected AKS node OS, container runtime, storage drivers, security tooling, and workload compatibility. |
 | Fine-grained kubelet API authorization | 1.36, stable upstream | Lets monitoring and diagnostic components avoid broad `nodes/proxy` access. This reduces the blast radius of fleet-wide observability identities. | Re-test metrics, log, and support tooling with least-privilege RBAC. |
@@ -47,7 +53,37 @@ They should remain evaluation-only for this platform until they reach an accepta
 
 Similarly, external ServiceAccount token signing is stable upstream in 1.36 but requires control-plane integration. Do not assume it is configurable in AKS without explicit Microsoft documentation or a validated AKS capability.
 
-## What 1.36 Does Not Solve
+Kubernetes 1.37 as a whole belongs in this evaluation category until it has shipped upstream and the target AKS region exposes a suitable preview or GA patch. Preview clusters should not carry production tenants or become the only evidence source for platform compatibility.
+
+## Kubernetes 1.37 Watchlist
+
+### Potential Benefits
+
+- A stable `metrics.k8s.io/v1` API gives platform tooling a durable resource-metrics contract after nearly nine years of beta usage.
+- Rootless kubelet beta could materially improve node defence in depth if AKS adopts and supports it in its managed node images.
+- The redesigned volume health monitor could eventually make storage failures machine-readable and automatable across large fleets.
+
+### Announced Migration Risks
+
+- `kubectl run --filename` and `kubectl run -f` are planned for deprecation. Search platform scripts, documentation, CI jobs, and tenant examples for these forms.
+- Static Pods can no longer reference Secrets or ConfigMaps. Audit any custom static-Pod node bootstrap or security tooling.
+- `kube-proxy` IPVS mode begins its deprecation path, with disablement planned for 1.40 and removal planned for 1.43. Confirm the networking mode in every fleet cohort and create a migration plan where IPVS remains.
+- cgroup v1 is already on a removal path. Confirm all supported node images use cgroup v2 and eliminate temporary `failCgroupV1: false` dependencies.
+- SELinux volume relabeling is planned to become GA and enabled by default when the CSI driver opts in. Pods with different SELinux labels sharing a volume on the same node may fail to start unless compatibility is addressed.
+- Microsoft states that Windows Server 2022 node pools are not supported with Kubernetes 1.37 and later. Fleets containing Windows workloads require a separate node OS migration decision before adopting 1.37.
+
+### Promotion Preconditions
+
+Do not promote 1.37 into the production baseline until all of the following are true:
+
+1. Kubernetes 1.37 has a final upstream release and changelog.
+2. AKS publishes preview or GA component and breaking-change details for the exact target patch.
+3. The target Azure regions expose the required AKS version.
+4. CNI, CSI, policy, identity, ingress, service mesh, autoscaling, security, backup, and observability dependencies pass compatibility testing.
+5. Linux cgroup, SELinux storage, kube-proxy, and any Windows node-pool implications have explicit owners and migration evidence.
+6. A representative object-heavy canary passes the validation and failure tests in this document.
+
+## What These Versions Do Not Solve
 
 An upgrade does not remove the need to engineer and prove:
 
@@ -128,6 +164,8 @@ Promote only when the canary remains within agreed error and latency budgets, no
 6. Convert simple, deterministic mutation webhooks to CEL policies in a shadow or audit-first workflow.
 7. Test constrained impersonation for tenant-support tooling if AKS exposes it.
 8. Roll out AKS 1.36 through Fleet Manager stages: platform canary, low-risk clusters, representative production clusters, then the remaining fleet.
+9. After upstream 1.37 ships, review the final changelog against this watchlist and update the compatibility inventory.
+10. Use AKS 1.37 preview only for disposable evaluation clusters; begin production promotion assessment after AKS GA and regional rollout evidence exist.
 
 ## Decision Record
 
@@ -135,6 +173,7 @@ Promote only when the canary remains within agreed error and latency budgets, no
 | --- | --- |
 | Default version for new clusters | Prefer AKS 1.36 after regional and dependency validation. |
 | Existing fleet | Use canary-first, one-minor-at-a-time upgrades and staged Fleet Manager update runs. |
+| Kubernetes 1.37 | Track as a forward-looking evaluation target; do not treat planned upstream or AKS dates as delivered capability. |
 | Primary business case | Safer multi-tenancy and admission, better contention visibility, and more reliable controllers and upgrades. |
 | Namespace-scale claim | Not established by version number; prove against representative object density and churn. |
 | Alpha features | Evaluation only; no production dependency. |
@@ -144,7 +183,9 @@ Promote only when the canary remains within agreed error and latency budgets, no
 
 - [Kubernetes 1.35 release announcement](https://kubernetes.io/blog/2025/12/17/kubernetes-v1-35-release/)
 - [Kubernetes 1.36 release announcement](https://kubernetes.io/blog/2026/04/22/kubernetes-v1-36-release/)
+- [Kubernetes 1.37 sneak peek](https://kubernetes.io/blog/2026/07/31/kubernetes-v1-37-sneak-peek/)
 - [AKS supported Kubernetes versions and component changes](https://learn.microsoft.com/azure/aks/supported-kubernetes-versions)
+- [AKS Windows node OS upgrade guidance](https://learn.microsoft.com/azure/aks/upgrade-windows-os)
 - [AKS multi-tenancy concepts](https://learn.microsoft.com/azure/aks/concepts-multi-tenancy)
 - [AKS cluster operator and developer best practices](https://learn.microsoft.com/azure/aks/best-practices)
 - [Azure Kubernetes Fleet Manager](https://learn.microsoft.com/azure/kubernetes-fleet/)
@@ -152,4 +193,4 @@ Promote only when the canary remains within agreed error and latency budgets, no
 
 ## Evidence Boundary
 
-This document is an architecture and adoption guide based on upstream Kubernetes release documentation and Microsoft AKS documentation available on 19 August 2026. It does not record a live upgrade, performance test, feature-availability test, or production rollout. Those outcomes require evidence from the target AKS subscriptions, regions, cluster configurations, and workloads.
+This document is an architecture and adoption guide based on upstream Kubernetes release documentation and Microsoft AKS documentation available on 19 August 2026. Kubernetes 1.37 content is based on a pre-release upstream preview and Microsoft's published future AKS schedule, so it is provisional. This document does not record a live upgrade, performance test, feature-availability test, or production rollout. Those outcomes require evidence from the target AKS subscriptions, regions, cluster configurations, and workloads.
