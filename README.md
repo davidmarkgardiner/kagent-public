@@ -144,6 +144,14 @@ scripts/lint-yaml.sh
 
 Prints `OK <path>` or `FAIL <path>` per file and exits non-zero if any file fails to parse. Use the `--quiet` flag to print only failures and a final summary line.
 
+For machine-readable output, use `--json`. The script then emits exactly one JSON object on stdout and nothing else, exiting non-zero if any file fails to parse:
+
+```json
+{"checked":7,"failed":0,"failures":[]}
+```
+
+`failures` is a JSON array of repo-relative paths (e.g. `k8s/observability/k-agent-alloy.yaml`) for files that failed to parse; it is empty on success. The `checked` and `failed` counts always agree with `failures.length`. Stderr is reserved for diagnostics (unknown options, missing directories) and stays empty on a successful run, so `--json` output is safe to pipe into `jq` or any other parser. `--json` and `--quiet` can be combined; per-file lines are suppressed either way and the JSON object is still emitted.
+
 ---
 
 ## Public Safety
