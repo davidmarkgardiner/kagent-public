@@ -1,0 +1,14 @@
+{
+  "targets": [
+    {
+      "clusterAlias": "demo-cluster",
+      "subscriptionAlias": "public-demo-scope",
+      "subscriptionRef": "runtime-secret://demo-subscription",
+      "resourceGroup": "public-demo-rg",
+      "cluster": "demo-cluster",
+      "kubeContext": "demo-cluster-user",
+      "environment": "nonprod",
+      "namespaces": ["demo-payments", "demo-jobs"]
+    }
+  ]
+}

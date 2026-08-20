@@ -1,0 +1,25 @@
+{
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "SingleReplicaObserved",
+        "severity": "critical",
+        "subscription_alias": "public-demo-scope",
+        "cluster_alias": "demo-cluster",
+        "resource_group": "public-demo-rg",
+        "cluster": "demo-cluster",
+        "kube_context": "demo-cluster-user",
+        "environment": "nonprod",
+        "namespace": "demo-payments",
+        "deployment": "intentional-singleton",
+        "pod": "intentional-singleton-fixture"
+      },
+      "annotations": {
+        "summary": "One healthy replica is expected for this non-production fixture."
+      },
+      "startsAt": "2026-08-20T13:30:00Z"
+    }
+  ]
+}
