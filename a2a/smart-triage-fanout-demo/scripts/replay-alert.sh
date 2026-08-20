@@ -6,7 +6,7 @@ ARGO_EVENTS_NAMESPACE="${ARGO_EVENTS_NAMESPACE:-argo-events}"
 EVENTSOURCE_SERVICE="${EVENTSOURCE_SERVICE:-smart-triage-alertmanager-eventsource-svc}"
 LOCAL_PORT="${LOCAL_PORT:-12000}"
 ALERT_FINGERPRINT="${ALERT_FINGERPRINT:-smart-triage-alert-replay-checkout-api}"
-ALERT_STARTS_AT="${ALERT_STARTS_AT:-2026-06-01T00:00:00Z}"
+ALERT_STARTS_AT="${ALERT_STARTS_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
 need() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -44,6 +44,7 @@ cat > "$payload_file" <<JSON
       "labels": {
         "alertname": "KubePodCrashLooping",
         "severity": "warning",
+        "subscription_scope": "public-demo-scope",
         "cluster": "demo-cluster",
         "environment": "nonprod",
         "namespace": "demo-payments",

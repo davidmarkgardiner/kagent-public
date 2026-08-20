@@ -1,0 +1,14 @@
+{
+  "caseId": "intentional-single-replica-not-critical",
+  "source": "sanitized-sre-feedback",
+  "scenario": "A declared non-critical development workload intentionally runs one replica and is healthy.",
+  "expected": {
+    "mustNotClassifyAs": "critical",
+    "requiredEvidenceBeforeImpactClaim": [
+      "declared service policy",
+      "ready replica state",
+      "current user or SLO impact"
+    ],
+    "sreOutcome": "FALSE_POSITIVE"
+  }
+}

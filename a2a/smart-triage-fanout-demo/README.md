@@ -3,13 +3,15 @@
 This demo proves the smart-triage orchestration shape:
 
 1. Normalize one synthetic incident payload, or one Alertmanager webhook payload.
-2. Fan out to eight specialist agents:
+2. Classify the finding against durable management-plane lifecycle state.
+3. Fan out to eight specialist agents when the lifecycle decision requires a
+   new or updated investigation:
    Kubernetes, network/Hubble, Grafana, GitOps, knowledge/runbooks, deployment
    state, policy/security, and trace context.
-3. Synthesize the specialist outputs with an incident commander agent.
-4. Suspend for human review.
-5. Resume and prove the final markers.
-6. Run the lifecycle evaluator as a post-run audit gate.
+4. Synthesize the specialist outputs with an incident commander agent.
+5. Suspend for human review.
+6. Resume and prove the final markers.
+7. Run the lifecycle evaluator as a post-run audit gate.
 
 The demo is public-safe and recommendation-only. It installs only its own demo
 Agents and workflow RBAC. The GitOps specialist produces an MR/issue draft, not
@@ -18,9 +20,19 @@ post-run lifecycle eval uses synthetic public-safe remediation and ticket-update
 markers to prove the audit gate wiring; in a work environment those markers
 should come from the real remediation, verification, and GitLab steps.
 
+Finding identity and notification state are provided by
+[`finding-lifecycle/`](finding-lifecycle/). The service stores only bounded,
+typed finding metadata on a management-plane PVC. If that service is
+unavailable, the workflow emits `STATE_UNAVAILABLE`, continues the existing
+alert/investigation path, and refuses to claim durable deduplication or
+automatic ticket eligibility.
+
 ## Proof Markers
 
 - `SMART_TRIAGE_FANOUT: started`
+- `LIFECYCLE_STATUS: NEW|ESCALATED|ONGOING|ACKNOWLEDGED|RESOLVED|RECURRENT|PROVISIONAL|STALE|STATE_UNAVAILABLE`
+- `LIFECYCLE_FINGERPRINT: stf-v1-...`
+- `TICKET_ACTION: CREATE|UPDATE|NONE`
 - `SPECIALIST_KUBERNETES: completed`
 - `SPECIALIST_NETWORK: completed`
 - `SPECIALIST_GRAFANA: completed`
@@ -57,6 +69,13 @@ should come from the real remediation, verification, and GitLab steps.
 
 The demo defaults to `MODEL_CONFIG=default-model-config`.
 
+Install the finding lifecycle service before the WorkflowTemplate:
+
+```bash
+kubectl apply -k a2a/smart-triage-fanout-demo/finding-lifecycle
+kubectl rollout status -n argo deployment/smart-triage-finding-lifecycle
+```
+
 ## Run
 
 ```bash
@@ -72,7 +91,8 @@ KUBE_CONTEXT={{KUBE_CONTEXT}} MODEL_CONFIG={{MODEL_CONFIG}} \
 
 ## Alert Ingestion
 
-The manual workflow remains available, and the demo also includes an
+The manual workflow is a thin reference to the same WorkflowTemplate, so the
+event and manual paths cannot drift. The demo also includes an
 Alertmanager -> Argo Events -> smart-triage path:
 
 ```text
@@ -106,21 +126,28 @@ ALERT_FINGERPRINT=smart-triage-alert-replay-$(date +%Y%m%d%H%M%S) \
   a2a/smart-triage-fanout-demo/scripts/replay-alert.sh
 ```
 
-Expected normalize markers in the workflow logs:
+Expected first-run normalize markers in the workflow logs:
 
 ```text
 ALERT_INGESTED: yes
 ALERT_SOURCE: alertmanager
 INCIDENT_NORMALIZED: yes
 ALERT_DUPLICATE: no
-FINGERPRINT: smart-triage-alert-replay-checkout-api
+LIFECYCLE_STATUS: NEW
+LIFECYCLE_NOTIFY: true
+AUTO_TICKET_ALLOWED: true
+LIFECYCLE_FINGERPRINT: stf-v1-...
 ```
 
-Replay the same fingerprint a second time to prove duplicate suppression. The
-second workflow should complete without specialist fan-out:
+Replay the same stable workload/reason a second time to prove ongoing-state
+suppression. The upstream Alertmanager fingerprint may change; lifecycle
+identity does not depend on it. The second workflow should complete without
+specialist fan-out:
 
 ```text
 ALERT_DUPLICATE: yes
+LIFECYCLE_STATUS: ONGOING
+LIFECYCLE_NOTIFY: false
 DUPLICATE_SUPPRESSED: yes
 SMART_TRIAGE_DEDUP: suppressed
 FANOUT_SKIPPED: duplicate_alert
@@ -170,6 +197,8 @@ Successful workflow objects are retained for 24 hours for reviewer checks.
 ```bash
 bash -n a2a/smart-triage-fanout-demo/scripts/run-smart-triage-demo.sh
 bash -n a2a/smart-triage-fanout-demo/scripts/replay-alert.sh
+python3 -m unittest discover -s a2a/smart-triage-fanout-demo/finding-lifecycle/tests -v
+kubectl kustomize a2a/smart-triage-fanout-demo/finding-lifecycle
 kubectl apply --dry-run=server -f a2a/smart-triage-fanout-demo/agents.yaml
 kubectl apply --dry-run=server -f a2a/smart-triage-fanout-demo/workflow-rbac.yaml
 kubectl apply --dry-run=server -f a2a/smart-triage-fanout-demo/workflow-template.yaml
@@ -189,7 +218,7 @@ kubectl delete -f a2a/smart-triage-fanout-demo/sensors/alertmanager-to-fanout-se
 kubectl delete -f a2a/smart-triage-fanout-demo/sensors/eventsource-alertmanager.yaml --ignore-not-found
 kubectl delete -f a2a/smart-triage-fanout-demo/sensors/sensor-submit-rbac.yaml --ignore-not-found
 kubectl delete -f a2a/smart-triage-fanout-demo/workflow-template.yaml --ignore-not-found
-kubectl delete configmap -n argo -l smart-triage.kagent-public/dedup=alert-fingerprint --ignore-not-found
+kubectl delete -k a2a/smart-triage-fanout-demo/finding-lifecycle
 kubectl delete -f a2a/smart-triage-fanout-demo/gitlab-lite-agent.yaml --ignore-not-found
 kubectl delete -f a2a/smart-triage-fanout-demo/gitlab-lite-mcp.yaml --ignore-not-found
 kubectl delete secret -n kagent smart-triage-gitlab-token --ignore-not-found
