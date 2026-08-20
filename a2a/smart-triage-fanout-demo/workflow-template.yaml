@@ -62,6 +62,8 @@ spec:
         value: "manual"
       - name: alert_payload
         value: "{}"
+      - name: lifecycle_url
+        value: "http://smart-triage-finding-lifecycle.argo.svc.cluster.local:8080"
   templates:
     - name: main
       dag:
@@ -355,6 +357,9 @@ spec:
           - name: duplicate
             valueFrom:
               path: /tmp/duplicate.txt
+          - name: lifecycle-decision
+            valueFrom:
+              path: /tmp/lifecycle-decision.json
       script:
         image: alpine:3.19
         command: [sh]
@@ -367,61 +372,101 @@ spec:
           ALERT_PAYLOAD
 
           echo "false" > /tmp/duplicate.txt
+          printf '%s\n' '{"status":"NOT_EVALUATED","notify":true,"autoTicketAllowed":false,"ticketAction":"NONE"}' > /tmp/lifecycle-decision.json
           alert_count="$(jq '.alerts // [] | length' /tmp/alert-payload.json 2>/dev/null || echo 0)"
           if [ "$alert_count" -gt 0 ]; then
             fingerprint="$(jq -r '((.alerts | map(select(.status == "firing")) | .[0]) // .alerts[0]).fingerprint // "{{workflow.parameters.fingerprint}}"' /tmp/alert-payload.json)"
-            dedup_key="$(printf '%s:%s' "{{workflow.parameters.alert_source}}" "$fingerprint" | sha256sum | awk '{print substr($1,1,16)}')"
-            dedup_name="smart-triage-alert-${dedup_key}"
-
-            cat > /tmp/dedup-configmap.json <<DEDUP
-          {
-            "apiVersion": "v1",
-            "kind": "ConfigMap",
-            "metadata": {
-              "name": "${dedup_name}",
-              "namespace": "{{workflow.namespace}}",
-              "labels": {
-                "app.kubernetes.io/part-of": "smart-triage-fanout",
-                "smart-triage.kagent-public/dedup": "alert-fingerprint"
-              },
-              "annotations": {
-                "smart-triage.kagent-public/fingerprint": "${fingerprint}",
-                "smart-triage.kagent-public/source": "{{workflow.parameters.alert_source}}",
-                "smart-triage.kagent-public/workflow": "{{workflow.name}}"
+            observed_now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            jq --arg run_id "{{workflow.name}}" --arg observed_now "$observed_now" '
+              ((.alerts | map(select(.status == "firing")) | .[0]) // .alerts[0]) as $a |
+              ($a.labels.cluster // "unknown-cluster") as $cluster |
+              ($a.labels.namespace // "cluster-scope") as $namespace |
+              ($a.labels.workload // $a.labels.deployment // $a.labels.statefulset //
+               $a.labels.daemonset // $a.labels.job // $a.labels.cronjob //
+               $a.labels.service // $a.labels.app // "") as $workload |
+              ($a.labels.pod // "") as $observed_resource |
+              ($a.labels.event_reason // $a.labels.reason // $a.annotations.event_reason //
+               $a.annotations.log_reason // $a.labels.failure // $a.labels.alertname //
+               "UnclassifiedSignal" | gsub("[^A-Za-z0-9._-]"; "_")) as $reason |
+              (if ($reason | test("CrashLoop|OOM|ImagePull|BackOff"; "i")) then "pod-health"
+               elif ($reason | test("Scheduling|Preempt|Evict|Capacity"; "i")) then "scheduling"
+               elif ($reason | test("Identity|Certificate|Token|Login|FailedMount"; "i")) then "identity"
+               else "platform-health" end) as $domain |
+              ($a.labels.severity // "warning" | ascii_downcase) as $raw_severity |
+              (if (["info", "warning", "critical"] | index($raw_severity)) then $raw_severity else "warning" end) as $severity |
+              ($a.startsAt // $observed_now) as $observed_at |
+              {
+                schemaVersion: "smart-triage-finding/v1",
+                runId: $run_id,
+                observedAt: (if $observed_at == "0001-01-01T00:00:00Z" then $observed_now else $observed_at end),
+                observationStatus: (if ($a.status // "firing") == "resolved" then "resolved" else "firing" end),
+                target: {
+                  subscriptionScope: ($a.labels.subscription_scope // $a.labels.subscription_alias // "public-demo-scope"),
+                  cluster: $cluster,
+                  environment: ($a.labels.environment // $a.labels.env // "unknown"),
+                  namespace: $namespace
+                },
+                resource: {
+                  kind: (if ($a.labels.deployment // "") != "" then "Deployment" else "Pod" end),
+                  stableWorkload: $workload,
+                  observedResource: $observed_resource
+                },
+                finding: {
+                  domain: $domain,
+                  reason: $reason,
+                  severity: $severity,
+                  confidence: (if $workload == "" then "low" else "medium" end),
+                  summary: ("Alert " + ($a.labels.alertname // $reason) + " is " + ($a.status // "firing") +
+                            " for " + (if $workload == "" then ($observed_resource // "unresolved resource") else $workload end) + "."),
+                  identityStatus: (if $workload == "" then "provisional" else "canonical" end)
+                },
+                evidence: [{
+                  source: "alertmanager",
+                  reference: ("alert=" + ($a.labels.alertname // "unknown") + "; source={{workflow.parameters.alert_source}}; upstream-fingerprint=" + ($a.fingerprint // "unknown")),
+                  observedAt: (if $observed_at == "0001-01-01T00:00:00Z" then $observed_now else $observed_at end)
+                }],
+                provenance: {agent: "smart-triage-normalizer", tools: []},
+                recommendedActions: ["An authorised SRE should validate the current condition and review the bounded specialist evidence."]
               }
-            },
-            "data": {
-              "fingerprint": "${fingerprint}",
-              "source": "{{workflow.parameters.alert_source}}",
-              "workflow": "{{workflow.name}}"
-            }
-          }
-          DEDUP
+            ' /tmp/alert-payload.json > /tmp/finding.json
 
-            token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
-            ca_cert="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-            http_code="$(curl -sS -o /tmp/dedup-response.json -w "%{http_code}" \
-              --cacert "$ca_cert" \
-              -H "Authorization: Bearer ${token}" \
+            http_code="000"
+            if http_code="$(curl -sS --connect-timeout 3 --max-time 10 \
+              -o /tmp/lifecycle-response.json -w "%{http_code}" \
               -H "Content-Type: application/json" \
-              -X POST "https://kubernetes.default.svc/api/v1/namespaces/{{workflow.namespace}}/configmaps" \
-              -d @/tmp/dedup-configmap.json)"
-            case "$http_code" in
-              201) echo "false" > /tmp/duplicate.txt ;;
-              409) echo "true" > /tmp/duplicate.txt ;;
-              *)
-                echo "DEDUP_ERROR: Kubernetes API returned HTTP ${http_code}" >&2
-                cat /tmp/dedup-response.json >&2 || true
-                exit 1
-                ;;
-            esac
+              -X POST "{{workflow.parameters.lifecycle_url}}/v1/findings/evaluate" \
+              -d @/tmp/finding.json)" && [ "$http_code" = "200" ]; then
+              cp /tmp/lifecycle-response.json /tmp/lifecycle-decision.json
+              notify="$(jq -r 'if has("notify") then .notify else true end' /tmp/lifecycle-response.json)"
+              if [ "$notify" = "false" ]; then
+                echo "true" > /tmp/duplicate.txt
+              fi
+            else
+              error_marker="STATE_UNAVAILABLE"
+              if [ -s /tmp/lifecycle-response.json ]; then
+                error_marker="$(jq -r '.marker // "STATE_UNAVAILABLE"' /tmp/lifecycle-response.json 2>/dev/null || echo STATE_UNAVAILABLE)"
+              fi
+              jq -n --arg marker "$error_marker" --arg http "$http_code" \
+                '{status:$marker, marker:$marker, httpStatus:$http, notify:true, autoTicketAllowed:false, ticketAction:"NONE"}' \
+                > /tmp/lifecycle-decision.json
+              echo "LIFECYCLE_WARNING: ${error_marker}; preserving the existing alert path" >&2
+            fi
 
             duplicate_label="no"
             if [ "$(cat /tmp/duplicate.txt)" = "true" ]; then
               duplicate_label="yes"
             fi
 
-            jq -r --arg source "{{workflow.parameters.alert_source}}" --arg duplicate "$duplicate_label" '
+            lifecycle_status="$(jq -r '.status // .marker // "STATE_UNAVAILABLE"' /tmp/lifecycle-decision.json)"
+            lifecycle_fingerprint="$(jq -r '.fingerprint // "UNAVAILABLE"' /tmp/lifecycle-decision.json)"
+            lifecycle_notify="$(jq -r 'if has("notify") then .notify else true end' /tmp/lifecycle-decision.json)"
+            auto_ticket="$(jq -r '.autoTicketAllowed // false' /tmp/lifecycle-decision.json)"
+            ticket_action="$(jq -r '.ticketAction // "NONE"' /tmp/lifecycle-decision.json)"
+
+            jq -r --arg source "{{workflow.parameters.alert_source}}" --arg duplicate "$duplicate_label" \
+              --arg lifecycle_status "$lifecycle_status" --arg lifecycle_fingerprint "$lifecycle_fingerprint" \
+              --arg lifecycle_notify "$lifecycle_notify" --arg auto_ticket "$auto_ticket" \
+              --arg ticket_action "$ticket_action" '
               ((.alerts | map(select(.status == "firing")) | .[0]) // .alerts[0]) as $a |
               [
                 "SMART_TRIAGE_FANOUT: started",
@@ -429,6 +474,12 @@ spec:
                 "ALERT_SOURCE: " + $source,
                 "INCIDENT_NORMALIZED: yes",
                 "ALERT_DUPLICATE: " + $duplicate,
+                "LIFECYCLE_STATUS: " + $lifecycle_status,
+                "LIFECYCLE_FINGERPRINT: " + $lifecycle_fingerprint,
+                "LIFECYCLE_NOTIFY: " + $lifecycle_notify,
+                "AUTO_TICKET_ALLOWED: " + $auto_ticket,
+                "TICKET_ACTION: " + $ticket_action,
+                "STATE_BACKEND: management-plane-lifecycle-service",
                 "ALERT_NAME: " + ($a.labels.alertname // "unknown"),
                 "ALERT_STATUS: " + ($a.status // .status // "unknown"),
                 "SEVERITY: " + ($a.labels.severity // "unknown"),
@@ -465,6 +516,9 @@ spec:
           ALERT_INGESTED: no
           ALERT_SOURCE: {{workflow.parameters.alert_source}}
           INCIDENT_NORMALIZED: yes
+          LIFECYCLE_STATUS: NOT_EVALUATED
+          AUTO_TICKET_ALLOWED: false
+          TICKET_ACTION: NONE
           SCENARIO: {{workflow.parameters.scenario}}
           FINGERPRINT: {{workflow.parameters.fingerprint}}
           REMEDIATION_MODE: gitops_or_workflow_only
