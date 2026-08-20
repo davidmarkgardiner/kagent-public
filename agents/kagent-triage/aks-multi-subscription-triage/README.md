@@ -1,6 +1,6 @@
 # AKS multi-subscription triage agent
 
-This bundle defines a read-only kagent agent for investigating one AKS incident
+This bundle defines a read-only triage kagent agent for investigating one AKS incident
 at a time across an approved fleet of clusters and Azure subscriptions. It uses
 the existing `aks-mcp` `RemoteMCPServer`, with only the `call_az` and
 `call_kubectl` tools, and returns a human-readable GitLab issue draft. It does
@@ -15,10 +15,15 @@ state: one request can silently redirect another request to the wrong cluster.
 This agent therefore resolves a complete target tuple and pins every call:
 
 - every Azure CLI call includes `--subscription <resolved-subscription-id>`;
-- every kubectl call includes `--context <resolved-kube-context>`;
+- every incident obtains fresh cluster-user credentials for its resolved AKS
+  cluster with `az aks get-credentials`;
+- credentials are written to a target-specific kubeconfig under `/tmp`, never
+  the shared default kubeconfig;
+- every kubectl call includes that exact `--kubeconfig` and
+  `--context <resolved-kube-context>`;
 - namespaced kubectl calls also include `--namespace <resolved-namespace>`;
-- `az account set`, `kubectl config use-context`, and
-  `az aks get-credentials` are forbidden.
+- `az account set`, `kubectl config use-context`, and `--admin` credentials are
+  forbidden.
 
 ```mermaid
 flowchart LR
@@ -26,7 +31,8 @@ flowchart LR
     R[Approved private cluster registry] --> A
     A -->|Resolve exactly one target tuple| G{Target complete and unambiguous?}
     G -->|No| B[BLOCKED_TARGET_CONTEXT\nNo kubectl call]
-    G -->|Yes| M[AKS-MCP\ncall_az + call_kubectl]
+    G -->|Yes| C[Get fresh cluster-user credentials\nTarget-specific kubeconfig]
+    C --> M[AKS-MCP\ncall_az + call_kubectl]
     M -->|Explicit subscription| AZ[Azure control plane]
     M -->|Explicit kube context and namespace| K8S[Selected AKS cluster]
     AZ --> E[Bounded, sanitized evidence]
@@ -37,10 +43,19 @@ flowchart LR
 ## What must already exist
 
 Before deployment, the AKS-MCP service account or workload identity must have
-the intended read-only Azure permissions in every approved subscription. Its
-kubeconfig must already contain a unique, working context for every approved
-cluster, with read-only Kubernetes RBAC. The pod also needs network and DNS
-connectivity to each private AKS API endpoint it is expected to inspect.
+the Azure Kubernetes Service Cluster User Role (or the minimum equivalent
+permission needed to obtain cluster-user credentials) for every approved AKS
+cluster. The resulting identity must have read-only Kubernetes RBAC. The pod
+also needs network and DNS connectivity to each private AKS API endpoint it is
+expected to inspect and a writable `/tmp` for target-specific kubeconfig files.
+
+The current upstream AKS-MCP implementation permits `az aks get-credentials`
+only when the server is configured with `accessLevel: admin`. That setting is
+therefore required for this flow even though the agent itself remains limited
+to diagnostic Kubernetes operations. Enforce the real boundary with the
+managed identity's Azure roles, Kubernetes RBAC, the agent's two-tool allowlist,
+and runtime auditing. Never grant the managed identity AKS Cluster Admin and
+never use `az aks get-credentials --admin`.
 
 Do not give this triage agent an apply, delete, exec, secret-reading, credential
 retrieval, or GitLab-writing tool. If automated ticket creation is later
@@ -72,6 +87,8 @@ Edit `cluster-registry.private.md` and add one row per approved AKS target. Each
 row maps a unique human-facing alias to the exact Azure subscription, resource
 group, cluster, kube context, environment, and owner. Do not store credentials,
 tokens, kubeconfig content, private endpoints, or incident data in the file.
+Aliases must use only lowercase letters, numbers, and hyphens because they form
+part of the dedicated kubeconfig filename.
 
 Edit `work-values.env` to select the kagent namespace, ModelConfig, and existing
 AKS-MCP `RemoteMCPServer`. The files are ignored because real subscription and
@@ -104,11 +121,13 @@ After deployment, require all of the following before calling it usable:
    `call_kubectl` to this agent.
 2. The Agent is Accepted and Ready; use `scripts/kagent-verify-agent.sh`.
 3. A smoke request names one non-production cluster alias and namespace.
-4. The tool audit proves every Azure command used the resolved subscription and
-   every kubectl command used the resolved context and namespace.
-5. A negative test with an unknown or ambiguous alias returns
+4. The tool audit proves every incident obtained fresh credentials for the
+   resolved cluster and that every Azure command used its subscription.
+5. Every kubectl command uses the matching target-specific kubeconfig, resolved
+   context, and namespace; it never relies on shared current state.
+6. A negative test with an unknown or ambiguous alias returns
    `BLOCKED_TARGET_CONTEXT` without a kubectl call.
-6. The resulting Markdown is reviewed as a GitLab issue draft and contains no
+7. The resulting Markdown is reviewed as a GitLab issue draft and contains no
    secrets, credentials, kubeconfig, or unnecessarily sensitive log content.
 
 Example invocation using the repository helper:
@@ -149,6 +168,7 @@ executed.
 
 This bundle validates manifest shape and prompt/tool contracts locally. It does
 not prove Azure authorization, Kubernetes RBAC, private-cluster reachability,
-runtime tool discovery, concurrent request isolation, or the quality of a live
+runtime tool discovery, target-specific credential-file handling, concurrent
+request isolation, or the quality of a live
 triage result. Those require the deployment-time checks above and an actual
 bounded end-to-end incident test.

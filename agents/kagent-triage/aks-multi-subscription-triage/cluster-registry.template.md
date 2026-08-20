@@ -12,6 +12,8 @@ API endpoints, or customer data.
 Rules:
 
 - Every alias and kube context must be unique.
+- Aliases must contain only lowercase letters, numbers, and hyphens because the
+  agent uses them in target-specific kubeconfig filenames.
 - A row is approved only after Azure access, target-cluster read-only RBAC,
   private API connectivity, and the kube context have been validated.
 - Remove unused placeholder rows from the private copy.

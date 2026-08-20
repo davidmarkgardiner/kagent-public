@@ -49,6 +49,9 @@ for required in (
     "--subscription <resolved-subscription-id>",
     "--context <resolved-kube-context>",
     "Never use `az account set`",
+    "az aks get-credentials --subscription <id>",
+    "--kubeconfig",
+    "never add `--admin`",
     "# GitLab issue draft",
 ):
     assert required in message, required
