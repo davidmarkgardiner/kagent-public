@@ -15,4 +15,4 @@ spec:
       - name: alert_payload
         value: "{}"
   workflowTemplateRef:
-    name: smart-triage-fanout
+    name: smart-triage-selective-orchestrator

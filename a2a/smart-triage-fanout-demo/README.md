@@ -1,17 +1,16 @@
 # Smart Triage Fan-Out Demo
 
-This demo proves the smart-triage orchestration shape:
+The current Alertmanager path proves the selective smart-triage orchestration
+shape:
 
 1. Normalize one synthetic incident payload, or one Alertmanager webhook payload.
 2. Classify the finding against durable management-plane lifecycle state.
-3. Fan out to eight specialist agents when the lifecycle decision requires a
-   new or updated investigation:
-   Kubernetes, network/Hubble, Grafana, GitOps, knowledge/runbooks, deployment
-   state, policy/security, and trace context.
-4. Synthesize the specialist outputs with an incident commander agent.
-5. Suspend for human review.
-6. Resume and prove the final markers.
-7. Run the lifecycle evaluator as a post-run audit gate.
+3. Select one to three relevant existing specialists for an ordinary incident,
+   or all eight only for an explicit bounded full-health audit.
+4. Validate every specialist result as Finding v1 and preserve timeouts,
+   access denials and contract failures as evidence boundaries.
+5. Synthesize one GitLab-ready report linked to the lifecycle decision and the
+   existing human alert path.
 
 The demo is public-safe and recommendation-only. It installs only its own demo
 Agents and workflow RBAC. The GitOps specialist produces an MR/issue draft, not
@@ -27,7 +26,14 @@ unavailable, the workflow emits `STATE_UNAVAILABLE`, continues the existing
 alert/investigation path, and refuses to claim durable deduplication or
 automatic ticket eligibility.
 
-## Proof Markers
+[`selective-orchestrator/`](selective-orchestrator/) is the current Argo Events
+target. It resolves one approved target, selects only the relevant existing
+specialists, validates Finding v1 outputs, applies hard budgets and produces
+one GitLab-ready report. It adds no always-on specialist Deployment. The older
+`smart-triage-fanout` WorkflowTemplate remains available as the unconditional
+comparison baseline.
+
+## Unconditional comparison baseline markers
 
 - `SMART_TRIAGE_FANOUT: started`
 - `LIFECYCLE_STATUS: NEW|ESCALATED|ONGOING|ACKNOWLEDGED|RESOLVED|RECURRENT|PROVISIONAL|STALE|STATE_UNAVAILABLE`
@@ -59,15 +65,13 @@ automatic ticket eligibility.
 
 - kagent in the `kagent` namespace.
 - Argo Workflows in the `argo` namespace.
-- A working chat `ModelConfig`.
+- A working chat `ModelConfig` only for `execution_mode=live`.
 - Local `kubectl`, `argo`, and `jq`.
 - The agent lifecycle eval template installed:
 
   ```bash
   kubectl apply -k observability/agent-evals
   ```
-
-The demo defaults to `MODEL_CONFIG=default-model-config`.
 
 Install the finding lifecycle service before the WorkflowTemplate:
 
@@ -78,14 +82,17 @@ kubectl rollout status -n argo deployment/smart-triage-finding-lifecycle
 
 ## Run
 
+The helper below installs and runs the focused deterministic fixture. It does
+not deploy the specialist Agents:
+
 ```bash
 a2a/smart-triage-fanout-demo/scripts/run-smart-triage-demo.sh
 ```
 
-With explicit context/model:
+With an explicit context:
 
 ```bash
-KUBE_CONTEXT={{KUBE_CONTEXT}} MODEL_CONFIG={{MODEL_CONFIG}} \
+KUBE_CONTEXT={{KUBE_CONTEXT}} \
   a2a/smart-triage-fanout-demo/scripts/run-smart-triage-demo.sh
 ```
 
@@ -99,7 +106,7 @@ Alertmanager -> Argo Events -> smart-triage path:
 EventSource: a2a/smart-triage-fanout-demo/sensors/eventsource-alertmanager.yaml
 Sensor: a2a/smart-triage-fanout-demo/sensors/alertmanager-to-fanout-sensor.yaml
 Cross-namespace submit RBAC: a2a/smart-triage-fanout-demo/sensors/sensor-submit-rbac.yaml
-WorkflowTemplate: a2a/smart-triage-fanout-demo/workflow-template.yaml
+WorkflowTemplate: a2a/smart-triage-fanout-demo/selective-orchestrator/workflow-template.yaml
 Replay helper: a2a/smart-triage-fanout-demo/scripts/replay-alert.sh
 ```
 
@@ -107,6 +114,7 @@ Apply the alert path after the base demo agents/RBAC:
 
 ```bash
 kubectl apply -f a2a/smart-triage-fanout-demo/workflow-template.yaml
+kubectl apply -k a2a/smart-triage-fanout-demo/selective-orchestrator
 kubectl apply -f a2a/smart-triage-fanout-demo/sensors/sensor-submit-rbac.yaml
 kubectl apply -f a2a/smart-triage-fanout-demo/sensors/eventsource-alertmanager.yaml
 kubectl apply -f a2a/smart-triage-fanout-demo/sensors/alertmanager-to-fanout-sensor.yaml
@@ -118,25 +126,23 @@ Replay one public-safe Alertmanager payload:
 a2a/smart-triage-fanout-demo/scripts/replay-alert.sh
 ```
 
-Use a unique synthetic fingerprint when you want to force a fresh first-run
-fan-out:
+Use a unique synthetic reason when you want a fresh lifecycle finding. Changing
+only the upstream Alertmanager fingerprint does not change canonical identity:
 
 ```bash
-ALERT_FINGERPRINT=smart-triage-alert-replay-$(date +%Y%m%d%H%M%S) \
+ALERT_NAME=KubePodCrashLoopingSelective$(date +%Y%m%d%H%M%S) \
   a2a/smart-triage-fanout-demo/scripts/replay-alert.sh
 ```
 
-Expected first-run normalize markers in the workflow logs:
+Expected first-run selective summary in the workflow logs:
 
 ```text
-ALERT_INGESTED: yes
-ALERT_SOURCE: alertmanager
-INCIDENT_NORMALIZED: yes
-ALERT_DUPLICATE: no
-LIFECYCLE_STATUS: NEW
-LIFECYCLE_NOTIFY: true
-AUTO_TICKET_ALLOWED: true
-LIFECYCLE_FINGERPRINT: stf-v1-...
+status: VALIDATED_REPORT
+lifecycle: NEW
+ticketAction: CREATE
+selected: [kubernetes, grafana]
+selectedPathCalls: 3
+unconditionalBaselinePathCalls: 9
 ```
 
 Replay the same stable workload/reason a second time to prove ongoing-state
@@ -145,12 +151,12 @@ identity does not depend on it. The second workflow should complete without
 specialist fan-out:
 
 ```text
-ALERT_DUPLICATE: yes
-LIFECYCLE_STATUS: ONGOING
-LIFECYCLE_NOTIFY: false
-DUPLICATE_SUPPRESSED: yes
-SMART_TRIAGE_DEDUP: suppressed
-FANOUT_SKIPPED: duplicate_alert
+status: UNCHANGED_SUPPRESSED
+lifecycle: ONGOING
+ticketAction: NONE
+selected: []
+specialistCalls: 0
+synthesisCalls: 0
 ```
 
 The Sensor and EventSource include a lab-only control-plane toleration for
@@ -198,7 +204,9 @@ Successful workflow objects are retained for 24 hours for reviewer checks.
 bash -n a2a/smart-triage-fanout-demo/scripts/run-smart-triage-demo.sh
 bash -n a2a/smart-triage-fanout-demo/scripts/replay-alert.sh
 python3 -m unittest discover -s a2a/smart-triage-fanout-demo/finding-lifecycle/tests -v
+sh a2a/smart-triage-fanout-demo/selective-orchestrator/verify.sh
 kubectl kustomize a2a/smart-triage-fanout-demo/finding-lifecycle
+kubectl kustomize a2a/smart-triage-fanout-demo/selective-orchestrator
 kubectl apply --dry-run=server -f a2a/smart-triage-fanout-demo/agents.yaml
 kubectl apply --dry-run=server -f a2a/smart-triage-fanout-demo/workflow-rbac.yaml
 kubectl apply --dry-run=server -f a2a/smart-triage-fanout-demo/workflow-template.yaml
@@ -218,6 +226,7 @@ kubectl delete -f a2a/smart-triage-fanout-demo/sensors/alertmanager-to-fanout-se
 kubectl delete -f a2a/smart-triage-fanout-demo/sensors/eventsource-alertmanager.yaml --ignore-not-found
 kubectl delete -f a2a/smart-triage-fanout-demo/sensors/sensor-submit-rbac.yaml --ignore-not-found
 kubectl delete -f a2a/smart-triage-fanout-demo/workflow-template.yaml --ignore-not-found
+kubectl delete -k a2a/smart-triage-fanout-demo/selective-orchestrator --ignore-not-found
 kubectl delete -k a2a/smart-triage-fanout-demo/finding-lifecycle
 kubectl delete -f a2a/smart-triage-fanout-demo/gitlab-lite-agent.yaml --ignore-not-found
 kubectl delete -f a2a/smart-triage-fanout-demo/gitlab-lite-mcp.yaml --ignore-not-found

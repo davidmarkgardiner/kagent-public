@@ -1,0 +1,14 @@
+{
+  "source": "sanitized-sre-feedback",
+  "trustedFixture": true,
+  "sreOutcome": "FALSE_POSITIVE",
+  "match": {
+    "stableWorkload": "intentional-singleton",
+    "reason": "SingleReplicaObserved"
+  },
+  "correction": {
+    "severity": "info",
+    "confidence": "high",
+    "summary": "A healthy intentional single replica is not actionable without impact or policy evidence."
+  }
+}

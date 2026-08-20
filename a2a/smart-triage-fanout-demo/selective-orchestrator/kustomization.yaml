@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - workflow-template.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: smart-triage-selective-orchestrator-code
+    namespace: argo
+    files:
+      - orchestrator.py=orchestrator.py
+      - approved-targets.json=fixtures/approved-targets.json

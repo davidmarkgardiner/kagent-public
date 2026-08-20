@@ -48,7 +48,7 @@ spec:
                   event-type: prometheus-alert
               spec:
                 workflowTemplateRef:
-                  name: smart-triage-fanout
+                  name: smart-triage-selective-orchestrator
                 arguments:
                   parameters:
                     - name: alert_source
