@@ -25,7 +25,7 @@ will bite during implementation, and two of them (`.internal` domain names; a mi
 | 8 | Pattern 4 lists NGINX / Traefik as steady-state | Time-bombed | Upstream **ingress-nginx maintenance ended March 2026**. The AKS application routing add-on's NGINX is patched by Microsoft only **through November 2026**. Forward options: application routing **Gateway API** implementation, **Istio Gateway API** (GA in the add-on), or **Application Gateway for Containers**. |
 | 9 | "Growing interest in Application Gateway for Containers… some feature gaps around fully private ingress" | Too vague | Be concrete: **AGC supports public frontends only.** No private/internal frontend IP, and **no Private Link support**. A private/dual frontend is an open feature request (Azure/AKS #5739). AGC is therefore **not a candidate** for your architecture today. |
 | 10 | "With Private Link every consumer simply creates a Private Endpoint" | Missing limits | PLS has real ceilings: **TCP/UDP only, IPv4 only, a fixed and non-tunable ~5-minute idle timeout (300s)** — on top of the load balancer's own idle timeout, which defaults to a tighter **4 minutes** — max **8 NAT IPs** per PLS, per-LB and per-subscription PLS caps, and **PLS is not supported when the AKS load balancer backend pool type is `nodeIP`** — you must be on the default `nodeIPConfiguration`. Also unsupported on Basic LB and on Standard LB whose backend pool is IP-configured. |
-| 11 | "DNS becomes the difficult part → use Private DNS Zones" | Missing the actual gotcha | For a **customer-owned PLS there is no Azure-managed `privatelink.*` zone and no automatic DNS zone group.** Azure PaaS private endpoints get DNS for free; PLS private endpoints do **not**. You own the A record → PE private IP, per consumer VNet, for the lifetime of the endpoint. This is the #1 operational cost of the pattern. |
+| 11 | "DNS becomes the difficult part → use Private DNS Zones" | Missing the actual gotcha | For a **consumer-owned private endpoint to your PLS**, there is no Azure-managed `privatelink.*` zone or automatic DNS zone group; maintain A records to that PE IP. **Databricks serverless is different:** Databricks owns its endpoint, and NCC `domain_names` must resolve directly to addresses represented in the load balancer backend pool. |
 | 12 | Cross-tenant "supported" | Correct, with nuance | Cross-tenant visibility works through **RBAC-only** visibility, or `restricted-by-subscription` for pre-approval. Note the asymmetry: **`azure-pls-auto-approval` only takes effect when visibility is `"*"`** (least restrictive). You cannot have tight visibility *and* auto-approval. |
 
 Also: reference `[4]` is a Reddit thread. Fine as colour, not as design authority — don't cite it next to Learn docs.
@@ -68,10 +68,10 @@ This is the most accurate of the three drafts. The core claims are right and wor
 | # | Claim | Status | Correction |
 |---|---|---|---|
 | 1 | Cites `docs.databricks.com/aws/en/security/network/serverless-network-security/pl-to-internal-network` | **Wrong cloud** | That is the **AWS** article (VPC endpoint services, different constraints and different console flow). The Azure article is [learn.microsoft.com/…/serverless-network-security/pl-to-internal-network](https://learn.microsoft.com/en-us/azure/databricks/security/network/serverless-network-security/pl-to-internal-network). The Azure flow is NCC + private endpoint rule + `domain_names`; don't design from the AWS page. |
-| 2 | "Databricks would resolve your API's private FQDN via Private DNS" | Half true for serverless | For **classic** compute, yes — normal private DNS resolution in the workspace VNet. For **serverless**, resolution is driven by the **`domain_names` you register on the NCC rule**, and **DNS chasing/redirects are not supported** — names must resolve directly to the backend. You are not simply pointing Databricks at your private zone. |
+| 2 | "Databricks would resolve your API's private FQDN via Private DNS" | Half true for serverless | For **classic** compute, yes — normal private DNS resolution in the workspace VNet. For **serverless**, resolution is driven by the **`domain_names` you register on the NCC rule**, and **DNS chasing/redirects are not supported** — names must resolve directly to addresses represented in the load balancer backend pool. You are not pointing Databricks at its managed PE IP. |
 | 3 | "Azure Front Door (Private Link origin)" listed as a pre-Istio option | Correct but with a large caveat | AFD **Premium** does support **internal load balancers, explicitly including AKS**, as a private-link origin. But **Front Door is a public edge** — adopting it re-introduces the public endpoint you were eliminating. Also: **AFD does not support mTLS to private-link origins**, health probes follow the same private path, and there's a **7,200 RPS per regional cluster per profile** limit. Only reach for AFD if you actually want public/internet exposure with a private origin. Not for Databricks-to-AKS. |
 | 4 | "Azure Application Gateway" as a pre-Istio option | Valid, with the §1 #6 corrections | Needs a dedicated Private Link subnet with `privateLinkServiceNetworkPolicies` disabled and a frontend association. WAF is a SKU of App Gateway, not a separate hop. |
-| 5 | "Wildcard certificates / multiple hostnames" through one PLS | True, one addition | One consumer private endpoint = **one private IP** serving every hostname. The consumer needs **one A record per hostname, all pointing at that same PE IP**, and for Databricks serverless **every hostname must also be registered in the NCC rule** (max 100 per rule). |
+| 5 | "Wildcard certificates / multiple hostnames" through one PLS | True, one addition | Split the DNS flows. For a **consumer-owned private endpoint**, create one A record per hostname pointing to that PE IP. For **Databricks serverless**, Databricks owns the endpoint; register every hostname in the NCC rule (max 100), and each name must resolve directly to an address represented in the load balancer backend pool. |
 | 6 | "An L4 TCP proxy" / "DDoS mitigation at the edge" as reasons for another gateway | Not applicable here | Traffic arriving over Private Link never touches the internet, so edge DDoS is moot. And PLS is itself the L4 hop. Neither justifies a second gateway on this path. |
 
 **Bottom line: pls.md's recommendation is the correct one** — PLS + Istio ingress gateway, Envoy does the
@@ -135,11 +135,13 @@ flowchart TB
   end
   PLS --> ILB
 
-  subgraph DNS["DNS — you own this"]
-    Z["Private DNS zone contoso.com<br/>A: api.contoso.com -> PE private IP<br/>one record per consumer VNet"]
+  subgraph DNS["DNS contracts"]
+    Z["Consumer-owned PE:<br/>A: api.contoso.com -> PE private IP<br/>one record per hostname and VNet"]
+    NZ["Databricks serverless:<br/>domain_names resolve directly to<br/>addresses in the LB backend pool"]
   end
-  DNS -.->|"resolved by consumer"| PE2
-  DNS -.->|"domain_names must resolve<br/>directly, no CNAME chase"| NCC
+  Z -.->|"resolved by classic compute"| PE2
+  NZ -.->|"registered names;<br/>no DNS chase or redirect"| NCC
+  NZ -.-> ILB
 ```
 
 ### Who does what, in order
@@ -153,10 +155,15 @@ sequenceDiagram
   P->>A: 2. Apply Service with azure-load-balancer-internal<br/>+ azure-pls-create + azure-pls-name
   A-->>P: 3. ILB + PLS created; returns alias
   P->>C: 4. Share PLS resource ID / alias
-  C->>A: 5. Create private endpoint (or NCC rule)
-  A-->>P: 6. Connection request = Pending
-  P->>A: 7. Approve (or pre-approve via auto-approval)
-  C->>C: 8. Create DNS A record -> PE private IP
+  alt Databricks serverless
+    C->>A: 5a. Create NCC rule with PLS resource ID + domain_names
+    C->>C: 6a. Verify each name resolves directly to an LB backend address
+  else Consumer-owned private endpoint
+    C->>A: 5b. Create private endpoint in consumer VNet
+    C->>C: 6b. Create DNS A record -> consumer-owned PE private IP
+  end
+  A-->>P: 7. Connection request = Pending
+  P->>A: 8. Approve (or pre-approve via auto-approval)
   C->>P: 9. Traffic flows; app sees PLS NAT IP as source
 ```
 
@@ -167,6 +174,11 @@ sequenceDiagram
 ### Option A — your own Service (most control, recommended for a platform ingress)
 
 Run a self-managed Istio ingress gateway (or any ingress) so you own the Service object:
+
+The example deliberately pins the PLS in `rg-platform-network`. Before applying it, grant the AKS
+control-plane identity **Network Contributor** scoped to that resource group. The identity has Contributor
+on the node resource group by default, not on arbitrary resource groups. If you omit
+`azure-pls-resource-group`, AKS creates the PLS in the node resource group instead.
 
 ```yaml
 apiVersion: v1
@@ -186,8 +198,9 @@ metadata:
     service.beta.kubernetes.io/azure-pls-ip-configuration-ip-address-count: "8"
     # Visibility: subscription list, or "*" if you need auto-approval.
     service.beta.kubernetes.io/azure-pls-visibility: "<consumer-sub-id> <databricks-sub-id>"
-    # Move the LB idle timer out of the way; the fixed PLS 300s still binds. Minutes, 4-100.
+    # Move the LB idle timer out of the way; the fixed PLS 300s still binds. Minutes, 4-30.
     service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: "30"
+    service.beta.kubernetes.io/azure-load-balancer-disable-tcp-reset: "false"
 spec:
   type: LoadBalancer
   selector:
@@ -269,7 +282,7 @@ Hard constraints, all verified:
 
 - **Premium plan** and **account admin** required.
 - Region ceilings: **10 NCCs per region**, **100 private endpoints per region**, **50 workspaces per NCC**, **100 domain names per rule**.
-- **`domain_names` must resolve directly to the backend.** No DNS chasing, no redirects, no CNAME chains.
+- **`domain_names` must resolve directly to addresses represented in the load balancer backend pool.** No DNS chasing, no redirects, no CNAME chains.
 - **Private-use TLDs (`.internal`, `.localhost`, `.test`) are rejected.** ⚠️ Both draft docs use `api.company.internal` / `*.company.internal`. **Pick a real registered domain** (e.g. `api.contoso.com`) hosted in a private DNS zone.
 - Enter the **specific instance hostname**, not a service-level or wildcard domain.
 - Databricks **bills networking cost** for serverless workloads reaching customer resources.
@@ -281,11 +294,11 @@ Hard constraints, all verified:
 
    **First, scope it correctly: this is an *idle* timeout, not a connection lifetime cap.** It closes
    sockets where **no data has flowed in either direction** for the window. Active traffic resets the timer
-   continuously, so a busy connection stays up indefinitely. Request/response traffic, pooled connections
-   and streaming never hit it.
+   continuously, so a busy connection stays up indefinitely. Any connection without bytes or keepalives can
+   expire, including an idle pooled connection, a quiet stream, or a request waiting silently for a response.
 
-   **The one real risk case** is a long-running request where the server computes for minutes and sends
-   nothing back over the socket — the connection *looks* idle even though work is in progress. That is what
+   A common risk case is a long-running request where the server computes for minutes and sends nothing
+   back over the socket — the connection *looks* idle even though work is in progress. That is what
    keepalive exists to prevent. This is not Private Link-specific or AKS-specific; it is the same behaviour
    every Azure Load Balancer path has had for years.
 
@@ -293,7 +306,7 @@ Hard constraints, all verified:
 
    | Timer | Default | Tunable? |
    |---|---|---|
-   | Standard load balancer rule idle timeout | **4 minutes (240s)** | Yes — 4 to 100 minutes, via `service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout` (integer minutes) |
+   | Standard load balancer rule idle timeout | **4 minutes (240s)** | Yes — 4 to 30 minutes, via `service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout` (integer minutes) |
    | **Private Link Service idle timeout** | **~5 minutes (300s)** | **No. Fixed. Not exposed.** |
 
    So at stock settings the binding constraint is **240s, not 300s**. Raising the LB annotation moves that
@@ -311,9 +324,11 @@ Hard constraints, all verified:
      `service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: "30"`. Do this *and* the above —
      it removes one timer, it does not remove the problem.
 
-   Also enable **TCP reset** on the LB rule (`--enable-tcp-reset`) so an expired connection fails fast with
-   an RST instead of hanging until the client's own timeout. And make callers **retry idempotent requests on
-   connection reset** — with two timers on the path, an occasional reset is normal operation, not an incident.
+   AKS enables **TCP reset on idle by default** so an expired connection fails fast with an RST instead of
+   hanging until the client's own timeout. Keep that reconciled default; if you need to make it explicit on
+   the Service, set `service.beta.kubernetes.io/azure-load-balancer-disable-tcp-reset: "false"` rather than
+   changing the managed load balancer directly. Make callers **retry idempotent requests on connection
+   reset** — with two timers on the path, an occasional reset is normal operation, not an incident.
 
    OS-level `SO_KEEPALIVE`/`TCP_KEEPIDLE` tuning on the Istio gateway's *downstream* listener would need an
    `EnvoyFilter`, which sits outside the add-on's allow-listed customizations — same constraint as PROXY
@@ -378,9 +393,10 @@ Non-negotiables for this to work:
 - [ ] AKS load balancer backend pool type is **`nodeIPConfiguration`** (default). PLS is unsupported on `nodeIP`.
 - [ ] **Dedicated PLS NAT subnet** with `privateLinkServiceNetworkPolicies` **Disabled**, ≥8 free IPs, in the same VNet as the backend pool, **different from the pod subnet**.
 - [ ] PLS **pinned by name and resource group** so revision upgrades don't orphan consumer endpoints.
+- [ ] AKS **control-plane identity has Network Contributor** on the custom PLS resource group; otherwise use the node resource group.
 - [ ] **Real registered domain** for consumer hostnames — never `.internal`.
-- [ ] **DNS ownership documented per consumer**: A record → PE private IP. No zone is created for you.
-- [ ] **Idle-timeout hygiene documented for every consumer**: client pool idle eviction below ~240s, app-level keepalive, LB idle timeout raised via `azure-load-balancer-tcp-idle-timeout`, TCP reset enabled, retry-on-reset for idempotent calls. Pure config — nothing to build.
+- [ ] **DNS path documented per consumer**: consumer-owned PE uses A records to its PE IP; Databricks serverless uses NCC `domain_names` resolving directly to LB backend addresses.
+- [ ] **Idle-timeout hygiene documented for every consumer**: client pool idle eviction below ~240s, app-level keepalive, LB idle timeout raised via `azure-load-balancer-tcp-idle-timeout`, AKS TCP reset default retained, retry-on-reset for idempotent calls. Pure config — nothing to build.
 - [ ] Identity from **mTLS/JWT**, not source IP.
 - [ ] Manual PE approval as the platform gate; auto-approval only if you accept `visibility: "*"`.
 - [ ] Runbook for PE cleanup when a Service or PLS is deleted — Azure will not do it for you.
@@ -447,7 +463,8 @@ flowchart LR
 
 ### Idle timers — what actually expires, and when
 
-Both timers watch for **silence**, not elapsed connection age. Any byte in either direction resets them.
+Both timers watch for **silence**, not elapsed connection age. Any byte in either direction resets them;
+an idle pool entry or quiet stream can still expire.
 
 ```text
   t=0s        t=120s       t=240s              t=300s
@@ -457,7 +474,7 @@ Both timers watch for **silence**, not elapsed connection age. Any byte in eithe
    │            │            ▼                   ▼
    │            │      LB idle timeout      PLS idle timeout
    │            │      DEFAULT 4 min        FIXED ~5 min
-   │            │      tunable 4–100 min    NOT tunable
+   │            │      tunable 4–30 min     NOT tunable
    │            │
    │            └── recommended keepalive / pool-eviction window
    │                (120–180s — comfortably under both)
@@ -504,7 +521,7 @@ Each hop fails with a different signature. Work left to right.
 flowchart LR
   S1["Consumer<br/>client"] --> S2["DNS"] --> S3["Private<br/>endpoint"] --> S4["PLS"] --> S5["Internal<br/>LB"] --> S6["Istio<br/>gateway"] --> S7["Pod"]
 
-  S2 -.-> F2["Resolves to ILB IP, or NXDOMAIN<br/>→ missing A record in consumer zone"]
+  S2 -.-> F2["Wrong address, or NXDOMAIN<br/>→ consumer PE A record is wrong,<br/>or NCC name does not resolve to LB backend"]
   S3 -.-> F3["Connection refused / timeout<br/>→ PE connection still Pending, or rejected"]
   S4 -.-> F4["Timeout, no LB logs at all<br/>→ NAT subnet policies not disabled,<br/>NAT IPs exhausted, or nodeIP backend pool"]
   S5 -.-> F5["Connection resets under load<br/>→ probe failing, or idle timeout"]
@@ -534,7 +551,7 @@ flowchart TB
   subgraph CT["Consumer team owns"]
     direction TB
     CT1["Private endpoint in their VNet<br/>(or Databricks NCC rule)"]
-    CT2["DNS A record → PE private IP"]
+    CT2["DNS per path:<br/>A record → consumer PE IP, or<br/>NCC name → LB backend address"]
     CT3["Client keepalive + pool idle settings"]
     CT4["Retry on connection reset"]
   end

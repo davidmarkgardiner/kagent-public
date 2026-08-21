@@ -376,9 +376,8 @@
     <h3 class="sec-title">Two idle timers — and the load balancer's is the tighter one</h3>
     <p class="sec-note">
       Both timers watch for <strong>silence</strong>, not elapsed connection age. Any byte in either
-      direction resets them, so request/response traffic, pooled connections and streaming never hit them.
-      The genuine risk is a <em>long silence</em> — a request where the server computes for six minutes and
-      sends nothing back.
+      direction resets them, but any connection without bytes or keepalives can expire — including an idle
+      pool entry, a quiet stream, or a request waiting silently for a response.
     </p>
 
     <figure>
@@ -416,7 +415,7 @@
           <!-- callouts -->
           <line x1="600" y1="172" x2="600" y2="192" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="3 3"/>
           <text x="592" y="208" text-anchor="end" font-size="13" font-weight="650" fill="var(--warn)">Load balancer idle timeout</text>
-          <text x="592" y="226" text-anchor="end" font-size="12" class="s-mono s-dim">default 4 min · tunable 4–100 min</text>
+          <text x="592" y="226" text-anchor="end" font-size="12" class="s-mono s-dim">default 4 min · tunable 4–30 min</text>
 
           <line x1="750" y1="172" x2="750" y2="192" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="3 3"/>
           <text x="760" y="208" font-size="13" font-weight="650" fill="var(--bad)">Private Link Service</text>
@@ -442,7 +441,7 @@
             <td>Standard load balancer rule</td>
             <td class="num">4 min (240s)</td>
             <td><span class="tag ok">yes</span></td>
-            <td class="num">azure-load-balancer-tcp-idle-timeout<br>4–100, integer minutes</td>
+            <td class="num">azure-load-balancer-tcp-idle-timeout<br>4–30, integer minutes</td>
           </tr>
           <tr>
             <td>Private Link Service</td>
@@ -459,7 +458,7 @@
       <div class="zone primary">
         <h5>Lever 1 — most robust</h5>
         <p class="zt">Cap client pool idle time</p>
-        <ul><li>Evict idle sockets at 120–180s so a dead connection is never handed back</li>
+        <ul><li>Evict idle sockets at 120–180s to avoid reusing connections that may have expired</li>
             <li><strong>The only lever that works on Databricks serverless</strong>, where you cannot set host socket options</li></ul>
       </div>
       <div class="zone">
@@ -477,7 +476,7 @@
       <div class="zone">
         <h5>Lever 4</h5>
         <p class="zt">Fail fast, retry</p>
-        <ul><li>Enable TCP reset so expiry gives an RST instead of a hang</li>
+        <ul><li>Retain AKS's default TCP reset-on-idle behavior so expiry gives an RST instead of a hang</li>
             <li>Retry idempotent requests on connection reset — with two timers, occasional resets are normal</li></ul>
       </div>
     </div>
@@ -614,9 +613,9 @@
     </div>
 
     <div class="trap gotcha">
-      <div class="thead"><span class="tnum">04</span><span class="ttitle">You own the DNS records — no zone is created for you</span><span class="tag gotcha">ongoing</span></div>
-      <p>Azure PaaS private endpoints get DNS integration free. Private endpoints to a <em>customer</em> PLS do not: there is no <code>privatelink.*</code> zone and no automatic DNS zone group. You maintain an A record → private endpoint IP, per consumer VNet, for the endpoint's lifetime.</p>
-      <p>This is the largest recurring operational cost of the pattern. Ongoing work, not hard work.</p>
+      <div class="thead"><span class="tnum">04</span><span class="ttitle">DNS has two different consumer contracts</span><span class="tag gotcha">ongoing</span></div>
+      <p>For a consumer-owned endpoint to a customer PLS, no <code>privatelink.*</code> zone or zone group is created automatically. Maintain an A record to that endpoint's private IP in each consumer VNet.</p>
+      <p>Databricks owns the serverless endpoint. Its NCC <code>domain_names</code> must instead resolve directly to addresses represented in the load balancer backend pool; do not point them at a Databricks-managed PE IP or rely on DNS chasing.</p>
     </div>
 
     <div class="trap gotcha">
@@ -628,7 +627,7 @@
     <div class="trap gotcha">
       <div class="thead"><span class="tnum">06</span><span class="ttitle">Pin the PLS name, or upgrades orphan your consumers</span><span class="tag gotcha">lifecycle</span></div>
       <p>The PLS binds to the load balancer <em>frontend IP configuration</em>, not to the Service. An Istio add-on minor-revision upgrade creates a second gateway Service and frontend. When a Service is deleted the PLS may survive, active connections drop, and consumer private endpoints become obsolete — <strong>and Azure will not clean them up for you</strong>.</p>
-      <p><strong>Fix:</strong> set <code>azure-pls-name</code> and <code>azure-pls-resource-group</code> explicitly, and write a PE-cleanup runbook.</p>
+      <p><strong>Fix:</strong> set <code>azure-pls-name</code> and <code>azure-pls-resource-group</code> explicitly, grant the AKS control-plane identity Network Contributor on that custom resource group, and write a PE-cleanup runbook. Without that grant, use the node resource group.</p>
     </div>
 
     <div class="trap gotcha">
@@ -642,8 +641,9 @@
     <h2 class="sec">Provider side</h2>
     <h3 class="sec-title">What the Service actually looks like</h3>
     <p class="sec-note">
-      The entire Azure-side build is this manifest. Applying it creates the internal load balancer and the
-      Private Link Service, and returns an alias you hand to consumers.
+      The entire Azure-side build is this manifest. Before applying it, grant the AKS control-plane identity
+      Network Contributor on <code>rg-platform-network</code>; its default Contributor grant covers only the
+      node resource group. Applying the manifest creates the internal load balancer and Private Link Service.
     </p>
 <pre><code><span class="key">apiVersion</span>: v1
 <span class="key">kind</span>: Service
@@ -665,6 +665,7 @@
     service.beta.kubernetes.io/azure-pls-visibility: <span class="val">"&lt;consumer-sub-id&gt; &lt;databricks-sub-id&gt;"</span>
     <span class="cmt"># Move the LB idle timer out of the way; the fixed PLS 300s still binds.</span>
     service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: <span class="val">"30"</span>
+    service.beta.kubernetes.io/azure-load-balancer-disable-tcp-reset: <span class="val">"false"</span>
 <span class="key">spec</span>:
   <span class="key">type</span>: LoadBalancer
   <span class="key">selector</span>:
@@ -686,7 +687,8 @@
           <tr><td class="num">5</td><td>Consumer</td><td>Create private endpoint, or a Databricks NCC private endpoint rule</td></tr>
           <tr><td class="num">6</td><td>Azure</td><td>Connection request appears as <strong>Pending</strong></td></tr>
           <tr><td class="num">7</td><td>Platform</td><td>Approve — this is your gate. Keep it manual.</td></tr>
-          <tr><td class="num">8</td><td>Consumer</td><td>Create the DNS A record → private endpoint IP</td></tr>
+          <tr><td class="num">8a</td><td>Databricks serverless</td><td>Verify every NCC <code>domain_name</code> resolves directly to an LB backend address</td></tr>
+          <tr><td class="num">8b</td><td>Consumer-owned PE</td><td>Create the DNS A record → that private endpoint's IP</td></tr>
           <tr><td class="num">9</td><td>Both</td><td>Traffic flows. App sees the PLS NAT IP as source.</td></tr>
         </tbody>
       </table>
@@ -702,7 +704,7 @@
       <table>
         <thead><tr><th>Hop</th><th>Symptom</th><th>Likely cause</th></tr></thead>
         <tbody>
-          <tr><td><strong>DNS</strong></td><td>Resolves to the internal LB IP, or NXDOMAIN</td><td>Missing or wrong A record in the consumer's zone</td></tr>
+          <tr><td><strong>DNS</strong></td><td>Wrong address, or NXDOMAIN</td><td>Consumer PE A record is wrong, or an NCC name does not resolve directly to an LB backend address</td></tr>
           <tr><td><strong>Private endpoint</strong></td><td>Connection refused or timeout</td><td>Connection still <em>Pending</em>, or rejected; consumer subscription outside the visibility list</td></tr>
           <tr><td><strong>Private Link Service</strong></td><td>Timeout, and no load balancer logs at all</td><td>NAT subnet policies not disabled, NAT IPs exhausted, or <code>nodeIP</code> backend pool</td></tr>
           <tr><td><strong>Internal LB</strong></td><td>Resets under load, or drops after a pause</td><td>Health probe failing, or idle timeout with no keepalive</td></tr>
@@ -763,10 +765,10 @@
     <ul class="check">
       <li>AKS load balancer backend pool type is <code>nodeIPConfiguration</code> (the default). PLS is unsupported on <code>nodeIP</code>.</li>
       <li>Dedicated PLS NAT subnet, <code>privateLinkServiceNetworkPolicies</code> <strong>Disabled</strong>, 8+ free IPs, same VNet as the backend pool, <strong>different from the pod subnet</strong>.</li>
-      <li>PLS pinned by name and resource group so revision upgrades don't orphan consumer endpoints.</li>
+      <li>PLS pinned by name and resource group so revision upgrades don't orphan consumer endpoints; AKS control-plane identity has Network Contributor on that custom resource group.</li>
       <li>A real registered domain for consumer hostnames — never <code>.internal</code>.</li>
-      <li>DNS ownership documented per consumer: A record → private endpoint IP. No zone is created for you.</li>
-      <li>Idle-timeout hygiene in consumer onboarding: pool eviction under ~240s, app keepalive, LB timer raised, TCP reset on, retry on reset.</li>
+      <li>DNS path documented per consumer: consumer-owned PE uses A records to its PE IP; Databricks serverless uses NCC names resolving directly to LB backend addresses.</li>
+      <li>Idle-timeout hygiene in consumer onboarding: pool eviction under ~240s, app keepalive, LB timer raised, AKS TCP reset default retained, retry on reset.</li>
       <li>Identity from mTLS or JWT, never from source IP.</li>
       <li>Manual private endpoint approval as the platform gate. Auto-approval only if you accept <code>visibility: "*"</code>.</li>
       <li>Runbook for private endpoint cleanup when a Service or PLS is deleted — Azure will not do it.</li>
