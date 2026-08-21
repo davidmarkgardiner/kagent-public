@@ -337,10 +337,13 @@ the password deployment or Secret:
 2. the approved view query succeeds;
 3. direct base-table access is denied;
 4. write access is denied;
-5. a fresh second database connection succeeds, proving token refresh is not a
-   one-off bootstrap;
-6. Gateway MCP discovery and the same kagent/A2A question still work;
-7. no password, access token, or connection string appears in the Deployment,
+5. a fresh second database connection succeeds, proving the reconnect path but
+   not, by itself, post-expiry token refresh;
+6. while the same Pod remains running, an extended gate crosses the original
+   access-token expiry boundary and a new database connection succeeds; record
+   only the gate timestamps and result, never the token;
+7. Gateway MCP discovery and the same kagent/A2A question still work;
+8. no password, access token, or connection string appears in the Deployment,
    ConfigMap, logs, or stored evidence.
 
 Run the local bundle gate as well:

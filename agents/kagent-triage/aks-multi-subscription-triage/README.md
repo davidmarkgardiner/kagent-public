@@ -134,8 +134,8 @@ Example invocation using the repository helper:
 
 ```bash
 scripts/kagent-a2a-invoke.sh \
-  aks-multi-subscription-triage-agent \
-  'Incident INC-{{ID}}: cluster alias {{ALIAS}}, namespace {{NAMESPACE}}, workload deployment/{{WORKLOAD}} reports CrashLoopBackOff. Triage the supplied symptom and draft the GitLab issue.'
+  --agent aks-multi-subscription-triage-agent \
+  --text 'Incident INC-{{ID}}: cluster alias {{ALIAS}}, namespace {{NAMESPACE}}, workload deployment/{{WORKLOAD}} reports CrashLoopBackOff. Triage the supplied symptom and draft the GitLab issue.'
 ```
 
 ## Input contract
