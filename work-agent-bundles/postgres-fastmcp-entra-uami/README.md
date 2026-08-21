@@ -17,6 +17,12 @@ This is a self-contained work bundle. Its deployable source is
 MCPg is not part of this workflow. Do not mix this bundle with the separate
 MCPg examples at `../postgres-mcpg-password/`.
 
+For the workplace UAMI setup, required variables, federation permissions, and
+an owner-by-owner command walkthrough, start with
+[`README-UAMI-WORKLOAD-IDENTITY.md`](README-UAMI-WORKLOAD-IDENTITY.md).
+It explains why the AKS OIDC issuer is a cluster URL rather than a separate
+"OIDC subscription", and why no access token should be stored in Kubernetes.
+
 Run `scripts/verify-bundle.sh` before handoff. It renders both authentication
 paths, checks that their identity wiring remains separate, validates the shared
 adapter source, and runs the public-safety scan.
