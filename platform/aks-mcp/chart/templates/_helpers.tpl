@@ -89,3 +89,32 @@ Generate OAuth CORS origins
 {{- join "," .Values.oauth.corsOrigins -}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Fail early for invalid or unsafe autoscaling combinations.
+*/}}
+{{- define "aks-mcp.validateAutoscaling" -}}
+{{- $mode := .Values.autoscaling.mode -}}
+{{- if not (has $mode (list "disabled" "keda" "hpa")) -}}
+{{- fail (printf "autoscaling.mode must be one of disabled, keda, or hpa; got %q" $mode) -}}
+{{- end -}}
+{{- if and (ne $mode "disabled") (eq .Values.app.transport "stdio") -}}
+{{- fail "horizontal autoscaling requires an HTTP transport; app.transport=stdio cannot be exposed by the Service" -}}
+{{- end -}}
+{{- if and (ne $mode "disabled") (lt (int .Values.autoscaling.minReplicas) 1) -}}
+{{- fail "autoscaling.minReplicas must be at least 1 for the always-available MCP endpoint" -}}
+{{- end -}}
+{{- if lt (int .Values.autoscaling.maxReplicas) (int .Values.autoscaling.minReplicas) -}}
+{{- fail "autoscaling.maxReplicas must be greater than or equal to autoscaling.minReplicas" -}}
+{{- end -}}
+{{- if eq $mode "keda" -}}
+{{- $_ := required "autoscaling.keda.prometheus.serverAddress is required when autoscaling.mode=keda" .Values.autoscaling.keda.prometheus.serverAddress -}}
+{{- $_ := required "autoscaling.keda.prometheus.query is required when autoscaling.mode=keda" .Values.autoscaling.keda.prometheus.query -}}
+{{- if and .Values.autoscaling.keda.authentication.create (empty .Values.autoscaling.keda.authentication.azureWorkloadIdentity.identityId) -}}
+{{- fail "autoscaling.keda.authentication.azureWorkloadIdentity.identityId is required when creating the TriggerAuthentication" -}}
+{{- end -}}
+{{- end -}}
+{{- if and .Values.vpa.enabled (ne .Values.vpa.updateMode "Off") -}}
+{{- fail "this chart supports VPA in recommendation-only mode; vpa.updateMode must be Off" -}}
+{{- end -}}
+{{- end }}

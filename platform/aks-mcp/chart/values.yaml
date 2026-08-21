@@ -6,11 +6,25 @@ image:
   repository: ghcr.io/azure/aks-mcp
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  # Keep empty to pin to Chart.appVersion. Do not use latest: v0.0.20 changed
+  # AKS-MCP to stdio-only and cannot serve this chart's HTTP Service.
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+# Fixed replica count used when autoscaling is disabled and as the safe starting
+# point during an autoscaler rollout.
+replicaCount: 1
+revisionHistoryLimit: 3
+minReadySeconds: 5
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
 
 # Application configuration
 app:
@@ -132,6 +146,95 @@ securityContext:
 service:
   type: ClusterIP
   port: 8000
+  # Streamable HTTP in AKS-MCP v0.0.16 uses stateless session-ID validation for
+  # ordinary POST requests. Keep None unless a tested future version requires
+  # client affinity; ClientIP can concentrate all kagent traffic on one pod.
+  sessionAffinity: None
+
+# Select exactly one horizontal scaling controller. KEDA creates and owns an
+# HPA, so mode=keda and mode=hpa are deliberately mutually exclusive.
+autoscaling:
+  # disabled, keda, or hpa
+  mode: disabled
+  minReplicas: 2
+  maxReplicas: 10
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      selectPolicy: Max
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    # Slow scale-down protects long-running MCP requests and avoids flapping.
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      selectPolicy: Min
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+  keda:
+    pollingInterval: 15
+    cooldownPeriod: 300
+    fallback:
+      enabled: true
+      failureThreshold: 3
+      replicas: 2
+    prometheus:
+      # A Prometheus HTTP query endpoint. For Azure Managed Prometheus this is
+      # the workspace query endpoint, not the ingestion endpoint.
+      serverAddress: ""
+      # Must return one scalar/vector element. Prefer active requests; use RPS
+      # only when an in-flight request gauge is unavailable.
+      query: ""
+      # Desired active requests or requests/second per replica.
+      threshold: "10"
+      activationThreshold: "1"
+      # Empty results should fail the scaler and activate fallback capacity.
+      ignoreNullValues: false
+      unsafeSsl: false
+      timeout: "3000"
+      # Set only for an existing bearer/basic/TLS TriggerAuthentication.
+      authModes: ""
+    authentication:
+      # When true, the chart creates an Azure Workload Identity
+      # TriggerAuthentication for Azure Managed Prometheus.
+      create: false
+      # When create=false, set name to reference an existing authentication.
+      name: ""
+      kind: TriggerAuthentication
+      azureWorkloadIdentity:
+        # Use a dedicated scaler UAMI with Monitoring Data Reader on the Azure
+        # Monitor workspace; do not grant it AKS-MCP's cluster permissions.
+        identityId: ""
+  hpa:
+    # CPU is a fallback only. Request/concurrency metrics are the preferred
+    # signal because remote Azure/kubectl calls can be I/O-bound.
+    targetCPUUtilizationPercentage: 70
+
+# VPA is intentionally recommendation-only. It may inform future requests but
+# must not mutate CPU/memory while horizontal scaling is being evaluated.
+vpa:
+  enabled: false
+  updateMode: "Off"
+  controlledResources:
+    - cpu
+    - memory
+  controlledValues: RequestsOnly
+  minAllowed:
+    cpu: 50m
+    memory: 64Mi
+  maxAllowed:
+    cpu: "1"
+    memory: 1Gi
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
 
 resources:
   limits:
@@ -159,6 +262,11 @@ readinessProbe:
   timeoutSeconds: 3
   failureThreshold: 3
 
+# The upstream container includes /bin/sh. A preStop delay gives Services time
+# to remove a terminating pod before SIGTERM ends any in-flight connection.
+terminationGracePeriodSeconds: 45
+lifecycle: {}
+
 # Extension points for advanced usage
 extraVolumes: []
 extraVolumeMounts: []
@@ -169,3 +277,4 @@ podAnnotations: {}
 nodeSelector: {}
 tolerations: []
 affinity: {}
+topologySpreadConstraints: []
