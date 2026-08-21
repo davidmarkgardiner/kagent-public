@@ -23,6 +23,8 @@ helm install my-aks-mcp . --namespace aks-mcp --create-namespace
 ## Configuration
 
 For detailed configuration parameters, see [helm-chart.md](./helm-chart.md).
+For the AKS request-autoscaling modes, production example, and fail-fast
+guardrails, see [the autoscaling guide](../AUTOSCALING.md).
 
 ## Deployment Examples
 

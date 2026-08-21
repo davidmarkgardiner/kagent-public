@@ -59,6 +59,14 @@ The chart pins its default image to `Chart.appVersion` (`v0.0.16`) instead of
 stdio-only process cannot be horizontally scaled behind this HTTP Service
 without a separately designed gateway/wrapper and its own session tests.
 
+Horizontal autoscaling is accepted only with `app.transport=streamable-http`
+and `oauth.enabled=false`. The chart also rejects a minimum below one, a
+maximum below the minimum, missing KEDA Prometheus endpoint/query values, a
+chart-created authentication object whose kind is not `TriggerAuthentication`,
+and a chart-created Azure Workload Identity authentication without an identity
+ID. These fail-fast checks keep unsupported transport, state, and identity
+combinations out of rendered manifests.
+
 ## Pick the metric before applying
 
 The example deliberately contains:

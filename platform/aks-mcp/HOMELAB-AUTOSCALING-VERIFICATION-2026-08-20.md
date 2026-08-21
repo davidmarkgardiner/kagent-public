@@ -13,6 +13,12 @@ traffic, Azure API throttling, or AKS node capacity.
 
 ## Static and chart gates
 
+These results were captured on 2026-08-20, before the subsequent ingress
+NetworkPolicy and expanded transport, OAuth, and KEDA authentication
+guardrails were added. The current contract and render checks are owned by
+[`AUTOSCALING.md`](AUTOSCALING.md#what-is-implemented) and
+[`scripts/verify-autoscaling.sh`](scripts/verify-autoscaling.sh).
+
 | Check | Result |
 |---|---|
 | `helm lint platform/aks-mcp/chart` | Passed: one chart linted, zero failed |
@@ -23,7 +29,7 @@ traffic, Azure API throttling, or AKS node capacity.
 | Public-safety scan | `{"clean":true,"hits":0}` |
 | `git diff --check` | Passed |
 
-The render test also proved that the chart rejects:
+The captured render test also proved that the chart rejected:
 
 - an unknown or combined autoscaling mode;
 - KEDA mode without a Prometheus endpoint and query;
@@ -112,7 +118,7 @@ health=Happy failures=0
 ### Full target schema result
 
 The current upstream VPA v1 CRD was added only to the disposable cluster. The
-complete `values-autoscaling-aks.yaml` render then passed server-side dry-run
+then-current `values-autoscaling-aks.yaml` render passed server-side dry-run
 for all of these resources:
 
 ```text
@@ -127,6 +133,9 @@ ScaledObject
 TriggerAuthentication
 VerticalPodAutoscaler
 ```
+
+The ingress NetworkPolicy was added after this disposable-cluster run, so this
+receipt makes no live server-side dry-run claim for that later resource.
 
 The disposable kind cluster and all of its test resources were deleted after
 the evidence was captured.
