@@ -33,6 +33,10 @@ one GitLab-ready report. It adds no always-on specialist Deployment. The older
 `smart-triage-fanout` WorkflowTemplate remains available as the unconditional
 comparison baseline.
 
+The source-pinned comparison with LangChain's autonomous Kubernetes SRE sample,
+including the adopt/reject mapping and delivery sequence, is
+[`docs/research/langchain-sre-agent-vs-kagent.md`](../../docs/research/langchain-sre-agent-vs-kagent.md).
+
 ## Unconditional comparison baseline markers
 
 - `SMART_TRIAGE_FANOUT: started`
