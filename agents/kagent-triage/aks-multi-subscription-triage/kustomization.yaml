@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - agent.yaml
+
+configMapGenerator:
+  - name: aks-triage-cluster-registry
+    namespace: kagent
+    files:
+      - cluster-registry.md=cluster-registry.private.md
+  - name: aks-multi-subscription-triage-values
+    namespace: kagent
+    envs:
+      - work-values.env
+generatorOptions:
+  disableNameSuffixHash: true
+
+replacements:
+  - source: {kind: ConfigMap, name: aks-multi-subscription-triage-values, fieldPath: data.kagentNamespace}
+    targets:
+      - select: {kind: Agent, name: aks-multi-subscription-triage-agent}
+        fieldPaths:
+          - metadata.namespace
+          - spec.declarative.tools.0.mcpServer.namespace
+      - select: {kind: ConfigMap, name: aks-triage-cluster-registry}
+        fieldPaths: [metadata.namespace]
+      - select: {kind: ConfigMap, name: aks-multi-subscription-triage-values}
+        fieldPaths: [metadata.namespace]
+  - source: {kind: ConfigMap, name: aks-multi-subscription-triage-values, fieldPath: data.modelConfig}
+    targets:
+      - select: {kind: Agent, name: aks-multi-subscription-triage-agent}
+        fieldPaths: [spec.declarative.modelConfig]
+  - source: {kind: ConfigMap, name: aks-multi-subscription-triage-values, fieldPath: data.aksMcpRemoteServer}
+    targets:
+      - select: {kind: Agent, name: aks-multi-subscription-triage-agent}
+        fieldPaths: [spec.declarative.tools.0.mcpServer.name]

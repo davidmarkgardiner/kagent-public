@@ -1,0 +1,57 @@
+# Lab/admin example only. Production agents should use a smaller explicit list.
+# Confirm actual discovery with: kubectl -n kagent get remotemcpserver aks-mcp -o yaml
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: aks-mcp
+  namespace: kagent
+spec:
+  description: AKS MCP endpoint; discovery determines the tools exposed by this server.
+  protocol: STREAMABLE_HTTP
+  url: http://aks-mcp.aks-mcp.svc.cluster.local:8000/mcp
+  timeout: 120s
+  sseReadTimeout: 10m0s
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: aks-mcp-all-tools-lab-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/part-of: aks-mcp-examples
+    example.kagent.dev/scope: lab-only
+spec:
+  type: Declarative
+  description: Lab-only agent with every AKS MCP chart-default tool explicitly mounted.
+  declarative:
+    runtime: go
+    modelConfig: default-model-config
+    systemMessage: |
+      You are a lab AKS operations agent. Use AKS MCP tools only when necessary.
+      Confirm intent before any mutating operation. Never expose secrets, tokens,
+      kubeconfig content, or cloud credentials. Do not merge, publish, or deploy
+      application workloads without explicit approval.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: aks-mcp
+          namespace: kagent
+          # Explicit allowlist: all tools expected from a chart-default AKS MCP.
+          # If discovery differs, remove tools that are not reported by its status.
+          toolNames:
+            - call_az
+            - call_kubectl
+            - helm
+            - cilium
+            - hubble
+            - az_monitoring
+            - az_fleet
+            - az_network_resources
+            - get_aks_vmss_info
+            - list_detectors
+            - run_detector
+            - run_detectors_by_category
+            - az_advisor_recommendation
+            - inspektor_gadget_observability

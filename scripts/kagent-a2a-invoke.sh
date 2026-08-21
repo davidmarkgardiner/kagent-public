@@ -19,14 +19,17 @@
 #   --payload-file FILE  JSON file containing a raw JSON-RPC "params" object,
 #                        overriding the default message envelope
 #   --ns NS              Agent namespace in the A2A path (default: kagent)
+#   --sandbox            Invoke a SandboxAgent through /api/a2a-sandboxes/
+#   --context-id ID      A2A context/session ID; reuse it to continue a task
 #   --controller-ns NS   Namespace of svc/kagent-controller (default: kagent)
 #   --context CTX        kubectl context for the port-forward
 #   --local-port PORT    Local port for the port-forward (default: 8083)
 #   --url URL            Controller base URL; skips the port-forward entirely
 #                        (e.g. http://kagent-controller.kagent.svc.cluster.local:8083)
 #   --timeout SECS       Max seconds to wait for the agent reply (default: 60)
+#   --receipt-file FILE  Write the raw terminal JSON-RPC response to FILE
 #   --raw                Print the full JSON-RPC response body
-#   --json               Print {"agent","ok","text","elapsed_ms"} instead of text
+#   --json               Print {"agent","ok","text","elapsed_ms",...} instead of text
 #   -h, --help           Show this help
 #
 # Exit codes:
@@ -34,18 +37,21 @@
 #   2  agent not found (cross-checked against GET /api/agents)
 #   3  transport or port-forward failure
 #   4  timeout waiting for the agent reply
-#   5  response contained no artifact text
+#   5  terminal response contained no agent text
 set -euo pipefail
 
 AGENT=""
 TEXT=""
 PAYLOAD_FILE=""
 NS="kagent"
+SANDBOX=0
+CONTEXT_ID=""
 CONTROLLER_NS="kagent"
 CONTEXT=""
 LOCAL_PORT="8083"
 URL=""
 TIMEOUT="60"
+RECEIPT_FILE=""
 RAW=0
 JSON_OUT=0
 
@@ -60,11 +66,14 @@ while [[ $# -gt 0 ]]; do
     --text)         TEXT="$2"; shift 2 ;;
     --payload-file) PAYLOAD_FILE="$2"; shift 2 ;;
     --ns)           NS="$2"; shift 2 ;;
+    --sandbox)      SANDBOX=1; shift ;;
+    --context-id)   CONTEXT_ID="$2"; shift 2 ;;
     --controller-ns) CONTROLLER_NS="$2"; shift 2 ;;
     --context)      CONTEXT="$2"; shift 2 ;;
     --local-port)   LOCAL_PORT="$2"; shift 2 ;;
     --url)          URL="$2"; shift 2 ;;
     --timeout)      TIMEOUT="$2"; shift 2 ;;
+    --receipt-file) RECEIPT_FILE="$2"; shift 2 ;;
     --raw)          RAW=1; shift ;;
     --json)         JSON_OUT=1; shift ;;
     -h|--help)      usage 0 ;;
@@ -129,16 +138,27 @@ fi
 
 BASE="${URL%/}"
 # Footgun 1: the trailing slash below is REQUIRED — without it kagent returns 404.
-A2A_URL="${BASE}/api/a2a/${NS}/${AGENT}/"
+A2A_PATH="api/a2a"
+if [[ "$SANDBOX" -eq 1 ]]; then
+  A2A_PATH="api/a2a-sandboxes"
+fi
+A2A_URL="${BASE}/${A2A_PATH}/${NS}/${AGENT}/"
 
 REQ_ID="invoke-$$-$(date +%s)"
+if [[ -z "$CONTEXT_ID" ]]; then
+  CONTEXT_ID="context-${REQ_ID}"
+fi
 if [[ -n "$PAYLOAD_FILE" ]]; then
   PAYLOAD=$(jq -c --arg id "$REQ_ID" '{jsonrpc:"2.0", id:$id, method:"message/send", params:.}' "$PAYLOAD_FILE")
 else
-  # Footgun 2: each part must carry "kind":"text" or kagent rejects/ignores it.
+  # Footgun 2: the message needs a kind and unique messageId, and every part
+  # needs kind:"text". Some A2A implementations accept less, but the full
+  # envelope is required by the kagent-backed bridge fixtures.
   PAYLOAD=$(jq -cn --arg id "$REQ_ID" --arg text "$TEXT" \
+    --arg context "$CONTEXT_ID" \
     '{jsonrpc:"2.0", id:$id, method:"message/send",
-      params:{message:{role:"user", parts:[{kind:"text", text:$text}]}}}')
+      params:{message:{kind:"message", messageId:$id, contextId:$context, role:"user",
+                       parts:[{kind:"text", text:$text}]}}}')
 fi
 
 agent_listed() {
@@ -173,7 +193,7 @@ if [[ "$HTTP_CODE" == "404" ]]; then
     echo "kagent-a2a-invoke.sh: agent '${AGENT}' not found in ${BASE}/api/agents" >&2
     exit 2
   fi
-  echo "kagent-a2a-invoke.sh: 404 from ${A2A_URL} although the agent is listed — check --ns" >&2
+  echo "kagent-a2a-invoke.sh: 404 from ${A2A_URL} although the agent is listed — check --ns or --sandbox" >&2
   exit 3
 fi
 if [[ "$HTTP_CODE" != "200" ]]; then
@@ -181,6 +201,20 @@ if [[ "$HTTP_CODE" != "200" ]]; then
   head -c 2000 "$BODY_FILE" >&2 || true
   echo >&2
   exit 3
+fi
+
+if [[ -n "$RECEIPT_FILE" ]]; then
+  receipt_parent="$(dirname "$RECEIPT_FILE")"
+  if [[ ! -d "$receipt_parent" ]]; then
+    echo "kagent-a2a-invoke.sh: receipt directory does not exist: ${receipt_parent}" >&2
+    exit 3
+  fi
+  # Receipts can contain prompts and returned business data.  Do not create one
+  # implicitly; when explicitly requested, save the exact controller response
+  # with owner-only permissions for durable correlation and review.
+  umask 077
+  cp "$BODY_FILE" "$RECEIPT_FILE"
+  chmod 600 "$RECEIPT_FILE"
 fi
 
 if jq -e '.error' "$BODY_FILE" >/dev/null 2>&1; then
@@ -198,16 +232,41 @@ if [[ "$RAW" -eq 1 ]]; then
   exit 0
 fi
 
-REPLY=$(jq -r '[.result.artifacts[]?.parts[]? | select(.text != null) | .text] | join("\n")' "$BODY_FILE")
+# The normal terminal A2A shape has result.artifacts[].parts[].text.  Some
+# controller/runtime paths persist a completed task but omit that projection
+# from the immediate response, while retaining the terminal assistant message
+# in result.history.  Use the final text-bearing agent history message only as
+# a fallback; never treat tool-call arguments or function responses as a reply.
+REPLY_SOURCE="artifact"
+REPLY=$(jq -r '
+  def text_parts:
+    ([.parts[]? | select(.kind == "text" and (.text | type == "string")) | .text] | join("\n"))
+    # Do not expose model reasoning tags in the caller-facing output.
+    # The optional raw receipt remains the diagnostic source of truth.
+    | gsub("(?s:<think>.*?</think>)[[:space:]]*"; "");
+  ([.result.artifacts[]? | text_parts | select(length > 0)] | join("\n")) as $artifacts
+  | if ($artifacts | length) > 0 then $artifacts
+    else ([.result.history[]?
+           | select(.role == "agent")
+           | text_parts
+           | select(length > 0)] | last // "")
+    end
+' "$BODY_FILE")
+if [[ -z "$(jq -r '
+  ([.result.artifacts[]?.parts[]? | select(.kind == "text" and (.text | type == "string")) | .text] | join("\n"))
+  | gsub("(?s:<think>.*?</think>)[[:space:]]*"; "")
+' "$BODY_FILE")" ]]; then
+  REPLY_SOURCE="history-fallback"
+fi
 if [[ -z "$REPLY" ]]; then
-  echo "kagent-a2a-invoke.sh: response contained no artifact text (state: $(jq -r '.result.status.state // "?"' "$BODY_FILE"))" >&2
-  echo "hint: rerun with --raw to inspect the full JSON-RPC response" >&2
+  echo "kagent-a2a-invoke.sh: terminal response contained no agent text (state: $(jq -r '.result.status.state // "?"' "$BODY_FILE"))" >&2
+  echo "hint: rerun with --raw or --receipt-file to inspect the full JSON-RPC response" >&2
   exit 5
 fi
 
 if [[ "$JSON_OUT" -eq 1 ]]; then
-  jq -n --arg agent "$AGENT" --arg text "$REPLY" --argjson ms "$ELAPSED_MS" \
-    '{agent:$agent, ok:true, text:$text, elapsed_ms:$ms}'
+  jq -n --arg agent "$AGENT" --arg text "$REPLY" --arg reply_source "$REPLY_SOURCE" --argjson ms "$ELAPSED_MS" \
+    '{agent:$agent, ok:true, text:$text, reply_source:$reply_source, elapsed_ms:$ms}'
 else
   printf '%s\n' "$REPLY"
 fi

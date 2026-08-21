@@ -45,6 +45,60 @@ expect_rc 3 "a2a-invoke rejects absent payload file" \
 expect_rc 3 "a2a-invoke fails fast on unreachable --url" \
   "$ROOT/scripts/kagent-a2a-invoke.sh" --agent x --text hi --url http://127.0.0.1:1 --timeout 2
 
+# Capture the generated default request without making a network call. This
+# protects the A2A wire contract: a message needs a kind and unique messageId,
+# not only a text part.
+mkdir -p "$TMP/fake-bin"
+cat > "$TMP/fake-bin/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+out=""
+data=""
+printf '%s\n' "$@" > "$FAKE_CURL_ARGS"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    -d) data="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf '%s' "$data" > "$FAKE_CURL_CAPTURE"
+if [[ -n "${FAKE_CURL_BODY:-}" ]]; then
+  printf '%s' "$FAKE_CURL_BODY" > "$out"
+else
+  printf '%s' '{"jsonrpc":"2.0","result":{"status":{"state":"completed"},"artifacts":[{"parts":[{"kind":"text","text":"fixture-ok"}]}]}}' > "$out"
+fi
+printf '200'
+EOF
+chmod +x "$TMP/fake-bin/curl"
+FAKE_CURL_CAPTURE="$TMP/a2a-request.json" FAKE_CURL_ARGS="$TMP/a2a-request.args" PATH="$TMP/fake-bin:$PATH" \
+  "$ROOT/scripts/kagent-a2a-invoke.sh" --agent fixture --text hello \
+  --url http://fixture.invalid --sandbox --context-id fixture-context --raw >/dev/null \
+  || fail "a2a-invoke accepts a complete fixture response"
+jq -e '
+  .jsonrpc == "2.0"
+  and .method == "message/send"
+  and .params.message.kind == "message"
+  and (.params.message.messageId | type == "string" and length > 0)
+  and .params.message.contextId == "fixture-context"
+  and .params.message.parts == [{"kind":"text","text":"hello"}]
+' "$TMP/a2a-request.json" >/dev/null \
+  || fail "a2a-invoke emits the complete default A2A envelope"
+grep -q '/api/a2a-sandboxes/kagent/fixture/' "$TMP/a2a-request.args" \
+  || fail "a2a-invoke selects the SandboxAgent route"
+pass "a2a-invoke emits the complete default A2A envelope"
+
+# A controller can return a completed task without result.artifacts while the
+# final assistant message remains in result.history. The helper must surface
+# that terminal text, not mistakenly print tool-call payloads or fail empty.
+FAKE_CURL_BODY='{"jsonrpc":"2.0","result":{"status":{"state":"completed"},"history":[{"role":"agent","parts":[{"kind":"data","data":{"name":"read_records"}}]},{"role":"agent","parts":[{"kind":"text","text":"<think>internal chain of thought</think>\n\nhistory-final-ok"}]}]}}' \
+  FAKE_CURL_CAPTURE="$TMP/a2a-history-request.json" FAKE_CURL_ARGS="$TMP/a2a-history-request.args" PATH="$TMP/fake-bin:$PATH" "$ROOT/scripts/kagent-a2a-invoke.sh" --agent fixture --text hello \
+  --url http://fixture.invalid --json > "$TMP/a2a-history-fallback.json" \
+  || fail "a2a-invoke accepts a history-only terminal response"
+jq -e '.text == "history-final-ok" and .reply_source == "history-fallback"' "$TMP/a2a-history-fallback.json" >/dev/null \
+  || fail "a2a-invoke extracts final text from agent history"
+pass "a2a-invoke extracts final text from agent history"
+
 # ---- kagent-verify-agent.sh -------------------------------------------------
 expect_rc 0 "verify-agent --help" "$ROOT/scripts/kagent-verify-agent.sh" --help
 expect_rc 1 "verify-agent rejects missing --agent" "$ROOT/scripts/kagent-verify-agent.sh"

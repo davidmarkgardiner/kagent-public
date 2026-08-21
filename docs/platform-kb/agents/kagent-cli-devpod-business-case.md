@@ -2,6 +2,9 @@
 
 This note evaluates the kagent CLI from the upstream quickstart for a work DevPod trial. It separates the low-risk local CLI install from the higher-risk act of installing kagent and tool-capable agents into a Kubernetes cluster.
 
+For safe disk-space diagnosis and bounded cleanup inside a DevPod, see
+[`../../runbooks/devpod-disk-space/README.md`](../../runbooks/devpod-disk-space/README.md).
+
 Sources checked on 2026-06-10:
 
 - Upstream quickstart: `https://kagent.dev/docs/kagent/getting-started/quickstart`

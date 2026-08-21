@@ -38,6 +38,32 @@ Bottom line: v2 turns the original single-purpose triage agent into the foundati
 
 ---
 
+## AI capabilities and productivity measures
+
+The triage system uses AI to convert operational signals into an evidence-backed,
+human-governed response. It does not autonomously change production: any
+non-read-only action must use an approved workflow or GitOps path and pass a
+human approval gate.
+
+| Capability | What it contributes | Measure of value |
+|---|---|---|
+| Signal triage and classification | Interprets alerts, logs, events, impact, and likely cause. | Time to first useful analysis; routing correctness; low-value ticket rate. |
+| Specialist orchestration | Calls Kubernetes, network, Grafana, knowledge, or evaluation specialists when relevant. | Human handoffs avoided; specialist-call success rate; time to the right resolver group. |
+| Evidence gathering and correlation | Collects Kubernetes/AKS facts and correlates metrics, logs, traces, dashboards, and events. | Evidence-pack completeness; manual commands/searches avoided; mean time to diagnose. |
+| Knowledge-base lookup | Retrieves cited runbooks and platform guidance; records stale or missing documentation gaps. | Runbook-search time; cited-answer rate; documentation-gap closure time. |
+| Remediation planning | Produces a bounded recommendation with risk, rollback, and verification steps. | Time to reviewable plan; plan acceptance/rejection rate; unsafe-plan rate. |
+| HITL and GitOps handoff | Pauses for approval, then submits work through controlled workflows, tickets, or pull requests. | Approval turnaround; valid approval evidence; time from approval to review-ready change. |
+| Evaluation and feedback | Scores evidence, safety, completeness, and correctness; captures human corrections. | Evaluation pass/score trend; override rate; post-PASS correction rate. |
+| Continuous improvement | Feeds incident and documentation gaps back into reviewed knowledge updates. | Repeat-incident reduction; manual steps saved; avoided escalations. |
+
+Track the value loop using equivalent incidents: compare baseline versus
+agent-assisted **time to analyse**, **time to remediate**, **human touches**,
+**evidence quality**, **routing/tool accuracy**, and **repeat-incident rate**.
+Do not claim productivity from a single demonstration; report the measured trend
+and the associated human review outcome.
+
+---
+
 ## Repository Layout
 
 ```
@@ -82,6 +108,7 @@ examples/           Quickstart and sample payloads
 | Check the HITL proof status | [`WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md`](WORK-KAGENT-TRIAGE-V2-HITL-PROOF.md) |
 | Check the KB/querydoc proof status | [`WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md`](WORK-KAGENT-TRIAGE-V2-KB-QUERYDOC-PROOF.md) |
 | Prove KB docs can be updated through GitLab MCP and retrieved through querydoc | [`demos/kb-gitlab-mcp-update/`](demos/kb-gitlab-mcp-update/README.md) |
+| Demonstrate private code submissions evaluated in air-gapped GitLab | [`demos/gitlab-private-evaluation/`](demos/gitlab-private-evaluation/README.md) |
 | View the Kagent triage v2 proof board | [`WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html`](WORK-KAGENT-TRIAGE-V2-PROOF-BOARD.html) |
 | Follow the work-agent replication checklist | [`WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md`](WORK-KAGENT-TRIAGE-V2-WORK-AGENT-CHECKLIST.md) |
 | Hand this zip to a work agent for lift-and-shift | [`WORK-ZIP-AGENT-HANDOFF.md`](WORK-ZIP-AGENT-HANDOFF.md) |

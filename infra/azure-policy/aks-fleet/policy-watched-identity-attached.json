@@ -1,0 +1,170 @@
+{
+  "name": "aks-watched-identity-attached-audit",
+  "type": "Microsoft.Authorization/policyDefinitions",
+  "properties": {
+    "displayName": "Watched managed identities should not be attached to AKS clusters or their node scale sets",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Hunts for named managed identities across the AKS fleet, by identity resource ID or by GUID (clientId / principalId / objectId). Covers three attachment points: (1) the cluster's own identity block - the control plane identity, which pods CANNOT reach via IMDS; (2) identityProfile - the kubelet identity and add-on identities, which pods CAN reach via IMDS and which are the actual breakout vector; (3) the node VMSS identity block, where those same identities are physically attached. See docs/imds/imds-aks-exposure.md section 2.4 for why (2) and (3) are the security-relevant ones. Audit only by design: AKS itself writes both the cluster and the node VMSS, so a Deny effect would break cluster operations.",
+    "metadata": {
+      "version": "2.0.0",
+      "category": "Kubernetes",
+      "owner": "platform-security"
+    },
+    "parameters": {
+      "watchedIdentityGuids": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Watched identity GUIDs",
+          "description": "clientId, principalId or objectId GUIDs to hunt for. Matched case-insensitively against the serialised identity blocks, so a single GUID finds the identity whichever field it appears in. This is the parameter to use when triaging an IMDS finding, where a decoded token gives you an 'oid' claim and nothing else. Empty list disables GUID matching."
+        },
+        "defaultValue": []
+      },
+      "watchedIdentityResourceIds": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Watched identity resource IDs",
+          "description": "Full ARM resource IDs, from 'az identity show --query id -o tsv'. Matched exactly against the userAssignedIdentities dictionary keys, and as a substring of identityProfile. Empty list disables resource-ID matching."
+        },
+        "defaultValue": []
+      },
+      "includeScaleSets": {
+        "type": "Boolean",
+        "metadata": {
+          "displayName": "Also evaluate virtual machine scale sets",
+          "description": "When true, evaluates VMSS in scope, which includes AKS node scale sets. Deliberately not filtered to 'MC_*' resource groups: --node-resource-group lets an AKS node RG be named anything, so a prefix filter would silently miss clusters. Set false if the identityProfile checks alone are sufficient and the extra rows are noise."
+        },
+        "defaultValue": true
+      },
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Audit flags matches. Disabled turns the policy off."
+        },
+        "allowedValues": [
+          "Audit",
+          "Disabled"
+        ],
+        "defaultValue": "Audit"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "anyOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.ContainerService/managedClusters"
+              },
+              {
+                "allOf": [
+                  {
+                    "value": "[parameters('includeScaleSets')]",
+                    "equals": "true"
+                  },
+                  {
+                    "field": "type",
+                    "equals": "Microsoft.Compute/virtualMachineScaleSets"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "field": "identity.userAssignedIdentities",
+                    "exists": "true"
+                  },
+                  {
+                    "count": {
+                      "value": "[parameters('watchedIdentityResourceIds')]",
+                      "name": "watchedResourceId",
+                      "where": {
+                        "field": "identity.userAssignedIdentities",
+                        "containsKey": "[current('watchedResourceId')]"
+                      }
+                    },
+                    "greater": 0
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "field": "identity.userAssignedIdentities",
+                    "exists": "true"
+                  },
+                  {
+                    "count": {
+                      "value": "[parameters('watchedIdentityGuids')]",
+                      "name": "watchedGuid",
+                      "where": {
+                        "value": "[string(field('identity.userAssignedIdentities'))]",
+                        "contains": "[current('watchedGuid')]"
+                      }
+                    },
+                    "greater": 0
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "field": "type",
+                    "equals": "Microsoft.ContainerService/managedClusters"
+                  },
+                  {
+                    "field": "Microsoft.ContainerService/managedClusters/identityProfile",
+                    "exists": "true"
+                  },
+                  {
+                    "count": {
+                      "value": "[parameters('watchedIdentityGuids')]",
+                      "name": "profileGuid",
+                      "where": {
+                        "value": "[string(field('Microsoft.ContainerService/managedClusters/identityProfile'))]",
+                        "contains": "[current('profileGuid')]"
+                      }
+                    },
+                    "greater": 0
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "field": "type",
+                    "equals": "Microsoft.ContainerService/managedClusters"
+                  },
+                  {
+                    "field": "Microsoft.ContainerService/managedClusters/identityProfile",
+                    "exists": "true"
+                  },
+                  {
+                    "count": {
+                      "value": "[parameters('watchedIdentityResourceIds')]",
+                      "name": "profileResourceId",
+                      "where": {
+                        "value": "[string(field('Microsoft.ContainerService/managedClusters/identityProfile'))]",
+                        "contains": "[current('profileResourceId')]"
+                      }
+                    },
+                    "greater": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

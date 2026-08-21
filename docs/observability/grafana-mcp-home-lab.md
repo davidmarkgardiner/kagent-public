@@ -8,6 +8,9 @@ Kubernetes write permissions.
 For the AI observability workflow adapted from the Grafana video transcript, see
 [`../ai-grafana/README.md`](../ai-grafana/README.md).
 
+For per-service-account, per-tool access boundaries for kagent, see
+[`grafana-mcp-access-control/README.md`](grafana-mcp-access-control/README.md).
+
 ## Why It Helps
 
 Grafana MCP gives the SRE agents a single read path over the LGTM stack:
