@@ -252,7 +252,7 @@ az identity federated-credential show \
   --output yaml
 ```
 
-Federated credential changes can take several seconds to propagate. A newly
+Federated credential changes can take a few minutes to propagate. A newly
 deployed Pod may need to be recreated after propagation if its first exchange
 failed.
 

@@ -91,9 +91,10 @@ root Kustomize target, and apply it over the password Deployment. The root
 target replaces the Pod template with the workload-identity ServiceAccount and
 removes the username/password Secret references.
 
-Before removing the password Secret, prove token acquisition, approved-view
-access, base-table/write denial, a fresh second connection, Gateway discovery,
-and the same A2A question through the UAMI Pod.
+Before removing the password Secret, complete the passwordless validation gates
+in [`README-UAMI-WORKLOAD-IDENTITY.md`](README-UAMI-WORKLOAD-IDENTITY.md),
+including a new connection after the original access-token expiry boundary,
+Gateway discovery, and the same A2A question through the UAMI Pod.
 
 ## UAMI inputs to obtain at work
 
@@ -133,13 +134,10 @@ Do not deploy a mutable tag.
 
 ## UAMI step 1: federate the UAMI
 
-The platform identity owner creates an AKS federated identity credential with:
-
-```text
-issuer:  the target AKS OIDC issuer
-subject: system:serviceaccount:fastmcp-entra-poc:fastmcp-postgres-entra
-audience: api://AzureADTokenExchange
-```
+The platform identity owner creates the exact AKS federation tuple documented
+in [`README-UAMI-WORKLOAD-IDENTITY.md`](README-UAMI-WORKLOAD-IDENTITY.md). The
+subject's namespace must equal the rendered `FASTMCP_NAMESPACE`, and its service
+account must remain `fastmcp-postgres-entra`.
 
 Do not add an Azure client secret. The Pod label and ServiceAccount annotation
 in `aks-workload-identity.yaml.template` activate workload identity.
