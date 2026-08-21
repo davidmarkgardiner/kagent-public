@@ -36,6 +36,11 @@ For request-driven replica scaling on AKS, see
 Prometheus request/concurrency metric, a two-replica floor, and VPA in
 recommendation-only mode.
 
+For the staged move beyond the legacy remote transport, see
+[`FUTURE-DIRECTION.md`](FUTURE-DIRECTION.md). It keeps `v0.0.19` as a
+time-limited bridge and recommends composing UAMI-backed Azure tools with a
+separately RBAC-scoped Kubernetes tool server through kagent.
+
 ## How workload identity reaches the AKS-MCP container
 
 When `workloadIdentity.enabled=true`, the chart:
@@ -234,3 +239,45 @@ Service design.
 
 When specifying `toolNames` in `RemoteMCPServer`, list tools explicitly;
 `None` causes a validation error.
+
+## Upstream contacts and escalation
+
+The public AKS-MCP contributor history was reviewed on 2026-08-21 for human
+contributors to the default branch from 2026-05-16 onwards. Public affiliation
+evidence confirms two active contributors as Microsoft employees:
+
+| Contributor | Public affiliation evidence | Why contact them |
+|---|---|---|
+| [Guoxun Wei (`gossion`)](https://github.com/gossion) | Confirmed Microsoft identity in upstream commits and member of the Azure GitHub organisation. | **Primary technical contact.** Authored the security-boundary clarification, stdio-only change and removal of remote/container delivery in [PR #393](https://github.com/Azure/aks-mcp/pull/393), [PR #395](https://github.com/Azure/aks-mcp/pull/395) and [PR #396](https://github.com/Azure/aks-mcp/pull/396). |
+| [Qasim Sarfraz (`mqasimsarfraz`)](https://github.com/mqasimsarfraz) | GitHub profile identifies Microsoft; the [AKS Engineering Blog](https://blog.aks.azure.com/authors) identifies him as a Microsoft software engineer. | Active AKS-MCP engineering contributor, particularly for Inspektor Gadget and observability. |
+| [Michael Wilson (`Michael-Wilson94`)](https://github.com/Michael-Wilson94) | No current public Microsoft affiliation was found; GitHub records the author as a contributor rather than an Azure organisation member. | Public contributor who implemented remote OAuth/OBO support in [PR #370](https://github.com/Azure/aks-mcp/pull/370). Technically relevant, but do not treat as a Microsoft escalation route without internal confirmation. |
+
+Useful additional Microsoft-affiliated repository contributors, outside that
+recent filtered set, include [Julia Yin](https://github.com/julia-yin), an AKS
+Product Manager, [Pengfei Ni (`feiskyer`)](https://github.com/feiskyer), one of
+the repository's largest lifetime contributors, and
+[Thomas Shao (`thomas1206`)](https://github.com/thomas1206).
+
+Recommended contact order:
+
+1. Guoxun Wei for the exact technical and security rationale behind the
+   `v0.0.20` transport decision.
+2. Julia Yin for the supported product roadmap and shared-agent deployment
+   direction.
+3. Qasim Sarfraz, Pengfei Ni or Thomas Shao for engineering alternatives and
+   capability coverage.
+
+Suggested escalation message:
+
+> We currently host AKS-MCP `v0.0.19` in AKS behind kagent, using AKS Workload
+> Identity/UAMI and Streamable HTTP. `v0.0.20` removes the supported remote
+> model. What is Microsoft's recommended path for shared kagent-based
+> automation? Would a kagent `MCPServer` stdio adapter or an A2A specialist
+> launching AKS-MCP locally remain inside the intended support boundary, and
+> is an authenticated remote transport expected to return?
+
+Affiliations and project ownership can change. Recheck the public
+[contributor graph](https://github.com/Azure/aks-mcp/graphs/contributors?from=16%2F05%2F2026)
+and internal Microsoft directory before escalating. Do not add private email
+addresses, Teams details or internal organisation information to this public
+repository.
