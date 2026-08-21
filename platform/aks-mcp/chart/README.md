@@ -23,6 +23,8 @@ helm install my-aks-mcp . --namespace aks-mcp --create-namespace
 ## Configuration
 
 For detailed configuration parameters, see [helm-chart.md](./helm-chart.md).
+For the AKS request-autoscaling modes, production example, and fail-fast
+guardrails, see [the autoscaling guide](../AUTOSCALING.md).
 
 ## Deployment Examples
 
@@ -175,7 +177,8 @@ helm upgrade my-aks-mcp . --set app.verbose=true
 
 ## Architecture Notes
 
-- **Single Replica**: The deployment is hardcoded to 1 replica due to OAuth state management requirements
+- **OAuth Scaling**: OAuth requires a single replica; horizontal autoscaling
+  rejects OAuth until shared state is available
 - **Security**: Read-only root filesystem with writable `/tmp` directory for temporary files
 - **RBAC**: Dynamic permissions based on access level configuration
 - **Configuration**: All application settings are passed via command-line arguments

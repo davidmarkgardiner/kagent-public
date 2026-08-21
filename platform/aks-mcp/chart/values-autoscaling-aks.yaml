@@ -1,0 +1,76 @@
+# AKS production-target example. Replace every {{PLACEHOLDER}} before applying.
+# This deliberately pins the last HTTP-capable version verified by this bundle;
+# AKS-MCP v0.0.20 and later are stdio-only and cannot use this Service/KEDA path.
+image:
+  tag: "v0.0.16"
+
+replicaCount: 2
+
+app:
+  transport: streamable-http
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agentgateway-system
+          podSelector:
+            matchLabels:
+              app: agentgateway
+      ports:
+        - protocol: TCP
+          port: 8000
+
+azure:
+  tenantId: "{{AZURE_TENANT_ID}}"
+  clientId: "{{AKS_MCP_UAMI_CLIENT_ID}}"
+  subscriptionId: "{{AZURE_SUBSCRIPTION_ID}}"
+
+workloadIdentity:
+  enabled: true
+
+autoscaling:
+  mode: keda
+  minReplicas: 2
+  maxReplicas: 10
+  keda:
+    prometheus:
+      serverAddress: "{{AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT}}"
+      # Must return one total load value for this Service. Prefer an in-flight
+      # request gauge; otherwise use a two-minute request-rate query.
+      query: '{{AKS_MCP_ACTIVE_REQUESTS_OR_RPS_PROMQL}}'
+      threshold: "10"
+      activationThreshold: "1"
+      ignoreNullValues: false
+      unsafeSsl: false
+    authentication:
+      create: true
+      azureWorkloadIdentity:
+        identityId: "{{KEDA_PROMETHEUS_UAMI_CLIENT_ID}}"
+
+vpa:
+  enabled: true
+  updateMode: "Off"
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+lifecycle:
+  preStop:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - sleep 15
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: aks-mcp
+        app.kubernetes.io/instance: aks-mcp

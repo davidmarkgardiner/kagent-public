@@ -1,0 +1,12 @@
+{{- if and (eq .Values.autoscaling.mode "keda") .Values.autoscaling.keda.authentication.create }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ default (printf "%s-prometheus" (include "aks-mcp.fullname" .)) .Values.autoscaling.keda.authentication.name }}
+  labels:
+    {{- include "aks-mcp.labels" . | nindent 4 }}
+spec:
+  podIdentity:
+    provider: azure-workload
+    identityId: {{ .Values.autoscaling.keda.authentication.azureWorkloadIdentity.identityId | quote }}
+{{- end }}

@@ -31,6 +31,11 @@ http://aks-mcp.aks-mcp.svc.cluster.local:8000/mcp
 
 See [`infra/byo-kagent/bootstrap-catalog/toolcatalogentry-aks-mcp.yaml`](../../infra/byo-kagent/bootstrap-catalog/toolcatalogentry-aks-mcp.yaml).
 
+For request-driven replica scaling on AKS, see
+[`AUTOSCALING.md`](AUTOSCALING.md). The recommendation is KEDA with a verified
+Prometheus request/concurrency metric, a two-replica floor, and VPA in
+recommendation-only mode.
+
 ## How workload identity reaches the AKS-MCP container
 
 When `workloadIdentity.enabled=true`, the chart:
@@ -219,6 +224,13 @@ helm upgrade --install aks-mcp ./chart \
   --namespace aks-mcp --create-namespace \
   -f chart/values.yaml
 ```
+
+For the AKS autoscaling target, copy
+[`chart/values-autoscaling-aks.yaml`](chart/values-autoscaling-aks.yaml), replace
+every `{{PLACEHOLDER}}`, prove its PromQL query under idle and load conditions,
+then install it as an additional values file. The example pins AKS-MCP
+`v0.0.16`; `v0.0.20` is stdio-only and is not compatible with this remote HTTP
+Service design.
 
 When specifying `toolNames` in `RemoteMCPServer`, list tools explicitly;
 `None` causes a validation error.

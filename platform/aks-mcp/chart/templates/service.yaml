@@ -10,6 +10,7 @@ metadata:
   {{- end }}
 spec:
   type: {{ .Values.service.type }}
+  sessionAffinity: {{ .Values.service.sessionAffinity }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http

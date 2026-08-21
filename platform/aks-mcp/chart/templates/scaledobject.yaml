@@ -1,0 +1,44 @@
+{{- if eq .Values.autoscaling.mode "keda" }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "aks-mcp.fullname" . }}
+  labels:
+    {{- include "aks-mcp.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "aks-mcp.fullname" . }}
+  pollingInterval: {{ .Values.autoscaling.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.autoscaling.keda.cooldownPeriod }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicas }}
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicas }}
+  {{- if .Values.autoscaling.keda.fallback.enabled }}
+  fallback:
+    failureThreshold: {{ .Values.autoscaling.keda.fallback.failureThreshold }}
+    replicas: {{ .Values.autoscaling.keda.fallback.replicas }}
+  {{- end }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        {{- toYaml .Values.autoscaling.behavior | nindent 8 }}
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.autoscaling.keda.prometheus.serverAddress | quote }}
+        query: {{ .Values.autoscaling.keda.prometheus.query | quote }}
+        threshold: {{ .Values.autoscaling.keda.prometheus.threshold | quote }}
+        activationThreshold: {{ .Values.autoscaling.keda.prometheus.activationThreshold | quote }}
+        ignoreNullValues: {{ .Values.autoscaling.keda.prometheus.ignoreNullValues | quote }}
+        unsafeSsl: {{ .Values.autoscaling.keda.prometheus.unsafeSsl | quote }}
+        timeout: {{ .Values.autoscaling.keda.prometheus.timeout | quote }}
+        {{- with .Values.autoscaling.keda.prometheus.authModes }}
+        authModes: {{ . | quote }}
+        {{- end }}
+      {{- if or .Values.autoscaling.keda.authentication.create .Values.autoscaling.keda.authentication.name }}
+      authenticationRef:
+        kind: {{ .Values.autoscaling.keda.authentication.kind }}
+        name: {{ default (printf "%s-prometheus" (include "aks-mcp.fullname" .)) .Values.autoscaling.keda.authentication.name }}
+      {{- end }}
+{{- end }}
