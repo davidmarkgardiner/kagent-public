@@ -1,0 +1,130 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: smart-triage-selective-orchestrator
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: smart-triage-fanout
+    platform.com/team: platform
+    platform.com/type: demo
+spec:
+  entrypoint: run-selective-orchestrator
+  serviceAccountName: smart-triage-fanout-workflow
+  activeDeadlineSeconds: 300
+  parallelism: 1
+  ttlStrategy:
+    secondsAfterCompletion: 86400
+    secondsAfterSuccess: 86400
+    secondsAfterFailure: 900
+  arguments:
+    parameters:
+      - name: alert_source
+        value: manual
+      - name: alert_payload
+        value: '{"status":"firing","alerts":[]}'
+      - name: lifecycle_url
+        value: http://smart-triage-finding-lifecycle.argo.svc.cluster.local:8080
+      - name: execution_mode
+        value: fixture
+      - name: full_health_audit
+        value: "false"
+      - name: specialist_endpoints_json
+        value: >-
+          {"kubernetes":"http://smart-triage-kubernetes-specialist.kagent:8080/","network":"http://smart-triage-network-specialist.kagent:8080/","grafana":"http://smart-triage-grafana-specialist.kagent:8080/","gitops":"http://smart-triage-gitops-specialist.kagent:8080/","knowledge":"http://smart-triage-knowledge-specialist.kagent:8080/","deployment":"http://smart-triage-deployment-specialist.kagent:8080/","policy":"http://smart-triage-policy-specialist.kagent:8080/","trace":"http://smart-triage-trace-specialist.kagent:8080/","commander":"http://smart-triage-incident-commander.kagent:8080/"}
+  volumes:
+    - name: orchestrator-code
+      configMap:
+        name: smart-triage-selective-orchestrator-code
+        defaultMode: 0444
+    - name: lifecycle-contract
+      configMap:
+        name: smart-triage-finding-lifecycle-code
+        defaultMode: 0444
+        items:
+          - key: lifecycle.py
+            path: lifecycle.py
+    - name: work
+      emptyDir: {}
+  templates:
+    - name: run-selective-orchestrator
+      outputs:
+        parameters:
+          - name: status
+            valueFrom:
+              path: /tmp/orchestrator/status.txt
+          - name: selected-specialists
+            valueFrom:
+              path: /tmp/orchestrator/selected.json
+          - name: metrics
+            valueFrom:
+              path: /tmp/orchestrator/metrics.json
+          - name: lifecycle-decision
+            valueFrom:
+              path: /tmp/orchestrator/lifecycle-decision.json
+          - name: report-json
+            valueFrom:
+              path: /tmp/orchestrator/report.json
+          - name: report-markdown
+            valueFrom:
+              path: /tmp/orchestrator/report.md
+      container:
+        image: python:3.12-alpine
+        command: [sh, -c]
+        args:
+          - |
+            set -eu
+            full_audit=""
+            if [ "$FULL_HEALTH_AUDIT" = "true" ]; then
+              full_audit="--full-health-audit"
+            fi
+            python /opt/selective-orchestrator/orchestrator.py run \
+              --alert-env ALERT_PAYLOAD \
+              --registry /opt/selective-orchestrator/approved-targets.json \
+              --lifecycle-module /opt/finding-lifecycle/lifecycle.py \
+              --lifecycle-url "$LIFECYCLE_URL" \
+              --run-id "$WORKFLOW_NAME" \
+              --mode "$EXECUTION_MODE" \
+              --endpoints-json "$SPECIALIST_ENDPOINTS_JSON" \
+              --output-dir /tmp/orchestrator \
+              $full_audit
+            cat /tmp/orchestrator/report.md
+        env:
+          - name: ALERT_PAYLOAD
+            value: "{{workflow.parameters.alert_payload}}"
+          - name: ALERT_SOURCE
+            value: "{{workflow.parameters.alert_source}}"
+          - name: LIFECYCLE_URL
+            value: "{{workflow.parameters.lifecycle_url}}"
+          - name: EXECUTION_MODE
+            value: "{{workflow.parameters.execution_mode}}"
+          - name: FULL_HEALTH_AUDIT
+            value: "{{workflow.parameters.full_health_audit}}"
+          - name: SPECIALIST_ENDPOINTS_JSON
+            value: "{{workflow.parameters.specialist_endpoints_json}}"
+          - name: WORKFLOW_NAME
+            value: "{{workflow.name}}"
+        volumeMounts:
+          - name: orchestrator-code
+            mountPath: /opt/selective-orchestrator
+            readOnly: true
+          - name: lifecycle-contract
+            mountPath: /opt/finding-lifecycle
+            readOnly: true
+          - name: work
+            mountPath: /tmp
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault

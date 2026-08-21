@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "smart-triage-finding/v1",
+  "runId": "homelab-run-provisional-001",
+  "observedAt": "2026-08-20T10:05:00Z",
+  "observationStatus": "firing",
+  "target": {
+    "subscriptionScope": "homelab",
+    "cluster": "demo-cluster",
+    "environment": "nonprod",
+    "namespace": "demo-payments"
+  },
+  "resource": {
+    "kind": "Pod",
+    "stableWorkload": "",
+    "observedResource": "unknown-pod-abc12"
+  },
+  "finding": {
+    "domain": "pod-health",
+    "reason": "UncorrelatedWarning",
+    "severity": "warning",
+    "confidence": "low",
+    "summary": "A warning was observed but no stable owning workload was proven.",
+    "identityStatus": "provisional"
+  },
+  "evidence": [
+    {
+      "source": "kubernetes-event",
+      "reference": "event reason=Warning; stable owner unavailable",
+      "observedAt": "2026-08-20T10:05:00Z"
+    }
+  ],
+  "provenance": {
+    "agent": "smart-triage-kubernetes-specialist",
+    "tools": []
+  },
+  "recommendedActions": [
+    "Correlate the event to a stable controller before creating a durable issue."
+  ]
+}

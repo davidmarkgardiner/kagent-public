@@ -124,6 +124,7 @@ examples/           Quickstart and sample payloads
 | Provision a new AKS cluster declaratively | [`infra/kro-stack/`](infra/kro-stack/README.md) |
 | Onboard a namespace via PR | [`platform/argo-workflows/templates/namespace-onboarding/`](platform/argo-workflows/templates/namespace-onboarding/) |
 | Set up AI triage for a namespace | [`agents/kagent-triage/`](agents/kagent-triage/README.md) |
+| Build and validate Kubernetes delivery YAML with read-only kagent specialists | [`work-agent-bundles/kubernetes-delivery-harness/`](work-agent-bundles/kubernetes-delivery-harness/README.md) |
 | Try the K-Agent knowledge-base UI POC | [`agents/kagent-knowledge-ui/`](agents/kagent-knowledge-ui/README.md) |
 | Wire K8s events → EventHub → AI diagnosis | [`observability/alloy-eventhub-pipeline/`](observability/alloy-eventhub-pipeline/) |
 | Decide Alertmanager metric vs Alloy/Vector event-log routing into kagent | [`docs/observability/dual-source-kafka-triage-routing.md`](docs/observability/dual-source-kafka-triage-routing.md) |
@@ -170,6 +171,14 @@ scripts/lint-yaml.sh
 ```
 
 Prints `OK <path>` or `FAIL <path>` per file and exits non-zero if any file fails to parse. Use the `--quiet` flag to print only failures and a final summary line.
+
+For machine-readable output, use `--json`. The script then emits exactly one JSON object on stdout and nothing else, exiting non-zero if any file fails to parse:
+
+```json
+{"checked":7,"failed":0,"failures":[]}
+```
+
+`failures` is a JSON array of repo-relative paths (e.g. `k8s/observability/k-agent-alloy.yaml`) for files that failed to parse; it is empty on success. The `checked` and `failed` counts always agree with `failures.length`. Stderr is reserved for diagnostics (unknown options, missing directories) and stays empty on a successful run, so `--json` output is safe to pipe into `jq` or any other parser. `--json` and `--quiet` can be combined; per-file lines are suppressed either way and the JSON object is still emitted.
 
 ---
 

@@ -1,0 +1,26 @@
+{
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "WorkloadIdentityCertificateFailure",
+        "reason": "WorkloadIdentityCertificateFailure",
+        "severity": "warning",
+        "subscription_alias": "public-demo-scope",
+        "cluster_alias": "demo-cluster",
+        "resource_group": "public-demo-rg",
+        "cluster": "demo-cluster",
+        "kube_context": "demo-cluster-user",
+        "environment": "nonprod",
+        "namespace": "demo-payments",
+        "deployment": "payments-worker",
+        "pod": "payments-worker-fixture"
+      },
+      "annotations": {
+        "summary": "workload identity certificate validation failed"
+      },
+      "startsAt": "2026-08-20T13:20:00Z"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "KubePodFailedSchedulingSelective",
+        "event_reason": "FailedScheduling",
+        "severity": "warning",
+        "subscription_alias": "public-demo-scope",
+        "cluster_alias": "demo-cluster",
+        "resource_group": "public-demo-rg",
+        "cluster": "demo-cluster",
+        "kube_context": "demo-cluster-user",
+        "environment": "nonprod",
+        "namespace": "demo-payments",
+        "deployment": "checkout-api",
+        "pod": "checkout-api-pending"
+      },
+      "annotations": {
+        "summary": "checkout-api cannot be placed"
+      },
+      "startsAt": "2026-08-20T13:10:00Z"
+    }
+  ]
+}

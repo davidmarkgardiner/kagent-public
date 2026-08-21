@@ -98,7 +98,7 @@ spec:
   ai:
     provider:
       openai:
-        model: glm-4.6
+        model: glm-5.2
       host: api.z.ai
       port: 443
   policies:
@@ -150,7 +150,7 @@ spec:
   ai:
     provider:
       openai:
-        model: MiniMax-M2.7
+        model: MiniMax-M3
       host: api.minimax.io
       port: 443
   policies:

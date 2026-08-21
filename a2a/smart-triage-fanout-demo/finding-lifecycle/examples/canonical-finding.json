@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "smart-triage-finding/v1",
+  "runId": "homelab-run-001",
+  "observedAt": "2026-08-20T10:00:00Z",
+  "observationStatus": "firing",
+  "target": {
+    "subscriptionScope": "homelab",
+    "cluster": "demo-cluster",
+    "environment": "nonprod",
+    "namespace": "demo-payments"
+  },
+  "resource": {
+    "kind": "Deployment",
+    "stableWorkload": "checkout-api",
+    "observedResource": "checkout-api-7d8f9c-xkp2v"
+  },
+  "finding": {
+    "domain": "pod-health",
+    "reason": "CrashLoopBackOff",
+    "severity": "warning",
+    "confidence": "high",
+    "summary": "The checkout-api workload is repeatedly restarting.",
+    "identityStatus": "canonical"
+  },
+  "evidence": [
+    {
+      "source": "alertmanager",
+      "reference": "alert=KubePodCrashLooping; workload=checkout-api",
+      "observedAt": "2026-08-20T10:00:00Z"
+    }
+  ],
+  "provenance": {
+    "agent": "smart-triage-kubernetes-specialist",
+    "tools": []
+  },
+  "recommendedActions": [
+    "An authorised SRE should validate the current workload state and recent bounded logs."
+  ]
+}

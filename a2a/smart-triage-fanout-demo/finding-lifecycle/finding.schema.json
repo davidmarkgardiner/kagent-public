@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/smart-triage-finding-v1.schema.json",
+  "title": "Smart Triage Finding v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "observedAt",
+    "observationStatus",
+    "target",
+    "resource",
+    "finding",
+    "evidence",
+    "provenance",
+    "recommendedActions"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "smart-triage-finding/v1"},
+    "runId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "observedAt": {"type": "string", "format": "date-time"},
+    "observationStatus": {"enum": ["firing", "resolved"]},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subscriptionScope", "cluster", "environment", "namespace"],
+      "properties": {
+        "subscriptionScope": {"type": "string", "minLength": 1, "maxLength": 128},
+        "cluster": {"type": "string", "minLength": 1, "maxLength": 253},
+        "environment": {"type": "string", "minLength": 1, "maxLength": 64},
+        "namespace": {"type": "string", "minLength": 1, "maxLength": 253}
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "stableWorkload", "observedResource"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "stableWorkload": {"type": "string", "maxLength": 253},
+        "observedResource": {"type": "string", "maxLength": 253}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "reason", "severity", "confidence", "summary", "identityStatus"],
+      "properties": {
+        "domain": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9-]*$"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "severity": {"enum": ["info", "warning", "critical"]},
+        "confidence": {"enum": ["low", "medium", "high"]},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "identityStatus": {"enum": ["canonical", "provisional"]}
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "reference", "observedAt"],
+        "properties": {
+          "source": {"type": "string", "minLength": 1, "maxLength": 64},
+          "reference": {"type": "string", "minLength": 1, "maxLength": 500},
+          "observedAt": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "tools"],
+      "properties": {
+        "agent": {"type": "string", "minLength": 1, "maxLength": 128},
+        "tools": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "string", "minLength": 1, "maxLength": 128}
+        }
+      }
+    },
+    "recommendedActions": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {"type": "string", "minLength": 1, "maxLength": 500}
+    }
+  }
+}
