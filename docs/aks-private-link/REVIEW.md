@@ -41,7 +41,7 @@ The framing sentence is exactly right and worth keeping:
 | # | Claim | Status | Correction |
 |---|---|---|---|
 | 1 | Step 2 YAML has only `azure-load-balancer-internal: "true"`, then "Azure then creates … Private Link Service" | **Wrong — this will not work** | An internal LB annotation alone creates **only** an ILB. You must add `service.beta.kubernetes.io/azure-pls-create: "true"`. Nothing creates a PLS implicitly. |
-| 2 | Implies you can annotate the add-on's managed gateway Service | Not a supported path | The Istio add-on documents a **specific supported annotation set** for `aks-istio-ingressgateway-external/-internal`. **No `azure-pls-*` annotation is in it.** Use one of the three supported routes in §4 instead. |
+| 2 | Implies you can annotate the add-on's managed gateway Service | Not a supported path | The Istio add-on documents a **specific supported annotation set** for `aks-istio-ingressgateway-external/-internal`. **No `azure-pls-*` annotation is in it.** Use one of the three supported Istio routes in §4 instead. |
 | 3 | "The add-on is increasingly aligned with Gateway API" | Understated / now stale | Istio **Gateway API ingress is supported** on add-on revision `asm-1-26`+ and requires **Managed Gateway API** enabled on the cluster. Two constraints: it **cannot be enabled alongside the application routing Gateway API implementation**, and Gateway API for **egress** is manual-deployment-model only. |
 | 4 | Option B: end-to-end TLS passthrough | Conditional | Works via Istio `Gateway` with `tls.mode: Passthrough`. Via **Gateway API `TLSRoute` (SNI passthrough) it is not supported on `asm-1-29`** — support lands `asm-1-30`+. |
 | 5 | "Scaling … autoscaling the ingress gateway still works normally" | True but incomplete | The risk isn't HPA, it's **LB frontend lifecycle**. PLS is bound to the **LB frontend IP configuration**, not to the Service. A **minor revision upgrade of the add-on creates a second gateway deployment and Service** → new frontend. And when a Service is deleted, "a PLS may still exist", active PE connections are dropped, **PEs become obsolete, and you are responsible for cleaning them up**. Treat PLS identity as a pinned, named resource (`azure-pls-name`, `azure-pls-resource-group`). |
@@ -169,13 +169,13 @@ sequenceDiagram
 
 ---
 
-## 4. Provider-side build — the three supported ways to attach a PLS
+## 4. Provider-side build — four supported ways to attach a PLS
 
 ### Option A — your own Service (most control, recommended for a platform ingress)
 
 Run a self-managed Istio ingress gateway (or any ingress) so you own the Service object:
 
-The example deliberately pins the PLS in `rg-platform-network`. Before applying it, grant the AKS
+The example deliberately pins the PLS in `{{RESOURCE_GROUP}}`. Before applying it, grant the AKS
 control-plane identity **Network Contributor** scoped to that resource group. The identity has Contributor
 on the node resource group by default, not on arbitrary resource groups. If you omit
 `azure-pls-resource-group`, AKS creates the PLS in the node resource group instead.
@@ -188,16 +188,16 @@ metadata:
   namespace: platform-ingress
   annotations:
     service.beta.kubernetes.io/azure-load-balancer-internal: "true"
-    service.beta.kubernetes.io/azure-load-balancer-internal-subnet: "ilb-subnet"
+    service.beta.kubernetes.io/azure-load-balancer-internal-subnet: "{{ILB_SUBNET_NAME}}"
     service.beta.kubernetes.io/azure-pls-create: "true"
     # Pin the identity so upgrades/recreates don't orphan consumer endpoints.
     service.beta.kubernetes.io/azure-pls-name: "pls-aks-platform-ingress"
-    service.beta.kubernetes.io/azure-pls-resource-group: "rg-platform-network"
+    service.beta.kubernetes.io/azure-pls-resource-group: "{{RESOURCE_GROUP}}"
     # Dedicated NAT subnet, required if externalTrafficPolicy is Local.
-    service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: "pls-nat-subnet"
+    service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: "{{PLS_SUBNET_NAME}}"
     service.beta.kubernetes.io/azure-pls-ip-configuration-ip-address-count: "8"
     # Visibility: subscription list, or "*" if you need auto-approval.
-    service.beta.kubernetes.io/azure-pls-visibility: "<consumer-sub-id> <databricks-sub-id>"
+    service.beta.kubernetes.io/azure-pls-visibility: "{{AZURE_SUBSCRIPTION_ID}}"
     # Move the LB idle timer out of the way; the fixed PLS 300s still binds. Minutes, 4-30.
     service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: "30"
     service.beta.kubernetes.io/azure-load-balancer-disable-tcp-reset: "false"
@@ -231,7 +231,7 @@ spec:
       service.beta.kubernetes.io/azure-load-balancer-internal: "true"
       service.beta.kubernetes.io/azure-pls-create: "true"
       service.beta.kubernetes.io/azure-pls-name: "pls-aks-platform-ingress"
-      service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: "pls-nat-subnet"
+      service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: "{{PLS_SUBNET_NAME}}"
   listeners:
     - name: https
       port: 443
@@ -375,7 +375,7 @@ allow-listed customizations.
 Databricks serverless (NCC PE rule)  ─┐
 Databricks classic (VNet PE)         ─┤
 Other subscription (PE)              ─┼─► Private Link Service "pls-aks-platform-ingress"
-Other tenant (PE, RBAC visibility)   ─┘        NAT IPs: dedicated pls-nat-subnet, 8 IPs
+Other tenant (PE, RBAC visibility)   ─┘        NAT IPs: dedicated PLS NAT subnet, 8 IPs
                                                         │
                                         Standard internal Load Balancer
                                             backend pool: nodeIPConfiguration

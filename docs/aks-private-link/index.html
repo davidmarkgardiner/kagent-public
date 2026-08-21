@@ -642,7 +642,7 @@
     <h3 class="sec-title">What the Service actually looks like</h3>
     <p class="sec-note">
       The entire Azure-side build is this manifest. Before applying it, grant the AKS control-plane identity
-      Network Contributor on <code>rg-platform-network</code>; its default Contributor grant covers only the
+      Network Contributor on <code>{{RESOURCE_GROUP}}</code>; its default Contributor grant covers only the
       node resource group. Applying the manifest creates the internal load balancer and Private Link Service.
     </p>
 <pre><code><span class="key">apiVersion</span>: v1
@@ -652,17 +652,17 @@
   <span class="key">namespace</span>: platform-ingress
   <span class="key">annotations</span>:
     service.beta.kubernetes.io/azure-load-balancer-internal: <span class="val">"true"</span>
-    service.beta.kubernetes.io/azure-load-balancer-internal-subnet: <span class="val">"ilb-subnet"</span>
+    service.beta.kubernetes.io/azure-load-balancer-internal-subnet: <span class="val">"{{ILB_SUBNET_NAME}}"</span>
     <span class="cmt"># Without this line you get an internal LB and no Private Link Service.</span>
     service.beta.kubernetes.io/azure-pls-create: <span class="val">"true"</span>
     <span class="cmt"># Pin the identity so revision upgrades don't orphan consumer endpoints.</span>
     service.beta.kubernetes.io/azure-pls-name: <span class="val">"pls-aks-platform-ingress"</span>
-    service.beta.kubernetes.io/azure-pls-resource-group: <span class="val">"rg-platform-network"</span>
+    service.beta.kubernetes.io/azure-pls-resource-group: <span class="val">"{{RESOURCE_GROUP}}"</span>
     <span class="cmt"># Dedicated NAT subnet. Required if externalTrafficPolicy is Local.</span>
-    service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: <span class="val">"pls-nat-subnet"</span>
+    service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: <span class="val">"{{PLS_SUBNET_NAME}}"</span>
     service.beta.kubernetes.io/azure-pls-ip-configuration-ip-address-count: <span class="val">"8"</span>
     <span class="cmt"># Subscription list, or "*" if you need auto-approval (a real trade-off).</span>
-    service.beta.kubernetes.io/azure-pls-visibility: <span class="val">"&lt;consumer-sub-id&gt; &lt;databricks-sub-id&gt;"</span>
+    service.beta.kubernetes.io/azure-pls-visibility: <span class="val">"{{AZURE_SUBSCRIPTION_ID}}"</span>
     <span class="cmt"># Move the LB idle timer out of the way; the fixed PLS 300s still binds.</span>
     service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: <span class="val">"30"</span>
     service.beta.kubernetes.io/azure-load-balancer-disable-tcp-reset: <span class="val">"false"</span>
@@ -783,7 +783,7 @@
       <strong>Companion documents.</strong> This page summarises
       <a href="./REVIEW.md">REVIEW.md</a>, which carries the full correction tables, per-claim sources and
       additional diagrams. The working notes — <a href="./rm.md">rm.md</a>,
-      <a href="./isito.md">isito.md</a>, <a href="./pls.md">pls.md</a> — are kept unmodified and should be
+      <a href="./isito.md">isito.md</a>, <a href="./pls.md">pls.md</a> — are retained as drafts and should be
       read alongside the review, not on their own.
     </p>
     <p><strong>Primary sources</strong> — all claims on this page trace to these:</p>

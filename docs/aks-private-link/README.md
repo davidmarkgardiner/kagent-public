@@ -53,6 +53,17 @@ Working notes. Each contains errors corrected in `REVIEW.md` — read the review
 | [isito.md](./isito.md) | Where Private Link terminates relative to the AKS Istio add-on; TLS options; multi-cluster |
 | [pls.md](./pls.md) | Disambiguates "PLS Gateway"; establishes that SNI/Host routing belongs in Envoy. Most accurate of the three |
 
+## Configuration
+
+The deployable examples in `REVIEW.md` and `index.html` use public-safe placeholders:
+
+| Placeholder | Replace with |
+|---|---|
+| `{{RESOURCE_GROUP}}` | Resource group that will own the Private Link Service |
+| `{{ILB_SUBNET_NAME}}` | Subnet used by the internal load balancer |
+| `{{PLS_SUBNET_NAME}}` | Dedicated subnet used for Private Link Service NAT IPs |
+| `{{AZURE_SUBSCRIPTION_ID}}` | Authorized consumer subscription ID; repeat for each consumer when needed |
+
 ## The traps worth knowing before you start
 
 1. **`azure-load-balancer-internal` alone does not create a PLS.** You also need `service.beta.kubernetes.io/azure-pls-create: "true"`. Nothing creates a PLS implicitly.

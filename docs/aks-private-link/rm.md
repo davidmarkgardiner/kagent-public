@@ -327,6 +327,6 @@ That gives you:
 I think this would make a particularly interesting enhancement to the AKS MCP project as well—for example, adding tooling to discover, validate, and even provision Private Link Service and Private Endpoint configurations, along with DNS checks and connectivity validation as part of the MCP workflows.
 
 [1]: https://learn.microsoft.com/en-us/azure/aks/private-clusters?utm_source=chatgpt.com "Create a Private Azure Kubernetes Service (AKS) Cluster - Azure Kubernetes Service | Microsoft Learn"
-[2]: https://learn.microsoft.com/en-us/samples/azure-samples/aks-agic-private-link/aks-agic-private-link/?utm_source=chatgpt.com "How to call a workload in AKS via Private Link, Application Gateway, and Application Gateway Ingress Controller - Code Samples | Microsoft Learn"
+[2]: https://github.com/Azure-Samples/aks-agic-private-link "How to call a workload in AKS via Private Link, Application Gateway, and Application Gateway Ingress Controller - Azure Samples"
 [3]: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/app-platform/aks/network-topology-and-connectivity?utm_source=chatgpt.com "Network topology and connectivity for Azure Kubernetes Service (AKS) - Cloud Adoption Framework | Microsoft Learn"
 [4]: https://www.reddit.com/r/AZURE/comments/1tklgbr/aks_users_whats_your_ingress_setup/?utm_source=chatgpt.com "AKS users, what’s your ingress setup?"
