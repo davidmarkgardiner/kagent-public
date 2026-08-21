@@ -64,11 +64,15 @@ fi
 # valid) to keep the output readable; the compact separators are required
 # by the existing --json grep-based contract in the README.
 if [[ "${json}" -eq 1 ]]; then
+  json_args=("${checked}" "${failed}")
+  if [[ "${#failures[@]}" -gt 0 ]]; then
+    json_args+=("${failures[@]}")
+  fi
   python3 -c '
 import json, sys
 obj = {"checked": int(sys.argv[1]), "failed": int(sys.argv[2]), "failures": sys.argv[3:]}
 sys.stdout.write(json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n")
-' "${checked}" "${failed}" "${failures[@]}"
+' "${json_args[@]}"
   exit "${status}"
 fi
 

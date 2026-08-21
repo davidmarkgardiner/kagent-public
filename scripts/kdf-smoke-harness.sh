@@ -86,7 +86,7 @@ readonly SELECTOR="app.kubernetes.io/part-of=${APP_LABEL},kdf.delivery/run-id=${
 current_context="$(${KUBECTL[0]} --kubeconfig "${KUBECONFIG_PATH}" config current-context 2>/dev/null || true)"
 [[ "${current_context}" == "${ALLOWED_CONTEXT}" ]] || fatal "current kube context is '${current_context:-<unset>}'; switch to '${ALLOWED_CONTEXT}' before running"
 
-api_host="$(${KUBECTL[@]} config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)"
+api_host="$("${KUBECTL[@]}" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)"
 [[ -n "${api_host}" ]] || fatal "could not resolve API server for context '${CONTEXT}'"
 if [[ "${api_host}" != https://127.0.0.1:* && "${api_host}" != https://localhost:* ]]; then
   fatal "refusing non-local API server for local Kind smoke context (server must be localhost/127.0.0.1)"
