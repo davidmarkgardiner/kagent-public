@@ -212,14 +212,22 @@ if [[ "${MODE}" == "plan" ]]; then
 fi
 
 cleanup() {
-  local status=$?
+  local status=$? cleanup_status=0 remaining=""
   log "cleaning up labelled resources for run ${RUN_ID}"
-  manifest | "${KUBECTL_NS[@]}" delete -f - --ignore-not-found=true --wait=true --timeout=60s >"${EVIDENCE_DIR}/cleanup-delete.txt" 2>&1 || true
-  "${KUBECTL_NS[@]}" get deploy,po,svc,cm -l "${SELECTOR}" >"${EVIDENCE_DIR}/cleanup-proof.txt" 2>&1 || true
-  if grep -q "No resources found" "${EVIDENCE_DIR}/cleanup-proof.txt"; then
+  if ! manifest | "${KUBECTL_NS[@]}" delete -f - --ignore-not-found=true --wait=true --timeout=60s >"${EVIDENCE_DIR}/cleanup-delete.txt" 2>&1; then
+    cleanup_status=1
+  fi
+  if remaining="$("${KUBECTL_NS[@]}" get deploy,po,svc,cm -l "${SELECTOR}" -o name 2>"${EVIDENCE_DIR}/cleanup-proof.txt")"; then
+    printf '%s\n' "${remaining}" >>"${EVIDENCE_DIR}/cleanup-proof.txt"
+    [[ -z "${remaining}" ]] || cleanup_status=1
+  else
+    cleanup_status=1
+  fi
+  if [[ "${cleanup_status}" -eq 0 ]]; then
     log "cleanup verified: no labelled resources remain"
   else
-    log "cleanup proof needs review: ${EVIDENCE_DIR}/cleanup-proof.txt"
+    log "cleanup failed or labelled resources remain: ${EVIDENCE_DIR}/cleanup-proof.txt"
+    [[ "${status}" -ne 0 ]] || status=1
   fi
   exit "${status}"
 }

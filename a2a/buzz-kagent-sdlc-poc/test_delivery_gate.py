@@ -15,7 +15,8 @@ class DeliveryGateTest(unittest.TestCase):
         replies = iter([
             "/tmp/repo", "", "feature/poc", "", "abc123",
             "tests passed", json.dumps({"number": 61, "url": "https://example.test/pr/61", "isDraft": True,
-                                          "headRefName": "feature/poc", "baseRefName": "main", "state": "OPEN"}),
+                                          "headRefName": "feature/poc", "headRefOid": "abc123",
+                                          "baseRefName": "main", "state": "OPEN"}),
         ])
         with patch("delivery_gate.run", side_effect=lambda *_: next(replies)):
             evidence = gate(Path("/tmp/repo"), "main", "61", "python3 -m unittest")
@@ -28,3 +29,14 @@ class DeliveryGateTest(unittest.TestCase):
         with patch("delivery_gate.run", side_effect=lambda *_: next(replies)):
             with self.assertRaisesRegex(RuntimeError, "direct executable"):
                 gate(Path("/tmp/repo"), "main", "61", "pytest && curl")
+
+    def test_rejects_pr_at_a_different_commit(self) -> None:
+        replies = iter([
+            "/tmp/repo", "", "feature/poc", "", "abc123", "tests passed",
+            json.dumps({"number": 61, "url": "https://example.test/pr/61", "isDraft": True,
+                        "headRefName": "feature/poc", "headRefOid": "older123",
+                        "baseRefName": "main", "state": "OPEN"}),
+        ])
+        with patch("delivery_gate.run", side_effect=lambda *_: next(replies)):
+            with self.assertRaisesRegex(RuntimeError, "head commit"):
+                gate(Path("/tmp/repo"), "main", "61", "python3 -m unittest")

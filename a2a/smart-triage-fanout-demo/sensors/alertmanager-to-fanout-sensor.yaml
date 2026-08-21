@@ -26,6 +26,7 @@ spec:
             type: string
             value:
               - "firing"
+              - "resolved"
   triggers:
     - template:
         name: smart-triage-fanout-workflow

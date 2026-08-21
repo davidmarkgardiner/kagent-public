@@ -29,7 +29,7 @@ SAFE_ALIAS = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 SAFE_TOKEN = re.compile(r"[^A-Za-z0-9._-]")
 SENSITIVE = re.compile(
     r"(?i)(bearer\s+[A-Za-z0-9._~+/=-]+|-----BEGIN [A-Z ]*PRIVATE KEY-----|"
-    r"\b(?:password|passwd|client_secret|access_token|refresh_token)\s*[:=]\s*\S+)"
+    r"\b(?:password|passwd|client_secret|access_token|refresh_token|api[_-]?key|auth[_-]?token|token)\s*[:=]\s*\S+)"
 )
 INJECTION = re.compile(
     r"(?i)(ignore (?:all |the )?(?:previous|prior) instructions|system prompt|"
@@ -57,6 +57,23 @@ def canonical_json(value: Any) -> str:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def redact_untrusted(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: redact_untrusted(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [redact_untrusted(item) for item in value]
+    if isinstance(value, str) and SENSITIVE.search(value):
+        return "REDACTED_CREDENTIAL_LIKE_INPUT"
+    return value
+
+
+def remaining_timeout(deadline: float, cap: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("orchestration elapsed-time budget exhausted")
+    return min(cap, remaining)
 
 
 def load_lifecycle(path: str):
@@ -303,7 +320,7 @@ def apply_sre_correction(finding: dict[str, Any], correction: dict[str, Any]) ->
     return amended
 
 
-def post_lifecycle(url: str, finding: dict[str, Any], timeout: int = 10) -> dict[str, Any]:
+def post_lifecycle(url: str, finding: dict[str, Any], timeout: float = 10) -> dict[str, Any]:
     if not url:
         return {
             "status": "STATE_UNAVAILABLE", "notify": True, "autoTicketAllowed": False,
@@ -339,7 +356,7 @@ def _extract_a2a_text(payload: dict[str, Any]) -> str:
     return "\n".join(texts)
 
 
-def call_live_specialist(name: str, endpoint: str, finding: dict[str, Any], timeout: int) -> str:
+def call_live_specialist(name: str, endpoint: str, finding: dict[str, Any], timeout: float) -> str:
     body = {
         "jsonrpc": "2.0",
         "id": f"selective-{finding['runId']}",
@@ -363,7 +380,7 @@ def call_live_specialist(name: str, endpoint: str, finding: dict[str, Any], time
         return _extract_a2a_text(json.loads(response.read().decode("utf-8")))
 
 
-def call_live_commander(endpoint: str, report: dict[str, Any], timeout: int) -> str:
+def call_live_commander(endpoint: str, report: dict[str, Any], timeout: float) -> str:
     evidence = {
         "runId": report["runId"],
         "target": report.get("target", {}),
@@ -391,9 +408,32 @@ def call_live_commander(endpoint: str, report: dict[str, Any], timeout: int) -> 
         return _extract_a2a_text(json.loads(response.read().decode("utf-8")))
 
 
+def bind_specialist_finding(actual: dict[str, Any], expected: dict[str, Any]) -> None:
+    paths = (
+        ("schemaVersion",), ("runId",), ("observationStatus",),
+        ("target", "subscriptionScope"), ("target", "cluster"),
+        ("target", "environment"), ("target", "namespace"),
+        ("resource", "kind"), ("resource", "stableWorkload"),
+        ("finding", "domain"), ("finding", "reason"),
+    )
+    mismatches = []
+    for path in paths:
+        actual_value: Any = actual
+        expected_value: Any = expected
+        for key in path:
+            actual_value = actual_value.get(key) if isinstance(actual_value, dict) else None
+            expected_value = expected_value.get(key) if isinstance(expected_value, dict) else None
+        if actual_value != expected_value:
+            mismatches.append(".".join(path))
+    if mismatches:
+        raise OrchestratorError("specialist finding identity mismatch: " + ", ".join(mismatches))
+
+
 def dispatch(name: str, finding: dict[str, Any], mode: str, endpoints: dict[str, str],
-             validate: Callable[[Any], Any], budgets: dict[str, int]) -> dict[str, Any]:
+             validate: Callable[[Any], Any], budgets: dict[str, int],
+             deadline: float | None = None) -> dict[str, Any]:
     started = time.monotonic()
+    deadline = deadline if deadline is not None else started + budgets["elapsedSecondsLimit"]
     try:
         if mode == "fixture":
             raw = canonical_json(finding)
@@ -402,11 +442,12 @@ def dispatch(name: str, finding: dict[str, Any], mode: str, endpoints: dict[str,
             endpoint = endpoints.get(name, "")
             if not endpoint:
                 raise OrchestratorError("selected specialist endpoint is not configured")
-            raw = call_live_specialist(name, endpoint, finding, min(60, budgets["elapsedSecondsLimit"]))
+            raw = call_live_specialist(name, endpoint, finding, remaining_timeout(deadline, 60))
             call_status = "A2A_COMPLETED"
         bounded, marker = truncate_text(raw, budgets["perSpecialistOutputBytes"], name)
         parsed = json.loads(bounded.split("\n", 1)[0])
         validate(parsed)
+        bind_specialist_finding(parsed, finding)
         return {
             "specialist": name, "status": call_status, "finding": parsed,
             "latencyMs": int((time.monotonic() - started) * 1000),
@@ -460,7 +501,10 @@ def run_orchestrator(envelope: dict[str, Any], registry: dict[str, Any], run_id:
                      budgets: dict[str, int] | None = None) -> dict[str, Any]:
     started = time.monotonic()
     budgets = dict(DEFAULT_BUDGETS if budgets is None else budgets)
-    alert = extract_alert(envelope)
+    deadline = started + budgets["elapsedSecondsLimit"]
+    raw_alert = extract_alert(envelope)
+    serialized_alert = canonical_json(raw_alert)
+    alert = redact_untrusted(raw_alert)
     target_result = resolve_target(alert, registry, run_id)
     base = {
         "schemaVersion": "smart-triage-orchestrator-report/v1",
@@ -476,8 +520,8 @@ def run_orchestrator(envelope: dict[str, Any], registry: dict[str, Any], run_id:
             "untrustedEvidence": True,
             "writeToolsAvailable": False,
             "secretValuesRequested": False,
-            "promptInjectionDetected": bool(INJECTION.search(canonical_json(alert))),
-            "credentialLikeInputDetected": bool(SENSITIVE.search(canonical_json(alert))),
+            "promptInjectionDetected": bool(INJECTION.search(serialized_alert)),
+            "credentialLikeInputDetected": bool(SENSITIVE.search(serialized_alert)),
         },
     }
     if target_result["status"] != "TARGET_READY":
@@ -495,7 +539,10 @@ def run_orchestrator(envelope: dict[str, Any], registry: dict[str, Any], run_id:
     base["target"] = target
     lifecycle_finding = build_finding(alert, target, run_id, "orchestrator")
     lifecycle_module.validate_finding(lifecycle_finding)
-    lifecycle = post_lifecycle(lifecycle_url, lifecycle_finding)
+    lifecycle = post_lifecycle(
+        lifecycle_url, lifecycle_finding,
+        timeout=remaining_timeout(deadline, 10),
+    )
     base["lifecycleDecision"] = lifecycle
     if lifecycle.get("notify") is False:
         base.update({
@@ -520,7 +567,7 @@ def run_orchestrator(envelope: dict[str, Any], registry: dict[str, Any], run_id:
         futures = {
             executor.submit(
                 dispatch, name, build_finding(alert, target, run_id, name), mode,
-                endpoints, lifecycle_module.validate_finding, budgets,
+                endpoints, lifecycle_module.validate_finding, budgets, deadline,
             ): name for name in selected
         }
         results = [future.result() for future in concurrent.futures.as_completed(futures)]
@@ -539,7 +586,7 @@ def run_orchestrator(envelope: dict[str, Any], registry: dict[str, Any], run_id:
             endpoint = endpoints.get("commander", "")
             if not endpoint:
                 raise OrchestratorError("incident commander endpoint is not configured")
-            commander_text = call_live_commander(endpoint, base, min(60, budgets["elapsedSecondsLimit"]))
+            commander_text = call_live_commander(endpoint, base, remaining_timeout(deadline, 60))
             commander_output, commander_truncation = truncate_text(
                 commander_text, budgets["totalEvidenceBytes"], "incident-commander"
             )

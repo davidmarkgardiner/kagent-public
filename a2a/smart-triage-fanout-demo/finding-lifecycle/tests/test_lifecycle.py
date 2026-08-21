@@ -183,6 +183,24 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(first["fingerprint"], result["resolved"][0]["fingerprint"])
         self.assertEqual("RESOLVED", result["resolved"][0]["status"])
 
+    def test_stale_snapshot_does_not_resolve_newer_finding(self):
+        latest = with_run(self.base, "latest-before-snapshot", "2026-08-20T12:00:00Z")
+        first = self.store.evaluate(latest)
+        result = self.store.snapshot({
+            "reportId": "snapshot-stale",
+            "observedAt": "2026-08-20T11:00:00Z",
+            "subscriptionScope": "homelab",
+            "cluster": "demo-cluster",
+            "domains": ["pod-health"],
+            "findings": [],
+            "completeSnapshot": True,
+        })
+        self.assertEqual([], result["resolved"])
+        self.assertEqual(first["fingerprint"], result["stale"][0]["fingerprint"])
+        row = self.store.list_findings()["findings"][0]
+        self.assertIsNone(row["resolved_at"])
+        self.assertEqual("2026-08-20T12:00:00+00:00", row["last_seen"])
+
     def test_run_id_reuse_with_changed_payload_is_rejected(self):
         self.store.evaluate(self.base)
         changed = copy.deepcopy(self.base)

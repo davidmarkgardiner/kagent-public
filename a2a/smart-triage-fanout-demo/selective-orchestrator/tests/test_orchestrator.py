@@ -122,6 +122,15 @@ class TargetAndSafetyTests(unittest.TestCase):
         serialized = json.dumps(report)
         self.assertNotIn("example-sensitive-value", serialized)
 
+    def test_credential_like_target_label_is_redacted_before_routing(self):
+        alert = fixture("crashloop-alert.json")
+        alert["alerts"][0]["labels"]["workload"] = "api_key=label-secret-value"
+        report = ORCHESTRATOR.run_orchestrator(
+            alert, REGISTRY, "credential-label", "", "fixture", False, LIFECYCLE,
+        )
+        self.assertTrue(report["security"]["credentialLikeInputDetected"])
+        self.assertNotIn("label-secret-value", json.dumps(report))
+
     def test_oversized_output_gets_visible_truncation_marker(self):
         bounded, marker = ORCHESTRATOR.truncate_text("x" * 100, 20, "kubectl-logs")
         self.assertIsNotNone(marker)
@@ -142,6 +151,41 @@ class TargetAndSafetyTests(unittest.TestCase):
             ORCHESTRATOR.DEFAULT_BUDGETS,
         )
         self.assertEqual("SPECIALIST_CONTRACT_FAILED", result["status"])
+
+    def test_specialist_finding_must_match_expected_identity(self):
+        finding = ORCHESTRATOR.build_finding(
+            ORCHESTRATOR.extract_alert(fixture("crashloop-alert.json")),
+            ORCHESTRATOR.resolve_target(
+                ORCHESTRATOR.extract_alert(fixture("crashloop-alert.json")), REGISTRY, "identity-mismatch"
+            )["target"],
+            "identity-mismatch", "kubernetes",
+        )
+        changed = json.loads(json.dumps(finding))
+        changed["target"]["cluster"] = "different-cluster"
+        with mock.patch.object(ORCHESTRATOR, "call_live_specialist", return_value=json.dumps(changed)):
+            result = ORCHESTRATOR.dispatch(
+                "kubernetes", finding, "live", {"kubernetes": "http://example.invalid"},
+                LIFECYCLE.validate_finding, ORCHESTRATOR.DEFAULT_BUDGETS,
+            )
+        self.assertEqual("SPECIALIST_CONTRACT_FAILED", result["status"])
+        self.assertIn("identity mismatch", result["error"])
+
+    def test_specialist_timeout_uses_only_remaining_global_budget(self):
+        finding = ORCHESTRATOR.build_finding(
+            ORCHESTRATOR.extract_alert(fixture("crashloop-alert.json")),
+            ORCHESTRATOR.resolve_target(
+                ORCHESTRATOR.extract_alert(fixture("crashloop-alert.json")), REGISTRY, "global-budget"
+            )["target"],
+            "global-budget", "kubernetes",
+        )
+        with mock.patch.object(ORCHESTRATOR.time, "monotonic", side_effect=[99.0, 99.75, 99.8]), \
+                mock.patch.object(ORCHESTRATOR, "call_live_specialist", return_value=json.dumps(finding)) as call:
+            result = ORCHESTRATOR.dispatch(
+                "kubernetes", finding, "live", {"kubernetes": "http://example.invalid"},
+                LIFECYCLE.validate_finding, ORCHESTRATOR.DEFAULT_BUDGETS, deadline=100.0,
+            )
+        self.assertEqual("A2A_COMPLETED", result["status"])
+        self.assertAlmostEqual(0.25, call.call_args.args[3])
 
     def test_timeout_produces_partial_unknown_not_false_all_clear(self):
         with mock.patch.object(ORCHESTRATOR, "call_live_specialist", side_effect=TimeoutError("bounded timeout")):
@@ -170,6 +214,8 @@ class TargetAndSafetyTests(unittest.TestCase):
         workflow = (ROOT / "workflow-template.yaml").read_text(encoding="utf-8")
         for word in ORCHESTRATOR.WRITE_WORDS:
             self.assertNotIn(f"kubectl {word}", workflow)
+        sensor = (DEMO / "sensors" / "alertmanager-to-fanout-sensor.yaml").read_text(encoding="utf-8")
+        self.assertIn('- "resolved"', sensor)
 
 
 class OutputTests(unittest.TestCase):

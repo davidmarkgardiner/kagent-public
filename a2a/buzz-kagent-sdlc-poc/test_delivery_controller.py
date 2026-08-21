@@ -89,6 +89,31 @@ class DeliveryControllerTest(unittest.TestCase):
         self.assertEqual(1, process_once("channel-1", self.ledger, lambda _: {"result": {"status": {"state": "completed", "taskId": "pending-2"}}}, buzz))
         self.assertEqual("completed", sent[0][1]["state"])
 
+    def test_replayed_decision_does_not_resume_twice(self):
+        handle(self.task, self.ledger, lambda _: {"result": {"status": {"state": "input_required", "taskId": "pending-3"}}})
+        calls = []
+        decision = {"id": "decision-replay", "content": json.dumps({
+            "schema": "buzz-kagent-sdlc.v1", "type": "sdlc.approval.decision",
+            "source_event_id": "buzz-event-1", "decision": "approve",
+        }), "tags": [["e", "approval-event-1"]]}
+        def buzz(args, *, content=None):
+            if args[1] == "get": return json.dumps([decision])
+            return '{"event_id":"reply"}'
+        invoke = lambda payload: (calls.append(payload) or {"result": {"status": {"state": "completed", "taskId": "pending-3"}}})
+        process_once("channel-1", self.ledger, invoke, buzz)
+        process_once("channel-1", self.ledger, invoke, buzz)
+        self.assertEqual(1, len(calls))
+
+    def test_resume_attempt_limit_blocks_without_another_invoke(self):
+        handle(self.task, self.ledger, lambda _: {"result": {"status": {"state": "input_required", "taskId": "pending-4"}}})
+        calls = []
+        pending = lambda payload: (calls.append(payload) or {"result": {"status": {"state": "input_required", "taskId": "pending-4"}}})
+        resume("buzz-event-1", "approve", self.ledger, pending, "decision-limit-1")
+        resume("buzz-event-1", "approve", self.ledger, pending, "decision-limit-2")
+        reply = resume("buzz-event-1", "approve", self.ledger, pending, "decision-limit-3")
+        self.assertEqual(2, len(calls))
+        self.assertEqual("blocked", reply["state"])
+
 
 if __name__ == "__main__":
     unittest.main()

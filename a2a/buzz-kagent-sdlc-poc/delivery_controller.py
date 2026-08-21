@@ -60,6 +60,18 @@ class Ledger:
                 updated_at INTEGER NOT NULL
             )"""
         )
+        self.connection.execute(
+            """CREATE TABLE IF NOT EXISTS decisions (
+                decision_event_id TEXT PRIMARY KEY,
+                source_event_id TEXT NOT NULL,
+                decision TEXT NOT NULL,
+                state TEXT NOT NULL,
+                result TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY(source_event_id) REFERENCES tasks(source_event_id)
+            )"""
+        )
         self.connection.commit()
 
     def get(self, source_event_id: str) -> dict[str, object] | None:
@@ -98,6 +110,82 @@ class Ledger:
             (state, task_id, result, int(time.time()), source_event_id),
         )
         self.connection.commit()
+        record = self.get(source_event_id)
+        assert record is not None
+        return record
+
+    def claim_decision(self, decision_event_id: str, source_event_id: str, decision: str) -> tuple[dict[str, object], bool, bool]:
+        now = int(time.time())
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            existing = self.connection.execute(
+                "SELECT source_event_id FROM decisions WHERE decision_event_id = ?",
+                (decision_event_id,),
+            ).fetchone()
+            if existing is not None:
+                record = self.get(str(existing[0]))
+                assert record is not None
+                self.connection.commit()
+                return record, False, True
+            record = self.get(source_event_id)
+            if record is None:
+                self.connection.rollback()
+                raise ValueError("approval decision references an unknown source event")
+            if record["state"] != "input_required":
+                self.connection.execute(
+                    "INSERT INTO decisions VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (decision_event_id, source_event_id, decision, "ignored", str(record.get("result", "")), now, now),
+                )
+                self.connection.commit()
+                return record, False, True
+            if int(record["attempts"]) >= MAX_ATTEMPTS:
+                result = f"A2A attempt limit reached ({MAX_ATTEMPTS})"
+                self.connection.execute(
+                    "UPDATE tasks SET state='blocked', result=?, updated_at=? WHERE source_event_id=?",
+                    (result, now, source_event_id),
+                )
+                self.connection.execute(
+                    "INSERT INTO decisions VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (decision_event_id, source_event_id, decision, "blocked", result, now, now),
+                )
+                self.connection.commit()
+                blocked = self.get(source_event_id)
+                assert blocked is not None
+                return blocked, False, False
+            self.connection.execute(
+                "INSERT INTO decisions VALUES (?, ?, ?, 'claimed', NULL, ?, ?)",
+                (decision_event_id, source_event_id, decision, now, now),
+            )
+            self.connection.execute(
+                "UPDATE tasks SET attempts=attempts+1, updated_at=? WHERE source_event_id=?",
+                (now, source_event_id),
+            )
+            self.connection.commit()
+            claimed = self.get(source_event_id)
+            assert claimed is not None
+            return claimed, True, False
+        except Exception:
+            if self.connection.in_transaction:
+                self.connection.rollback()
+            raise
+
+    def complete_decision(self, decision_event_id: str, source_event_id: str, *, state: str,
+                          task_id: str | None, result: str) -> dict[str, object]:
+        now = int(time.time())
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            self.connection.execute(
+                "UPDATE tasks SET state=?, a2a_task_id=?, result=?, updated_at=? WHERE source_event_id=?",
+                (state, task_id, result, now, source_event_id),
+            )
+            self.connection.execute(
+                "UPDATE decisions SET state='completed', result=?, updated_at=? WHERE decision_event_id=?",
+                (result, now, decision_event_id),
+            )
+            self.connection.commit()
+        except Exception:
+            self.connection.rollback()
+            raise
         record = self.get(source_event_id)
         assert record is not None
         return record
@@ -146,12 +234,23 @@ def a2a_resume_request(record: dict[str, object], decision: str) -> dict[str, ob
             "metadata": {"contextId": record["a2a_context_id"], "conversationId": record["source_event_id"]}}}
 
 
-def resume(source_event_id: str, decision: str, ledger: Ledger, invoke: Callable[[dict[str, object]], dict[str, object]]) -> dict[str, object]:
-    record = ledger.get(source_event_id)
-    if record is None or record["state"] != "input_required":
-        raise ValueError("no pending approval for this source event")
-    state, task_id, result = normalize_a2a(invoke(a2a_resume_request(record, decision)))
-    return buzz_reply(ledger.update(source_event_id, state=state, task_id=task_id or str(record["a2a_task_id"]), result=result))
+def resume(source_event_id: str, decision: str, ledger: Ledger,
+           invoke: Callable[[dict[str, object]], dict[str, object]],
+           decision_event_id: str | None = None) -> dict[str, object]:
+    if decision_event_id is None:
+        decision_event_id = f"direct-{uuid.uuid4()}"
+    record, claimed, duplicate = ledger.claim_decision(decision_event_id, source_event_id, decision)
+    if not claimed:
+        return buzz_reply(record, duplicate=duplicate)
+    try:
+        state, task_id, result = normalize_a2a(invoke(a2a_resume_request(record, decision)))
+    except Exception as exc:
+        state, task_id, result = "failed", str(record["a2a_task_id"]), safe_text(exc)
+    updated = ledger.complete_decision(
+        decision_event_id, source_event_id, state=state,
+        task_id=task_id or str(record["a2a_task_id"]), result=result,
+    )
+    return buzz_reply(updated)
 
 
 def post_json(url: str, payload: dict[str, object], timeout: int) -> dict[str, object]:

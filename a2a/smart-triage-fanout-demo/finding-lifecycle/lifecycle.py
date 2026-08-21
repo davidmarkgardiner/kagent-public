@@ -25,7 +25,7 @@ SAFE_REASON = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$")
 SAFE_DOMAIN = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 SENSITIVE = re.compile(
     r"(?i)(bearer\s+[A-Za-z0-9._~+/=-]+|-----BEGIN [A-Z ]*PRIVATE KEY-----|"
-    r"\b(?:password|passwd|client_secret|access_token|refresh_token)\s*[:=]\s*\S+)"
+    r"\b(?:password|passwd|client_secret|access_token|refresh_token|api[_-]?key|auth[_-]?token|token)\s*[:=]\s*\S+)"
 )
 
 
@@ -410,7 +410,8 @@ class LifecycleStore:
         if request["completeSnapshot"] is not True:
             raise ContractError("snapshot resolution requires completeSnapshot=true")
         report_id = _bounded_string(request["reportId"], "reportId", 1, 128)
-        observed_at = parse_time(request["observedAt"]).isoformat()
+        observed_at_value = parse_time(request["observedAt"])
+        observed_at = observed_at_value.isoformat()
         subscription_scope = _bounded_string(request["subscriptionScope"], "subscriptionScope", 1, 128)
         cluster = _bounded_string(request["cluster"], "cluster", 1, 253)
         domains = request["domains"]
@@ -443,11 +444,18 @@ class LifecycleStore:
             f"AND domain IN ({placeholders}) AND resolved_at IS NULL"
         )
         resolved = []
+        stale = []
         now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._connect() as connection:
             rows = connection.execute(query, (subscription_scope, cluster, *domains)).fetchall()
             for row in rows:
                 if row["fingerprint"] in active:
+                    continue
+                if parse_time(row["last_seen"]) > observed_at_value:
+                    stale.append({
+                        "fingerprint": row["fingerprint"], "status": "STALE_SNAPSHOT",
+                        "lastSeen": row["last_seen"],
+                    })
                     continue
                 connection.execute(
                     "UPDATE findings SET resolved_at=?, last_seen=?, latest_run_id=?, updated_at=? WHERE fingerprint=?",
@@ -458,7 +466,7 @@ class LifecycleStore:
                     "previousSeverity": row["severity"], "timesSeen": row["times_seen"],
                     "notify": row["ack_until"] is None,
                 })
-        return {"reportId": report_id, "decisions": decisions, "resolved": resolved}
+        return {"reportId": report_id, "decisions": decisions, "resolved": resolved, "stale": stale}
 
     def list_findings(self) -> dict[str, Any]:
         with self._connect() as connection:

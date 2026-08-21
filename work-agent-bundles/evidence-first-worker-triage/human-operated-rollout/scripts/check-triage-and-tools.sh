@@ -34,7 +34,7 @@ echo "== Workflow pods and logs =="
 km get workflow "$WORKFLOW_NAME" -o yaml
 km get pods -l "workflows.argoproj.io/workflow=$WORKFLOW_NAME" -o wide
 if command -v argo >/dev/null 2>&1; then
-  argo -n "$MANAGEMENT_NAMESPACE" logs "$WORKFLOW_NAME" --all-containers
+  argo --context "$MANAGEMENT_CONTEXT" -n "$MANAGEMENT_NAMESPACE" logs "$WORKFLOW_NAME" --all-containers
 else
   echo "Argo CLI not found; inspect each listed workflow pod with kubectl logs."
 fi

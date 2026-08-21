@@ -15,7 +15,14 @@ fail() { echo "FAIL $1" >&2; exit 1; }
 bounded() {
   local rc desc=$1
   shift
-  if timeout 60s "$@"; then
+  if python3 -c '
+import subprocess, sys
+try:
+    completed = subprocess.run(sys.argv[1:], timeout=60)
+except subprocess.TimeoutExpired:
+    raise SystemExit(124)
+raise SystemExit(completed.returncode)
+' "$@"; then
     return 0
   else
     rc=$?
@@ -106,9 +113,10 @@ qb_rc=$?
 set -e
 rm -f "$BROKEN"
 [[ "$qb_rc" -ne 0 ]] || fail "--quiet exit on broken tree"
-[[ "$(wc -l <"$TMP/qb.txt")" -eq 1 ]] || fail "--quiet broken tree emits 1 line"
+[[ "$(wc -l <"$TMP/qb.txt")" -eq 2 ]] || fail "--quiet broken tree emits failure and summary lines"
+grep -q "^FAIL $BAD_REL$" "$TMP/qb.txt" || fail "--quiet broken tree prints the failure line"
 grep -q '^8 file(s) checked, 1 failed$' "$TMP/qb.txt" || fail "--quiet broken tree prints the summary line"
-pass "--quiet broken tree: 1 summary line '8 file(s) checked, 1 failed'"
+pass "--quiet broken tree: failure and summary lines"
 
 # A scratch tree carries hostile characters in failing relative paths.
 SCRATCH="$TMP/scratch"

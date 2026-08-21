@@ -4,7 +4,7 @@
 #
 # Modes:
 #   (default)  one OK/FAIL line per file, then a summary line.
-#   --quiet    suppress per-file lines; print only the summary line.
+#   --quiet    suppress successful-file lines; print failures and the summary.
 #   --json     emit exactly one JSON object on stdout with checked, failed,
 #              failures (relative paths). Stderr stays empty on success.
 set -euo pipefail
@@ -43,13 +43,21 @@ with open(sys.argv[1], "r", encoding="utf-8") as f:
 ' "${file}" >/dev/null 2>&1; then
     [[ "${quiet}" -eq 0 && "${json}" -eq 0 ]] && printf 'OK %s\n' "${rel_path}"
   else
-    [[ "${quiet}" -eq 0 && "${json}" -eq 0 ]] && printf 'FAIL %s\n' "${rel_path}"
+    [[ "${json}" -eq 0 ]] && printf 'FAIL %s\n' "${rel_path}"
     failures+=("${rel_path}")
     status=1
     failed=$((failed + 1))
   fi
   checked=$((checked + 1))
-done < <(find "${K8S_DIR}" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 | sort -z)
+done < <(python3 -c '
+import os, sys
+root = sys.argv[1]
+paths = []
+for directory, _, filenames in os.walk(root):
+    paths.extend(os.path.join(directory, name) for name in filenames if name.endswith((".yaml", ".yml")))
+for path in sorted(paths):
+    sys.stdout.buffer.write(os.fsencode(path) + b"\0")
+' "${K8S_DIR}")
 
 if [[ "${checked}" -eq 0 ]]; then
   printf 'lint-yaml.sh: no *.yaml or *.yml files found under %s\n' "${K8S_DIR}" >&2

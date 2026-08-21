@@ -40,11 +40,13 @@ def gate(repo: Path, base: str, pr: str, test_command: str) -> dict[str, Any]:
     if not test_args or any(token in {"|", ";", "&&", "||", ">", "<"} for token in test_args):
         raise RuntimeError("test command must be one direct executable command")
     test_output = run(test_args, root)
-    pr_data = json.loads(run(["gh", "pr", "view", pr, "--json", "number,url,isDraft,headRefName,baseRefName,state"], root))
+    pr_data = json.loads(run(["gh", "pr", "view", pr, "--json", "number,url,isDraft,headRefName,headRefOid,baseRefName,state"], root))
     if pr_data.get("state") != "OPEN" or not pr_data.get("isDraft"):
         raise RuntimeError("delivery gate requires an open draft PR")
     if pr_data.get("headRefName") != branch or pr_data.get("baseRefName") != base:
         raise RuntimeError("draft PR does not match the checked-out branch and base")
+    if pr_data.get("headRefOid") != sha:
+        raise RuntimeError("draft PR head commit does not match the tested checkout")
     return {
         "schema": "buzz-kagent-sdlc.delivery-gate.v1",
         "git_sha": sha,
