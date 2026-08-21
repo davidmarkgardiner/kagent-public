@@ -14,8 +14,7 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Fixed replica count used when autoscaling is disabled and as the safe starting
-# point during an autoscaler rollout.
+# Fixed replica count used only when horizontal autoscaling is disabled.
 replicaCount: 1
 revisionHistoryLimit: 3
 minReadySeconds: 5
@@ -150,6 +149,10 @@ service:
   # ordinary POST requests. Keep None unless a tested future version requires
   # client affinity; ClientIP can concentrate all kagent traffic on one pod.
   sessionAffinity: None
+
+networkPolicy:
+  enabled: false
+  ingress: []
 
 # Select exactly one horizontal scaling controller. KEDA creates and owns an
 # HPA, so mode=keda and mode=hpa are deliberately mutually exclusive.

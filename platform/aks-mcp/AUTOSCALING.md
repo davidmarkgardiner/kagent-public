@@ -50,7 +50,9 @@ renders:
   metric query fails;
 - slow scale-down behavior to reduce interruption of long MCP calls;
 - a `PodDisruptionBudget`, topology spreading, and a pre-stop drain delay; and
-- a VPA object with `updateMode: "Off"`.
+- a VPA object with `updateMode: "Off"`; and
+- an ingress `NetworkPolicy` that admits only `app=agentgateway` pods in the
+  `agentgateway-system` namespace.
 
 The chart pins its default image to `Chart.appVersion` (`v0.0.16`) instead of
 `latest`. This matters because AKS-MCP `v0.0.20` changed to stdio-only. A
@@ -117,6 +119,12 @@ restricted.
 The KEDA identity is independent of the AKS-MCP UAMI swap: changing AKS-MCP's
 authentication or worker-cluster authorization does not require changing the
 scaler identity.
+
+The production values assume the repository's agentgateway is the authenticated
+front door. Keep its authentication policy enabled and verify the generated
+gateway pods carry `app=agentgateway`; otherwise the NetworkPolicy correctly
+denies all AKS-MCP ingress. Do not expose the Service directly while OAuth is
+disabled. Horizontal autoscaling rejects the chart's process-local OAuth mode.
 
 ## Install sequence on AKS
 

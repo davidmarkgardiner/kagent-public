@@ -198,12 +198,6 @@ its response followed the skill's standard format. See the
 [skill-runtime evidence](evidence/MCPG-DATA-CONTRACT-SKILL-RUNTIME-POC-2026-08-19.md).
 The final work **image-pull** path still needs an ACR/registry validation.
 
-The HomeLab also live-proved the kagent skill runtime path through a Git-backed
-skill source: initialisation completed, the Agent called MCPg `run_select`, and
-its response followed the skill's standard format. See the
-[skill-runtime evidence](evidence/MCPG-DATA-CONTRACT-SKILL-RUNTIME-POC-2026-08-19.md).
-The final work **image-pull** path still needs an ACR/registry validation.
-
 ## Azure PostgreSQL live connectivity proof
 
 A short-lived Azure Database for PostgreSQL Flexible Server proof subsequently
@@ -226,16 +220,6 @@ MCPg v0.7.1 Azure/AKS handoff: a digest-pinned MCPg deployment, a
 Streamable-HTTP gateway-fronted kagent schema binding, password bootstrap,
 verification gates, and an independent-review prompt. It deliberately makes
 no claim that the exact work
-Agent Gateway route, work PostgreSQL authentication, or private network path
-has already been live-proven.
-
-## Work lift-and-shift bundle
-
-The [work-lift-and-shift](work-lift-and-shift/) folder is now the reusable
-MCPg v0.7.1 Azure/AKS handoff: a digest-pinned MCPg deployment, a
-Streamable-HTTP gateway-fronted kagent schema binding, password-bootstrap and
-later Workload Identity decision points, verification gates, and an
-independent-review prompt. It deliberately makes no claim that the exact work
 Agent Gateway route, work PostgreSQL authentication, or private network path
 has already been live-proven.
 

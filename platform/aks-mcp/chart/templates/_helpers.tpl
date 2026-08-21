@@ -98,8 +98,11 @@ Fail early for invalid or unsafe autoscaling combinations.
 {{- if not (has $mode (list "disabled" "keda" "hpa")) -}}
 {{- fail (printf "autoscaling.mode must be one of disabled, keda, or hpa; got %q" $mode) -}}
 {{- end -}}
-{{- if and (ne $mode "disabled") (eq .Values.app.transport "stdio") -}}
-{{- fail "horizontal autoscaling requires an HTTP transport; app.transport=stdio cannot be exposed by the Service" -}}
+{{- if and (ne $mode "disabled") (ne .Values.app.transport "streamable-http") -}}
+{{- fail "horizontal autoscaling requires app.transport=streamable-http" -}}
+{{- end -}}
+{{- if and (ne $mode "disabled") .Values.oauth.enabled -}}
+{{- fail "horizontal autoscaling does not support oauth.enabled=true without shared OAuth state" -}}
 {{- end -}}
 {{- if and (ne $mode "disabled") (lt (int .Values.autoscaling.minReplicas) 1) -}}
 {{- fail "autoscaling.minReplicas must be at least 1 for the always-available MCP endpoint" -}}
@@ -110,6 +113,9 @@ Fail early for invalid or unsafe autoscaling combinations.
 {{- if eq $mode "keda" -}}
 {{- $_ := required "autoscaling.keda.prometheus.serverAddress is required when autoscaling.mode=keda" .Values.autoscaling.keda.prometheus.serverAddress -}}
 {{- $_ := required "autoscaling.keda.prometheus.query is required when autoscaling.mode=keda" .Values.autoscaling.keda.prometheus.query -}}
+{{- if and .Values.autoscaling.keda.authentication.create (ne .Values.autoscaling.keda.authentication.kind "TriggerAuthentication") -}}
+{{- fail "autoscaling.keda.authentication.kind must be TriggerAuthentication when authentication.create=true" -}}
+{{- end -}}
 {{- if and .Values.autoscaling.keda.authentication.create (empty .Values.autoscaling.keda.authentication.azureWorkloadIdentity.identityId) -}}
 {{- fail "autoscaling.keda.authentication.azureWorkloadIdentity.identityId is required when creating the TriggerAuthentication" -}}
 {{- end -}}

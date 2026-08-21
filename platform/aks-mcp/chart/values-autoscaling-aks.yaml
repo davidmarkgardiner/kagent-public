@@ -9,6 +9,20 @@ replicaCount: 2
 app:
   transport: streamable-http
 
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agentgateway-system
+          podSelector:
+            matchLabels:
+              app: agentgateway
+      ports:
+        - protocol: TCP
+          port: 8000
+
 azure:
   tenantId: "{{AZURE_TENANT_ID}}"
   clientId: "{{AKS_MCP_UAMI_CLIENT_ID}}"

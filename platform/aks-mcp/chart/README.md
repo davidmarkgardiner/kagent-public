@@ -175,7 +175,8 @@ helm upgrade my-aks-mcp . --set app.verbose=true
 
 ## Architecture Notes
 
-- **Single Replica**: The deployment is hardcoded to 1 replica due to OAuth state management requirements
+- **OAuth Scaling**: OAuth requires a single replica; horizontal autoscaling
+  rejects OAuth until shared state is available
 - **Security**: Read-only root filesystem with writable `/tmp` directory for temporary files
 - **RBAC**: Dynamic permissions based on access level configuration
 - **Configuration**: All application settings are passed via command-line arguments

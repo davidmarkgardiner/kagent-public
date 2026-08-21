@@ -6,7 +6,9 @@ metadata:
   labels:
     {{- include "aks-mcp.labels" . | nindent 4 }}
 spec:
+  {{- if eq .Values.autoscaling.mode "disabled" }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   minReadySeconds: {{ .Values.minReadySeconds }}
   strategy:
