@@ -27,9 +27,11 @@ to guarantee the smoke test never reaches into a production cluster.
   run-id format are all validated before any cluster call.
 - **No Secret data** — logs and describe output are gathered but Secret keys
   are never read or emitted.
-- **Labelled cleanup only** — the cleanup phase deletes exclusively resources
-  bearing both `app.kubernetes.io/part-of=kdf-smoke-harness` and this run's
-  `kdf.delivery/run-id` label. No other namespace resources are touched.
+- **Run-scoped cleanup only** — the cleanup phase deletes only the exact
+  generated ConfigMap, Deployment, and Service for this run. Each carries both
+  `app.kubernetes.io/part-of=kdf-smoke-harness` and this run's
+  `kdf.delivery/run-id` label; the final proof queries those labels for anything
+  left behind.
 - **Graceful termination** — the trap calls `kubectl delete --wait=true` with
   a 60-second timeout, so the 5-second pod grace period is always respected.
 - **Dry-run / plan mode** — `--plan` validates all inputs and emits the
@@ -91,7 +93,7 @@ cleans up on exit.
 | `--evidence-dir DIR` | auto-temp | Directory for evidence files |
 | `--run-id ID` | UTC timestamp | DNS-label-safe run identifier |
 | `--timeout DURATION` | 120s | kubectl wait / rollout timeout |
-| `--image IMAGE` | agnhost:2.45 | Public test image |
+| `--image IMAGE` | registry.k8s.io/e2e-test-images/agnhost:2.45 | Public test image |
 | `--help` | — | Show full usage |
 
 ## Evidence files
@@ -135,11 +137,11 @@ shellcheck scripts/kdf-smoke-harness.sh
 kubectl --context kind-homelab get namespace kdf-smoke
 
 # 2. Run plan mode first
-KUBECONFIG=/home/david/.kube/config \
+KUBECONFIG=/path/to/kubeconfig \
   bash scripts/kdf-smoke-harness.sh --plan
 
 # 3. Run the smoke
-KUBECONFIG=/home/david/.kube/config \
+KUBECONFIG=/path/to/kubeconfig \
   bash scripts/kdf-smoke-harness.sh --run
 
 # 4. Inspect evidence (replace run-id with actual)
@@ -153,13 +155,13 @@ cat /tmp/$RUN_ID/cleanup-proof.txt
 ```bash
 - name: KDF smoke (kind-homelab)
   env:
-    KUBECONFIG: {{ kubeconfig_secret }}
+    KUBECONFIG: "{{KUBECONFIG_SECRET}}"
   script: |
     set -euo pipefail
     # Pull the repo at the commit under test
     git clone https://github.com/<org>/<repo>.git /tmp/kdf
     cd /tmp/kdf
-    git checkout $COMMIT_SHA
+    git checkout "$COMMIT_SHA"
 
     # Static checks first
     bash scripts/lint-yaml.sh
@@ -171,7 +173,7 @@ cat /tmp/$RUN_ID/cleanup-proof.txt
     bash scripts/kdf-smoke-harness.sh --run
 
     # Archive evidence
-    cp -r /tmp/kdf-smoke-* $ARTIFACTS_DIR/
+    cp -r /tmp/kdf-smoke-* "$ARTIFACTS_DIR/"
 ```
 
 ## Extending the harness

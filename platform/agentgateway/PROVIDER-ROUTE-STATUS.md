@@ -1,8 +1,9 @@
 # Provider route status
 
-This records a live, low-token verification of the direct Agent Gateway routes
-used by kagent. Provider credentials remain Kubernetes Secrets and are never
-printed in this document or in smoke output.
+This records a live, low-token verification performed on 2026-07-29 against
+the direct Agent Gateway routes used by kagent. It is dated evidence, not a
+claim about current provider entitlement. Provider credentials remain
+Kubernetes Secrets and are never printed in this document or in smoke output.
 
 | Route | ModelConfig | Live result | Status |
 | --- | --- | --- | --- |
@@ -22,7 +23,7 @@ printed in this document or in smoke output.
   must extract the final structured verdict/artifact rather than treating raw
   text as a protocol contract.
 
-## Next provider action
+## Next provider action at verification time
 
 Top up or attach a Z.ai resource package to the existing `zai-api-secret`
 account, then rerun the GLM A2A smoke. Do not rotate or print the key merely to

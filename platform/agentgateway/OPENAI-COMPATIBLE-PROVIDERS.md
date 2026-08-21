@@ -28,6 +28,8 @@ individual agent configs.
 | --- | --- | --- |
 | `backend-openai-compatible-external-models.yaml` | agentgateway cluster | Kimi, Z.AI GLM, and MiniMax `AgentgatewayBackend` plus `HTTPRoute` resources. |
 | `modelconfig-openai-compatible-external-models.yaml` | kagent cluster | kagent `ModelConfig` objects pointing at the agentgateway routes. |
+| `kagent-glm-minimax-smoke-agents.yaml` | kagent cluster | Dedicated one-replica GLM and MiniMax smoke/reviewer Agents; never the shared default. |
+| `PROVIDER-ROUTE-STATUS.md` | n/a | Dated live-route evidence and the remaining provider-entitlement boundary. |
 
 ## Provider Mapping
 
@@ -39,10 +41,13 @@ individual agent configs.
 
 ## Verification Status
 
-As of the 2026-07-09 smoke work, Kimi is the only route proven through the
-agentgateway and kagent A2A path. Z.AI GLM and MiniMax are included as
-OpenAI-compatible candidates, but must pass the low-token route smoke before
-being used for triage agents.
+Kimi was proven through agentgateway and kagent A2A on 2026-07-09. The later
+2026-07-29 evidence in [`PROVIDER-ROUTE-STATUS.md`](PROVIDER-ROUTE-STATUS.md)
+proved MiniMax-M3 through a dedicated kagent A2A smoke agent. GLM-5.2 reached
+Z.ai through both gateway and kagent paths but returned provider error `1113`,
+so it remains blocked on provider entitlement rather than configuration. Treat
+all of these as dated evidence and rerun the low-token smoke before assigning a
+route to triage work.
 
 The provider prefix is set in the `HTTPRoute` URL rewrite instead of
 `AgentgatewayBackend.spec.ai.provider.path`. That shape works with the older

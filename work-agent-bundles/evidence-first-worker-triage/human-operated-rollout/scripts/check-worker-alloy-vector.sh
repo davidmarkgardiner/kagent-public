@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --values /secure/values.env [--stage alloy|vector|all]" >&2
+  echo "Usage: $0 --values /path/to/private/values.env [--stage alloy|vector|all]" >&2
   exit 2
 }
 
@@ -12,7 +12,11 @@ STAGE="${4:-all}"
 [[ -f "$VALUES" ]] || { echo "Values file not found: $VALUES" >&2; exit 2; }
 [[ "$STAGE" == "all" || "$STAGE" == "alloy" || "$STAGE" == "vector" ]] || usage
 
-set -a; source "$VALUES"; set +a
+# Operator-selected values file is validated above.
+set -a
+# shellcheck disable=SC1090
+source "$VALUES"
+set +a
 : "${WORKER_CONTEXT:?WORKER_CONTEXT is required}"
 : "${WORKER_NAMESPACE:?WORKER_NAMESPACE is required}"
 : "${ALLOY_DEPLOYMENT:?ALLOY_DEPLOYMENT is required}"

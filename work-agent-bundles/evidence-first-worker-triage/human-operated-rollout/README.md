@@ -18,6 +18,8 @@ namespaces, images, Secrets, topics, consumer groups or labels verbatim.
 1. Copy `values.env.example` to a private `values.env` outside Git. Put only
    context names, resource references and approved image references in it—never
    credentials. Every script derives environment-specific names from this file.
+   For the manual commands in the guides, load that trusted file first with
+   `set -a; source /path/to/private/values.env; set +a`.
 2. Read [01-WORKER-ALLOY-VECTOR-KAFKA.md](01-WORKER-ALLOY-VECTOR-KAFKA.md) and
    complete the worker side first. Do not configure Argo until a controlled
    marker is demonstrably accepted by Kafka.
@@ -47,9 +49,9 @@ namespaces, images, Secrets, topics, consumer groups or labels verbatim.
 All scripts are read-only and take a private values file:
 
 ```bash
-bash scripts/check-worker-alloy-vector.sh --values /secure/values.env
-bash scripts/check-management-argo.sh --values /secure/values.env
-bash scripts/check-triage-and-tools.sh --values /secure/values.env --workflow {{WORKFLOW_NAME}}
+bash scripts/check-worker-alloy-vector.sh --values /path/to/private/values.env
+bash scripts/check-management-argo.sh --values /path/to/private/values.env
+bash scripts/check-triage-and-tools.sh --values /path/to/private/values.env --workflow {{WORKFLOW_NAME}}
 ```
 
 They inspect resource state, logs and reference wiring. They do not install,

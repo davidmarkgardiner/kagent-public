@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --values /secure/values.env [--stage preflight|eventsource|workflow|all]" >&2
+  echo "Usage: $0 --values /path/to/private/values.env [--stage preflight|eventsource|workflow|all]" >&2
   exit 2
 }
 
@@ -12,7 +12,11 @@ STAGE="${4:-all}"
 [[ -f "$VALUES" ]] || { echo "Values file not found: $VALUES" >&2; exit 2; }
 case "$STAGE" in preflight|eventsource|workflow|all) ;; *) usage ;; esac
 
-set -a; source "$VALUES"; set +a
+# Operator-selected values file is validated above.
+set -a
+# shellcheck disable=SC1090
+source "$VALUES"
+set +a
 : "${MANAGEMENT_CONTEXT:?MANAGEMENT_CONTEXT is required}"
 : "${MANAGEMENT_NAMESPACE:?MANAGEMENT_NAMESPACE is required}"
 : "${EVENTBUS_NAME:?EVENTBUS_NAME is required}"

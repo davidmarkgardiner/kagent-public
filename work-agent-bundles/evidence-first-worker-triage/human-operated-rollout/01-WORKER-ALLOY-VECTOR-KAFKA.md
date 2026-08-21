@@ -45,7 +45,7 @@ install both components together when isolating the worker proof.
 ## 1.3 Prove Alloy independently
 
 ```bash
-bash scripts/check-worker-alloy-vector.sh --values /secure/values.env --stage alloy
+bash scripts/check-worker-alloy-vector.sh --values /path/to/private/values.env --stage alloy
 ```
 
 Pass criteria:
@@ -80,7 +80,7 @@ Run a server-side dry run before applying the Vector-only change:
 
 ```bash
 kubectl --context "$WORKER_CONTEXT" apply --dry-run=server -f "$VECTOR_ONLY_RENDERED_MANIFEST"
-bash scripts/check-worker-alloy-vector.sh --values /secure/values.env --stage vector
+bash scripts/check-worker-alloy-vector.sh --values /path/to/private/values.env --stage vector
 ```
 
 Pass criteria:

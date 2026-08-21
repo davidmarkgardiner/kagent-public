@@ -44,10 +44,10 @@ names, CRD schema and GitOps owner. Reconcile in this order:
 Do a server-side dry run for each component, not a single blind bulk apply.
 
 ```bash
-bash scripts/check-management-argo.sh --values /secure/values.env --stage preflight
+bash scripts/check-management-argo.sh --values /path/to/private/values.env --stage preflight
 # Reconcile one approved component through GitOps, then:
-bash scripts/check-management-argo.sh --values /secure/values.env --stage eventsource
-bash scripts/check-management-argo.sh --values /secure/values.env --stage workflow
+bash scripts/check-management-argo.sh --values /path/to/private/values.env --stage eventsource
+bash scripts/check-management-argo.sh --values /path/to/private/values.env --stage workflow
 ```
 
 ## 2.4 Prove Kafka -> EventSource -> Sensor -> Workflow
@@ -61,7 +61,7 @@ Use the same timestamp/marker proved on the worker side. Confirm in order:
 5. The workflow receives the same bounded event fields expected from Vector.
 
 ```bash
-bash scripts/check-management-argo.sh --values /secure/values.env --stage all
+bash scripts/check-management-argo.sh --values /path/to/private/values.env --stage all
 kubectl --context "$MANAGEMENT_CONTEXT" -n "$MANAGEMENT_NAMESPACE" get workflows --sort-by=.metadata.creationTimestamp
 argo -n "$MANAGEMENT_NAMESPACE" logs "$WORKFLOW_NAME" --all-containers
 ```

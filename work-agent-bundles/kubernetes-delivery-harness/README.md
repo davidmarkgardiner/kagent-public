@@ -74,11 +74,12 @@ a successful test.
 ## Optional in-cluster gate
 
 The WorkflowTemplate is safe to install as a template, but it intentionally
-ships with **no RoleBinding**. Platform owners must bind its service account to
-the smallest approved set of resource types and namespaces before enabling
-`server_validation=true`. The template always runs a client-side parse first,
-has a 10-minute outer deadline, and never runs `kubectl apply` without a dry-run
-flag.
+ships with **no ServiceAccount or RoleBinding**. Platform owners must create
+the referenced `k8s-delivery-validator` ServiceAccount and bind it to the
+smallest approved set of resource types and namespaces before submitting the
+template. Keep `server_validation=false` until its dry-run permissions are
+approved. The template always runs a client-side parse first, has a 10-minute
+outer deadline, and never runs `kubectl apply` without a dry-run flag.
 
 ```bash
 kubectl kustomize . | kubectl apply --dry-run=client -f -

@@ -1,6 +1,7 @@
 # The POC role agents only make bounded A2A calls.  They have no Git, shell,
-# Kubernetes-write, or merge tool. The external controller owns deterministic
-# Git/test/staging proof and emits the final Buzz event.
+# Kubernetes-write, or merge tool. The external controller owns correlation
+# and emits the Buzz result; a separate deterministic gate verifies the Git
+# SHA, one direct test command, and an existing draft PR. Staging is unproven.
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:

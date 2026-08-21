@@ -22,11 +22,11 @@ then query the log backend for that exact marker:
 
 ```bash
 RUN_ID="alloy-e2e-$(date +%s)"
+SMOKE_NAMESPACE="${RUN_ID}"
 
-kubectl create namespace alloy-smoke \
-  --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace "${SMOKE_NAMESPACE}"
 
-kubectl -n alloy-smoke run alloy-log-smoke \
+kubectl -n "${SMOKE_NAMESPACE}" run alloy-log-smoke \
   --image=busybox:1.36 \
   --restart=Never \
   --labels=app=alloy-log-smoke \
@@ -40,7 +40,7 @@ For Loki, query the read endpoint rather than the push endpoint:
 
 ```bash
 LOKI_QUERY_URL="https://{{LOKI_HOST}}/loki/api/v1/query_range"
-LOGQL="{namespace=\"alloy-smoke\"} |= \"${RUN_ID}\""
+LOGQL="{namespace=\"${SMOKE_NAMESPACE}\"} |= \"${RUN_ID}\""
 
 curl -fsSG "${LOKI_QUERY_URL}" \
   --data-urlencode "query=${LOGQL}" \
@@ -56,7 +56,7 @@ or a request error fails the deployment verification.
 Clean up after capturing the result:
 
 ```bash
-kubectl delete namespace alloy-smoke
+kubectl delete namespace "${SMOKE_NAMESPACE}"
 ```
 
 ## What Each Check Proves
@@ -196,7 +196,7 @@ Record the following evidence for each cluster or rollout cohort:
 
 ```text
 cluster: {{CLUSTER_NAME}}
-run_id: alloy-e2e-{{RUN_ID}}
+run_id: {{RUN_ID}}
 alloy_release_revision: {{HELM_REVISION}}
 alloy_image: {{ALLOY_IMAGE_DIGEST}}
 emitted_at_utc: {{TIMESTAMP}}

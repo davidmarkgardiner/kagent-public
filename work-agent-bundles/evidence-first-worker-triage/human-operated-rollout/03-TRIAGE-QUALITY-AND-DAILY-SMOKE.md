@@ -10,7 +10,7 @@ For the sensor-triggered workflow from Section 2, inspect the workflow logs and
 the resulting GitLab item.
 
 ```bash
-bash scripts/check-triage-and-tools.sh --values /secure/values.env --workflow {{WORKFLOW_NAME}}
+bash scripts/check-triage-and-tools.sh --values /path/to/private/values.env --workflow {{WORKFLOW_NAME}}
 ```
 
 The ticket must contain:
@@ -55,7 +55,7 @@ Run these manually first, in one approved non-production namespace, using the
 existing pilot fixture script or its equivalent:
 
 ```bash
-bash ../kustomize/overlays/pilot/smoke-test.sh /secure/values.env
+bash ../kustomize/overlays/pilot/smoke-test.sh /path/to/private/values.env
 ```
 
 Run and capture these cases separately:

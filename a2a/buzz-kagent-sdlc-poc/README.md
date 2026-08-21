@@ -13,10 +13,12 @@ Buzz issue event -> durable controller -> kagent coordinator
 
 ## Deliberate boundary
 
-The controller is deterministic and owns event deduplication, task correlation,
-attempt budget, Git SHA, clean-checkout tests, staging proof and PR/merge
-eligibility. kagent owns the bounded specialist reasoning sequence. This keeps
-an LLM from becoming the authority for retries, Git state or production writes.
+The controller is deterministic and owns event deduplication, task correlation
+and the attempt budget. The separate `delivery_gate.py` owns the Git SHA,
+clean-checkout test result and existing draft-PR eligibility. Neither component
+proves staging or permits merging. kagent owns the bounded specialist reasoning
+sequence. This keeps an LLM from becoming the authority for retries, Git state
+or production writes.
 
 The POC role agents have no shell, Git, Kubernetes-write or merge tools. A
 future repository MCP tool must be separately allowlisted and exercised in a
@@ -35,6 +37,7 @@ ModelConfig sets explicitly.
 
 ```bash
 python3 -m unittest -v a2a/buzz-kagent-sdlc-poc/test_delivery_controller.py
+python3 -m unittest -v a2a/buzz-kagent-sdlc-poc/test_delivery_gate.py
 kubectl apply --dry-run=server -f a2a/buzz-kagent-sdlc-poc/k8s/model-route.yaml
 kubectl apply --dry-run=server -f a2a/buzz-kagent-sdlc-poc/k8s/agents.yaml
 ```
@@ -72,8 +75,10 @@ accepted from an event.
 
 The controller stores `source_event_id`, A2A request/context/task IDs and its
 terminal result in SQLite. A repeated source event returns the original result
-without invoking kagent again. Its reply always has `merge_eligible: false`:
-the next issue adds the deterministic Git/test/staging gate before a real PR.
+without invoking kagent again. Its reply always has `merge_eligible: false`.
+The separate delivery gate can attest to an already-created draft PR and one
+direct test command, but staging proof and any publishing authority remain
+outside this POC.
 
 `live_smoke.py` creates two disposable identities and a private channel, sends
 one schema-marked task, runs one bridge pass, verifies a threaded result, then
