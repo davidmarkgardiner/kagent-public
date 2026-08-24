@@ -7,9 +7,11 @@
 - Repair starting commit: `764c9568b613d27b23b1600647b95d7da6aeab0e`
 - Owner-authorized collision-repair starting commit:
   `1913b6421904f54066305c30fd4b636424b5c0f6`
+- Owner-authorized capacity-repair starting commit:
+  `dcaf1168293b9309babf7e34afcaa78a2fc7ea37`
 - Shared branch: `sdlc/mil-385`
-- Scope: source creation plus offline/static verification only; the repair is
-  limited to the missing evidence-scanner dependency recorded by Test
+- Scope: source creation plus offline/static verification only; the current
+  repair is limited to the owner-authorized bounded POC CPU requests
 - Live actions performed: none
 
 This stage did not execute `live-poc.sh`, `kubectl`, Helm, TokenRequest, or any
@@ -47,6 +49,21 @@ names inside the new namespace, so their fully qualified identities are also
 distinct. Fail-closed ownership checks remain unchanged: teardown still
 deletes only exact-name resources carrying the proof label. It neither adopts
 nor deletes the unrelated legacy namespace or any existing workload.
+
+## Owner-authorized capacity repair
+
+The next Test gate passed offline verification and live preflight, then stopped
+because the labelled smoke client could not schedule. The owner-recorded
+read-only capacity evidence showed 7,997m of the Kind host's 8,000m allocatable
+CPU already requested, leaving less than the smoke client's former 10m request
+and the server's former 50m request. The live trap removed all renamed POC
+resources, and the protected `default/kubectl-mcp` UID remained unchanged.
+
+This code-only repair sets the two temporary POC Pods' CPU requests to `1m`.
+It retains their CPU limits, memory requests and limits, hardened security
+contexts, isolation, cleanup, and every other acceptance control. The audited
+server values mirror the manifest. Offline verification now requires the exact
+resource maps for both Pods and fails closed if any request or limit drifts.
 
 ## Files changed
 
@@ -120,6 +137,18 @@ the live proof.
 The exact Build `TEST_COMMAND` was executed once against the final operational
 source. No live command, `kubectl`, Helm, TokenRequest, cluster access, or
 cluster mutation was performed.
+
+### Owner-authorized capacity-repair commands and results
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `bash -n` on the changed offline verifier | 0 | The verifier source parsed. |
+| focused resource assertion inspection | 0 | Both Pod manifests and the audited server values contain the exact bounded requests and retained limits. |
+| `bash platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/verify.sh` | 0 | `verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)` |
+| `git diff --check` | 0 | Capacity-repair diff has no whitespace errors. |
+
+No live command, `kubectl`, Helm, TokenRequest, cluster access, or cluster
+mutation is authorized or performed by this repair.
 
 ## Resulting commit intent
 

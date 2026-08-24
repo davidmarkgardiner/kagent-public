@@ -104,6 +104,10 @@ deployment = next(item for item in server_docs if item["kind"] == "Deployment")
 service = next(item for item in server_docs if item["kind"] == "Service")
 pod_spec = deployment["spec"]["template"]["spec"]
 container = pod_spec["containers"][0]
+server_resources = {
+    "requests": {"cpu": "1m", "memory": "64Mi"},
+    "limits": {"cpu": "200m", "memory": "256Mi"},
+}
 if pod_spec.get("automountServiceAccountToken") is not False:
     raise SystemExit("MCP pod token automount must be false")
 security = container.get("securityContext", {})
@@ -114,12 +118,25 @@ if not (
     and security.get("capabilities", {}).get("drop") == ["ALL"]
 ):
     raise SystemExit("MCP container security context drifted")
-if not container.get("resources", {}).get("requests") or not container.get("resources", {}).get("limits"):
-    raise SystemExit("MCP resources must be explicit")
+if container.get("resources") != server_resources:
+    raise SystemExit("MCP resources drifted from the bounded POC values")
 if "@sha256:" not in container["image"] or ":latest" in container["image"]:
     raise SystemExit("MCP image must be immutable")
 if service["spec"].get("type") != "ClusterIP" or "externalIPs" in service["spec"]:
     raise SystemExit("MCP Service must remain ClusterIP-only")
+
+values = yaml.safe_load((root / "values.yaml").read_text(encoding="utf-8"))
+if values.get("resources") != server_resources:
+    raise SystemExit("audited values resources drifted from the MCP manifest")
+
+smoke_docs = list(yaml.safe_load_all((root / "manifests/smoke-client.yaml").read_text(encoding="utf-8")))
+smoke_pod = next(item for item in smoke_docs if item["kind"] == "Pod")
+smoke_resources = {
+    "requests": {"cpu": "1m", "memory": "24Mi"},
+    "limits": {"cpu": "100m", "memory": "64Mi"},
+}
+if smoke_pod["spec"]["containers"][0].get("resources") != smoke_resources:
+    raise SystemExit("smoke-client resources drifted from the bounded POC values")
 
 all_kinds = []
 for path in (root / "manifests").glob("*.yaml"):
