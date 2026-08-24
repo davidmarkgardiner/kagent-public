@@ -147,7 +147,9 @@ For every worker cluster, complete all of these independently of federation:
 3. Give AKS-MCP a deliberate worker-cluster connection path. The current chart
    can mount one Secret key with `kubeconfig.enabled=true`; stock v0.0.19 blocks
    context/kubeconfig redirection flags, so use a single-current-context key and
-   a fixed-target MCP instance rather than request-time context switching. See
+   a fixed-target MCP instance rather than request-time context switching. Make
+   that key required with `kubeconfig.optional=false` and set
+   `kubeconfig.expectedCurrentContext` to gate startup on the selected alias. See
    the [`fleet refresh bundle`](../../work-agent-bundles/aks-mcp-fleet-kubeconfig-refresh/README.md).
 4. Permit management-cluster-to-worker API connectivity: private DNS,
    routing/peering, firewall rules, and namespace egress `NetworkPolicy` must

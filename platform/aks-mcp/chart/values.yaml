@@ -101,6 +101,10 @@ kubeconfig:
   # Secret key projected to /home/mcp/.kube/config. Each AKS-MCP instance must
   # receive one current-context file because tool calls cannot redirect context.
   key: "config"
+  # Set false when the pod must not start without the selected Secret key.
+  optional: true
+  # When set, an init container blocks startup unless this context is current.
+  expectedCurrentContext: ""
 
 # Telemetry configuration
 telemetry:

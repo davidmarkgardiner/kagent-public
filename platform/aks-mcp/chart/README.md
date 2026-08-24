@@ -188,6 +188,9 @@ helm upgrade my-aks-mcp . --set app.verbose=true
 - **Fixed kubeconfig key**: `kubeconfig.key` projects one Secret key to
   `/home/mcp/.kube/config`. Use one single-current-context key per AKS-MCP
   instance; v0.0.19 intentionally blocks context/kubeconfig redirection flags.
+  Set `kubeconfig.optional=false` for fixed-target deployments. Setting
+  `kubeconfig.expectedCurrentContext` adds a startup gate that prevents the
+  application container from starting with the wrong current context.
 
 For the centrally refreshed multi-cluster pattern and its two-cluster live
 receipt, see
