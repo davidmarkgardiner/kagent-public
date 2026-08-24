@@ -191,6 +191,11 @@ helm upgrade my-aks-mcp . --set app.verbose=true
   Set `kubeconfig.optional=false` for fixed-target deployments. Setting
   `kubeconfig.expectedCurrentContext` adds a startup gate that prevents the
   application container from starting with the wrong current context.
+- **Gateway backend discovery**: set `service.appProtocol=agentgateway.dev/mcp`
+  when Agent Gateway selects the Service as an MCP backend.
+- **Restricted ingress**: enable `networkPolicy` and allow only the approved
+  gateway dataplane pods. Authentication and NetworkPolicy are complementary;
+  do not treat `app.allowedHosts` as caller authentication.
 
 For the centrally refreshed multi-cluster pattern and its two-cluster live
 receipt, see
