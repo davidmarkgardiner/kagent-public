@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubernetes-mcp-smoke-client
+  namespace: kubernetes-mcp-poc
+  labels:
+    app.kubernetes.io/name: kubernetes-mcp-smoke-client
+    app.kubernetes.io/part-of: homelab-cross-cluster-poc
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubernetes-mcp-smoke-client
+  namespace: kubernetes-mcp-poc
+  labels:
+    app.kubernetes.io/name: kubernetes-mcp-smoke-client
+    app.kubernetes.io/part-of: homelab-cross-cluster-poc
+spec:
+  serviceAccountName: kubernetes-mcp-smoke-client
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: client
+      image: docker.io/library/python@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
+      imagePullPolicy: IfNotPresent
+      command: ["python", "-c", "import time; time.sleep(3600)"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+      resources:
+        requests:
+          cpu: 10m
+          memory: 24Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+      volumeMounts:
+        - name: client
+          mountPath: /opt/poc
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: client
+      configMap:
+        name: kubernetes-mcp-smoke-client
+        defaultMode: 0444
+    - name: tmp
+      emptyDir:
+        sizeLimit: 16Mi

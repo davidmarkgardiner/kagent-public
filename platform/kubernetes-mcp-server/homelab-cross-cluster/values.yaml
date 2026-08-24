@@ -1,0 +1,49 @@
+# Audited upstream-chart equivalent for v0.0.66. The live proof uses the
+# reviewed manifests in this bundle so it does not fetch a chart at runtime.
+replicaCount: 1
+image:
+  registry: quay.io
+  repository: containers/kubernetes_mcp_server
+  version: sha256:6d650f4bd6ac303ad82713c997e73a2d001602f9bf17392c9b9a0e30e29c6423
+  pullPolicy: IfNotPresent
+serviceAccount:
+  create: true
+  name: kubernetes-mcp-server
+  automountToken: false
+rbac:
+  create: false
+service:
+  type: ClusterIP
+  port: 8080
+ingress:
+  enabled: false
+httpRoute:
+  enabled: false
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop: ["ALL"]
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+configFilePath: /etc/kubernetes-mcp/server.toml
+extraVolumes:
+  - name: scoped-kubeconfig
+    secret:
+      secretName: kubernetes-mcp-scoped-kubeconfig
+      defaultMode: 0400
+extraVolumeMounts:
+  - name: scoped-kubeconfig
+    mountPath: /var/run/kubernetes-mcp/kubeconfig
+    subPath: kubeconfig
+    readOnly: true

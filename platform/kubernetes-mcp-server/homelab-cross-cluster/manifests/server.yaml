@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubernetes-mcp-server
+  namespace: kubernetes-mcp-poc
+  labels:
+    app.kubernetes.io/name: kubernetes-mcp-server
+    app.kubernetes.io/part-of: homelab-cross-cluster-poc
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-mcp-server
+  namespace: kubernetes-mcp-poc
+  labels:
+    app.kubernetes.io/name: kubernetes-mcp-server
+    app.kubernetes.io/part-of: homelab-cross-cluster-poc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kubernetes-mcp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kubernetes-mcp-server
+        app.kubernetes.io/part-of: homelab-cross-cluster-poc
+    spec:
+      serviceAccountName: kubernetes-mcp-server
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kubernetes-mcp-server
+          image: quay.io/containers/kubernetes_mcp_server@sha256:6d650f4bd6ac303ad82713c997e73a2d001602f9bf17392c9b9a0e30e29c6423
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config
+            - /etc/kubernetes-mcp/server.toml
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kubernetes-mcp/server.toml
+              subPath: server.toml
+              readOnly: true
+            - name: scoped-kubeconfig
+              mountPath: /var/run/kubernetes-mcp/kubeconfig
+              subPath: kubeconfig
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: kubernetes-mcp-server-config
+        - name: scoped-kubeconfig
+          secret:
+            secretName: kubernetes-mcp-scoped-kubeconfig
+            defaultMode: 0400
+        - name: tmp
+          emptyDir:
+            sizeLimit: 32Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes-mcp-server
+  namespace: kubernetes-mcp-poc
+  labels:
+    app.kubernetes.io/name: kubernetes-mcp-server
+    app.kubernetes.io/part-of: homelab-cross-cluster-poc
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kubernetes-mcp-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

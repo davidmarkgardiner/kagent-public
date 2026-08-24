@@ -1,0 +1,16 @@
+{
+  "schema": "homelab-cross-cluster-proof/v1",
+  "status": "PASS",
+  "contexts": [
+    {"alias": "red-homelab", "nodeCount": 1},
+    {"alias": "proxmox-homelab", "nodeCount": 3}
+  ],
+  "alternatingRequests": 20,
+  "crossoverCount": 0,
+  "toolSurface": "allowlist-only",
+  "rbac": "positive-and-negative-checks-passed",
+  "endpoint": "ClusterIP-only",
+  "teardownVerified": true,
+  "defaultKubectlMcpUidUnchanged": true,
+  "networkPolicyLimitation": "KindNet manifest present; enforcement not claimed"
+}

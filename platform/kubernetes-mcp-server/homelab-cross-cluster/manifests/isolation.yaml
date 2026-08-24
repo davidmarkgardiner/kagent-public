@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: kubernetes-mcp-poc
+  labels:
+    app.kubernetes.io/part-of: homelab-cross-cluster-poc
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-labelled-smoke-client
+  namespace: kubernetes-mcp-poc
+  labels:
+    app.kubernetes.io/part-of: homelab-cross-cluster-poc
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kubernetes-mcp-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kubernetes-mcp-smoke-client
+      ports:
+        - protocol: TCP
+          port: 8080
