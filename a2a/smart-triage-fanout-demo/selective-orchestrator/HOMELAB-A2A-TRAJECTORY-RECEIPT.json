@@ -1,0 +1,15 @@
+{
+  "agent": "evaluated-k8s-readonly-triage-agent",
+  "context_alias": "kind-homelab",
+  "elapsed_ms": 13000,
+  "expected_marker_match": true,
+  "failure_reason": "none",
+  "namespace": "kagent",
+  "redaction_status": "not_needed",
+  "reply_source": "artifact",
+  "response_digest": "sha256:37510aaa17a276f362ba55c125e0365f6264d0f0a6cf7c37e6322105d486d8af",
+  "schema_version": "kagent-a2a-trajectory-receipt/v1",
+  "target": "kind-homelab-evaluated-readonly",
+  "terminal_outcome": "PASS",
+  "truncation_status": "not_needed"
+}

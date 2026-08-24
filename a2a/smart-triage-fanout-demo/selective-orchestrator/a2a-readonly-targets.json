@@ -1,0 +1,43 @@
+{
+  "schema_version": "kagent-a2a-readonly-targets/v1",
+  "targets": [
+    {
+      "name": "kind-homelab-evaluated-readonly",
+      "context_alias": "kind-homelab",
+      "namespace": "kagent",
+      "agent": "evaluated-k8s-readonly-triage-agent",
+      "read_only": true,
+      "agent_policies": {
+        "evaluated-k8s-readonly-triage-agent": {
+          "tools": [
+            "k8s_check_service_connectivity",
+            "k8s_describe_resource",
+            "k8s_get_available_api_resources",
+            "k8s_get_cluster_configuration",
+            "k8s_get_events",
+            "k8s_get_pod_logs",
+            "k8s_get_resource_yaml",
+            "k8s_get_resources"
+          ],
+          "delegates": [
+            "aks-network-flow-triage",
+            "triage-evaluation-agent"
+          ]
+        },
+        "aks-network-flow-triage": {
+          "tools": [
+            "k8s_check_service_connectivity",
+            "k8s_describe_resource",
+            "k8s_get_events",
+            "k8s_get_resources"
+          ],
+          "delegates": []
+        },
+        "triage-evaluation-agent": {
+          "tools": [],
+          "delegates": []
+        }
+      }
+    }
+  ]
+}

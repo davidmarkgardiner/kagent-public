@@ -29,7 +29,7 @@
 #   --timeout SECS       Max seconds to wait for the agent reply (default: 60)
 #   --receipt-file FILE  Write the raw terminal JSON-RPC response to FILE
 #   --raw                Print the full JSON-RPC response body
-#   --json               Print {"agent","ok","text","elapsed_ms",...} instead of text
+#   --json               Print {"agent","ok","text","terminal_state",...} instead of text
 #   -h, --help           Show this help
 #
 # Exit codes:
@@ -265,8 +265,11 @@ if [[ -z "$REPLY" ]]; then
 fi
 
 if [[ "$JSON_OUT" -eq 1 ]]; then
-  jq -n --arg agent "$AGENT" --arg text "$REPLY" --arg reply_source "$REPLY_SOURCE" --argjson ms "$ELAPSED_MS" \
-    '{agent:$agent, ok:true, text:$text, reply_source:$reply_source, elapsed_ms:$ms}'
+  TERMINAL_STATE=$(jq -r '.result.status.state // "unknown"' "$BODY_FILE")
+  jq -n --arg agent "$AGENT" --arg text "$REPLY" --arg reply_source "$REPLY_SOURCE" \
+    --arg terminal_state "$TERMINAL_STATE" --argjson ms "$ELAPSED_MS" \
+    '{agent:$agent, ok:true, text:$text, reply_source:$reply_source,
+      terminal_state:$terminal_state, elapsed_ms:$ms}'
 else
   printf '%s\n' "$REPLY"
 fi

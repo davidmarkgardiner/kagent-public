@@ -95,7 +95,8 @@ FAKE_CURL_BODY='{"jsonrpc":"2.0","result":{"status":{"state":"completed"},"histo
   FAKE_CURL_CAPTURE="$TMP/a2a-history-request.json" FAKE_CURL_ARGS="$TMP/a2a-history-request.args" PATH="$TMP/fake-bin:$PATH" "$ROOT/scripts/kagent-a2a-invoke.sh" --agent fixture --text hello \
   --url http://fixture.invalid --json > "$TMP/a2a-history-fallback.json" \
   || fail "a2a-invoke accepts a history-only terminal response"
-jq -e '.text == "history-final-ok" and .reply_source == "history-fallback"' "$TMP/a2a-history-fallback.json" >/dev/null \
+jq -e '.text == "history-final-ok" and .reply_source == "history-fallback"
+  and .terminal_state == "completed"' "$TMP/a2a-history-fallback.json" >/dev/null \
   || fail "a2a-invoke extracts final text from agent history"
 pass "a2a-invoke extracts final text from agent history"
 
