@@ -3,7 +3,7 @@
 ## Stage and boundary
 
 - Stage: Test (`MIL-388`, order 3/5)
-- Tested commit: `ca24cbf5c40d1d290e0f7a10e4cf8edca226a020`
+- Tested commit: `906ff1fc244822d17c2eeb7c810d5c82a1c458f1`
 - Shared branch: `sdlc/mil-385`
 - Product code modified: none
 - Live actions performed: bounded POC orchestration passed reachability and
@@ -28,23 +28,28 @@ verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evi
 preflight: PASS (aliases=red-homelab,proxmox-homelab; nodes=1,3)
 reachability: PASS (host pod to target API; endpoint suppressed)
 credentials: PASS (two short-lived purpose-issued entries; values suppressed)
+RBAC_DIAGNOSTIC: 40 expected-deny checks returned actual=error across both aliases
+RBAC_RESULT: {"checks":108,"failures":40,"result":"FAIL"}
 ERROR: RBAC allow/deny verification failed
 ```
 
 The offline verification, fail-closed preflight, pod-to-target reachability,
-and runtime credential setup passed. The live proof failed at the independent
-RBAC allow/deny verification and therefore did not proceed to deterministic
-MCP requests or bounded live evidence. The orchestrator returned exit code 1
-after its cleanup trap; no task files or credentials were retained in the
-worktree.
+runtime credential setup, and bounded diagnostic rendering passed. The live
+proof failed at the independent RBAC allow/deny verification: every one of the
+40 expected-deny checks that ran across `red-homelab` and `proxmox-homelab`
+returned `error` rather than `deny`. It therefore did not proceed to
+deterministic MCP requests or bounded live evidence. The orchestrator returned
+exit code 1 after its cleanup trap; no task files or credentials were retained
+in the worktree.
 
-This rerun follows the owner-authorized bounded non-root repair recorded on
-the parent issue. The prior Test receipt remains represented by commit
-`dcaf1168293b9309babf7e34afcaa78a2fc7ea37`; this receipt records the current
-rerun against the repaired shared head.
+This rerun follows the owner-authorized bounded RBAC-diagnostic repair recorded
+on the parent issue. The prior Test receipt remains represented by the earlier
+shared-branch history; this receipt records the current rerun against commit
+`906ff1fc244822d17c2eeb7c810d5c82a1c458f1`.
 
 ## Result
 
-Test gate: `FAIL` — RBAC allow/deny verification failed. One repair dispatch
-was already consumed by the prior Test failure, so the repair budget is
-exhausted. This receipt is committed as the durable Test-stage handoff.
+Test gate: `FAIL` — RBAC allow/deny verification failed with 40 expected-deny
+checks returning `error`. One repair dispatch was already consumed by the prior
+Test failure, so the repair budget is exhausted. This receipt is committed as
+the durable Test-stage handoff.
