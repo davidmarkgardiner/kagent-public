@@ -11,10 +11,12 @@
   `dcaf1168293b9309babf7e34afcaa78a2fc7ea37`
 - Owner-authorized non-root-repair starting commit:
   `412413174cf0d597f9b0fc619a6110dad84a4d06`
+- Owner-authorized RBAC-diagnostic-repair starting commit:
+  `def4ab54ac18b21b06c7f39fbca1959ec2d8b18a`
 - Shared branch: `sdlc/mil-385`
 - Scope: source creation plus offline/static verification only; the current
-  repair is limited to the owner-authorized explicit numeric non-root runtime
-  identity for the two temporary POC pod specs
+  repair is limited to owner-authorized sanitized RBAC failure diagnostics and
+  deterministic offline assertions for that diagnostic surface
 - Live actions performed: none
 
 This stage did not execute `live-poc.sh`, `kubectl`, Helm, TokenRequest, or any
@@ -85,6 +87,35 @@ Resources, limits, token automount, read-only filesystems, dropped
 capabilities, RuntimeDefault seccomp, isolation, cleanup, and unrelated
 workloads remain unchanged.
 
+## Owner-authorized RBAC diagnostic repair
+
+The next Test gate passed offline verification, preflight, pod-to-target
+reachability, and purpose-issued credential setup, then failed closed in the
+independent RBAC allow/deny verification. The former runtime output identified
+only the overall RBAC phase and could not distinguish a denied expected read,
+an unexpectedly allowed forbidden operation, or an authorization command
+error. The private runtime directory and cleanup trap retained no credential or
+raw cluster output.
+
+This offline-only repair leaves the RBAC manifest and permission matrix
+unchanged because their static definitions agree. It adds a fail-closed
+diagnostic renderer that accepts only:
+
+- one exact check identifier from the existing 108-check matrix;
+- `red-homelab` or `proxmox-homelab` as the context alias;
+- normalized `allow`, `deny`, or `error` actual state and `allow`/`deny`
+  expectation; and
+- a result consistent with those normalized values.
+
+Only failed checks are rendered individually; one bounded overall line reports
+the fixed check count, failure count, and result. Raw `kubectl` output remains
+suppressed and is never passed to the renderer. The helper's offline self-test
+proves exact output and rejection of credential-like, token, URL, PEM,
+kubeconfig, Secret, and authorization-header shapes. Existing `0600` temporary
+check storage, private runtime-directory handling, cleanup, security contexts,
+resources, read-only filesystems, dropped capabilities, seccomp, token
+automount, isolation, and unrelated workloads remain unchanged.
+
 ## Files changed
 
 - `platform/kubernetes-mcp-server/homelab-cross-cluster/README.md`
@@ -108,6 +139,9 @@ workloads remain unchanged.
 - `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/scan-evidence.py`
   replaces the unavailable external scanner with a strict, repository-local
   schema and sensitive-shape validator plus a positive/negative self-test.
+- `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/rbac-diagnostics.py`
+  renders the exact allowlisted RBAC failure surface and self-tests rejection
+  of sensitive or uncontrolled diagnostic values.
 - `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/mcp-client.py`
   implements direct Streamable HTTP initialization, exact tool/context
   discovery, 20 alternating fingerprint-bound Node requests, crossover
@@ -183,6 +217,23 @@ mutation is authorized or performed by this repair.
 
 The exact Build `TEST_COMMAND` was executed once and passed. No live command,
 `kubectl`, Helm, TokenRequest, cluster access, or cluster mutation was run.
+
+### Owner-authorized RBAC-diagnostic-repair commands and results
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `python3 scripts/rbac-diagnostics.py self-test` | 0 | Exact valid diagnostic and overall lines passed; credential-like, token, URL, PEM, kubeconfig, Secret, and authorization-header values were rejected. |
+| bounded diagnostic failure rendering | 0 | Produced only the exact check identifier, public alias, normalized expected/actual status, and result. |
+| `bash -n` on the changed shell sources | 0 | Both changed shell sources parsed. |
+| in-memory Python compile of `rbac-diagnostics.py` | 0 | Diagnostic helper compiled without creating cache files. |
+| `bash platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/verify.sh` | 0 | `verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)` |
+| `scripts/public-safe-scan.sh platform/kubernetes-mcp-server/homelab-cross-cluster --json` | 0 | `{"clean":true,"hits":0}` |
+| `scripts/public-safe-scan.sh .sdlc/mil-385 --json` | 0 | `{"clean":true,"hits":0}` |
+| `git diff --check` | 0 | RBAC-diagnostic-repair diff has no whitespace errors. |
+
+The exact Build `TEST_COMMAND` was executed once against the final repair tree
+and passed. No live command, `kubectl`, Helm, TokenRequest, cluster access, or
+cluster mutation was run.
 
 ## Resulting commit intent
 

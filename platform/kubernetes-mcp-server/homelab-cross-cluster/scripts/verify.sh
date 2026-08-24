@@ -22,6 +22,7 @@ required_files=(
   scripts/live-poc.sh
   scripts/mcp-client.py
   scripts/preflight.sh
+  scripts/rbac-diagnostics.py
   scripts/scan-evidence.py
   scripts/teardown.sh
   scripts/verify-rbac.sh
@@ -224,6 +225,7 @@ if summary.get("alternatingRequests", 0) < 20 or summary.get("crossoverCount") !
 PY
 
 python3 "${BUNDLE_DIR}/scripts/scan-evidence.py" --self-test >/dev/null
+python3 "${BUNDLE_DIR}/scripts/rbac-diagnostics.py" self-test >/dev/null
 
 if rg -q '(:latest|kind: (Ingress|HTTPRoute)|type: (LoadBalancer|NodePort))' \
   "${BUNDLE_DIR}/config" "${BUNDLE_DIR}/manifests" "${BUNDLE_DIR}/values.yaml"; then

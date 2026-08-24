@@ -146,7 +146,13 @@ The MCP tool filter is not treated as authorization. The two reader
 ClusterRoles are the Kubernetes API boundary. `verify-rbac.sh` proves allowed
 reads and denied Secret, ServiceAccount, RBAC, TokenRequest, `pods/exec`, and
 resource-write operations with the actual purpose-issued credentials before
-the server starts.
+the server starts. If a check fails, the script reports only its exact
+allowlisted check identifier, one of the two public context aliases, normalized
+expected/actual `allow`, `deny`, or `error` status, and `PASS`/`FAIL`. It never
+prints raw authorization output. A bounded overall result reports only check
+and failure counts. The offline gate self-tests that renderer and rejects
+credential-like, token, URL, PEM, kubeconfig, Secret, and authorization-header
+shapes before the Test stage can use it.
 
 The MCP pod and smoke-client Pod both set
 `automountServiceAccountToken: false`. The server authenticates to the target
@@ -182,7 +188,7 @@ request bodies, raw MCP results, pod logs, or raw Kubernetes API responses.
 
 ## Evidence contract
 
-The only live stdout receipt contains:
+The successful live stdout receipt contains:
 
 - the two aliases and their `1`/`3` node counts;
 - request count and zero-crossover status;
@@ -190,6 +196,11 @@ The only live stdout receipt contains:
 - ClusterIP-only status;
 - teardown and preserved-UID booleans; and
 - the honest KindNet NetworkPolicy limitation.
+
+Before that receipt, RBAC failure diagnostics may emit only the bounded fields
+described above. They are operational failure signals, not retained evidence,
+and the enclosing private runtime directory is still removed by the existing
+exit trap.
 
 [`evidence/example-summary.json`](evidence/example-summary.json) shows that
 schema without representing a live run. The 20-request fixture contains only
