@@ -51,6 +51,8 @@ root = pathlib.Path(sys.argv[1])
 poc_namespace = "kubernetes-mcp-cross-cluster-poc"
 poc_rbac_name = "kubernetes-mcp-cross-cluster-poc-reader"
 reader_name = "kubernetes-mcp-cross-cluster-reader"
+runtime_uid = 65532
+runtime_gid = 65532
 
 manifest_docs = []
 for path in sorted((root / "manifests").glob("*.yaml")) + [root / "values.yaml"]:
@@ -110,11 +112,21 @@ server_resources = {
 }
 if pod_spec.get("automountServiceAccountToken") is not False:
     raise SystemExit("MCP pod token automount must be false")
+pod_security = pod_spec.get("securityContext", {})
+if not (
+    pod_security.get("runAsNonRoot") is True
+    and pod_security.get("runAsUser") == runtime_uid
+    and pod_security.get("runAsGroup") == runtime_gid
+    and pod_security.get("seccompProfile", {}).get("type") == "RuntimeDefault"
+):
+    raise SystemExit("MCP pod numeric non-root security context drifted")
 security = container.get("securityContext", {})
 if not (
     security.get("allowPrivilegeEscalation") is False
     and security.get("readOnlyRootFilesystem") is True
     and security.get("runAsNonRoot") is True
+    and security.get("runAsUser") == runtime_uid
+    and security.get("runAsGroup") == runtime_gid
     and security.get("capabilities", {}).get("drop") == ["ALL"]
 ):
     raise SystemExit("MCP container security context drifted")
@@ -128,6 +140,10 @@ if service["spec"].get("type") != "ClusterIP" or "externalIPs" in service["spec"
 values = yaml.safe_load((root / "values.yaml").read_text(encoding="utf-8"))
 if values.get("resources") != server_resources:
     raise SystemExit("audited values resources drifted from the MCP manifest")
+if values.get("podSecurityContext") != pod_security:
+    raise SystemExit("audited values pod security context drifted from the MCP manifest")
+if values.get("securityContext") != security:
+    raise SystemExit("audited values container security context drifted from the MCP manifest")
 
 smoke_docs = list(yaml.safe_load_all((root / "manifests/smoke-client.yaml").read_text(encoding="utf-8")))
 smoke_pod = next(item for item in smoke_docs if item["kind"] == "Pod")
@@ -135,7 +151,27 @@ smoke_resources = {
     "requests": {"cpu": "1m", "memory": "24Mi"},
     "limits": {"cpu": "100m", "memory": "64Mi"},
 }
-if smoke_pod["spec"]["containers"][0].get("resources") != smoke_resources:
+smoke_spec = smoke_pod["spec"]
+smoke_container = smoke_spec["containers"][0]
+smoke_pod_security = smoke_spec.get("securityContext", {})
+if not (
+    smoke_pod_security.get("runAsNonRoot") is True
+    and smoke_pod_security.get("runAsUser") == runtime_uid
+    and smoke_pod_security.get("runAsGroup") == runtime_gid
+    and smoke_pod_security.get("seccompProfile", {}).get("type") == "RuntimeDefault"
+):
+    raise SystemExit("smoke-client pod numeric non-root security context drifted")
+smoke_security = smoke_container.get("securityContext", {})
+if not (
+    smoke_security.get("allowPrivilegeEscalation") is False
+    and smoke_security.get("readOnlyRootFilesystem") is True
+    and smoke_security.get("runAsNonRoot") is True
+    and smoke_security.get("runAsUser") == runtime_uid
+    and smoke_security.get("runAsGroup") == runtime_gid
+    and smoke_security.get("capabilities", {}).get("drop") == ["ALL"]
+):
+    raise SystemExit("smoke-client container security context drifted")
+if smoke_container.get("resources") != smoke_resources:
     raise SystemExit("smoke-client resources drifted from the bounded POC values")
 
 all_kinds = []

@@ -150,9 +150,12 @@ the server starts.
 
 The MCP pod and smoke-client Pod both set
 `automountServiceAccountToken: false`. The server authenticates to the target
-APIs only through its read-only Secret volume. Both Pods run as non-root with
+APIs only through its read-only Secret volume. Both pod and container security
+contexts pin the numeric non-root identity `65532:65532`; they also retain
 RuntimeDefault seccomp, no privilege escalation, a read-only root filesystem,
-dropped capabilities, and explicit CPU/memory requests and limits.
+dropped capabilities, and explicit CPU/memory requests and limits. The fixed
+numeric identity prevents kubelet from relying on either image's root-default
+metadata when enforcing `runAsNonRoot`.
 
 ## Configuration and sensitive values
 

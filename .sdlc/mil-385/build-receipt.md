@@ -9,9 +9,12 @@
   `1913b6421904f54066305c30fd4b636424b5c0f6`
 - Owner-authorized capacity-repair starting commit:
   `dcaf1168293b9309babf7e34afcaa78a2fc7ea37`
+- Owner-authorized non-root-repair starting commit:
+  `412413174cf0d597f9b0fc619a6110dad84a4d06`
 - Shared branch: `sdlc/mil-385`
 - Scope: source creation plus offline/static verification only; the current
-  repair is limited to the owner-authorized bounded POC CPU requests
+  repair is limited to the owner-authorized explicit numeric non-root runtime
+  identity for the two temporary POC pod specs
 - Live actions performed: none
 
 This stage did not execute `live-poc.sh`, `kubectl`, Helm, TokenRequest, or any
@@ -64,6 +67,23 @@ It retains their CPU limits, memory requests and limits, hardened security
 contexts, isolation, cleanup, and every other acceptance control. The audited
 server values mirror the manifest. Offline verification now requires the exact
 resource maps for both Pods and fails closed if any request or limit drifts.
+
+## Owner-authorized non-root runtime repair
+
+After the capacity repair, the `1m` smoke pod scheduled, but kubelet refused
+startup because `runAsNonRoot: true` encountered an image whose default user
+is root. No container ran or credential was minted, cleanup removed every
+renamed POC resource, and the protected `default/kubectl-mcp` UID remained
+unchanged.
+
+This offline-only repair pins `runAsUser: 65532` and `runAsGroup: 65532` at
+both the pod and container security-context levels for the temporary server
+and smoke-client workloads. The audited server values mirror the exact
+identity. The deterministic verifier now requires the exact numeric UID/GID
+and all retained security controls for both pods and fails closed on drift.
+Resources, limits, token automount, read-only filesystems, dropped
+capabilities, RuntimeDefault seccomp, isolation, cleanup, and unrelated
+workloads remain unchanged.
 
 ## Files changed
 
@@ -149,6 +169,20 @@ cluster mutation was performed.
 
 No live command, `kubectl`, Helm, TokenRequest, cluster access, or cluster
 mutation is authorized or performed by this repair.
+
+### Owner-authorized non-root-repair commands and results
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `bash -n` on the changed offline verifier | 0 | The verifier source parsed. |
+| focused YAML security-context inspection | 0 | Both pod and container contexts use exact UID/GID `65532:65532`; audited server values are exact. |
+| `bash platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/verify.sh` | 0 | `verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)` |
+| `scripts/public-safe-scan.sh platform/kubernetes-mcp-server/homelab-cross-cluster --json` | 0 | `{"clean":true,"hits":0}` |
+| `scripts/public-safe-scan.sh .sdlc/mil-385 --json` | 0 | `{"clean":true,"hits":0}` |
+| `git diff --check` | 0 | Non-root-repair diff has no whitespace errors. |
+
+The exact Build `TEST_COMMAND` was executed once and passed. No live command,
+`kubectl`, Helm, TokenRequest, cluster access, or cluster mutation was run.
 
 ## Resulting commit intent
 
