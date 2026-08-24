@@ -61,8 +61,8 @@ unset original_uid
 
 for context in "${HOST_CONTEXT}" "${TARGET_CONTEXT}"; do
   require_absent "${context}" namespace "${POC_NAMESPACE}"
-  require_absent "${context}" clusterrole kubernetes-mcp-poc-reader
-  require_absent "${context}" clusterrolebinding kubernetes-mcp-poc-reader
+  require_absent "${context}" clusterrole "${POC_RBAC_NAME}"
+  require_absent "${context}" clusterrolebinding "${POC_RBAC_NAME}"
 done
 
 target_url="$(kubectl config view --raw --flatten --minify --context "${TARGET_CONTEXT}" -o json 2>/dev/null |

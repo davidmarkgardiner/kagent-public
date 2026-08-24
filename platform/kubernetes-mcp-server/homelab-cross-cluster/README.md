@@ -43,12 +43,14 @@ test. The live script refuses any other context names.
 ## What the proof creates
 
 The orchestrator creates the same temporary namespace,
-`kubernetes-mcp-poc`, on the two input clusters. Every created object carries
+`kubernetes-mcp-cross-cluster-poc`, on the two input clusters. This distinct,
+deterministic name avoids adopting or deleting resources from other MCP proofs.
+Every created object carries
 `app.kubernetes.io/part-of=homelab-cross-cluster-poc`.
 
 On both clusters it creates:
 
-- one dedicated `kubernetes-mcp-reader` ServiceAccount;
+- one dedicated `kubernetes-mcp-cross-cluster-reader` ServiceAccount;
 - one narrowly defined reader ClusterRole; and
 - one matching ClusterRoleBinding.
 
@@ -126,7 +128,8 @@ manifests in this directory rather than fetching a chart at runtime.
     expression and the repository-local strict JSON schema validator, emit one
     compact public-safe summary, then delete the private temporary directory.
 
-Any unexpected pre-existing object, context ambiguity, credential/TLS
+Any unexpected object with the cross-cluster proof's exact namespace or
+cluster-scoped RBAC names, context ambiguity, credential/TLS
 weakness, permission drift, tool drift, route crossover, scan finding, or
 cleanup failure stops the proof. Cleanup is also registered for `EXIT`, `INT`,
 and `TERM`.
@@ -201,10 +204,11 @@ cluster networking.
 
 ## Teardown and recovery
 
-`teardown.sh` deletes only the three fixed POC resource names after verifying
-their ownership label. It never uses a broad label deletion and never touches
-`default/kubectl-mcp`. If a same-named resource lacks the POC label, teardown
-fails closed instead of adopting or deleting it.
+`teardown.sh` deletes only the three fixed cross-cluster POC resource names
+after verifying their ownership label. It never uses a broad label deletion,
+does not inspect or modify the older `kubernetes-mcp-poc` namespace, and never
+touches `default/kubectl-mcp`. If an exact-name resource lacks the POC label,
+teardown fails closed instead of adopting or deleting it.
 
 After deletion it requires the namespace, ClusterRole, and ClusterRoleBinding
 to be absent in both clusters and requires the original `default/kubectl-mcp`

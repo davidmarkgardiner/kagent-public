@@ -16,7 +16,7 @@ from typing import Any, Callable
 
 HOST_ALIAS = "red-homelab"
 TARGET_ALIAS = "proxmox-homelab"
-ENDPOINT = "http://kubernetes-mcp-server.kubernetes-mcp-poc.svc:8080/mcp"
+ENDPOINT = "http://kubernetes-mcp-server.kubernetes-mcp-cross-cluster-poc.svc:8080/mcp"
 EXPECTED_TOOLS = [
     "configuration_contexts_list",
     "events_list",

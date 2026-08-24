@@ -48,12 +48,39 @@ import tomllib
 import yaml
 
 root = pathlib.Path(sys.argv[1])
+poc_namespace = "kubernetes-mcp-cross-cluster-poc"
+poc_rbac_name = "kubernetes-mcp-cross-cluster-poc-reader"
+reader_name = "kubernetes-mcp-cross-cluster-reader"
 
+manifest_docs = []
 for path in sorted((root / "manifests").glob("*.yaml")) + [root / "values.yaml"]:
     with path.open("r", encoding="utf-8") as stream:
         documents = list(yaml.safe_load_all(stream))
     if not documents or any(document is None for document in documents):
         raise SystemExit(f"empty YAML document: {path.name}")
+    if path.parent.name == "manifests":
+        manifest_docs.extend(documents)
+
+namespace = next(item for item in manifest_docs if item["kind"] == "Namespace")
+if namespace["metadata"]["name"] != poc_namespace:
+    raise SystemExit("POC namespace drifted")
+for item in manifest_docs:
+    metadata = item.get("metadata", {})
+    if "namespace" in metadata and metadata["namespace"] != poc_namespace:
+        raise SystemExit(f"manifest namespace drifted: {item['kind']}/{metadata.get('name')}")
+
+lib_text = (root / "scripts/lib.sh").read_text(encoding="utf-8")
+for declaration in {
+    f'POC_NAMESPACE="{poc_namespace}"',
+    f'POC_RBAC_NAME="{poc_rbac_name}"',
+    f'READER_NAME="{reader_name}"',
+}:
+    if declaration not in lib_text:
+        raise SystemExit(f"runtime POC identity drifted: {declaration}")
+client_text = (root / "scripts/mcp-client.py").read_text(encoding="utf-8")
+expected_endpoint = f'ENDPOINT = "http://kubernetes-mcp-server.{poc_namespace}.svc:8080/mcp"'
+if expected_endpoint not in client_text:
+    raise SystemExit("fixed in-cluster MCP endpoint drifted")
 
 config = tomllib.loads((root / "config/server.toml").read_text(encoding="utf-8"))
 expected_tools = {
@@ -102,6 +129,16 @@ if any(kind in {"Ingress", "HTTPRoute"} for kind in all_kinds):
 
 rbac_docs = list(yaml.safe_load_all((root / "manifests/reader-rbac.yaml").read_text(encoding="utf-8")))
 role = next(item for item in rbac_docs if item["kind"] == "ClusterRole")
+binding = next(item for item in rbac_docs if item["kind"] == "ClusterRoleBinding")
+reader = next(item for item in rbac_docs if item["kind"] == "ServiceAccount")
+if role["metadata"]["name"] != poc_rbac_name or binding["metadata"]["name"] != poc_rbac_name:
+    raise SystemExit("POC cluster-scoped RBAC name drifted")
+if binding["roleRef"]["name"] != poc_rbac_name:
+    raise SystemExit("POC ClusterRoleBinding roleRef drifted")
+if reader["metadata"]["name"] != reader_name or binding["subjects"] != [{
+    "kind": "ServiceAccount", "name": reader_name, "namespace": poc_namespace,
+}]:
+    raise SystemExit("POC reader identity drifted")
 rules = role["rules"]
 resources = {resource for rule in rules for resource in rule["resources"]}
 required = {

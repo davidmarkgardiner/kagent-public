@@ -55,13 +55,13 @@ delete_owned() {
 }
 
 for context in "${HOST_CONTEXT}" "${TARGET_CONTEXT}"; do
-  delete_owned "${context}" clusterrolebinding kubernetes-mcp-poc-reader
-  delete_owned "${context}" clusterrole kubernetes-mcp-poc-reader
+  delete_owned "${context}" clusterrolebinding "${POC_RBAC_NAME}"
+  delete_owned "${context}" clusterrole "${POC_RBAC_NAME}"
   delete_owned "${context}" namespace "${POC_NAMESPACE}"
 done
 
 for context in "${HOST_CONTEXT}" "${TARGET_CONTEXT}"; do
-  for resource in "namespace/${POC_NAMESPACE}" "clusterrole/kubernetes-mcp-poc-reader" "clusterrolebinding/kubernetes-mcp-poc-reader"; do
+  for resource in "namespace/${POC_NAMESPACE}" "clusterrole/${POC_RBAC_NAME}" "clusterrolebinding/${POC_RBAC_NAME}"; do
     found="$(kubectl --context "${context}" get "${resource}" --ignore-not-found -o name 2>/dev/null)" || cleanup_failed=1
     [[ -z "${found:-}" ]] || cleanup_failed=1
   done

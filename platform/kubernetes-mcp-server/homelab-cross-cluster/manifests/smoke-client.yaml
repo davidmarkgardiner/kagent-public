@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kubernetes-mcp-smoke-client
-  namespace: kubernetes-mcp-poc
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/name: kubernetes-mcp-smoke-client
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
@@ -12,7 +12,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: kubernetes-mcp-smoke-client
-  namespace: kubernetes-mcp-poc
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/name: kubernetes-mcp-smoke-client
     app.kubernetes.io/part-of: homelab-cross-cluster-poc

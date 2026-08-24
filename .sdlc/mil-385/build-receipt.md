@@ -5,6 +5,8 @@
 - Stage: Build (`MIL-387`, order 2/5)
 - Initial-build starting commit: `3ce990d55551bbbd26e228dd957db7e839b14f0d`
 - Repair starting commit: `764c9568b613d27b23b1600647b95d7da6aeab0e`
+- Owner-authorized collision-repair starting commit:
+  `1913b6421904f54066305c30fd4b636424b5c0f6`
 - Shared branch: `sdlc/mil-385`
 - Scope: source creation plus offline/static verification only; the repair is
   limited to the missing evidence-scanner dependency recorded by Test
@@ -25,6 +27,26 @@ the two public aliases, the complete 20-request alternating sequence, zero
 crossover, the exact allow/deny results, passing teardown booleans, and no
 forbidden endpoint, certificate, kubeconfig, prompt, or source-context shapes.
 Unexpected files, fields, values, sizes, or malformed JSON fail closed.
+
+## Owner-authorized collision repair
+
+The repaired Test gate subsequently stopped before credentials or mutation
+because the fixed `kubernetes-mcp-poc` namespace belongs to an unrelated live
+MCP proof. The parent records explicit owner authorization for one additional
+bounded source repair despite the exhausted automatic repair budget. This
+repair assigns the cross-cluster proof these deterministic identities:
+
+- namespace: `kubernetes-mcp-cross-cluster-poc`;
+- reader ServiceAccount: `kubernetes-mcp-cross-cluster-reader`; and
+- ClusterRole/ClusterRoleBinding: `kubernetes-mcp-cross-cluster-poc-reader`.
+
+All manifests, runtime constants, exact-name preflight/teardown checks, the
+fixed in-cluster client endpoint, offline assertions, and documentation use the
+new set consistently. The server and client objects retain their existing
+names inside the new namespace, so their fully qualified identities are also
+distinct. Fail-closed ownership checks remain unchanged: teardown still
+deletes only exact-name resources carrying the proof label. It neither adopts
+nor deletes the unrelated legacy namespace or any existing workload.
 
 ## Files changed
 
@@ -85,6 +107,19 @@ the parent controller's eventual Test-stage validation was executed.
 The Build repair ran the issue's exact offline `TEST_COMMAND` once. It did not
 run `live-poc.sh`; the Test stage remains the only stage authorized to exercise
 the live proof.
+
+### Owner-authorized collision-repair commands and results
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `bash -n` on the changed shell scripts | 0 | All changed shell sources parsed. |
+| in-memory Python compile of `mcp-client.py` | 0 | Client source compiled without creating cache files. |
+| legacy operational-identity scan over manifests, scripts, values, and config | 0 | The old namespace, reader, and cluster-scoped RBAC identities are absent from operational source. |
+| `bash platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/verify.sh` | 0 | `verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)` |
+
+The exact Build `TEST_COMMAND` was executed once against the final operational
+source. No live command, `kubectl`, Helm, TokenRequest, cluster access, or
+cluster mutation was performed.
 
 ## Resulting commit intent
 

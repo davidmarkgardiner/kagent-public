@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: kubernetes-mcp-poc
+  name: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/name: kubernetes-mcp-server
     app.kubernetes.io/part-of: homelab-cross-cluster-poc

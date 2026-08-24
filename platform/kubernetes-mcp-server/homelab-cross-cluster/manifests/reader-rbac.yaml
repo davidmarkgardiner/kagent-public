@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kubernetes-mcp-reader
-  namespace: kubernetes-mcp-poc
+  name: kubernetes-mcp-cross-cluster-reader
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
-    app.kubernetes.io/name: kubernetes-mcp-reader
+    app.kubernetes.io/name: kubernetes-mcp-cross-cluster-reader
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
 automountServiceAccountToken: false
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kubernetes-mcp-poc-reader
+  name: kubernetes-mcp-cross-cluster-poc-reader
   labels:
-    app.kubernetes.io/name: kubernetes-mcp-reader
+    app.kubernetes.io/name: kubernetes-mcp-cross-cluster-reader
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
 rules:
   - apiGroups: [""]
@@ -38,15 +38,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kubernetes-mcp-poc-reader
+  name: kubernetes-mcp-cross-cluster-poc-reader
   labels:
-    app.kubernetes.io/name: kubernetes-mcp-reader
+    app.kubernetes.io/name: kubernetes-mcp-cross-cluster-reader
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kubernetes-mcp-poc-reader
+  name: kubernetes-mcp-cross-cluster-poc-reader
 subjects:
   - kind: ServiceAccount
-    name: kubernetes-mcp-reader
-    namespace: kubernetes-mcp-poc
+    name: kubernetes-mcp-cross-cluster-reader
+    namespace: kubernetes-mcp-cross-cluster-poc

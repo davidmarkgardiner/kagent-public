@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-ingress
-  namespace: kubernetes-mcp-poc
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
 spec:
@@ -14,7 +14,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-labelled-smoke-client
-  namespace: kubernetes-mcp-poc
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
 spec:

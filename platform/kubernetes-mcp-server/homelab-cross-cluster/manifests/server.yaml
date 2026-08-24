@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kubernetes-mcp-server
-  namespace: kubernetes-mcp-poc
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/name: kubernetes-mcp-server
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
@@ -12,7 +12,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kubernetes-mcp-server
-  namespace: kubernetes-mcp-poc
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/name: kubernetes-mcp-server
     app.kubernetes.io/part-of: homelab-cross-cluster-poc
@@ -99,7 +99,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kubernetes-mcp-server
-  namespace: kubernetes-mcp-poc
+  namespace: kubernetes-mcp-cross-cluster-poc
   labels:
     app.kubernetes.io/name: kubernetes-mcp-server
     app.kubernetes.io/part-of: homelab-cross-cluster-poc

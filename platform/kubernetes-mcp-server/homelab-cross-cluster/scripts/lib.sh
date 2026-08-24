@@ -4,13 +4,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUNDLE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-POC_NAMESPACE="kubernetes-mcp-poc"
+POC_NAMESPACE="kubernetes-mcp-cross-cluster-poc"
+POC_RBAC_NAME="kubernetes-mcp-cross-cluster-poc-reader"
 POC_LABEL_KEY="app.kubernetes.io/part-of"
 POC_LABEL_VALUE="homelab-cross-cluster-poc"
 POC_LABEL_SELECTOR="${POC_LABEL_KEY}=${POC_LABEL_VALUE}"
 HOST_ALIAS="red-homelab"
 TARGET_ALIAS="proxmox-homelab"
-READER_NAME="kubernetes-mcp-reader"
+READER_NAME="kubernetes-mcp-cross-cluster-reader"
 
 die() {
   printf 'ERROR: %s\n' "$*" >&2
