@@ -3,11 +3,11 @@
 ## Stage and boundary
 
 - Stage: Test (`MIL-388`, order 3/5)
-- Tested commit: `640eb53cc7e04a756bfd0c5b44ae0c1de5428969`
+- Tested commit: `b333efbc9813ee4cd4d36178629cfd88ea63668f`
 - Shared branch: `sdlc/mil-385`
 - Product code modified: none
 - Live actions performed: none; fail-closed preflight stopped before any
-  credential or workload action because `gitleaks` is unavailable.
+  credential or workload action because a pre-existing POC resource was found.
 
 ## Deterministic gate
 
@@ -23,14 +23,15 @@ Concise output:
 
 ```text
 verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)
-ERROR: required command is unavailable: gitleaks
+ERROR: a POC resource already exists; refusing to adopt it
 ```
 
 The offline verification passed. The live proof did not begin because its
-required fail-closed preflight dependency was unavailable, so no homelab
-resources or ephemeral credentials were created.
+fail-closed preflight found a pre-existing POC resource and refused to adopt
+it, so no credentials or additional workload resources were created.
 
 ## Result
 
-Test gate: `FAIL` — repair dispatch required for the missing `gitleaks`
-dependency. This receipt is committed as the durable Test-stage handoff.
+Test gate: `FAIL` — the live preflight found a pre-existing POC resource and
+refused to adopt it. This receipt is committed as the durable Test-stage
+handoff.
