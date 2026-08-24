@@ -3,11 +3,12 @@
 ## Stage and boundary
 
 - Stage: Test (`MIL-388`, order 3/5)
-- Tested commit: `b333efbc9813ee4cd4d36178629cfd88ea63668f`
+- Tested commit: `11cb587ddf4f94ffd99d7e0d748c48f6fbaf43d8`
 - Shared branch: `sdlc/mil-385`
 - Product code modified: none
-- Live actions performed: none; fail-closed preflight stopped before any
-  credential or workload action because a pre-existing POC resource was found.
+- Live actions performed: bounded POC orchestration reached the smoke-client
+  readiness check and exited non-zero; no live evidence or credential material
+  was retained in the worktree.
 
 ## Deterministic gate
 
@@ -23,15 +24,17 @@ Concise output:
 
 ```text
 verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)
-ERROR: a POC resource already exists; refusing to adopt it
+preflight: PASS (aliases=red-homelab,proxmox-homelab; nodes=1,3)
+ERROR: the labelled smoke client did not become ready
 ```
 
-The offline verification passed. The live proof did not begin because its
-fail-closed preflight found a pre-existing POC resource and refused to adopt
-it, so no credentials or additional workload resources were created.
+The offline verification and fail-closed preflight passed. The live proof
+could not complete because the labelled smoke client did not become ready.
+The command exited before deterministic MCP requests and bounded live evidence
+were produced; no task files or credentials were retained in the worktree.
 
 ## Result
 
-Test gate: `FAIL` — the live preflight found a pre-existing POC resource and
-refused to adopt it. This receipt is committed as the durable Test-stage
-handoff.
+Test gate: `FAIL` — the live smoke client did not become ready. One repair
+dispatch was already consumed by the prior Test failure, so the repair budget
+is exhausted. This receipt is committed as the durable Test-stage handoff.
