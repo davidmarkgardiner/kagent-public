@@ -94,11 +94,79 @@ See [HOMELAB-EVIDENCE-2026-08-20.md](HOMELAB-EVIDENCE-2026-08-20.md) for the
 Alertmanager-to-Workflow runs, routing/call-count measurements, blocked-target
 proof and the Sensor integration defect found during live testing.
 
+## Bounded A2A trajectory receipt
+
+`a2a_trajectory_receipt.py` wraps the shared
+`scripts/kagent-a2a-invoke.sh` helper for one checked-in read-only target. Every
+run must name an explicit Kubernetes context, namespace, Agent, timeout,
+expected final-line marker, allow-listed target and output path. Before calling
+the model, the wrapper reads the existing Agent CRs and fails closed unless the
+root Agent is Accepted and Ready, every configured delegate is Ready, and every
+Agent exactly matches the checked-in read-only tool/delegate inventory in
+`a2a-readonly-targets.json`. It never creates or changes a Kubernetes resource.
+
+The receipt uses schema `kagent-a2a-trajectory-receipt/v1` and contains exactly
+these bounded fields:
+
+| Field | Meaning |
+|---|---|
+| `schema_version` | Versioned receipt contract. |
+| `target` | Public alias for the exact allow-listed route. |
+| `context_alias`, `namespace`, `agent` | Explicit route identity; never a server endpoint or kubeconfig value. |
+| `terminal_outcome` | `PASS` only for a completed, safe, untruncated reply with the exact expected final line; otherwise `FAIL`. |
+| `failure_reason` | Bounded reason enum; `none` only on `PASS`. |
+| `reply_source` | `artifact`, `history-fallback`, or `none`; never reply text. |
+| `elapsed_ms` | Non-negative bounded-call duration reported by the helper. |
+| `expected_marker_match` | Whether the final non-whitespace line exactly equals the required marker. |
+| `response_digest` | SHA-256 of the bounded reply after safety redaction, or `null` when no valid reply exists. |
+| `redaction_status`, `truncation_status` | `applied` or `not_needed`; either unsafe content or truncation prevents `PASS`. |
+
+The checked-in live result is
+[HOMELAB-A2A-TRAJECTORY-RECEIPT.json](HOMELAB-A2A-TRAJECTORY-RECEIPT.json).
+Run the deterministic offline fixtures with:
+
+```bash
+python3 -m unittest discover \
+  -s a2a/smart-triage-fanout-demo/selective-orchestrator/tests -v
+sh a2a/smart-triage-fanout-demo/selective-orchestrator/verify.sh
+```
+
+Capture the same bounded live route (and overwrite only the public-safe receipt)
+with:
+
+```bash
+python3 a2a/smart-triage-fanout-demo/selective-orchestrator/a2a_trajectory_receipt.py \
+  --context kind-homelab \
+  --namespace kagent \
+  --agent evaluated-k8s-readonly-triage-agent \
+  --timeout 120 \
+  --expected-marker KAGENT_A2A_READONLY_OK \
+  --target kind-homelab-evaluated-readonly \
+  --output a2a/smart-triage-fanout-demo/selective-orchestrator/HOMELAB-A2A-TRAJECTORY-RECEIPT.json
+```
+
+### Evidence boundary and cleanup
+
+The prompt and full reply exist only in the helper's private temporary
+directory and the wrapper process memory. The durable file excludes prompts,
+replies, reasoning, tool requests/results, credentials, Secret values,
+kubeconfig content, tokens and endpoints. Credential-like, kubeconfig/Secret,
+endpoint, prompt-injection, malformed, incomplete, timeout, marker-mismatch and
+oversized paths all fail closed. A digest is computed only after the retained
+reply is safety-redacted; it is not a raw-response hash.
+
+The existing helper owns and removes its port-forward and private temporary
+directory on every exit. The wrapper atomically removes its temporary receipt
+file after publication. No Agent, Deployment, ServiceAccount, Role or
+RoleBinding is created, so there is no Kubernetes cleanup. A disposable local
+receipt can be removed with `rm -- <receipt-path>`; the checked-in evidence file
+should remain for audit.
+
 ## Validate
 
 ```bash
 sh a2a/smart-triage-fanout-demo/selective-orchestrator/verify.sh
-kubectl apply --dry-run=server \
+kubectl --context kind-homelab apply --dry-run=server \
   -k a2a/smart-triage-fanout-demo/selective-orchestrator
 ```
 
