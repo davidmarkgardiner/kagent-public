@@ -23,6 +23,7 @@ required_files=(
   scripts/mcp-client.py
   scripts/preflight.sh
   scripts/rbac-diagnostics.py
+  scripts/rbac-status.sh
   scripts/scan-evidence.py
   scripts/teardown.sh
   scripts/verify-rbac.sh
@@ -226,6 +227,7 @@ PY
 
 python3 "${BUNDLE_DIR}/scripts/scan-evidence.py" --self-test >/dev/null
 python3 "${BUNDLE_DIR}/scripts/rbac-diagnostics.py" self-test >/dev/null
+bash "${BUNDLE_DIR}/scripts/rbac-status.sh" --self-test >/dev/null
 
 if rg -q '(:latest|kind: (Ingress|HTTPRoute)|type: (LoadBalancer|NodePort))' \
   "${BUNDLE_DIR}/config" "${BUNDLE_DIR}/manifests" "${BUNDLE_DIR}/values.yaml"; then

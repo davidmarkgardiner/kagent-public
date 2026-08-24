@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "${SCRIPT_DIR}/lib.sh"
+# shellcheck source=rbac-status.sh
+source "${SCRIPT_DIR}/rbac-status.sh"
 
 require_runtime_dir
 require_command kubectl
@@ -26,19 +28,19 @@ check_permission() {
   local expectation="$2"
   local verb="$3"
   local resource="$4"
-  local actual_raw actual_status check_id expected_status result
+  local actual_exit actual_raw actual_status check_id expected_status result
   check_id="${verb}_${resource//\//_}_${expectation}"
   expected_status="deny"
   [[ "${expectation}" == "yes" ]] && expected_status="allow"
-  actual_raw="$(kubectl --kubeconfig "${scoped_kubeconfig}" --context "${alias}" auth can-i "${verb}" "${resource}" --all-namespaces 2>/dev/null)" ||
-    actual_raw="error"
-  case "${actual_raw}" in
-    yes) actual_status="allow" ;;
-    no) actual_status="deny" ;;
-    *) actual_status="error" ;;
-  esac
+  if actual_raw="$(kubectl --kubeconfig "${scoped_kubeconfig}" --context "${alias}" auth can-i "${verb}" "${resource}" --all-namespaces 2>/dev/null)"; then
+    actual_exit=0
+  else
+    actual_exit=$?
+  fi
+  actual_status="$(normalize_can_i_result "${actual_raw}" "${actual_exit}")"
+  unset actual_raw
   check_count=$((check_count + 1))
-  if [[ "${actual_raw}" == "${expectation}" ]]; then
+  if [[ "${actual_status}" == "${expected_status}" ]]; then
     result="PASS"
     printf '%s\t%s\t%s\n' "${alias}" "${check_id}" "${result}" >>"${checks_file}"
   else

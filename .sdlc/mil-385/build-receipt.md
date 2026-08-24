@@ -13,10 +13,13 @@
   `412413174cf0d597f9b0fc619a6110dad84a4d06`
 - Owner-authorized RBAC-diagnostic-repair starting commit:
   `def4ab54ac18b21b06c7f39fbca1959ec2d8b18a`
+- Owner-authorized RBAC-exit-status-repair starting commit:
+  `cfa1dde6eab08f578dee67dc192deb8eaf9f1003`
 - Shared branch: `sdlc/mil-385`
 - Scope: source creation plus offline/static verification only; the current
-  repair is limited to owner-authorized sanitized RBAC failure diagnostics and
-  deterministic offline assertions for that diagnostic surface
+  repair is limited to preserving RBAC authorization stdout and exit status
+  independently, plus deterministic offline assertions for the accepted and
+  rejected result combinations
 - Live actions performed: none
 
 This stage did not execute `live-poc.sh`, `kubectl`, Helm, TokenRequest, or any
@@ -116,6 +119,26 @@ check storage, private runtime-directory handling, cleanup, security contexts,
 resources, read-only filesystems, dropped capabilities, seccomp, token
 automount, isolation, and unrelated workloads remain unchanged.
 
+## Owner-authorized RBAC exit-status repair
+
+The diagnostic-enabled Test rerun proved that every expected denial was
+misclassified as an authorization command error. `kubectl auth can-i` writes
+`no` and returns its documented denial status `1`; the shell fallback replaced
+that retained `no` with `error`, while allowed checks continued to pass.
+
+This offline-only repair captures command stdout and exit status independently.
+It accepts exactly `yes` with status `0` as `allow` and `no` with status `1` as
+`deny`; missing, malformed, or unexpected output/status combinations normalize
+to `error`. Raw command output is unset before any diagnostic is rendered, so
+the existing bounded public-alias/check/status surface remains the only failure
+output. A pure shell helper self-test covers `yes/0`, `no/1`, an empty command
+error, and malformed output without invoking kubectl or printing any input.
+
+The permission expectation matrix and `reader-rbac.yaml` are unchanged.
+Private `0600` runtime files, cleanup, pod security contexts, resources,
+read-only filesystems, dropped capabilities, seccomp, token automount,
+isolation, teardown, and unrelated workloads remain unchanged.
+
 ## Files changed
 
 - `platform/kubernetes-mcp-server/homelab-cross-cluster/README.md`
@@ -142,6 +165,9 @@ automount, isolation, and unrelated workloads remain unchanged.
 - `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/rbac-diagnostics.py`
   renders the exact allowlisted RBAC failure surface and self-tests rejection
   of sensitive or uncontrolled diagnostic values.
+- `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/rbac-status.sh`
+  normalizes only the exact supported stdout/exit-status pairs and supplies the
+  deterministic offline regression cases.
 - `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/mcp-client.py`
   implements direct Streamable HTTP initialization, exact tool/context
   discovery, 20 alternating fingerprint-bound Node requests, crossover
@@ -234,6 +260,18 @@ The exact Build `TEST_COMMAND` was executed once and passed. No live command,
 The exact Build `TEST_COMMAND` was executed once against the final repair tree
 and passed. No live command, `kubectl`, Helm, TokenRequest, cluster access, or
 cluster mutation was run.
+
+### Owner-authorized RBAC-exit-status-repair commands and results
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `bash scripts/rbac-status.sh --self-test` | 0 | Exact `yes/0` and `no/1` pairs normalized to allow/deny; command-error and malformed-output cases normalized to error. |
+| `bash -n` on the changed shell sources | 0 | All changed shell sources parsed. |
+| `bash platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/verify.sh` | 0 | `verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)` |
+| `git diff --check` | 0 | Final repair diff has no whitespace errors. |
+
+No live command, `kubectl`, Helm, TokenRequest, cluster access, or cluster
+mutation is authorized or performed by this repair.
 
 ## Resulting commit intent
 
