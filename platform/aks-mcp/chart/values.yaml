@@ -31,6 +31,9 @@ app:
   transport: "streamable-http"
   # Port to listen on
   port: 8000
+  # AKS-MCP v0.0.19 requires every accepted HTTP Host when binding to a
+  # non-loopback address without OAuth. Leave empty for older images.
+  allowedHosts: []
   # Access level: readonly, readwrite, admin
   accessLevel: "readonly"
   # Command execution timeout in seconds
@@ -95,6 +98,9 @@ config:
 kubeconfig:
   enabled: false
   secretName: "kubeconfig"
+  # Secret key projected to /home/mcp/.kube/config. Each AKS-MCP instance must
+  # receive one current-context file because tool calls cannot redirect context.
+  key: "config"
 
 # Telemetry configuration
 telemetry:

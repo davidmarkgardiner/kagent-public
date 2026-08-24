@@ -55,8 +55,8 @@ When `workloadIdentity.enabled=true`, the chart:
    UAMI, provided a matching federated credential exists.
 
 The projected token is injected by AKS; it is not a bespoke AKS-MCP volume in
-this chart. `kubeconfig.enabled` is separate and only mounts the named
-Kubernetes Secret at `/home/mcp/.kube`.
+this chart. `kubeconfig.enabled` is separate and projects `kubeconfig.key` from
+the named Kubernetes Secret to `/home/mcp/.kube/config`.
 
 The trust tuple must match exactly:
 
@@ -145,8 +145,10 @@ For every worker cluster, complete all of these independently of federation:
    RBAC it is the appropriate `RoleBinding` or `ClusterRoleBinding` for the
    identity in the selected credential path.
 3. Give AKS-MCP a deliberate worker-cluster connection path. The current chart
-   can mount a kubeconfig Secret with `kubeconfig.enabled=true`, but federation
-   alone neither creates that kubeconfig nor selects worker contexts.
+   can mount one Secret key with `kubeconfig.enabled=true`; stock v0.0.19 blocks
+   context/kubeconfig redirection flags, so use a single-current-context key and
+   a fixed-target MCP instance rather than request-time context switching. See
+   the [`fleet refresh bundle`](../../work-agent-bundles/aks-mcp-fleet-kubeconfig-refresh/README.md).
 4. Permit management-cluster-to-worker API connectivity: private DNS,
    routing/peering, firewall rules, and namespace egress `NetworkPolicy` must
    allow the target API endpoints.

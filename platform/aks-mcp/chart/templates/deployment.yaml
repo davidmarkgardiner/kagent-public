@@ -55,6 +55,10 @@ spec:
             - "0.0.0.0"
             - "--port"
             - {{ .Values.app.port | quote }}
+            {{- range .Values.app.allowedHosts }}
+            - "--allowed-host"
+            - {{ . | quote }}
+            {{- end }}
             - "--access-level"
             - {{ .Values.app.accessLevel | quote }}
             - "--timeout"
@@ -175,6 +179,9 @@ spec:
             secretName: {{ .Values.kubeconfig.secretName }}
             optional: true
             defaultMode: 0600
+            items:
+              - key: {{ .Values.kubeconfig.key | quote }}
+                path: config
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

@@ -182,3 +182,13 @@ helm upgrade my-aks-mcp . --set app.verbose=true
 - **Security**: Read-only root filesystem with writable `/tmp` directory for temporary files
 - **RBAC**: Dynamic permissions based on access level configuration
 - **Configuration**: All application settings are passed via command-line arguments
+- **HTTP host allowlist**: AKS-MCP v0.0.19 requires `app.allowedHosts` when
+  binding a non-loopback HTTP listener without OAuth. Allowlist only the Service
+  DNS names actually used by clients.
+- **Fixed kubeconfig key**: `kubeconfig.key` projects one Secret key to
+  `/home/mcp/.kube/config`. Use one single-current-context key per AKS-MCP
+  instance; v0.0.19 intentionally blocks context/kubeconfig redirection flags.
+
+For the centrally refreshed multi-cluster pattern and its two-cluster live
+receipt, see
+[`aks-mcp-fleet-kubeconfig-refresh`](../../../work-agent-bundles/aks-mcp-fleet-kubeconfig-refresh/README.md).
