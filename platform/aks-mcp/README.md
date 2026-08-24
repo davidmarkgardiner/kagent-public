@@ -55,8 +55,8 @@ When `workloadIdentity.enabled=true`, the chart:
    UAMI, provided a matching federated credential exists.
 
 The projected token is injected by AKS; it is not a bespoke AKS-MCP volume in
-this chart. `kubeconfig.enabled` is separate and only mounts the named
-Kubernetes Secret at `/home/mcp/.kube`.
+this chart. `kubeconfig.enabled` is separate and projects `kubeconfig.key` from
+the named Kubernetes Secret to `/home/mcp/.kube/config`.
 
 The trust tuple must match exactly:
 
@@ -77,34 +77,36 @@ deployment described below, use the **management-cluster issuer** instead.
 | Model | Where AKS-MCP runs | Federation required | What remains to configure |
 |---|---|---|---|
 | Per-worker-cluster | Each worker cluster | That worker cluster's OIDC issuer → its local `aks-mcp` ServiceAccount | UAMI Azure roles and local Kubernetes RBAC |
-| Central MCP | Management cluster | The management cluster's OIDC issuer → the central `aks-mcp` ServiceAccount | UAMI Azure roles, remote-cluster credential/context or supported connection path, and remote Kubernetes authorization |
+| Central fixed-target fleet | Management cluster | The management cluster's OIDC issuer → each fixed-target shard ServiceAccount | UAMI Azure roles, one single-current-context credential key per target, remote Kubernetes authorization, and authenticated gateway routing |
 
 ## Recommended central-MCP topology
 
-The intended design is one AKS-MCP deployment on the management cluster which
-reaches worker-cluster APIs. In this model, create **one federated credential
-on the UAMI for the management cluster's issuer**:
+The supported central design is one refresh/control plane plus one fixed-target
+AKS-MCP shard per worker cluster, all running on the management cluster. Stock
+v0.0.19 cannot safely switch kubeconfig contexts per request. Create a
+federated credential for each shard ServiceAccount, using the management
+cluster's issuer:
 
 ```text
 issuer:   {{MANAGEMENT_CLUSTER_OIDC_ISSUER}}
-subject:  system:serviceaccount:aks-mcp:aks-mcp
+subject:  system:serviceaccount:aks-mcp:aks-mcp-{{CLUSTER_ALIAS}}
 audience: api://AzureADTokenExchange
 UAMI:     {{AKS_MCP_UAMI_NAME}}
 ```
 
-Do not add worker-cluster issuer federations merely because the central MCP
-will call those clusters. A federated credential is only needed for a cluster
-that issues the token used by a workload becoming the UAMI. Here, that
-workload is AKS-MCP and it runs on the management cluster.
+Do not add worker-cluster issuer federations merely because a management shard
+will call those clusters. A federated credential is needed for each distinct
+management-cluster ServiceAccount subject that becomes the UAMI, not for the
+remote cluster whose API that shard calls.
 
 ```
 management cluster                                      worker cluster
 ──────────────────                                      ──────────────
-AKS-MCP pod (SA: aks-mcp/aks-mcp)
+AKS-MCP shard (SA: aks-mcp/aks-mcp-{{CLUSTER_ALIAS}})
   │ projected token issued by management OIDC
   ▼
 UAMI token exchange
-  │ Azure and Kubernetes authorization for target cluster
+  │ one required kubeconfig key + target authorization
   └──────────────────────────────────────────────────► worker API server
                                                        │
                                                        ▼
@@ -145,8 +147,12 @@ For every worker cluster, complete all of these independently of federation:
    RBAC it is the appropriate `RoleBinding` or `ClusterRoleBinding` for the
    identity in the selected credential path.
 3. Give AKS-MCP a deliberate worker-cluster connection path. The current chart
-   can mount a kubeconfig Secret with `kubeconfig.enabled=true`, but federation
-   alone neither creates that kubeconfig nor selects worker contexts.
+   can mount one Secret key with `kubeconfig.enabled=true`; stock v0.0.19 blocks
+   context/kubeconfig redirection flags, so use a single-current-context key and
+   a fixed-target MCP instance rather than request-time context switching. Make
+   that key required with `kubeconfig.optional=false` and set
+   `kubeconfig.expectedCurrentContext` to gate startup on the selected alias. See
+   the [`fleet refresh bundle`](../../work-agent-bundles/aks-mcp-fleet-kubeconfig-refresh/README.md).
 4. Permit management-cluster-to-worker API connectivity: private DNS,
    routing/peering, firewall rules, and namespace egress `NetworkPolicy` must
    allow the target API endpoints.
