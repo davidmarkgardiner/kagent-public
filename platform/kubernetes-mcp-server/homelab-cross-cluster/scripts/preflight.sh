@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/lib.sh"
 
 require_live_inputs
 require_runtime_dir
-for command in kubectl jq python3 sha256sum sort awk grep gitleaks; do
+for command in kubectl jq python3 sha256sum sort awk grep; do
   require_command "${command}"
 done
 

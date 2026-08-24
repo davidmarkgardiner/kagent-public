@@ -3,14 +3,28 @@
 ## Stage and boundary
 
 - Stage: Build (`MIL-387`, order 2/5)
-- Starting commit: `3ce990d55551bbbd26e228dd957db7e839b14f0d`
+- Initial-build starting commit: `3ce990d55551bbbd26e228dd957db7e839b14f0d`
+- Repair starting commit: `764c9568b613d27b23b1600647b95d7da6aeab0e`
 - Shared branch: `sdlc/mil-385`
-- Scope: source creation plus offline/static verification only
+- Scope: source creation plus offline/static verification only; the repair is
+  limited to the missing evidence-scanner dependency recorded by Test
 - Live actions performed: none
 
 This stage did not execute `live-poc.sh`, `kubectl`, Helm, TokenRequest, or any
 cluster mutation. The live proof remains source for the separately authorized
 Test stage.
+
+## Bounded repair
+
+The required `.sdlc/mil-385/test-receipt.md` records one failing gate: the
+live preflight stopped before credentials or resources because the external
+`gitleaks` command was unavailable. The repair removes only that host-package
+dependency. It adds a repository-local Python standard-library validator that
+requires the exact three evidence files, exact bounded schemas and values,
+the two public aliases, the complete 20-request alternating sequence, zero
+crossover, the exact allow/deny results, passing teardown booleans, and no
+forbidden endpoint, certificate, kubeconfig, prompt, or source-context shapes.
+Unexpected files, fields, values, sizes, or malformed JSON fail closed.
 
 ## Files changed
 
@@ -32,6 +46,9 @@ Test stage.
   alias-only kubeconfig/Secret handling, independent RBAC tests, ordered live
   orchestration, bounded evidence scans, offline verification, and
   ownership-checked teardown with preserved UID validation.
+- `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/scan-evidence.py`
+  replaces the unavailable external scanner with a strict, repository-local
+  schema and sensitive-shape validator plus a positive/negative self-test.
 - `platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/mcp-client.py`
   implements direct Streamable HTTP initialization, exact tool/context
   discovery, 20 alternating fingerprint-bound Node requests, crossover
@@ -55,10 +72,24 @@ Test stage.
 The exact stage `TEST_COMMAND` was executed once and exited 0. No live half of
 the parent controller's eventual Test-stage validation was executed.
 
+### Repair commands and results
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `bash -n` on the changed shell scripts | 0 | All changed shell sources parsed. |
+| `python3 scripts/scan-evidence.py --self-test` | 0 | Strict schemas passed and an unexpected endpoint was rejected. |
+| in-memory Python compile of `scan-evidence.py` | 0 | Validator source compiled without creating cache files. |
+| `bash platform/kubernetes-mcp-server/homelab-cross-cluster/scripts/verify.sh` | 0 | `verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)` |
+| `git diff --check` | 0 | Repair diff has no whitespace errors. |
+
+The Build repair ran the issue's exact offline `TEST_COMMAND` once. It did not
+run `live-poc.sh`; the Test stage remains the only stage authorized to exercise
+the live proof.
+
 ## Resulting commit intent
 
 Commit the complete public-safe bundle and this receipt together as:
 
 ```text
-MIL-385 build: implement objective
+MIL-385 build: bounded repair
 ```

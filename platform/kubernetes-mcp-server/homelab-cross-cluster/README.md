@@ -123,8 +123,8 @@ manifests in this directory rather than fetching a chart at runtime.
     verify absence on both clusters, and verify that the preserved
     `default/kubectl-mcp` UID is unchanged.
 11. Scan only the bounded temporary evidence with a deterministic redaction
-    expression and gitleaks, emit one compact public-safe summary, then delete
-    the private temporary directory.
+    expression and the repository-local strict JSON schema validator, emit one
+    compact public-safe summary, then delete the private temporary directory.
 
 Any unexpected pre-existing object, context ambiguity, credential/TLS
 weakness, permission drift, tool drift, route crossover, scan finding, or
@@ -213,7 +213,7 @@ successful cleanup.
 
 ## Prerequisites
 
-- `bash`, `kubectl`, `jq`, `python3`, `rg`, `sha256sum`, and `gitleaks`.
+- `bash`, `kubectl`, `jq`, `python3`, `rg`, and `sha256sum`.
 - Explicit operator authority for only the temporary POC resources and
   ServiceAccount TokenRequests described above.
 - Both authorized kubeconfig contexts already present and healthy.

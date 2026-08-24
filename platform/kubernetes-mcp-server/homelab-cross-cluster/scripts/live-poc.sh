@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 require_live_inputs
-for command in kubectl jq python3 mktemp rm gitleaks rg; do
+for command in kubectl jq python3 mktemp rm rg; do
   require_command "${command}"
 done
 
@@ -105,8 +105,7 @@ jq -n \
 if rg -q '(https?://|BEGIN [A-Z ]*PRIVATE KEY|BEGIN CERTIFICATE|certificate-authority-data|client-certificate-data|client-key-data|kind-homelab|proxmox-k8s|rawPrompt|kubeconfig:)' "${RUNTIME_DIR}/evidence"; then
   die "bounded evidence redaction scan failed"
 fi
-gitleaks detect --no-git --source "${RUNTIME_DIR}/evidence" --redact \
-  --report-format json --report-path "${RUNTIME_DIR}/gitleaks-report.json" >/dev/null 2>&1 ||
-  die "bounded evidence gitleaks scan failed"
+python3 "${SCRIPT_DIR}/scan-evidence.py" "${RUNTIME_DIR}/evidence" >/dev/null ||
+  die "bounded evidence schema scan failed"
 
 jq -c . "${RUNTIME_DIR}/evidence/runtime-summary.json"

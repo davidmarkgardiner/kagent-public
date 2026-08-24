@@ -22,6 +22,7 @@ required_files=(
   scripts/live-poc.sh
   scripts/mcp-client.py
   scripts/preflight.sh
+  scripts/scan-evidence.py
   scripts/teardown.sh
   scripts/verify-rbac.sh
   values.yaml
@@ -132,6 +133,8 @@ if summary.get("alternatingRequests", 0) < 20 or summary.get("crossoverCount") !
     raise SystemExit("bounded example evidence is incomplete")
 PY
 
+python3 "${BUNDLE_DIR}/scripts/scan-evidence.py" --self-test >/dev/null
+
 if rg -q '(:latest|kind: (Ingress|HTTPRoute)|type: (LoadBalancer|NodePort))' \
   "${BUNDLE_DIR}/config" "${BUNDLE_DIR}/manifests" "${BUNDLE_DIR}/values.yaml"; then
   printf 'verify: unsafe exposure or mutable image reference detected\n' >&2
@@ -149,6 +152,7 @@ grep -F -- '--duration=10m' "${BUNDLE_DIR}/scripts/credentials.sh" >/dev/null
 grep -F 'create token' "${BUNDLE_DIR}/scripts/credentials.sh" >/dev/null
 grep -F 'configuration_contexts_list' "${BUNDLE_DIR}/scripts/mcp-client.py" >/dev/null
 grep -F 'range(1, 21)' "${BUNDLE_DIR}/scripts/mcp-client.py" >/dev/null
+grep -F 'scan-evidence.py' "${BUNDLE_DIR}/scripts/live-poc.sh" >/dev/null
 grep -F 'default/kubectl-mcp UID unchanged' "${BUNDLE_DIR}/scripts/teardown.sh" >/dev/null
 
 printf 'verify: PASS (offline bundle, manifests, tool surface, RBAC, client fixture, evidence, teardown)\n'
