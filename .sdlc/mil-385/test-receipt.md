@@ -3,7 +3,7 @@
 ## Stage and boundary
 
 - Stage: Test (`MIL-388`, order 3/5)
-- Tested commit: `11cb587ddf4f94ffd99d7e0d748c48f6fbaf43d8`
+- Tested commit: `dcaf1168293b9309babf7e34afcaa78a2fc7ea37`
 - Shared branch: `sdlc/mil-385`
 - Product code modified: none
 - Live actions performed: bounded POC orchestration reached the smoke-client
@@ -32,6 +32,11 @@ The offline verification and fail-closed preflight passed. The live proof
 could not complete because the labelled smoke client did not become ready.
 The command exited before deterministic MCP requests and bounded live evidence
 were produced; no task files or credentials were retained in the worktree.
+
+This rerun follows the owner-authorized bounded namespace repair recorded on
+the parent issue. The prior Test receipt remains represented by commit
+`dcaf1168293b9309babf7e34afcaa78a2fc7ea37`; this receipt records the current
+rerun against that repaired shared head.
 
 ## Result
 
