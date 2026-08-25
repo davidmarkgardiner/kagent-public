@@ -1,6 +1,6 @@
 # Review: Application-team onboarding to agentgateway
 
-Reviewer: Claude (Star-Lord session)
+Reviewer: independent architecture review
 Date: 2026-08-25
 Reviewed revision: 543-line uncommitted draft of
 [`APPLICATION-TEAM-ONBOARDING-PLAN.md`](APPLICATION-TEAM-ONBOARDING-PLAN.md);
@@ -15,8 +15,10 @@ sheet, and the ownership/date additions. B1 is corrected in the current plan
 and in this historical finding: `ToolCatalogEntry` and `ToolGrant` have
 checked-in proposal artifacts, but they are not deployed or runtime-proven
 controls. The findings below describe the reviewed draft, not outstanding
-documentation blockers. Live use remains gated by the plan's Phase 1 and Phase
-2 evidence.
+documentation blockers. The live meeting/showcase remains design-review-only
+until the plan's Phase 1 and Phase 2 evidence passes. Live use of kagent Pattern
+C additionally requires the Phase 3 authenticated A2A evidence. This review
+authorises no deployment or live access.
 
 ## Verdict
 
@@ -211,8 +213,8 @@ The last one matters because the plan promises redaction but never tests it.
 2. Add G1-G4 to Phase 0 discovery and the evidence table.
 3. Cut the one-page App Team front sheet from the existing material.
 4. Book the showcase slot as a design review, not a demo, until Phase 2 exits.
-5. Route the revised plan through `codex:codex-rescue` per `CLAUDE.md`, since
-   this is a non-trivial plan heading for implementation.
+5. Route the revised plan through independent security and architecture review
+   before implementation.
 
 ## Review boundary
 

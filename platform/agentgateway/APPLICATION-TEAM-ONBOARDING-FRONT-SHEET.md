@@ -42,6 +42,11 @@ The platform owns shared routes, policies, backend identities, and credentials.
 The App Team owns its workload, namespaced ServiceAccount, client token refresh,
 and declared use case.
 
+Routine app-role removal does not invalidate a JWT that was already issued; its
+embedded role can remain usable until token expiry. Immediate incident response
+therefore requires an explicit gateway-side deny for the caller as well as role
+or grant removal.
+
 ## What the App Team supplies
 
 Please answer these before implementation:

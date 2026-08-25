@@ -137,6 +137,22 @@ Use [AUTHENTICATION.md](AUTHENTICATION.md) as the repository source for the
 JWT/OIDC policy mechanics. This plan defines the ownership and isolation model;
 it does not replace that implementation guide.
 
+### Revocation semantics
+
+Removing a managed identity's agentgateway app-role assignment prevents that
+role from appearing in subsequently issued tokens after the identity change
+propagates. It does not invalidate an already-issued JWT. Because agentgateway
+authorises the signed claims embedded in that JWT, a cached role-bearing token
+can retain access until its expiry unless gateway policy separately denies the
+caller.
+
+Record the maximum accepted token lifetime as the routine-offboarding residual
+access window. Test fresh-token issuance separately from reuse of a token issued
+before revocation. For immediate incident response, activate an explicit
+gateway-side deny keyed to the caller's immutable identity on every applicable
+route, then remove the role assignment or grant. Prove that the deny blocks the
+already-issued token; do not treat role removal alone as immediate revocation.
+
 ### Why the team UAMI should not normally access the model directly
 
 If the team UAMI has direct Model Garden access, it can bypass gateway model
@@ -426,7 +442,9 @@ Use one application in one development namespace:
 | Direct MCP Service connection | Blocked by network/identity policy |
 | Direct model endpoint connection | Blocked or caller UAMI lacks provider role |
 | Local rate limit | Deterministic response and metric; observed aggregate matches documented replica-scoped behaviour |
-| Revocation | Removing the gateway app role or grant stops new access |
+| Fresh-token access after app-role removal | A subsequently issued token has no usable role and the gateway denies access |
+| Cached token issued before app-role removal | Residual access lasts until token expiry unless an explicit gateway-side caller deny is active |
+| Immediate incident-response revocation | Explicit gateway-side caller deny blocks the already-issued role-bearing token on every applicable route |
 | Expired token on a new request | `401` before backend invocation |
 | Token expiry on an established MCP or model stream | Deterministic observed outcome recorded; client refresh/reconnect behaviour tested |
 | Bearer-token replay from another pod or namespace | Denied by a proven sender/network binding, or recorded as undetectable and mitigated by short token life and network controls |
@@ -465,7 +483,10 @@ Use a disposable development caller and read-only backend:
 6. Run one read-only tool successfully.
 7. Attempt an ungranted tool and an unapproved namespace and show both denied.
 8. Show gateway metrics/logs attributed to the caller and route.
-9. Revoke the grant or use a pre-created revoked identity and show access stops.
+9. Show both revocation paths: a fresh token is denied after app-role removal,
+   and an explicit gateway-side caller deny immediately blocks a token issued
+   before removal. State that without the gateway deny, the cached token retains
+   its embedded role until expiry.
 
 Avoid a demo that relies only on a port-forward, dummy API key, open route, or
 prompt instructions saying “read-only”. The security story is the identity and
@@ -519,6 +540,8 @@ Before implementation, replace every placeholder below and agree target dates.
   signing-key rollover behaviour, and alert/metric for retrieval failure.
 - Measure token expiry during established MCP Streamable HTTP and streaming
   model responses, and specify client refresh/reconnect behaviour.
+- Record the maximum accepted token lifetime, app-role propagation behaviour,
+  gateway caller-deny reconciliation time, and routine residual-access window.
 - Prove whether the shared kagent runtime can present a trusted per-agent
   identity.
 
@@ -532,6 +555,9 @@ Exit: a version-bound schema and identity decision record. No team access yet.
   identity service-principal app-role assignment through Microsoft Graph.
 - Publish one model route with strict JWT authentication, authorization,
   limits, and audit telemetry.
+- Prove fresh-token denial after app-role removal, cached-token access until
+  expiry, and immediate cached-token denial through the explicit gateway-side
+  caller deny.
 - Run every model allow/deny test in the evidence table.
 
 Exit: one ordinary application can use one model without provider credentials.
@@ -561,7 +587,8 @@ Exit: a namespaced Agent cannot broaden its model or tool permissions.
 - Define the onboarding request schema and GitOps workflow.
 - Define the real tool-approval resource/schema and generate gateway policy,
   kagent `toolNames`, and approval evidence from that one source of truth.
-- Add expiry, revocation, cost, audit, and support runbooks.
+- Add expiry, routine offboarding, immediate gateway-deny revocation, cost,
+  audit, and support runbooks.
 - Onboard a second team to prove the process is repeatable.
 
 Exit: onboarding no longer depends on hand-edited shared YAML.
@@ -597,7 +624,8 @@ Ask the reviewer to challenge these claims specifically:
    policy, grant, or credential?
 6. Are authentication, authorization, federation, Kubernetes RBAC, and Azure
    RBAC tested as separate gates?
-7. Can access be revoked quickly, and is the denial visible in audit evidence?
+7. Are routine fresh-token revocation, the cached-token residual window, and
+   immediate gateway-side denial tested separately and visible in audit evidence?
 
 ## Current evidence classification
 
@@ -640,5 +668,6 @@ Proposed and not yet proven at work:
 - [Official agentgateway MCP tool access](https://agentgateway.dev/docs/kubernetes/main/mcp/tool-access/)
 - [AKS Workload Identity configuration](https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster)
 - [Microsoft Entra application roles](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps)
+- [Managed identity token caching and role changes](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/managed-identities-faq)
 - [Microsoft Graph service-principal app-role assignments](https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-approleassignments?view=graph-rest-1.0)
 - [Microsoft Foundry REST authentication](https://learn.microsoft.com/en-us/azure/ai-foundry/reference/foundry-project)
