@@ -398,7 +398,7 @@ The team submits a GitOps pull request or a namespaced onboarding request with:
 | Runtime | Application pod, kagent Agent, external client, or team MCP server |
 | Identity | Namespace, ServiceAccount, UAMI, Entra application roles requested |
 | Model | Provider/catalogue, exact model/deployment, region, data classification, expected rate and token budget |
-| MCP | Catalog entry, exact tools, target namespaces/resources, read/write classification |
+| MCP | Approval record, exact tools, target namespaces/resources, read/write classification |
 | Connectivity | Source cluster/VNet, private DNS/TLS, required egress destinations |
 | Data | Prompt/input/output classification, retention, logging/redaction requirements |
 | Verification | Allowed request plus authentication, route, tool, RBAC, and network denial tests |
@@ -564,7 +564,7 @@ Exit: one ordinary application can use one model without provider credentials.
 
 ### Phase 2: namespace-scoped MCP route
 
-- Publish one catalogued read-only MCP endpoint with a narrow backend identity.
+- Publish one approved read-only MCP endpoint with a narrow backend identity.
 - Add fail-closed gateway policy for exact tool names.
 - Block direct backend access and prove tool, namespace, and network denials.
 
