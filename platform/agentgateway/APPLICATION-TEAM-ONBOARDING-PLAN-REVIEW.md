@@ -2,14 +2,26 @@
 
 Reviewer: Claude (Star-Lord session)
 Date: 2026-08-25
-Subject: [`APPLICATION-TEAM-ONBOARDING-PLAN.md`](APPLICATION-TEAM-ONBOARDING-PLAN.md) (543 lines, uncommitted)
+Reviewed revision: 543-line uncommitted draft of
+[`APPLICATION-TEAM-ONBOARDING-PLAN.md`](APPLICATION-TEAM-ONBOARDING-PLAN.md);
+no commit identifier existed for that draft.
+Resolution baseline: commit `57f92720691e2f34eb315dcfa2054992877c9769`
+(638-line plan), plus the proposal-artifact inventory correction recorded below.
 Method: full read of the plan, cross-checked against the repository files it
 cites. No cluster was contacted; no Entra or Azure state was inspected.
 
+Resolution note: the current plan incorporates B2-B4, G1-G4, the App Team front
+sheet, and the ownership/date additions. B1 is corrected in the current plan
+and in this historical finding: `ToolCatalogEntry` and `ToolGrant` have
+checked-in proposal artifacts, but they are not deployed or runtime-proven
+controls. The findings below describe the reviewed draft, not outstanding
+documentation blockers. Live use remains gated by the plan's Phase 1 and Phase
+2 evidence.
+
 ## Verdict
 
-Approve the security model. Do not present it to the App Team in its current
-shape without the additions in **Blocking** below.
+Approve the security model. Do not present the reviewed draft to the App Team
+without the additions in the historical blocking findings below.
 
 The central architectural call — the team UAMI is authorised to call
 agentgateway, not the model — is correct and is the single most valuable thing
@@ -36,22 +48,24 @@ These plan claims were checked and hold:
 | Strict JWT authentication shape exists in-repo | `authentication-policy.yaml` — issuer, audiences, JWKS, `mode: Strict` |
 | All six internal document links resolve | Checked individually |
 
-## Blocking — fix before the App Team sees this
+## Historical blocking findings from the reviewed draft
 
-### B1. `ToolCatalogEntry` / `ToolGrant` are claimed as a verified repository pattern; they are not
+### B1. `ToolCatalogEntry` / `ToolGrant` were presented as proven controls
 
-Plan line 519 lists them under *"Verified repository pattern, but requiring
-target-version revalidation"*. A repository-wide search finds these names only
-in narrative markdown (`STATEMENT-OF-WORK.md`, the WORK-KAGENT-TRIAGE-V2-*
-documents, `FABLE-KAGENT-AKS-CRITICAL-REVIEW-REPORT.md`). There is no CRD, no
-manifest, no controller, and no admission policy behind them.
+The reviewed draft listed them under *"Verified repository pattern, but
+requiring target-version revalidation"*. The repository does contain proposal
+CRDs in `infra/byo-kagent/crds/`, bootstrap `ToolCatalogEntry` manifests in
+`infra/byo-kagent/bootstrap-catalog/`, and a Kyverno admission-policy example in
+`infra/byo-kagent/kyverno-policies/validate-agent-tool-grants.yaml`. This review
+did not establish that those artifacts are deployed, compatible with the target
+cluster, runtime-enforced, or backed by a working controller or renderer.
 
-The plan then leans on `ToolGrant` as a load-bearing control in three separate
-places (the tool-parity triple at lines ~180-190, the tenancy RBAC deny-list,
-and the Phase 4 exit criterion). Presenting a proposal-stage noun as an existing
-platform primitive is exactly the kind of claim an App Team will repeat back to
-you as a commitment. Move both to *"Proposed and not yet proven at work"* and
-mark the parity mechanism as Phase 4 design work.
+The reviewed draft then leaned on `ToolGrant` as a load-bearing control in three
+separate places (the tool-parity triple at lines ~180-190, the tenancy RBAC
+deny-list, and the Phase 4 exit criterion). Presenting proposal artifacts as an
+existing, proven platform primitive is exactly the kind of claim an App Team
+will repeat back as a commitment. Classify both as *"Proposed and not yet proven
+at work"* and keep the parity mechanism as Phase 4 design work.
 
 ### B2. The JWKS path has an undocumented hard dependency
 
@@ -191,7 +205,7 @@ The last one matters because the plan promises redaction but never tests it.
   review gate than any checklist of controls.
 - "Do not call the proof complete from a `Ready` status alone."
 
-## Recommended next actions
+## Historical recommended next actions
 
 1. Apply B1-B4. B1 and B3 are text changes; B2 and B4 change scope.
 2. Add G1-G4 to Phase 0 discovery and the evidence table.

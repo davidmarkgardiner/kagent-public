@@ -212,8 +212,12 @@ generate the following artefacts from it:
 2. agentgateway MCP authorization policy; and
 3. kagent Agent `toolNames`, when kagent is the client.
 
-`ToolCatalogEntry` and `ToolGrant` are proposal-stage names in this repository;
-there is no verified CRD, manifest, controller, or admission contract for them.
+`ToolCatalogEntry` and `ToolGrant` remain proposal-stage controls. The repository
+contains proposal CRDs under `infra/byo-kagent/crds/`, bootstrap catalog
+manifests under `infra/byo-kagent/bootstrap-catalog/`, and a Kyverno admission
+policy example under `infra/byo-kagent/kyverno-policies/`. Those checked-in
+artifacts are not evidence that the controls are deployed, compatible with the
+target cluster, or runtime-proven, and no controller or renderer is proven.
 Until a real source and renderer exist, the platform owner must reconcile the
 policy and Agent lists during review. A parity check over hand-maintained lists
 is a temporary fallback, not the target control.
@@ -619,7 +623,9 @@ Proposed and not yet proven at work:
 - argument-aware MCP resource scoping;
 - the exact Model Garden backend/provider contract;
 - the self-service renderer/controller;
-- the `ToolCatalogEntry`/`ToolGrant` proposal or its replacement; and
+- the checked-in `ToolCatalogEntry`/`ToolGrant` CRD, bootstrap-manifest, and
+  admission-policy proposal artifacts, which are not deployed or runtime-proven,
+  or their replacement; and
 - authenticated, tenant-isolated A2A ingress to a kagent Agent.
 
 ## References
