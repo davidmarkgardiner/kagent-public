@@ -76,7 +76,7 @@ the target cluster's real JWKS path: for example, an external-identity-provider
 Record its owner, DNS and network reachability, TLS/corporate-CA trust, cache
 duration, signing-key rollover behaviour, and observable fail-closed symptom.
 The application-team design tracks this as a mandatory
-[Phase 0 dependency](APPLICATION-TEAM-ONBOARDING-PLAN.md#phase-0-installed-contract-discovery).
+[Phase 0 dependency](../../work-agent-bundles/agentgateway-application-onboarding/reference/APPLICATION-TEAM-ONBOARDING-PLAN.md#phase-0-installed-contract-discovery).
 
 `Strict` rejects requests without a valid token. Use `Optional` only for a
 deliberately transitional route; it permits requests without a token.

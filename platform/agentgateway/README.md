@@ -43,8 +43,8 @@ secret-rotation-safe UAMI custom-scope workflow.
 | Validate mgmt cluster before worker | `VALIDATE-MGMT.md` |
 | Check required CRDs | `./preflight-check.sh` |
 | Configure agent authentication | [`AUTHENTICATION.md`](AUTHENTICATION.md) |
-| Prepare the application-team onboarding meeting | [`APPLICATION-TEAM-ONBOARDING-FRONT-SHEET.md`](APPLICATION-TEAM-ONBOARDING-FRONT-SHEET.md) |
-| Review the full onboarding security and delivery design | [`APPLICATION-TEAM-ONBOARDING-PLAN.md`](APPLICATION-TEAM-ONBOARDING-PLAN.md) |
+| Run the application-team onboarding walkthrough | [`../../work-agent-bundles/agentgateway-application-onboarding/`](../../work-agent-bundles/agentgateway-application-onboarding/) |
+| Review the full onboarding security and delivery design | [`../../work-agent-bundles/agentgateway-application-onboarding/reference/APPLICATION-TEAM-ONBOARDING-PLAN.md`](../../work-agent-bundles/agentgateway-application-onboarding/reference/APPLICATION-TEAM-ONBOARDING-PLAN.md) |
 | Understand why secret rotation is safe | `SECRET-ROTATION-TEST.md` |
 | See what the Factory review flagged | `FACTORY-REVIEW.md` |
 | TLS / connection errors from kagent | See [Troubleshooting](#troubleshooting) below |
