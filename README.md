@@ -147,6 +147,7 @@ examples/           Quickstart and sample payloads
 | Bring Your Own Agent to the platform | [`infra/byo-kagent/`](infra/byo-kagent/README.md) |
 | Run the BYO-agent showcase demo | [`demos/byo-agent-showcase/`](demos/byo-agent-showcase/README.md) |
 | Understand A2A + kagent memory | [`a2a/`](a2a/README.md) |
+| Keep long kagent database chats below the model context limit | [`docs/kagent-chat-context-compaction/`](docs/kagent-chat-context-compaction/README.md) |
 | See the full programme scope | [`STATEMENT-OF-WORK.md`](STATEMENT-OF-WORK.md) |
 
 ---
