@@ -85,6 +85,7 @@ examples/           Quickstart and sample payloads
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
 | Use the Kagent v2 work-agent bundle catalogue | [`work-agent-bundles/`](work-agent-bundles/README.md) |
 | Explain the Kagent platform value story to stakeholders | [`WORK-KAGENT-VALUE-STORY-ONE-PAGER.md`](WORK-KAGENT-VALUE-STORY-ONE-PAGER.md) |
+| Explain why kagent replaced HolmesGPT for default triage | [`HOLMES-TO-KAGENT-DECISION-FRONT-SHEET.md`](HOLMES-TO-KAGENT-DECISION-FRONT-SHEET.md) |
 | Present the Kagent v2 stakeholder demo | [`WORK-STAKEHOLDER-DEMO-RUNBOOK.html`](WORK-STAKEHOLDER-DEMO-RUNBOOK.html) |
 | Compare worker-local vs management-cluster triage (blast-radius briefing) | [`WORK-KAGENT-TRIAGE-DEPLOYMENT-MODELS.html`](WORK-KAGENT-TRIAGE-DEPLOYMENT-MODELS.html) |
 | Review the evidence-first worker-to-management triage decision | [`WORK-WORKER-TO-MANAGEMENT-EVIDENCE-TRIAGE.html`](WORK-WORKER-TO-MANAGEMENT-EVIDENCE-TRIAGE.html) |
