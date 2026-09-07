@@ -1,12 +1,13 @@
-# Agent authentication with agentgateway
+# Workload and agent authentication with agentgateway
 
-This guide describes how an agent authenticates to agentgateway and how
-agentgateway authenticates to the upstream model or tool backend.
+This guide describes how an application workload or agent authenticates to
+agentgateway and how agentgateway authenticates to the upstream model or tool
+backend.
 
 ## Authentication boundary
 
 ```text
-kagent agent
+application workload or kagent agent
     │  Authorization: Bearer <short-lived JWT>
     ▼
 agentgateway
@@ -20,7 +21,7 @@ Keep these two hops separate:
 
 | Hop | Recommended credential | Owner |
 |---|---|---|
-| Agent → agentgateway | Short-lived OIDC/JWT | Agent workload identity or IdP |
+| Workload/agent → agentgateway | Short-lived OIDC/JWT | Caller workload identity or IdP |
 | agentgateway → provider | UAMI/workload identity or gateway-side SecretRef | agentgateway |
 
 Do not place Azure, OpenAI, or MCP backend credentials in the agent's
@@ -28,7 +29,7 @@ Do not place Azure, OpenAI, or MCP backend credentials in the agent's
 
 ## JWT/OIDC authentication
 
-JWT is the preferred option for production agent-to-gateway authentication.
+JWT is the preferred option for production workload-to-gateway authentication.
 The gateway validates the token issuer, audience, signature, and expiry using
 the identity provider's JWKS endpoint.
 
@@ -68,10 +69,19 @@ The same example is checked in as
 [`authentication-policy.yaml`](authentication-policy.yaml). It contains only
 placeholders and must be customized for the target cluster.
 
+The `oidc-proxy` Service is an illustrative backend reference; this repository
+does not define or deploy it. Before enabling `Strict` mode, choose and validate
+the target cluster's real JWKS path: for example, an external-identity-provider
+`AgentgatewayBackend`, a corporate proxy, or another reviewed egress design.
+Record its owner, DNS and network reachability, TLS/corporate-CA trust, cache
+duration, signing-key rollover behaviour, and observable fail-closed symptom.
+The application-team design tracks this as a mandatory
+[Phase 0 dependency](APPLICATION-TEAM-ONBOARDING-PLAN.md#phase-0-installed-contract-discovery).
+
 `Strict` rejects requests without a valid token. Use `Optional` only for a
 deliberately transitional route; it permits requests without a token.
 
-The agent sends the token in the normal bearer header:
+The caller sends the token in the normal bearer header:
 
 ```bash
 curl "https://{{AGENTGATEWAY_HOSTNAME}}/azure/v1/chat/completions" \
@@ -102,7 +112,7 @@ than JWTs but provide weaker identity and rotation semantics.
 
 ## Authorization is a separate decision
 
-Authentication answers “which agent is this?” Authorization answers “what may
+Authentication answers “which caller is this?” Authorization answers “what may
 it do?” Apply authorization after authentication:
 
 - restrict agents to specific model routes;

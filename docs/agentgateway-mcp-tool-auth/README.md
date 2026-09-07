@@ -3,6 +3,11 @@
 This folder is a portable explainer for using Agent Gateway as the authentication,
 authorization, and discovery layer for kagent tools.
 
+Status: design proposal. `ToolCatalogEntry` and `ToolGrant` are checked-in
+platform proposal artifacts, not deployed or runtime-proven controls. No
+controller or renderer that projects them into Agent Gateway policy is proven
+in this repository.
+
 ## Start Here
 
 1. Open `mcp-tool-auth-discovery-explainer.html` in a browser.
@@ -12,7 +17,8 @@ authorization, and discovery layer for kagent tools.
 ## Core Idea
 
 Kagent still owns agents, prompts, model configuration, and selected tool refs.
-The platform catalog/grant model owns which tools an agent is allowed to use.
+The proposed platform catalog/grant model records which tools an agent is
+approved to use.
 Agent Gateway becomes the runtime enforcement point:
 
 - authenticates the caller;
@@ -35,6 +41,6 @@ possible, so agents get discovery and per-tool authorization.
 ## Safety
 
 The YAML is demonstrative. Do not apply it directly to a production cluster.
-`ToolCatalogEntry.status` is shown inline for readability, but in a real cluster
-that status should be written through the `/status` subresource by the onboarding
-workflow.
+`ToolCatalogEntry.status` is shown inline for readability. In the proposed
+production design, a proven onboarding controller or workflow would write that
+status through the `/status` subresource.
