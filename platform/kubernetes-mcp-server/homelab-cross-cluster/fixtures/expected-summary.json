@@ -1,0 +1,49 @@
+{
+  "blockedTools": [
+    {"status": "REJECTED", "tool": "configuration_view"},
+    {"status": "REJECTED", "tool": "pods_exec"},
+    {"status": "REJECTED", "tool": "resources_create_or_update"},
+    {"status": "REJECTED", "tool": "resources_delete"},
+    {"status": "REJECTED", "tool": "resources_scale"}
+  ],
+  "contexts": [
+    {"alias": "red-homelab", "nodeCount": 1},
+    {"alias": "proxmox-homelab", "nodeCount": 3}
+  ],
+  "crossoverCount": 0,
+  "requests": [
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 1, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 2, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 3, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 4, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 5, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 6, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 7, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 8, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 9, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 10, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 11, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 12, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 13, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 14, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 15, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 16, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 17, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 18, "status": "PASS"},
+    {"context": "red-homelab", "nodeCount": 1, "sequence": 19, "status": "PASS"},
+    {"context": "proxmox-homelab", "nodeCount": 3, "sequence": 20, "status": "PASS"}
+  ],
+  "schema": "homelab-cross-cluster-mcp/v1",
+  "status": "PASS",
+  "toolNames": [
+    "configuration_contexts_list",
+    "events_list",
+    "namespaces_list",
+    "pods_get",
+    "pods_list",
+    "pods_list_in_namespace",
+    "pods_log",
+    "resources_get",
+    "resources_list"
+  ]
+}

@@ -1,0 +1,77 @@
+port = "8080"
+bind_address = "0.0.0.0"
+log_level = 0
+list_output = "yaml"
+stateless = false
+read_only = true
+disable_destructive = true
+cluster_provider_strategy = "kubeconfig"
+kubeconfig = "/var/run/kubernetes-mcp/kubeconfig"
+toolsets = ["core", "config"]
+enabled_tools = [
+  "configuration_contexts_list",
+  "events_list",
+  "namespaces_list",
+  "pods_get",
+  "pods_list",
+  "pods_list_in_namespace",
+  "pods_log",
+  "resources_get",
+  "resources_list",
+]
+disabled_tools = [
+  "configuration_view",
+  "helm_install",
+  "helm_uninstall",
+  "nodes_log",
+  "nodes_stats_summary",
+  "nodes_top",
+  "pods_delete",
+  "pods_exec",
+  "pods_run",
+  "pods_top",
+  "resources_create_or_update",
+  "resources_delete",
+  "resources_scale",
+]
+
+[http]
+read_header_timeout = "10s"
+max_body_bytes = 1048576
+rate_limit_rps = 5
+rate_limit_burst = 10
+
+[[denied_resources]]
+group = ""
+version = "v1"
+kind = "Secret"
+
+[[denied_resources]]
+group = ""
+version = "v1"
+kind = "ConfigMap"
+
+[[denied_resources]]
+group = ""
+version = "v1"
+kind = "ServiceAccount"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "Role"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "RoleBinding"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "ClusterRole"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "ClusterRoleBinding"
