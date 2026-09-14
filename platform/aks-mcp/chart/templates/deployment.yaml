@@ -38,6 +38,24 @@ spec:
       serviceAccountName: {{ include "aks-mcp.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.kubeconfig.enabled .Values.kubeconfig.expectedCurrentContext }}
+      initContainers:
+        - name: validate-kubeconfig
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - test "$(kubectl --kubeconfig /home/mcp/.kube/config config current-context)" = "$EXPECTED_CURRENT_CONTEXT"
+          env:
+            - name: EXPECTED_CURRENT_CONTEXT
+              value: {{ .Values.kubeconfig.expectedCurrentContext | quote }}
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /home/mcp/.kube
+              readOnly: true
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -55,6 +73,10 @@ spec:
             - "0.0.0.0"
             - "--port"
             - {{ .Values.app.port | quote }}
+            {{- range .Values.app.allowedHosts }}
+            - "--allowed-host"
+            - {{ . | quote }}
+            {{- end }}
             - "--access-level"
             - {{ .Values.app.accessLevel | quote }}
             - "--timeout"
@@ -173,8 +195,11 @@ spec:
         - name: kubeconfig
           secret:
             secretName: {{ .Values.kubeconfig.secretName }}
-            optional: true
+            optional: {{ .Values.kubeconfig.optional }}
             defaultMode: 0600
+            items:
+              - key: {{ .Values.kubeconfig.key | quote }}
+                path: config
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
