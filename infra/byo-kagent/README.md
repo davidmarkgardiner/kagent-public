@@ -2,13 +2,23 @@
 
 Self-service onboarding of kagent Agents and MCP tool servers onto the shared platform via Flux GitOps.
 
+Status: target-state proposal. The `ToolCatalogEntry` and `ToolGrant` CRDs,
+bootstrap objects, workflows, and Kyverno policies in this repository are
+design artifacts; their presence does not prove that they are deployed,
+version-compatible, or runtime-enforced. No controller or renderer that turns
+the proposal resources into agentgateway policy is proven here. Treat the
+architecture, bootstrap, and day-2 sections below as proposed operating design,
+not as current access controls.
+
 ---
 
 ## Problem this solves
 
 Before BYO-KAgent, every new agent was hand-authored YAML applied manually with no consistent tool-grant model, no per-team budget enforcement, no MCP tool safety verification, and no multi-cluster Flux story. Each deployment was a one-off.
 
-BYO-KAgent gives teams a repeatable, auditable, GitOps-native path to ship their own agents and tools while the platform enforces security at admission time (Kyverno) rather than at review time.
+BYO-KAgent proposes a repeatable, auditable, GitOps-native path for teams to
+ship their own agents and tools, with security enforced at admission time
+(Kyverno) as well as at review time once the design is implemented and proven.
 
 ---
 

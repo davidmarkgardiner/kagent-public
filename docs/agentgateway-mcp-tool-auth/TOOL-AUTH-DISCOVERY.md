@@ -2,6 +2,10 @@
 
 Date: 2026-05-13
 
+Status: design proposal. The checked-in `ToolCatalogEntry` and `ToolGrant`
+artifacts are not known to be deployed or runtime-enforced, and the controller
+or renderer described below has not been proven.
+
 This note records the current state after updating the local upstream checkouts:
 
 - `agentgateway`: `main` at `9ca3e049` (`origin/main`)
@@ -28,10 +32,11 @@ Kagent has native MCP tool registration:
 - Agents can restrict which request headers may flow to MCP calls via `allowedHeaders`.
 - Agents already have a proxy rewrite path for internal Kubernetes MCP service URLs using `x-kagent-host`.
 
-The existing platform model already points in the right direction:
+The proposed platform model already points in the right direction:
 
-- `ToolCatalogEntry` represents a verified BYO tool or tool server.
-- `ToolGrant` links an agent to a catalog entry and an explicit set of allowed tools.
+- `ToolCatalogEntry` is proposed to represent a verified BYO tool or tool server.
+- `ToolGrant` is proposed to link an agent to a catalog entry and an explicit
+  set of allowed tools.
 - The missing enforcement step is to project those grants into Agent Gateway MCP authorization policy and route all tool calls through the gateway.
 
 ## Recommended Architecture
@@ -59,18 +64,19 @@ MCP tool server fleet
 ToolCatalogEntry + RemoteMCPServer.status.discoveredTools
 ```
 
-## Enforcement Model
+## Proposed Enforcement Model
 
-Use Agent Gateway as the runtime policy decision and enforcement point:
+The proposed design uses Agent Gateway as the runtime policy decision and
+enforcement point:
 
-1. A team registers a BYO MCP server as a `RemoteMCPServer` or as a Service selected by an Agent Gateway `MCPBackend`.
-2. The onboarding workflow verifies `tools/list`, writes or updates `ToolCatalogEntry.status.verifiedTools[]`, and keeps the server in quarantine until approved.
-3. A `ToolGrant` gives a specific agent explicit access to a subset of verified tools.
-4. A controller, generator, or GitOps workflow renders:
+1. A team would register a BYO MCP server as a `RemoteMCPServer` or as a Service selected by an Agent Gateway `MCPBackend`.
+2. A proven onboarding workflow would verify `tools/list`, write or update `ToolCatalogEntry.status.verifiedTools[]`, and keep the server in quarantine until approved.
+3. A `ToolGrant` would record a specific agent's approved subset of verified tools.
+4. A controller, generator, or GitOps workflow would render:
    - a kagent `RemoteMCPServer` whose URL points at Agent Gateway, not directly at the tool server;
    - an Agent Gateway MCP backend/route for the tool server;
    - an Agent Gateway MCP authorization policy from the `ToolGrant`.
-5. At runtime, Agent Gateway filters `tools/list` to only allowed tools and blocks `tools/call` for anything outside the grant.
+5. At runtime, Agent Gateway would filter `tools/list` to only allowed tools and block `tools/call` for anything outside the rendered policy.
 
 This avoids relying only on kagent-side `toolNames`. Kagent `toolNames` should remain as a least-privilege client-side allowlist, but Agent Gateway should be treated as the authoritative enforcement layer.
 
