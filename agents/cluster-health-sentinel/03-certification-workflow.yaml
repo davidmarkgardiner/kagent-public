@@ -120,7 +120,7 @@ spec:
           - name: agent-triage
             template: agent-triage
             dependencies: [aggregate]
-            when: "{{tasks.aggregate.outputs.parameters.failed}} != none"
+            when: "{{=tasks.aggregate.outputs.parameters.failed != 'none'}}"
             arguments:
               parameters:
                 - name: report
@@ -131,7 +131,7 @@ spec:
           - name: file-ticket
             template: file-ticket
             dependencies: [agent-triage]
-            when: "{{tasks.aggregate.outputs.parameters.failed}} != none"
+            when: "{{=tasks.aggregate.outputs.parameters.failed != 'none'}}"
             arguments:
               parameters:
                 - name: verdict
