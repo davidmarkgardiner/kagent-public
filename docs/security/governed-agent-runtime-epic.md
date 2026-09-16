@@ -1,5 +1,16 @@
 # Epic: Governed Agent Runtime Behind Agent Gateway
 
+## Verification status
+
+| Field | Value |
+|---|---|
+| Last verified | 2026-09-16 |
+| Scope | Repository documentation check only: referenced evidence paths and control-model resource names. |
+| Result | Pass. All ten evidence references in "Current evidence in this repository" resolve. `ToolCatalogEntry`, `ToolGrant`, `ModelConfig`, `RemoteMCPServer`, `requireApproval`, and `discoveredTools` are all still present in repository manifests and docs. |
+| Not covered | Live cluster behavior. Gateway enforcement, admission policy, egress denial, sandbox isolation, and A2A authorization remain target-state until the minimum validation plan below is executed and its evidence captured. |
+
+Re-run this check at each platform release, per Workstream 7.
+
 ## Executive summary
 
 Build the governance, security, and compliance control set for a regulated
