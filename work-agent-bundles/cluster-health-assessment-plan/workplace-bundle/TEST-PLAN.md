@@ -1,5 +1,10 @@
 # Workplace test and promotion plan
 
+This version is single-cluster only: manager and worker contexts must resolve
+to the same `kube-system` namespace UID. If they differ, stop. A split topology
+needs a separately authenticated worker-side MCP endpoint and a new security
+review before these gates are applicable.
+
 ## Gate 0: inventory and ownership
 
 - Confirm the GitOps owner of Alloy, Argo Events, kagent, AKS-MCP and the worker
@@ -29,6 +34,15 @@
 - `scripts/verify.py` passes.
 - Server-side dry-run and negative RBAC tests pass with `verify-live.sh`.
 - Post-apply readiness and state checks pass with `verify-running.sh`.
+- Agentgateway returns 401 for no token/wrong audience and 403 for a valid
+  token from the wrong ServiceAccount.
+- The MCP ServiceAccount can read one approved namespace and nodes, but cannot
+  read `default`, Secrets or ConfigMaps and cannot create Pods.
+- Confirm the AKS-MCP chart has no other ClusterRoleBinding for the dedicated
+  ServiceAccount; the supplied RoleBindings are not protective if a broader
+  binding also exists.
+- Confirm the MCP Azure identity cannot perform either AKS cluster user/admin
+  credential retrieval action and AKS-MCP has no alternate kubeconfig context.
 - Admission policy accepts restricted security contexts, resource bounds,
   projected token use and NetworkPolicies.
 - Inspect effective EventSource, Sensor, Workflow and Agent pods after their
@@ -89,6 +103,24 @@ Expected sequence:
 Repeat with Kafka unavailable, AKS-MCP unavailable, stale snapshots, invalid
 cluster targets and malformed alert payloads. Each must fail closed without
 broadening cluster access.
+
+Also submit a syntactically valid alert containing `default` or another
+non-approved namespace. Validation must stop before the A2A call. From a pod
+using the Workflow ServiceAccount, prove direct TCP access to the kagent
+controller and MCP Service is denied by NetworkPolicy while the agentgateway
+route remains reachable.
+Exercise `call_kubectl` with `--server`, `--token`, `--kubeconfig`, `--as`,
+`--raw`, and an alternate-context attempt. Every request must be rejected
+before kubectl execution. Inventory who can create pods/workflows or request a
+token for the Workflow ServiceAccount in `argo-events`; unexpected principals
+are a promotion blocker.
+Attempt GET, a suffix/path-traversal variant, and the prior direct A2A path at
+the gateway; none may select another agent. Confirm the validated caller credential
+is removed before the request reaches the kagent controller or its access log.
+From an unrelated test pod in the agentgateway namespace, prove the controller
+is unreachable; only the pod labelled for the configured Gateway may connect.
+Inventory every NetworkPolicy selecting the gateway, controller, investigator,
+or MCP pods because Kubernetes policies are additive.
 
 ## Gate 5: single GitLab summary
 

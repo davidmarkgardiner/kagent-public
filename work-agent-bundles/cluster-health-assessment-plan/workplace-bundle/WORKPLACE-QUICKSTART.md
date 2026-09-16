@@ -60,7 +60,11 @@ Copy `values.example.json` to a private location. Fill in:
 - the two new internal image digests plus approved Vector/toolbox digests;
 - cluster identity and the worker AKS-MCP target;
 - Kafka broker/topic/consumer group, port and exact egress CIDR;
-- worker/manager API CIDRs and kagent A2A service details;
+- worker/manager API CIDRs, agentgateway Service/Gateway details, the internal
+  listener name, Service and target ports, management OIDC issuer/JWKS and a dedicated
+  Kubernetes projected-token `api://` audience;
+- the dedicated AKS-MCP ServiceAccount, instance label and port; disable its
+  chart-created broad RBAC;
 - GitLab HTTPS origin, SRE project and exact egress CIDR;
 - the exact Alloy event/log namespace count.
 
@@ -81,7 +85,8 @@ workplace-bundle/scripts/verify-live.sh \
 ```
 
 Passing the same context twice is correct while one cluster represents both
-worker and manager.
+worker and manager. If work separates them, stop and redesign the worker-side
+MCP authentication and authorization boundary before deployment.
 
 ## 3. Deploy, connect and prove the path
 
@@ -92,7 +97,8 @@ Run:
 
 ```bash
 workplace-bundle/scripts/verify-running.sh \
-  {{CLUSTER_CONTEXT}} {{CLUSTER_CONTEXT}}
+  {{CLUSTER_CONTEXT}} {{CLUSTER_CONTEXT}} \
+  /secure/path/cluster-health-values.json
 ```
 
 Then prove each boundary in order:
@@ -101,12 +107,16 @@ Then prove each boundary in order:
 2. B1 produces fresh five-minute snapshots.
 3. Vector produces and a disposable consumer consumes the daily contract.
 4. Many snapshots/restarts still produce one record for one UTC date.
-5. Argo creates one replay-safe Workflow only for an unhealthy record.
-6. The Agent targets the worker alias and returns one bounded read-only summary.
-7. In a disposable GitLab project, create the exact stable labels and enable
+5. No token/wrong audience returns 401 and the wrong ServiceAccount returns
+   403 at agentgateway; the Workflow identity reaches only the fixed agent.
+6. The dedicated MCP identity reads approved namespaces and nodes but is
+   denied `default`, Secrets, ConfigMaps and all writes.
+7. Argo creates one replay-safe Workflow only for an unhealthy record.
+8. The Agent targets the worker alias and returns one bounded read-only summary.
+9. In a disposable GitLab project, create the exact stable labels and enable
    `GITLAB_WRITE_ENABLED=true`; first unhealthy day creates one issue and the
    next updates it.
-8. Remove the fault; the next daily record is healthy and invokes neither the
+10. Remove the fault; the next daily record is healthy and invokes neither the
    Agent nor GitLab writer.
 
 Only after the full soak and approval should the GitLab writer target the real

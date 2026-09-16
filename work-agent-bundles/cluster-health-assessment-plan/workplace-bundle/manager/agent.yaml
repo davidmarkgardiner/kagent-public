@@ -95,4 +95,4 @@ spec:
           kind: RemoteMCPServer
           name: "{{AKS_MCP_SERVER_NAME}}"
           namespace: kagent
-          toolNames: [call_az, call_kubectl]
+          toolNames: [call_kubectl]

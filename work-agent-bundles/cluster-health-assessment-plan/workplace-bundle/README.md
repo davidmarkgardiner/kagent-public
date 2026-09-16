@@ -3,6 +3,11 @@
 Status: implementation-complete and verified offline; not built, pushed or
 deployed. This directory is the lift-and-shift entry point.
 
+Current topology constraint: the worker and manager contexts must identify the
+same Kubernetes cluster. Both live-verification scripts compare the
+`kube-system` namespace UID and stop if the contexts differ. A split topology
+requires a separately authenticated worker-side MCP design before deployment.
+
 For the three-step workplace handoff, start with
 [WORKPLACE-QUICKSTART.md](WORKPLACE-QUICKSTART.md). The detailed product
 contract is [PRD.md](PRD.md). For a visual explanation of the complete flow,
@@ -12,7 +17,7 @@ Upstream collector reference: https://github.com/foxj77/autonomous-monitor
 
 ## What deploys
 
-Worker cluster:
+Worker role in the current shared cluster:
 
 1. one locally adapted Fox Go collector per namespace in the shared
    Alloy/Vector namespace inventory;
@@ -21,12 +26,19 @@ Worker cluster:
 4. one Vector sidecar that publishes the bounded daily health record to the
    normal SASL/TLS Kafka service.
 
-Manager/agentic cluster:
+Manager/agentic role in the same current cluster:
 
 1. one Kafka EventSource and one rate-limited Sensor;
-2. one bounded WorkflowTemplate with a separately gated GitLab summary writer; and
-3. one read-only `cluster-health-investigator` kagent Agent using the approved
+2. one bounded WorkflowTemplate with a projected short-lived caller JWT;
+3. one Strict-JWT agentgateway route fixed to the health investigator;
+4. one separately gated GitLab summary writer; and
+5. one read-only `cluster-health-investigator` kagent Agent using the approved
    worker-targeted AKS-MCP server.
+
+The default route authorizes only the Workflow ServiceAccount. Namespace and
+verb enforcement is applied to the dedicated MCP identity through generated
+RoleBindings, not through the agent prompt. See
+[AUTHENTICATED-ACCESS.md](AUTHENTICATED-ACCESS.md).
 
 The Agent has no GitLab credential or write tool. A fixed-purpose adapter in a
 separate Workflow step can create or update one labelled SRE summary issue when
@@ -83,13 +95,19 @@ consumed message proof.
    placeholder. Use immutable registry digests. Set `KAFKA_PORT` to the broker
    listener port and set `EXPECTED_NAMESPACE_COUNT` to the exact number of
    namespaces in `fox-mesh/namespaces.json`. Supply separate worker and manager
-   Kubernetes API CIDRs and keep the kagent namespace/A2A port aligned with the
-   A2A service URL so the rendered NetworkPolicies are exact. Supply the GitLab
+   Kubernetes API CIDRs, agentgateway Service/Gateway details, management OIDC
+   issuer/JWKS and the dedicated MCP ServiceAccount so the rendered policies
+   are exact. Supply the GitLab
    HTTPS origin/project/egress values, but leave `GITLAB_WRITE_ENABLED=false`
    until the Kafka and agent-only gates pass.
 2. Replace `../../fox-mesh/namespaces.json` with the exact ordered namespace
    scope from the workplace Alloy event and pod-log selectors. Regenerate both
-   Fox and B1 manifests and run their drift verifier.
+   Fox/B1 manifests and the MCP RoleBindings, then run their drift verifier:
+
+```bash
+python3 workplace-bundle/scripts/render-mcp-rbac.py \
+  --output workplace-bundle/worker/mcp-rolebindings.yaml
+```
 3. Render:
 
 ```bash
@@ -159,6 +177,9 @@ workplace-bundle/scripts/verify-live.sh \
   /secure/path/cluster-health-rendered aks-mcp-readonly
 ```
 
+For this bundle, pass contexts for the same cluster. The script refuses
+different cluster UIDs; do not work around that guard.
+
 Then follow [TEST-PLAN.md](TEST-PLAN.md). The work-agent execution prompt is
 [WORK-AGENT-START-PROMPT.md](WORK-AGENT-START-PROMPT.md).
 
@@ -166,12 +187,13 @@ After deployment, perform the read-only running-state gates:
 
 ```bash
 workplace-bundle/scripts/verify-running.sh \
-  {{WORKER_CONTEXT}} {{MANAGER_CONTEXT}}
+  {{WORKER_CONTEXT}} {{MANAGER_CONTEXT}} \
+  /secure/path/cluster-health-values.json
 ```
 
 This proves effective positive/negative RBAC, collector/bridge readiness, fresh
-snapshot shape, per-namespace Fox state, manager resources and kagent
-Accepted/Ready/controller visibility.
+snapshot shape, per-namespace Fox state, manager resources, kagent readiness,
+and the agentgateway 401/403 identity boundary.
 The Kafka produced/consumed and controlled-fault proofs remain separate gates
 in the test plan; Kubernetes readiness is not evidence of message delivery.
 

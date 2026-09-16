@@ -1,0 +1,86 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-cluster-health-agentgateway-to-kagent
+  namespace: "{{KAGENT_NAMESPACE}}"
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+  to:
+    - group: ""
+      kind: Service
+      name: "{{KAGENT_CONTROLLER_SERVICE_NAME}}"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: cluster-health-investigator-a2a
+  namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: "{{AGENTGATEWAY_GATEWAY_NAME}}"
+      namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+      sectionName: "{{AGENTGATEWAY_LISTENER_NAME}}"
+  hostnames:
+    - "{{AGENTGATEWAY_SERVICE_NAME}}.{{AGENTGATEWAY_NAMESPACE}}.svc.cluster.local"
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /a2a/cluster-health/
+          method: POST
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /api/a2a/kagent/cluster-health-investigator/
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            remove: [Authorization]
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: "{{KAGENT_CONTROLLER_SERVICE_NAME}}"
+          namespace: "{{KAGENT_NAMESPACE}}"
+          port: 8083
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: cluster-health-investigator-a2a
+  namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: cluster-health-investigator-a2a
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      providers:
+        - issuer: "{{MANAGER_OIDC_ISSUER}}"
+          audiences:
+            - "{{AGENTGATEWAY_AUDIENCE}}"
+          jwks:
+            remote:
+              jwksUri: "{{MANAGER_OIDC_JWKS_URI}}"
+    authorization:
+      action: Allow
+      policy:
+        matchExpressions:
+          - >-
+            jwt.sub ==
+            "system:serviceaccount:argo-events:cluster-health-investigation-workflow"
+    timeouts:
+      request: 480s

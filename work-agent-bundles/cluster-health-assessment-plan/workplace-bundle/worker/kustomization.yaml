@@ -4,6 +4,9 @@ resources:
   - ../../b1
   - ../../fox-mesh
   - alert-bridge.yaml
+  - mcp-rbac.yaml
+  - mcp-rolebindings.yaml
+  - mcp-network-policy.yaml
   - network-policies.yaml
   - monitoring.yaml
 images:

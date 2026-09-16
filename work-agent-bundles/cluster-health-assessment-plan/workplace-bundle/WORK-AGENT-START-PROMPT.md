@@ -26,7 +26,8 @@ Outcome:
 
 Mandatory sequence:
 
-1. Read the bundle README, TEST-PLAN, FOX-STATE-ONLY-ADAPTATION and repository
+1. Read the bundle README, AUTHENTICATED-ACCESS, TEST-PLAN,
+   FOX-STATE-ONLY-ADAPTATION and repository
    instructions. Record the current branch/dirty state and preserve unrelated
    changes. Record installed Argo Events, Argo Workflows, kagent and AKS-MCP
    versions plus the effective controller/runtime image IDs; those
@@ -36,7 +37,9 @@ Mandatory sequence:
    Replace fox-mesh/namespaces.json with that reviewed list, regenerate
    fox-mesh/rendered.yaml and b1/k8s/watched-namespaces.yaml using the supplied
    renderers, and run fox-mesh/verify.py --alloy-config against the owned live
-   Alloy source. The bundled Alloy file is only a sanitized parser fixture.
+   Alloy source. Regenerate worker/mcp-rolebindings.yaml with
+   scripts/render-mcp-rbac.py. The bundled Alloy file is only a sanitized
+   parser fixture.
 3. Clone the pinned Fox commit
    7c785b574c36f7100ae321ec0f880782dfead311 into an approved internal fork or
    source mirror. Implement the strict PUBLISH_FINDINGS_ENABLED switch exactly
@@ -57,17 +60,29 @@ Mandatory sequence:
    topic, and a unique consumer group. Configure verified CIDRs for the worker
    API, manager API and Kafka egress; do not use 0.0.0.0/0. Set EXPECTED_NAMESPACE_COUNT
    to the reviewed namespace-list length and KAFKA_PORT to the approved TLS
-   listener port. Align KAGENT_NAMESPACE and KAGENT_A2A_PORT with the internal
-   A2A service URL. Configure the GitLab HTTPS origin, project and exact egress
+   listener port. Configure the exact agentgateway Gateway, internal listener
+   and Service, management
+   OIDC issuer/JWKS, dedicated audience and dedicated AKS-MCP ServiceAccount.
+   The A2A URL must use the fixed agentgateway cluster-health route, never the
+   kagent controller directly. Configure the GitLab HTTPS origin, project and exact egress
    CIDR, but keep GITLAB_WRITE_ENABLED=false.
 7. Verify the AKS-MCP RemoteMCPServer is the approved worker reach-back path.
-   Confirm live discovery exposes only the needed call_az/call_kubectl tools to
-   this agent, the target identity has least-privilege read-only Kubernetes
-   authorization, Secret reads and mutating verbs are denied, and every call
-   requires an explicit approved worker target. A prompt is not an RBAC
-   boundary.
+   Disable its default broad ClusterRoleBinding and use the dedicated identity
+   in the private values. Confirm live discovery exposes only `call_kubectl`
+   to this agent, the target identity has the supplied per-namespace read-only
+   bindings, node-read only at cluster scope, and no Secret, ConfigMap, token,
+   RBAC or mutating permission. Prove `default` is denied. A prompt,
+   `toolNames`, and `allowNamespaces` are defense in depth, not RBAC.
+   Use only the in-cluster context; do not mount a fleet kubeconfig. Confirm
+   the MCP Azure identity cannot retrieve AKS user/admin credentials and the
+   agent has no `call_az` tool.
+   This checked-in topology assumes manager and worker are the same cluster.
+   If they are split, stop and design a separately authenticated worker-side
+   MCP endpoint; do not assume these ServiceAccount RoleBindings cross clusters.
 8. Render placeholder-free worker.yaml and manager.yaml. Run scripts/verify.py,
    server-side dry-runs, admission policy checks and scripts/verify-live.sh.
+   Validate the installed agentgateway CRD supports Strict JWT authentication
+   and route authorization. Do not fall back to an unauthenticated route.
    Do not apply until those are green and the change window is approved.
 9. Follow TEST-PLAN gates in order: report-only canary, Kafka produced/consumed
    and one-record-per-date proof, controlled smoke fault, one agent Workflow,
@@ -94,6 +109,8 @@ Fail closed if:
   - any placeholder remains;
   - Kafka TLS verification is disabled;
   - NetworkPolicy needs a broad CIDR;
+  - agentgateway does not return 401/403 for the required negative cases;
+  - the Workflow can reach kagent or MCP directly instead of through the gateway;
   - AKS-MCP can mutate or read Secrets;
   - the alert contains raw logs/events or exceeds 64 KiB;
   - one date produces more than one investigation Workflow or SRE issue;

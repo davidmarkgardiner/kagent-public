@@ -7,8 +7,11 @@ the selected `RemoteMCPServer` remains mandatory.
 
 | Tool Name | Description |
 |-----------|-------------|
-| `call_az` | Bounded Azure CLI reads and approved cluster-user credential acquisition against the explicit target |
 | `call_kubectl` | Kubectl diagnostic operations constrained by target Kubernetes read-only authorization |
+
+`call_az` is deliberately excluded. The MCP Azure identity must not be able to
+retrieve cluster user/admin credentials because doing so would bypass the
+namespace-scoped Kubernetes identity and RoleBindings.
 
 ## Write Tools (remediation agents only)
 

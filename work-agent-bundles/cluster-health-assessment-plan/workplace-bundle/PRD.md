@@ -20,6 +20,13 @@ creates or updates one GitLab SRE issue for the cluster.
   remain Kafka/observability evidence and do not create a Workflow or issue.
 - The agent uses only the approved worker-targeted AKS-MCP path and returns one
   bounded root-cause summary. It has no GitLab credential or mutation tool.
+- The Workflow calls the agent only through a Strict-JWT agentgateway route
+  fixed to the one investigator. The default allow rule matches only the exact
+  Workflow ServiceAccount subject; human access is not enabled.
+- The Workflow rejects alert namespaces outside the collector inventory. The
+  dedicated MCP identity receives read-only RoleBindings only in that
+  inventory, a separate bounded node-read permission, and no Secret,
+  ConfigMap, token, RBAC or mutation permission.
 - A fixed GitLab adapter searches by exact stable labels. Zero matches creates
   one issue; one match updates it; multiple matches, pagination ambiguity, API
   error or uncertain response fails closed. It never retries an ambiguous
@@ -35,6 +42,8 @@ creates or updates one GitLab SRE issue for the cluster.
 | Kafka replay creates no duplicate Workflow | Deterministic Workflow name |
 | One open issue per cluster | GitLab adapter create/update/multiple-match tests |
 | Agent cannot write GitLab or Kubernetes | Tool list, Secret placement and effective RBAC tests |
+| Only the Workflow identity can invoke the agent | Agentgateway 401/403 negative tests and fixed-route inspection |
+| Alert cannot broaden namespace scope | Payload subset validation, RoleBinding parity test and forbidden-namespace RBAC test |
 | No raw log/event fan-out | Alert schema, payload size/redaction tests |
 | Workplace portability | Digest-pinned render, server dry-run, produced/consumed Kafka proof and controlled fault receipt |
 
@@ -45,6 +54,8 @@ creates or updates one GitLab SRE issue for the cluster.
 - Automatic remediation, issue closure or suppression of the existing incident
   lane before the calibration/soak decision.
 - Committing GitLab tokens, Kafka credentials or private endpoints.
+- Direct human access to the cluster-health agent. That requires a separate
+  Entra-authenticated route, role approval and live negative tests.
 
 ## Rollback
 
