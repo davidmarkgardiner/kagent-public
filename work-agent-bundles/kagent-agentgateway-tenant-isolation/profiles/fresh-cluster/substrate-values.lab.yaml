@@ -1,0 +1,17 @@
+# Agent Substrate 0.0.9 lab image contract. The pinned chart defaults provide
+# component topology and JWT authentication. These overrides make the selected
+# source images explicit; they do not make the privileged runtime production-safe.
+auth:
+  mode: jwt
+
+image:
+  registry: ghcr.io/kagent-dev/substrate
+  tag: v0.0.9
+
+images:
+  valkey: docker.io/valkey/valkey:8.0@sha256:dbb2de90cb7a60c4f3f7e8d73fcaab69a94c557bb08a064108fa5d5b1814086e
+  rustfs: docker.io/rustfs/rustfs:1.0.0-beta.3@sha256:378642b05b7dcb4849fb77ebe6aca4ced1c3f66e7e504247df95a5c9018d3358
+  awsCli: docker.io/amazon/aws-cli:2.17.0@sha256:643507c10ada7964ca6157b3d799f030b90577643da9955d319a77399ed80d73
+  agentgateway: cr.agentgateway.dev/agentgateway:v1.3.0-alpha.1@sha256:95e8d849c44ba31399daf504367ecfcfe2d3d3e59ffd96b1098234353afc3ef7
+  coredns: docker.io/coredns/coredns:1.11.1@sha256:1eeb4c7316bacb1d4c8ead65571cd92dd21e27359f0d4917f1a5822a73b75db1
+  busybox: docker.io/library/busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662

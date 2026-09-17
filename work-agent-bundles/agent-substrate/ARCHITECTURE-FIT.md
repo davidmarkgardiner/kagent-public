@@ -56,17 +56,20 @@ bursty alert storms, the worker pool absorbs the burst without N always-on triag
 
 ## The three honest blockers for us *right now*
 
-1. **Go ADK runtime only.** Substrate runs `runtime: go` agents. Our existing fleet on `red`
-   is almost entirely `runtime: python`. Migrating triage/remediation agents to Go ADK is real
-   work — or we wait for Python-on-substrate support.
-2. **Pre-production (v0.0.x).** Unstable APIs, no backward-compat, plus the golang-adk registry
+1. **The tested specialist profile is Go ADK only.** The current 0.10.1/0.0.9
+   canary and retained beta7/0.0.8 A2A proof use `runtime: go`. Python and BYO
+   still require their own compatibility and lifecycle canary.
+2. **Pre-production readiness.** Unstable APIs, no backward-compat, plus the golang-adk registry
    bug we hit (see [`evidence/RUN-2026-07-16.md`](evidence/RUN-2026-07-16.md)). Fine for a
    platform-readiness track; not yet for prod triage.
-3. **No A2A REST invocation for sandbox agents (kagent 0.9.10).** Verified on `red`:
-   deployment-mode agents answer via `POST /api/a2a/{ns}/{name}`; substrate agents 404 there.
-   So the triage pipeline above **cannot call a substrate agent over the standard A2A HTTP
-   path today** — it would drive deployment agents, or invoke the actor via the data plane.
-   See [`evidence/RUN-RED-2026-07-16.md`](evidence/RUN-RED-2026-07-16.md).
+3. **Invocation is version-bound.** kagent 0.9.10 returned 404 on the normal A2A
+   route for a SandboxAgent. The later Home Lab profile, kagent
+   `0.10.0-beta7` with Substrate `0.0.8`, successfully invoked SandboxAgents at
+   `POST /api/a2a-sandboxes/{ns}/{name}/`. Re-run the A2A smoke on every version
+   pair. The 0.10.1/0.0.9 canary proves compilation and golden snapshots but
+   still needs a provider-backed A2A run on the target cluster.
+   See [`evidence/RUN-RED-2026-07-16.md`](evidence/RUN-RED-2026-07-16.md) and
+   `../machinist-substrate-specialists/evidence/HOMELAB-SANITY-2026-09-15.md`.
 
 ## Recommendation
 

@@ -1,0 +1,14 @@
+# The shared scanner treats the public version string 0.10.1 as RFC1918 10.1.
+# These files contain the pinned kagent v0.10.1 release or its public digest.
+**/README.md
+**/RED-RUNBOOK.md
+**/ARCHITECTURE.md
+**/DECISIONS.tsv
+**/evidence/red/2026-09-16-runtime.md
+**/platform/versions.lock
+**/scripts/install-control-planes.sh
+**/scripts/preflight.sh
+**/AKS-SUBSTRATE-PROMOTION.md
+**/platform/substrate/kagent-values.work.example.yaml
+**/platform/substrate/target-platform.env
+**/platform/substrate/images.lock.tsv

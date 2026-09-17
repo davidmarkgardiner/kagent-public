@@ -20,8 +20,8 @@ IFS= read -r -s MODEL_API_KEY
 
 CLUSTER="${CLUSTER:-kagent-substrate}"
 CTX="kind-${CLUSTER}"
-SUB_VER="${SUB_VER:-0.0.6}"      # agent-substrate chart version
-KAGENT_VER="${KAGENT_VER:-0.9.9}" # kagent must be >= 0.9.7 for substrate
+SUB_VER="${SUB_VER:-0.0.9}"       # kagent 0.10.1 chart dependency
+KAGENT_VER="${KAGENT_VER:-0.10.1}" # latest stable compatible kagent version
 MODEL_NAME="${MODEL_NAME:-qwen/qwen3-next-80b-a3b-instruct:free}"
 MODEL_BASE_URL="${MODEL_BASE_URL:-https://openrouter.ai/api/v1}"
 
@@ -76,12 +76,26 @@ helm --kube-context "${CTX}" upgrade --install kagent \
   --set-file providers.openAI.apiKey="${MODEL_KEY_FILE}" \
   --set providers.default=openAI \
   --set registry=ghcr.io \
+  --set substrate.enabled=false \
+  --set kmcp.enabled=false \
+  --set kagent-tools.enabled=false \
+  --set grafana-mcp.enabled=false \
+  --set k8s-agent.enabled=false \
+  --set kgateway-agent.enabled=false \
+  --set istio-agent.enabled=false \
+  --set promql-agent.enabled=false \
+  --set observability-agent.enabled=false \
+  --set argo-rollouts-agent.enabled=false \
+  --set helm-agent.enabled=false \
+  --set cilium-policy-agent.enabled=false \
+  --set cilium-manager-agent.enabled=false \
+  --set cilium-debug-agent.enabled=false \
   --set controller.substrate.enabled=true \
   --set controller.substrate.ateApiEndpoint=dns:///api.ate-system.svc:443 \
   --set controller.substrate.ateApiInsecure=true \
   --set substrateWorkerPool.create=true \
   --set substrateWorkerPool.replicas=1 \
-  --set substrateWorkerPool.ateomImage=ghcr.io/kagent-dev/substrate/ateom-gvisor:v${SUB_VER} \
+  --set "substrateWorkerPool.ateomImage=ghcr.io/kagent-dev/substrate/ateom-gvisor:v${SUB_VER}" \
   || log "WARN kagent did not fully converge (continuing)"
 
 log "=== STEP 6: model endpoint reachable from the cluster ==="
@@ -116,7 +130,6 @@ metadata:
   namespace: kagent
 spec:
   type: Declarative
-  platform: substrate
   description: Tiny declarative agent running inside a substrate gVisor actor
   declarative:
     runtime: go
@@ -134,13 +147,16 @@ log "=== STEP 7.5: verify declarative Go ADK runtime registry ==="
 # registry=ghcr.io is the source-level fix proven on the live run. Do not patch
 # the generated ActorTemplate or scale the controller down: that hides a chart
 # configuration error and is not a GitOps-safe work path.
-log "waiting for ActorTemplate to appear ..."
-for i in $(seq 1 30); do
-  kubectl --context "${CTX}" -n kagent get actortemplate hello-substrate >/dev/null 2>&1 && break
+log "waiting for the generated ActorTemplate to appear ..."
+for _ in $(seq 1 30); do
+  TEMPLATE_NAME=$(kubectl --context "${CTX}" -n kagent get actortemplate \
+    -l kagent.dev/sandbox-agent=hello-substrate \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+  [[ -n "${TEMPLATE_NAME}" ]] && break
   sleep 2
 done
-if kubectl --context "${CTX}" -n kagent get actortemplate hello-substrate >/dev/null 2>&1; then
-  CUR_IMG=$(kubectl --context "${CTX}" -n kagent get actortemplate hello-substrate -o jsonpath='{.spec.containers[0].image}' 2>/dev/null)
+if [[ -n "${TEMPLATE_NAME:-}" ]]; then
+  CUR_IMG=$(kubectl --context "${CTX}" -n kagent get actortemplate "${TEMPLATE_NAME}" -o jsonpath='{.spec.containers[0].image}' 2>/dev/null)
   [[ "${CUR_IMG}" == ghcr.io/* ]] || {
     log "FATAL ActorTemplate uses unexpected runtime image: ${CUR_IMG}"
     log "Expected registry=ghcr.io to select a resolvable Go ADK image."

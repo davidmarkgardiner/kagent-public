@@ -33,6 +33,13 @@ Install in this order:
 5. SandboxAgent
 ```
 
+The current lift-and-shift target verified in this repository is kagent
+`0.10.1` with Agent Substrate `0.0.9`. Those versions are a pair selected by
+the kagent chart, not a recommendation to select the newest independent tag
+from each project. On 2026-09-15, the renamed standalone project had released
+Substrate `v0.1.0`; do not combine it with kagent `0.10.1` without upstream
+compatibility evidence and a full golden-snapshot plus A2A run.
+
 The kagent CRD allows Kubernetes to accept a `SandboxAgent`; the Agent
 Substrate charts provide the WorkerPool and runtime that make it run.
 
@@ -48,17 +55,15 @@ Before changing AKS, retain a versioned deployment manifest containing:
 
    > **Critical — the Go ADK agent-runtime image is NOT in the Helm render.**
    > `helm template` does not surface it: the kagent controller injects it at
-   > runtime into the generated `ActorTemplate.spec.containers[].image`, pinned to
-   > `cr.kagent.dev/kagent-dev/kagent/golang-adk@sha256:<digest>`. In kagent 0.9.9
-   > that `cr.kagent.dev` path does not resolve (`NAME_UNKNOWN`); the identical
-   > digest is published on `ghcr.io/kagent-dev/kagent/golang-adk`. For air-gap you
-   > MUST: (a) mirror `golang-adk` **from GHCR** by digest into
-   > `{{INTERNAL_REGISTRY}}`, and (b) add an image-rewrite / registry-mirror policy
-   > that rewrites `cr.kagent.dev/*` → `{{INTERNAL_REGISTRY}}/*` **cluster-wide**,
-   > because you cannot hand-patch the ActorTemplate on a Flux-reconciled cluster
-   > (the controller rewrites it). Discover the exact digest from the ActorTemplate
-   > after a first reconcile, or from the controller image's defaults. Without this,
-   > actors never boot — the golden snapshot step fails. See
+   > runtime into the generated `ActorTemplate.spec.containers[].image`. The
+   > target profile uses
+   > `ghcr.io/kagent-dev/kagent/golang-adk@sha256:120353200c0226b322e2830de2844eaf02ae4a4c06e778ee60014e5f6ed4a6d0`.
+   > Mirror that exact source digest, set the kagent global `registry` to the
+   > approved internal mirror, and verify the generated ActorTemplate before a
+   > chat call. Older charts could emit an unresolved `cr.kagent.dev` path; a
+   > cluster-wide rewrite is only the fallback when the installed chart cannot
+   > select the mirror declaratively. Never hand-patch the generated
+   > ActorTemplate because the controller owns and rewrites it. See
    > [`evidence/RUN-2026-07-16.md`](evidence/RUN-2026-07-16.md).
 3. Internal registry CA trust and image-pull credentials, where required.
 4. An approved internal model endpoint and a Secret reference for its
@@ -98,31 +103,51 @@ controller:
   substrate:
     enabled: true
     ateApiEndpoint: "dns:///api.ate-system.svc:443"
-    ateApiInsecure: false          # AKS: keep mTLS on; true is a kind-only shortcut
+    ateApiInsecure: false          # Keep TLS verification on; true is a lab shortcut.
     defaultWorkerPool:
       namespace: kagent
       name: kagent-default
+  volumes:
+    - name: substrate-ate-api-ca
+      configMap:
+        name: kagent-substrate-ca
+  volumeMounts:
+    - name: substrate-ate-api-ca
+      mountPath: /etc/substrate-ca
+      readOnly: true
+  env:
+    - name: SSL_CERT_FILE
+      value: /etc/substrate-ca/ca.crt
 
-# NOTE: in kagent 0.9.9 the substrateWorkerPool value schema is ONLY these four
-# keys — create, name, replicas, ateomImage. There is NO sandboxClass and NO
-# template/nodeSelector here; helm silently ignores unknown keys, so do not rely
-# on them to pin workers.
+# kagent 0.10.1 supports sandboxClass plus WorkerPool scheduling through template.
 substrateWorkerPool:
   create: true
   name: kagent-default
-  replicas: 1
-  ateomImage: "{{INTERNAL_REGISTRY}}/kagent-dev/substrate/ateom-gvisor@sha256:{{IMAGE_DIGEST}}"
+  replicas: 3
+  ateomImage: "{{INTERNAL_REGISTRY}}/kagent-dev/substrate/ateom-gvisor@{{SUBSTRATE_WORKER_MIRROR_DIGEST}}"
+  sandboxClass: gvisor
+  template:
+    nodeSelector:
+      agent-substrate.platform.example/enabled: "true"
+    tolerations:
+      - key: agent-substrate.platform.example/dedicated
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
 ```
 
-**Pinning workers to the dedicated tainted node pool** cannot be done through the
-chart in 0.9.9 (no nodeSelector/tolerations value on `substrateWorkerPool`).
-Instead pin at the WorkerPool CR level (or via the Substrate chart's own worker
-values) after render — e.g. patch/kustomize the generated `WorkerPool.ate.dev`
-pod template with the node label + toleration for your taint. Verify the worker
-pods actually land on the substrate pool before proceeding.
+The kagent 0.10.1 chart passes `substrateWorkerPool.template` into the WorkerPool CR,
+so use it for the dedicated tainted node pool rather than patching the generated
+resource. Replace the example label and taint with the approved work values and
+verify the worker pods actually land on that pool before proceeding.
 
 `controller.substrate.enabled` only configures kagent to use an already
 installed `ate-system` runtime; it does not install Substrate itself.
+
+For JWT mode, set the exact AKS service-account issuer and establish CA trust
+before installing kagent. kagent `0.10.1` does not expose a dedicated ate-api
+CA-file value; the canary-tested secure path mounts the approved public CA and
+sets `SSL_CERT_FILE`. Do not use `ateApiInsecure=true` outside a disposable lab.
 
 ## AKS gates before deployment
 
@@ -130,6 +155,8 @@ installed `ate-system` runtime; it does not install Substrate itself.
 - Scoped approval for privileged/gVisor checkpoint-restore workloads in
   `ate-system` and the WorkerPool namespace.
 - Pod Security Admission labels approved for those namespaces.
+- Exact service-account issuer reachable from ate-api, plus explicit ate-api CA
+  trust in the kagent controller.
 - Node-kernel checkpoint/restore proof on the selected pool.
 - Internal registry reachability and image-pull proof from that pool.
 - Approved object/snapshot storage, retention and encryption decision.

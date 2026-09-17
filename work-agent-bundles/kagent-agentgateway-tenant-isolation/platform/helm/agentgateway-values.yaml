@@ -1,0 +1,12 @@
+fullnameOverride: tenant-agentgateway
+gatewayClassName: tenant-agentgateway
+controllerName: agentgateway.dev/tenant-isolation
+rbac:
+  gatewayNamespaces:
+    - tenant-gateway-system
+discoveryNamespaceSelectors:
+  - matchLabels:
+      tenant-isolation.agentgateway.dev/discover: "true"
+controller:
+  extraEnv:
+    AGW_BACKEND_REF_GRANT_MODE: route-and-policy

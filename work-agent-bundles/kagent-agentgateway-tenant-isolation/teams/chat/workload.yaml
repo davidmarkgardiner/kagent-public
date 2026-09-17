@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: release-tools-code
+  namespace: team-chat
+data:
+  server.py: |
+    import json
+    import os
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    TOOL = os.environ["TOOL_NAME"]
+    FIXTURE = json.loads(os.environ["FIXTURE"])
+    requests = 0
+    calls = 0
+    forbidden_calls = 0
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            print(json.dumps({"request": fmt % args}), flush=True)
+
+        def reply(self, status, body, content_type="application/json"):
+            payload = body if isinstance(body, bytes) else json.dumps(body).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def do_GET(self):
+            if self.path == "/healthz":
+                return self.reply(200, {"status": "ok"})
+            if self.path == "/metrics":
+                metrics = (
+                    f"tenant_mcp_requests_total {requests}\n"
+                    f"tenant_mcp_tool_calls_total {calls}\n"
+                    f"tenant_mcp_forbidden_tool_calls_total {forbidden_calls}\n"
+                )
+                return self.reply(200, metrics.encode(), "text/plain")
+            return self.reply(404, {"error": "not found"})
+
+        def do_POST(self):
+            global requests, calls, forbidden_calls
+            requests += 1
+            if self.path != "/mcp":
+                return self.reply(404, {"error": "not found"})
+            try:
+                request = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                method = request.get("method")
+                result = {}
+                if method == "initialize":
+                    result = {"protocolVersion": "2025-03-26", "capabilities": {"tools": {}}, "serverInfo": {"name": "tenant-fixture", "version": "1.0.0"}}
+                elif method == "notifications/initialized":
+                    self.send_response(202)
+                    self.end_headers()
+                    return
+                elif method == "tools/list":
+                    result = {"tools": [
+                        {"name": TOOL, "description": "Read one bounded fixture", "inputSchema": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"], "additionalProperties": False}},
+                        {"name": "delete_everything", "description": "Negative-test fixture that must be blocked by agentgateway", "inputSchema": {"type": "object", "additionalProperties": False}},
+                    ]}
+                elif method == "tools/call":
+                    requested_tool = request.get("params", {}).get("name")
+                    if requested_tool == "delete_everything":
+                        forbidden_calls += 1
+                        result = {"content": [{"type": "text", "text": "POLICY FAILURE: forbidden fixture reached the backend"}], "isError": False}
+                    elif requested_tool != TOOL:
+                        raise ValueError("unknown tool")
+                    else:
+                        calls += 1
+                        result = {"content": [{"type": "text", "text": json.dumps(FIXTURE)}], "isError": False}
+                else:
+                    return self.reply(200, {"jsonrpc": "2.0", "id": request.get("id"), "error": {"code": -32601, "message": "method not found"}})
+                return self.reply(200, {"jsonrpc": "2.0", "id": request.get("id"), "result": result})
+            except Exception as exc:
+                return self.reply(400, {"jsonrpc": "2.0", "id": None, "error": {"code": -32602, "message": str(exc)}})
+
+    ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-tools
+  namespace: team-chat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: release-tools
+  template:
+    metadata:
+      labels:
+        app: release-tools
+        tenant-isolation.agentgateway.dev/component: mcp
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
+          command: ["python", "/app/server.py"]
+          env:
+            - name: TOOL_NAME
+              value: lookup_release
+            - name: FIXTURE
+              value: '{"id":"REL-204","environment":"staging","state":"awaiting approval","changeWindow":"Tuesday 19:00-21:00 Europe/London"}'
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: code
+          configMap:
+            name: release-tools-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-tools
+  namespace: team-chat
+  labels:
+    tenant-isolation.agentgateway.dev/mcp-service: release-tools
+spec:
+  selector:
+    app: release-tools
+  ports:
+    - name: mcp
+      port: 8080
+      targetPort: http
+      appProtocol: agentgateway.dev/mcp

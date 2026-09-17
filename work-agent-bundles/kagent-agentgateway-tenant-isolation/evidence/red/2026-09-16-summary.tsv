@@ -1,0 +1,37 @@
+id	expected	observed	result
+S01	exactly five routes Accepted and ResolvedRefs	5/5 true	PASS
+S02	exactly two MCP backends Accepted	2/2 true	PASS
+S03	exactly five canary policies Accepted and Attached	5/5 true	PASS
+S04	existing specialist Ready with one golden template and 3/3 workers	Ready template:1 workers:3/3	PASS
+N01	401	401	PASS
+N02	401	401	PASS
+N03	401	401	PASS
+N04	403	403	PASS
+N05	401	401	PASS
+N06	401	401	PASS
+N17	six rejected requests never reached MCP backend	request-counter:15->15	PASS
+P03	200 fixture and counter +1	200 fixture counter:2->3	PASS
+N07	known forbidden MCP tool blocked before backend	400 request-counter:17->17 forbidden-counter:0->0	PASS
+P01	event to A2A to MCP completed	200 completed counter:3->4	PASS
+P02	chat A2A to MCP completed	200 completed counter:1->2	PASS
+N20	no token to Substrate A2A listener	401	PASS
+N21	chat token on Substrate A2A listener	401	PASS
+N22	rogue claims on Substrate A2A listener	403	PASS
+P04	authenticated gateway call completes in Substrate specialist	200 completed context:context-verify-substrate-20260916T184409Z required-headings	PASS
+S05	Substrate actor suspended with a new external snapshot	SuspendActor status:4 snapshot:present	PASS
+N08	both direct MCP paths denied	both timed out or refused	PASS
+N15	direct dedicated kagent controller path denied	timed out or refused	PASS
+N23	rogue direct Substrate specialist path denied	timed out or refused	PASS
+N18	tenant cannot spoof kagent label in Deployment template	targeted admission denial	PASS
+N19	shared controller lane rejects BYO Agents	targeted admission denial	PASS
+N09	rogue can reach policy boundary but not backend	401	PASS
+N10	RBAC and cross-tenant secret actions forbidden	four API requests denied	PASS
+N11	rogue HTTPRoute create forbidden	forbidden	PASS
+N12	cross-namespace RemoteMCP denied by admission	denied	PASS
+N16	cross-namespace Agent MCP reference denied by admission	denied	PASS
+N14	privileged Pod rejected	denied	PASS
+N13	missing exact grant rejects reference	False RefNotPermitted	PASS
+R01	pre-existing non-canary HTTPRoutes retain Accepted true	13 before and 13 after	PASS
+E01	Entra JWKS backend and five JWT policies pass server schema validation	six server dry-runs accepted	PASS
+T01	workplace Substrate target contract and source images validate	16/16 immutable digests resolve	PASS
+VERDICT	PASS	all implemented gates passed	PASS

@@ -1,0 +1,43 @@
+fullnameOverride: tenant-kagent
+rbac:
+  namespaces:
+    - tenant-kagent-system
+    - team-event
+    - team-chat
+controller:
+  watchNamespaces:
+    - tenant-kagent-system
+    - team-event
+    - team-chat
+  auth:
+    mode: trusted-proxy
+ui:
+  replicas: 0
+kmcp:
+  enabled: false
+kagent-tools:
+  enabled: false
+grafana-mcp:
+  enabled: false
+k8s-agent:
+  enabled: false
+kgateway-agent:
+  enabled: false
+istio-agent:
+  enabled: false
+promql-agent:
+  enabled: false
+observability-agent:
+  enabled: false
+argo-rollouts-agent:
+  enabled: false
+helm-agent:
+  enabled: false
+cilium-policy-agent:
+  enabled: false
+cilium-manager-agent:
+  enabled: false
+cilium-debug-agent:
+  enabled: false
+querydoc:
+  enabled: false

@@ -1,0 +1,47 @@
+# Replace the model/base URL placeholders at deployment time. Create each
+# referenced Secret through the approved runtime secret-delivery mechanism;
+# never commit the Secret or provider key.
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: default-model-config
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: "{{MODEL_NAME}}"
+  apiKeySecret: model-provider-key
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: "{{OPENAI_COMPATIBLE_BASE_URL}}"
+    maxTokens: 1200
+    temperature: "0.1"
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: tenant-model
+  namespace: team-event
+spec:
+  provider: OpenAI
+  model: "{{MODEL_NAME}}"
+  apiKeySecret: tenant-model-key
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: "{{OPENAI_COMPATIBLE_BASE_URL}}"
+    maxTokens: 1200
+    temperature: "0.1"
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: tenant-model
+  namespace: team-chat
+spec:
+  provider: OpenAI
+  model: "{{MODEL_NAME}}"
+  apiKeySecret: tenant-model-key
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: "{{OPENAI_COMPATIBLE_BASE_URL}}"
+    maxTokens: 1200
+    temperature: "0.1"

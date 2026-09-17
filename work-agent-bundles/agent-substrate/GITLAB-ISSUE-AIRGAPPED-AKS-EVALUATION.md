@@ -39,6 +39,10 @@ SandboxAgent -> kagent controller -> Agent Substrate WorkerPool -> gVisor actor
 Mirror pinned, tested compatible versions into `{{INTERNAL_REGISTRY}}`. Do not
 use unpinned or `latest` versions.
 
+The repository's current work target is kagent `0.10.1` with Agent Substrate
+`0.0.9`, the dependency selected by that kagent chart. Do not replace it with
+the independently released Substrate `v0.1.0` line by assumption.
+
 ```text
 oci://ghcr.io/kagent-dev/substrate/helm/substrate-crds
 oci://ghcr.io/kagent-dev/substrate/helm/substrate
@@ -71,11 +75,12 @@ Substrate WorkerPool/runtime to execute. Upgrading kagent alone is insufficient.
   - kagent controller, UI, tools and Go agent-runtime images; and
   - selected model/provider sidecar or route dependencies, if any.
 - **Go ADK agent-runtime image is not in the Helm render.** The controller injects
-  it at runtime into the `ActorTemplate`, pinned to
-  `cr.kagent.dev/kagent-dev/kagent/golang-adk@sha256:<digest>` — which in kagent
-  0.9.9 does not resolve. Mirror that digest **from GHCR**
-  (`ghcr.io/kagent-dev/kagent/golang-adk`) and add a cluster-wide image-rewrite /
-  registry-mirror policy for `cr.kagent.dev/*`. Without it, actors never boot.
+  it at runtime into the `ActorTemplate`. For the target profile, mirror
+  `ghcr.io/kagent-dev/kagent/golang-adk@sha256:120353200c0226b322e2830de2844eaf02ae4a4c06e778ee60014e5f6ed4a6d0`,
+  set kagent's global `registry` to the approved internal mirror, and verify the
+  generated ActorTemplate. Use a cluster-wide rewrite only if the installed
+  chart cannot select the mirror declaratively. Never patch the generated
+  ActorTemplate by hand.
 - Configure internal registry CA trust and image-pull identity.
 - Use a Secret reference for model credentials; do not store credentials in
   Helm values, Git, manifests, shell history or issue comments.
@@ -101,6 +106,8 @@ rg '^\s*image:' *.rendered.yaml
 - Approved Kyverno/admission-policy exception scoped only to `ate-system` and
   the WorkerPool namespace for required gVisor/checkpoint-restore privileges.
 - Approved Pod Security Admission labels for those namespaces.
+- Exact AKS service-account issuer configured for Substrate JWT validation and
+  approved ate-api CA trust mounted into the kagent controller.
 - Dedicated recent Ubuntu node pool with required kernel checkpoint/restore
   support, proved before broader use.
 - No regular workloads scheduled on the Substrate node pool.
@@ -132,8 +139,9 @@ ActorTemplate. It does not replace the final suspend/restore proof.
 
 - [ ] Charts and every rendered image are mirrored, checksum/digest recorded,
   and pulled from the internal registry only.
-- [ ] Go ADK agent-runtime image mirrored from GHCR and `cr.kagent.dev/*`
-  rewrite/mirror policy in place; a test actor boots (golden snapshot ready).
+- [ ] Go ADK agent-runtime image mirrored from GHCR; the kagent registry value
+  or approved fallback rewrite selects it; a test actor boots with the locked
+  digest (golden snapshot ready).
 - [ ] Flux reconciles the four Helm releases in dependency order.
 - [ ] `ate-system` control/data-plane components are healthy on the dedicated
   node pool.

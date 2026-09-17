@@ -1,0 +1,63 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: release-adviser
+  namespace: team-chat
+  labels:
+    tenant-isolation.agentgateway.dev/owner: application
+spec:
+  type: Declarative
+  description: Looks up a dummy release fixture for an interactive user.
+  declarative:
+    runtime: go
+    modelConfig: tenant-model
+    systemMessage: |
+      {{include "team/role"}}
+
+      {{include "team/safety"}}
+
+      {{include "team/output"}}
+    promptTemplate:
+      dataSources:
+        - kind: ConfigMap
+          name: release-adviser-prompts
+          alias: team
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: tenant-mcp
+          namespace: team-chat
+          toolNames:
+            - lookup_release
+    a2aConfig:
+      skills:
+        - id: release-fixture-lookup
+          name: Release fixture lookup
+          description: Retrieves one read-only release fixture and recommends the next step.
+          tags:
+            - release
+            - chat
+            - read-only
+          examples:
+            - Look up release REL-204 and tell me whether it is ready.
+    deployment:
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi

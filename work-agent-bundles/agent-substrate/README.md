@@ -24,10 +24,10 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 - **Copy-ready GitLab issue:** [`GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md`](GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md)
 
 > **Known issue (registry):** the Go ADK agent-runtime image resolves against the chart's
-> global `registry` value. If that is the default `cr.kagent.dev` mirror (as on a stock
-> kagent 0.9.9), it 404s (`NAME_UNKNOWN`) and actors never boot. **Fix at source: set
+> global `registry` value. If that is the default `cr.kagent.dev` mirror (as on some
+> older kagent charts), it 404s (`NAME_UNKNOWN`) and actors never boot. **Fix at source: set
 > `registry: ghcr.io`** — proven on the `red` run, where no patch was needed at all. The
-> kind install script auto-repoints the per-actor image as a fallback. This is **separate**
+> kind install script verifies the generated per-actor image and stops on a mismatch. This is **separate**
 > from `substrateWorkerPool.ateomImage` (the worker host), which is its own helm value.
 > Details in [`evidence/RUN-2026-07-16.md`](evidence/RUN-2026-07-16.md).
 
@@ -85,17 +85,22 @@ isolation than plain containers.
 
 ## Requirements
 
-- kagent **>= 0.9.7** (substrate controller integration). This bundle uses **0.9.9**.
-- Agent Substrate charts **0.0.6** (`ghcr.io/kagent-dev/substrate/helm/*`).
+- kagent **0.10.1** with Agent Substrate **0.0.9** for the current
+  lift-and-shift target. This is the Substrate dependency selected by the
+  kagent release; do not replace it with the independent Substrate `v0.1.0`
+  release without a compatibility run.
+- Agent Substrate charts **0.0.9** (`ghcr.io/kagent-dev/substrate/helm/*`).
 - A Kubernetes cluster — kind is the documented happy path. Data plane ships 6x valkey +
   an object store (rustfs) + worker pool; budget **~8Gi RAM**.
 - An OpenAI-compatible model endpoint reachable **from inside the cluster**. On a fresh /
   isolated cluster with no in-cluster AI gateway, use an internet endpoint (OpenRouter,
   OpenAI). See [`examples/modelconfig-openrouter.yaml`](examples/modelconfig-openrouter.yaml).
-- **Go ADK runtime only.** Python declarative agents are **not** supported on substrate yet.
+- **The tested specialist profile uses Go ADK only.** Python and BYO paths are
+  outside this version lock and evidence.
 
-> ⚠️ Substrate is early-stage (v0.0.x) — unstable APIs, no backward-compat guarantees, not
-> production-ready. Treat this as an evaluation / platform-readiness exercise.
+> ⚠️ Upstream still describes Substrate as early-stage, with unstable APIs and
+> no backward-compatibility guarantee. Treat this as an evaluation /
+> platform-readiness exercise.
 
 ## Quickstart
 
@@ -108,7 +113,8 @@ That script (idempotent) does the full walkthrough on an isolated `kagent-substr
 cluster: substrate CRDs + control/data plane → kagent + substrate flags → an
 internet-reachable `default-model-config` → the `hello-substrate` SandboxAgent → waits for
 `Ready` and dumps final state. Override `CLUSTER`, `SUB_VER`, `KAGENT_VER`, `MODEL_*` via env.
-It sets `registry=ghcr.io`, the declarative runtime-image fix proven on the live run; it does
+It defaults to the canary-tested `0.10.1` / `0.0.9` pair and sets
+`registry=ghcr.io`, the declarative runtime-image fix proven on the live run; it does
 not patch a generated `ActorTemplate` or stop the controller. The input key is passed to Helm
 from a temporary mode-0600 file rather than a process argument. This remains a
 kind-only demo path: Helm release state can retain configured values, so never use a work key.

@@ -1,0 +1,23 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: entra-jwks
+  namespace: tenant-gateway-system
+spec:
+  static:
+    host: login.microsoftonline.com
+    port: 443
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: entra-jwks
+  namespace: tenant-gateway-system
+spec:
+  targetRefs:
+    - name: entra-jwks
+      kind: AgentgatewayBackend
+      group: agentgateway.dev
+  validation:
+    hostname: login.microsoftonline.com
+    wellKnownCACertificates: System
