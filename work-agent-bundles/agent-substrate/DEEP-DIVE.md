@@ -36,7 +36,7 @@ Installed into the `ate-system` namespace by the substrate Helm charts:
 | **atelet** | DaemonSet | Node agent. Coordinates snapshotting and state transfer on each node. |
 | **atenet** (dns / router) | Deployment(s) | Networking layer: DNS-based discovery, Envoy routing, proxy sidecars between actors/workers. |
 | **ateom-gvisor** | interior-pod helper | Runs *inside* a worker/actor pod. Issues the gVisor checkpoint/restore commands. This is where the gVisor userspace lives. |
-| **podcertcontroller** | Deployment | Pod Certificate signer — mTLS identity for actors/workers. |
+| **podcertcontroller** | Deployment | Optional Pod Certificate signer for mTLS mode; the 0.0.9 managed-cluster profile instead uses JWT. |
 | **valkey-cluster-{0..5}** | StatefulSet | In-memory coordination / metadata store (6 shards). |
 | **rustfs** | Deployment | S3-compatible object store holding actor **snapshots** (golden + per-session). |
 | **kubectl-ate** | CLI | `kubectl ate ...` for managing atespaces/actors directly. |
@@ -104,9 +104,12 @@ the hard case. See [`WORK-CLUSTER-ADAPTATION.md`](WORK-CLUSTER-ADAPTATION.md).
 
 ## 5. Constraints & sharp edges
 
-- **Go ADK runtime only.** Python declarative agents don't run on substrate yet — a real
-  limitation given most existing kagent agents on our clusters are `runtime: python`.
-- **Early-stage (v0.0.x).** Unstable APIs, no backward-compat, not production-ready.
+- **The tested specialist profile is Go ADK only.** Python and BYO require a
+  separate compatible-version and lifecycle canary before use on our clusters.
+- **Early-stage.** Upstream warns that APIs can change and does not guarantee
+  backward compatibility or production readiness.
+- **Managed-cluster trust.** JWT mode needs the exact service-account issuer,
+  and kagent must trust the ate-api certificate CA without disabling TLS checks.
 - **Heavier baseline.** 6x valkey + object store + control plane is a non-trivial standing
   cost — it only pays off when you host *many* idle actors above it.
 - **Model reachability.** The actor makes the LLM call from inside the cluster; the
