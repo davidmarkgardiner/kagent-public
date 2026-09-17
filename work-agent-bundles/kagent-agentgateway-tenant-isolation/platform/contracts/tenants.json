@@ -1,0 +1,48 @@
+{
+  "issuer": "https://red-tenant-isolation.invalid/",
+  "gatewayNamespace": "tenant-gateway-system",
+  "gatewayName": "tenant-gateway",
+  "gatewayClassName": "tenant-agentgateway",
+  "kagentNamespace": "tenant-kagent-system",
+  "kagentService": "tenant-kagent-controller",
+  "rogueNamespace": "team-rogue",
+  "substrateDemo": {
+    "name": "substrate",
+    "namespace": "kagent",
+    "agent": "machinist-security-review",
+    "service": "kagent-controller",
+    "servicePort": 8083,
+    "gatewayPort": 8085,
+    "a2aAudience": "urn:kagent-lab:substrate:a2a",
+    "callerSubject": "user:substrate-demo",
+    "tenantClaim": "platform-substrate"
+  },
+  "tenants": [
+    {
+      "name": "event",
+      "namespace": "team-event",
+      "agent": "incident-adviser",
+      "mcpService": "incident-tools",
+      "mcpTool": "lookup_incident",
+      "a2aPort": 8081,
+      "mcpPort": 8082,
+      "a2aAudience": "urn:kagent-lab:event:a2a",
+      "mcpAudience": "urn:kagent-lab:event:mcp",
+      "callerSubject": "system:serviceaccount:team-event:event-adapter",
+      "runtimeSubject": "system:serviceaccount:team-event:incident-adviser"
+    },
+    {
+      "name": "chat",
+      "namespace": "team-chat",
+      "agent": "release-adviser",
+      "mcpService": "release-tools",
+      "mcpTool": "lookup_release",
+      "a2aPort": 8083,
+      "mcpPort": 8084,
+      "a2aAudience": "urn:kagent-lab:chat:a2a",
+      "mcpAudience": "urn:kagent-lab:chat:mcp",
+      "callerSubject": "user:team-chat-demo",
+      "runtimeSubject": "system:serviceaccount:team-chat:release-adviser"
+    }
+  ]
+}

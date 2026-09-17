@@ -1,0 +1,66 @@
+fullnameOverride: tenant-agentgateway
+gatewayClassName: tenant-agentgateway
+controllerName: agentgateway.dev/tenant-isolation
+
+rbac:
+  gatewayNamespaces:
+    - tenant-gateway-system
+
+discoveryNamespaceSelectors:
+  - matchLabels:
+      tenant-isolation.agentgateway.dev/discover: "true"
+
+gatewayClassParametersRefs:
+  tenant-agentgateway:
+    name: tenant-agentgateway-parameters
+    namespace: tenant-gateway-system
+
+image:
+  registry: cr.agentgateway.dev
+  tag: v1.5.0
+  pullPolicy: IfNotPresent
+
+proxy:
+  image:
+    registry: cr.agentgateway.dev
+    repository: agentgateway
+    tag: v1.5.0
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+controller:
+  replicaCount: 1
+  revisionHistoryLimit: 3
+  logLevel: info
+  xds:
+    mode: tls
+  extraEnv:
+    AGW_BACKEND_REF_GRANT_MODE: route-and-policy
+
+inferenceExtension:
+  enabled: false
+agentgatewayModels:
+  enabled: false
+istio:
+  autoEnabled: false
+monitoring:
+  enabled: false

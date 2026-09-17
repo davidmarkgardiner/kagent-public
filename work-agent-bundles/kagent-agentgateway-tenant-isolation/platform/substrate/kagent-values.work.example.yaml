@@ -1,0 +1,48 @@
+# Merge into the workplace kagent 0.10.1 release after reviewing database,
+# provider, registry, scheduling, CA, and policy values.
+registry: "{{INTERNAL_REGISTRY}}"
+tag: 0.10.1
+
+substrate:
+  enabled: false
+
+controller:
+  substrate:
+    enabled: true
+    ateApiEndpoint: dns:///api.ate-system.svc:443
+    atenetRouterURL: http://atenet-router.ate-system.svc:80
+    ateApiInsecure: false
+    defaultWorkerPool:
+      namespace: kagent
+      name: kagent-default
+  volumes:
+    - name: substrate-ate-api-ca
+      configMap:
+        name: kagent-substrate-ca
+  volumeMounts:
+    - name: substrate-ate-api-ca
+      mountPath: /etc/substrate-ca
+      readOnly: true
+  env:
+    - name: SSL_CERT_FILE
+      value: /etc/substrate-ca/ca.crt
+
+substrateWorkerPool:
+  create: true
+  name: kagent-default
+  replicas: 3
+  sandboxClass: gvisor
+  ateomImage: "{{INTERNAL_REGISTRY}}/kagent-dev/substrate/ateom-gvisor@{{SUBSTRATE_WORKER_MIRROR_DIGEST}}"
+  template:
+    nodeSelector:
+      agent-substrate: "true"
+    tolerations:
+      - key: agent-substrate
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+
+database:
+  postgres:
+    bundled:
+      enabled: false

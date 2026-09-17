@@ -1,0 +1,17 @@
+# Merge into the workplace Substrate 0.0.9 release. Replace every placeholder.
+auth:
+  mode: jwt
+  jwt:
+    issuer: "{{AKS_SERVICE_ACCOUNT_ISSUER}}"
+
+image:
+  registry: "{{INTERNAL_REGISTRY}}/kagent-dev/substrate"
+  tag: v0.0.9
+
+images:
+  valkey: "{{INTERNAL_REGISTRY}}/valkey/valkey:8.0"
+  rustfs: "{{INTERNAL_REGISTRY}}/rustfs/rustfs:1.0.0-beta.3@{{RUSTFS_MIRROR_DIGEST}}"
+  awsCli: "{{INTERNAL_REGISTRY}}/amazon/aws-cli:2.17.0@{{AWS_CLI_MIRROR_DIGEST}}"
+  agentgateway: "{{INTERNAL_REGISTRY}}/agentgateway/agentgateway:v1.3.0-alpha.1"
+  coredns: "{{INTERNAL_REGISTRY}}/coredns/coredns:1.11.1"
+  busybox: "{{INTERNAL_REGISTRY}}/library/busybox:1.36"

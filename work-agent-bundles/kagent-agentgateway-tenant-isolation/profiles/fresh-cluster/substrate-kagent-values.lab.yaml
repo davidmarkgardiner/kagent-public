@@ -1,0 +1,87 @@
+registry: ghcr.io
+tag: "0.10.1"
+imagePullPolicy: IfNotPresent
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+database:
+  postgres:
+    bundled:
+      enabled: true
+
+rbac:
+  namespaces:
+    - kagent
+
+controller:
+  replicas: 1
+  watchNamespaces:
+    - kagent
+  auth:
+    mode: trusted-proxy
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "2"
+      memory: 512Mi
+  substrate:
+    enabled: true
+    ateApiEndpoint: dns:///api.ate-system.svc:443
+    atenetRouterURL: http://atenet-router.ate-system.svc:80
+    # Disposable kind only. The AKS/work overlay must use verified TLS and CA.
+    ateApiInsecure: true
+    ateApiTokenAudience: api.ate-system.svc
+    defaultWorkerPool:
+      namespace: kagent
+      name: kagent-default
+
+substrate:
+  enabled: false
+substrateWorkerPool:
+  create: true
+  name: kagent-default
+  replicas: 1
+  sandboxClass: gvisor
+  ateomImage: ghcr.io/kagent-dev/substrate/ateom-gvisor@sha256:4aa5631a7e42e247660c12bef21d50c0a6a717fb717752748cc56a1b849a1fbc
+
+ui:
+  replicas: 0
+kmcp:
+  enabled: false
+kagent-tools:
+  enabled: false
+grafana-mcp:
+  enabled: false
+k8s-agent:
+  enabled: false
+kgateway-agent:
+  enabled: false
+istio-agent:
+  enabled: false
+promql-agent:
+  enabled: false
+observability-agent:
+  enabled: false
+argo-rollouts-agent:
+  enabled: false
+helm-agent:
+  enabled: false
+cilium-policy-agent:
+  enabled: false
+cilium-manager-agent:
+  enabled: false
+cilium-debug-agent:
+  enabled: false
+querydoc:
+  enabled: false

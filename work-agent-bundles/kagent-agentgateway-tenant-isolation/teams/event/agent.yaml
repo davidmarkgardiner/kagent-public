@@ -1,0 +1,63 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: incident-adviser
+  namespace: team-event
+  labels:
+    tenant-isolation.agentgateway.dev/owner: application
+spec:
+  type: Declarative
+  description: Looks up a dummy incident fixture and recommends the next operational step.
+  declarative:
+    runtime: go
+    modelConfig: tenant-model
+    systemMessage: |
+      {{include "team/role"}}
+
+      {{include "team/safety"}}
+
+      {{include "team/output"}}
+    promptTemplate:
+      dataSources:
+        - kind: ConfigMap
+          name: incident-adviser-prompts
+          alias: team
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: tenant-mcp
+          namespace: team-event
+          toolNames:
+            - lookup_incident
+    a2aConfig:
+      skills:
+        - id: incident-fixture-lookup
+          name: Incident fixture lookup
+          description: Retrieves a read-only dummy incident and recommends a next step.
+          tags:
+            - incident
+            - event-driven
+            - read-only
+          examples:
+            - Look up incident INC-1001 and recommend the next step.
+    deployment:
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi

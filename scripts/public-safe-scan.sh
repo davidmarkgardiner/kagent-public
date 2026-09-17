@@ -20,7 +20,8 @@
 # Exit codes: 0 clean; 1 hits found; 2 usage/tooling error.
 set -euo pipefail
 
-PATTERN='192\.168\.|10\.[0-9]|172\.(1[6-9]|2[0-9]|3[0-1])\.|redpanda\.redpanda|PRIVATE-TOKEN|password='
+IPV4_TAIL='[0-9]{1,3}\.[0-9]{1,3}'
+PATTERN="(^|[^0-9])192\\.168\\.${IPV4_TAIL}([^0-9]|$)|(^|[^0-9])10\\.[0-9]{1,3}\\.${IPV4_TAIL}([^0-9]|$)|(^|[^0-9])172\\.(1[6-9]|2[0-9]|3[0-1])\\.${IPV4_TAIL}([^0-9]|$)|redpanda\\.redpanda|PRIVATE-TOKEN|password="
 STRICT_PATTERN='[Bb]earer |token=|secret:|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 
 TARGET="."

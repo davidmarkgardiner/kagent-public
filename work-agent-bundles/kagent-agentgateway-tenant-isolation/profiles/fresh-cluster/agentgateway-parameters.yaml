@@ -1,0 +1,42 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: tenant-agentgateway-parameters
+  namespace: tenant-gateway-system
+  labels:
+    app.kubernetes.io/part-of: tenant-agentgateway
+    app.kubernetes.io/managed-by: GitOps
+spec:
+  logging:
+    level: info
+    format: json
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  deployment:
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 3
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: agentgateway
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 10101
+                capabilities:
+                  drop:
+                    - ALL
+  service:
+    spec:
+      type: ClusterIP

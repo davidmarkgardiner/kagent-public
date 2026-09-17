@@ -1,0 +1,13 @@
+component	version	digest_or_commit
+agentgateway-chart	v1.5.0	sha256:9216ce83965ad2ce0888014d14aac5e71333fd9d4057cd167da92b37630fbee1
+agentgateway-crds-chart	v1.5.0	sha256:3a6cf44559c612ac8afb7f867aace69bbd4cdba765f1def6377b7a3186c603e3
+agentgateway-source	v1.5.0	fe6732474a96a0363dfb9822859af4e9bab360fa
+kagent-chart	0.10.1	sha256:dc7fc61090725fd9f860d630a0ca66a1bd2a86d15e3fe267c0467c11cb198403
+kagent-crds-chart	0.10.1	sha256:0b8eacbdc85e21ccad6c008e69ef623428db0be8e45c59492b40f3faff6dcf67
+kagent-source	v0.10.1	a3d26eaf2eda002d9c9104d2a8f6f27a2ff23ec3
+gateway-api	v1.6.2	release-tag
+substrate-chart	0.0.9	sha256:8063aa18e277c899e57f6cdf5086e5dcceb552668f30af4943054d2b98a1deda
+substrate-crds-chart	0.0.9	sha256:8a9e7ad008194eb7677b11bce9039b950b363e62d4b9ec9e3ec9f24854f3c25a
+substrate-worker	0.0.9	sha256:4aa5631a7e42e247660c12bef21d50c0a6a717fb717752748cc56a1b849a1fbc
+kagent-golang-adk	0.10.1	sha256:120353200c0226b322e2830de2844eaf02ae4a4c06e778ee60014e5f6ed4a6d0
+substrate-pause	pinned	sha256:bcbd57ba5653580ec647b16d8163cdd1112df3609129b01f912a8032e48265da
