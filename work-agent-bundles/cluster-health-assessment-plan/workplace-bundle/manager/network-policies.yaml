@@ -1,0 +1,121 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cluster-health-eventsource-egress
+  namespace: argo-events
+spec:
+  podSelector:
+    matchLabels:
+      eventsource-name: cluster-health-kafka
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock: {cidr: "{{KAFKA_EGRESS_CIDR}}"}
+      ports: [{protocol: TCP, port: 9092}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: argo-events}
+          podSelector:
+            matchLabels: {eventbus-name: default}
+      ports: [{protocol: TCP, port: 4222}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cluster-health-sensor-egress
+  namespace: argo-events
+spec:
+  podSelector:
+    matchLabels:
+      sensor-name: cluster-health-investigation
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: argo-events}
+          podSelector:
+            matchLabels: {eventbus-name: default}
+      ports: [{protocol: TCP, port: 4222}]
+    - to:
+        - ipBlock: {cidr: "{{MANAGER_KUBERNETES_API_CIDR}}"}
+      ports: [{protocol: TCP, port: 443}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cluster-health-workflow-egress
+  namespace: argo-events
+spec:
+  podSelector:
+    matchLabels:
+      workflows.argoproj.io/workflow-template: cluster-health-investigation
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: "{{AGENTGATEWAY_NAMESPACE}}"}
+      ports: [{protocol: TCP, port: 38080}]
+    - to:
+        - ipBlock: {cidr: "{{GITLAB_EGRESS_CIDR}}"}
+      ports: [{protocol: TCP, port: 31443}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cluster-health-kagent-a2a-ingress
+  namespace: "{{KAGENT_NAMESPACE}}"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kagent
+      app.kubernetes.io/component: controller
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: "{{AGENTGATEWAY_NAMESPACE}}"}
+          podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: "{{AGENTGATEWAY_GATEWAY_NAME}}"
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: "{{KAGENT_NAMESPACE}}"}
+          podSelector:
+            matchLabels: {kagent: cluster-health-investigator}
+      ports: [{protocol: TCP, port: 8083}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cluster-health-agent-runtime-ingress
+  namespace: "{{KAGENT_NAMESPACE}}"
+spec:
+  podSelector:
+    matchLabels:
+      kagent: cluster-health-investigator
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kagent
+              app.kubernetes.io/component: controller
+      ports: [{protocol: TCP, port: 8080}]
