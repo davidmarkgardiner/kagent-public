@@ -1,0 +1,63 @@
+# kagent 0.10.1 for air-gapped AKS, using the separate Substrate release in
+# ate-system. Release name `kagent`, namespace `kagent`. The chart already
+# hardens the controller and UI; install with post-render.sh and
+# kagent-postrender-patches.yaml to harden the bundled PostgreSQL.
+registry: "{{INTERNAL_REGISTRY}}"
+tag: 0.10.1
+
+substrate:
+  enabled: false             # Substrate is its own release in ate-system
+
+database:
+  postgres:
+    bundled:
+      enabled: true          # or false plus database.postgres.url for an external server
+      image:
+        registry: "{{INTERNAL_REGISTRY}}"
+        repository: library
+        name: postgres
+        tag: "18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f"
+
+controller:
+  substrate:
+    enabled: true
+    ateApiEndpoint: dns:///api.ate-system.svc:443
+    atenetRouterURL: http://atenet-router.ate-system.svc:80
+    ateApiInsecure: false
+    pauseImage: "{{INTERNAL_REGISTRY}}/pause@sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4"
+    # The WorkerPool lives in ate-system (workerpool.yaml), so every privileged
+    # pod stays in that one namespace.
+    defaultWorkerPool:
+      namespace: ate-system
+      name: kagent-default
+  # Trust the CA that the Substrate chart generated (copied from ate-system;
+  # see README, "CA trust").
+  volumes:
+    - name: substrate-ate-api-ca
+      configMap:
+        name: kagent-substrate-ca
+  volumeMounts:
+    - name: substrate-ate-api-ca
+      mountPath: /etc/substrate-ca
+      readOnly: true
+  env:
+    - name: SSL_CERT_FILE
+      value: /etc/substrate-ca/ca.crt
+
+substrateWorkerPool:
+  create: false              # created in ate-system by workerpool.yaml instead
+
+# Not needed for Substrate agents.
+kmcp: {enabled: false}
+kagent-tools: {enabled: false}
+grafana-mcp: {enabled: false}
+k8s-agent: {enabled: false}
+kgateway-agent: {enabled: false}
+istio-agent: {enabled: false}
+promql-agent: {enabled: false}
+observability-agent: {enabled: false}
+argo-rollouts-agent: {enabled: false}
+helm-agent: {enabled: false}
+cilium-policy-agent: {enabled: false}
+cilium-manager-agent: {enabled: false}
+cilium-debug-agent: {enabled: false}

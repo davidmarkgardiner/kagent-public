@@ -141,6 +141,14 @@ so use it for the dedicated tainted node pool rather than patching the generated
 resource. Replace the example label and taint with the approved work values and
 verify the worker pods actually land on that pool before proceeding.
 
+> **atelet must follow the workers.** The Substrate 0.0.9 chart has no
+> nodeSelector or tolerations values for the atelet DaemonSet. With a tainted
+> pool, atelet never lands on the worker nodes and the workers cannot run; with
+> no taint, the privileged atelet runs on every node. Patch atelet's placement
+> with a post-renderer, as in [`aks-hardened/`](aks-hardened/README.md), which
+> also hardens every Substrate pod for clusters that require a read-only root
+> filesystem and resource limits.
+
 `controller.substrate.enabled` only configures kagent to use an already
 installed `ate-system` runtime; it does not install Substrate itself.
 

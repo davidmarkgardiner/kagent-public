@@ -1,0 +1,41 @@
+# Substrate 0.0.9 (kagent fork) for air-gapped AKS. Release name `substrate`,
+# namespace `ate-system`. Install with post-render.sh (or the Flux
+# postRenderers in flux-helmreleases.yaml) so the hardening patches apply.
+# Replace every {{PLACEHOLDER}}. Digests are listed in ../IMAGES.md.
+auth:
+  mode: jwt
+  jwt:
+    # Output of: kubectl get --raw /.well-known/openid-configuration | jq -r .issuer
+    # If it is not https://kubernetes.default.svc[.cluster.local], ate-api must
+    # be able to reach it over HTTPS (see README, "Token issuer").
+    issuer: "{{AKS_SERVICE_ACCOUNT_ISSUER}}"
+    audience: api.ate-system.svc
+    bootstrap:
+      enabled: true          # chart generates the ate-api CA, server cert and session keys
+
+image:
+  registry: "{{INTERNAL_REGISTRY}}/kagent-dev/substrate"
+  tag: v0.0.9
+
+images:
+  valkey: "{{INTERNAL_REGISTRY}}/valkey/valkey:8.0@sha256:dbb2de90cb7a60c4f3f7e8d73fcaab69a94c557bb08a064108fa5d5b1814086e"
+  rustfs: "{{INTERNAL_REGISTRY}}/rustfs/rustfs:1.0.0-beta.3@sha256:378642b05b7dcb4849fb77ebe6aca4ced1c3f66e7e504247df95a5c9018d3358"
+  awsCli: "{{INTERNAL_REGISTRY}}/amazon/aws-cli:2.17.0@sha256:643507c10ada7964ca6157b3d799f030b90577643da9955d319a77399ed80d73"
+  agentgateway: "{{INTERNAL_REGISTRY}}/agentgateway/agentgateway:v1.3.0-alpha.1@sha256:95e8d849c44ba31399daf504367ecfcfe2d3d3e59ffd96b1098234353afc3ef7"
+  coredns: "{{INTERNAL_REGISTRY}}/coredns/coredns:1.11.1@sha256:1eeb4c7316bacb1d4c8ead65571cd92dd21e27359f0d4917f1a5822a73b75db1"
+  busybox: "{{INTERNAL_REGISTRY}}/library/busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+
+# In-cluster session store: no external Redis needed.
+valkey:
+  enabled: true
+  replicas: 6                # minimum: the init Job builds 3 primaries + 3 replicas
+  storageSize: 1Gi
+
+# In-cluster S3-compatible snapshot store: no external S3 needed.
+# The chart passes these credentials as plain env values, not a Secret.
+rustfs:
+  enabled: true
+  storageSize: 20Gi
+  bucket: ate-snapshots
+  accessKey: "{{RUSTFS_ACCESS_KEY}}"
+  secretKey: "{{RUSTFS_SECRET_KEY}}"

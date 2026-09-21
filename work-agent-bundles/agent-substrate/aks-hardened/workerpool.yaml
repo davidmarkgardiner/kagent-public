@@ -1,0 +1,33 @@
+# gVisor WorkerPool in ate-system, next to atelet, so all privileged pods are in
+# one namespace. atecontroller generates the worker Deployment from this object
+# and sets its securityContext itself (privileged, root, hostPath); that cannot be
+# changed, so these pods need the same policy exception as atelet. Resources and
+# placement can be set, and are required by the cluster safeguards.
+# nodeSelector and tolerations must match the atelet patch in
+# substrate-postrender-patches.yaml.
+apiVersion: ate.dev/v1alpha1
+kind: WorkerPool
+metadata:
+  name: kagent-default
+  namespace: ate-system
+  labels:
+    kagent.dev/worker-pool: kagent-default
+spec:
+  replicas: 3
+  ateomImage: "{{INTERNAL_REGISTRY}}/kagent-dev/substrate/ateom-gvisor@sha256:4aa5631a7e42e247660c12bef21d50c0a6a717fb717752748cc56a1b849a1fbc"
+  sandboxClass: gvisor
+  template:
+    nodeSelector:
+      agent-substrate.platform.example/enabled: "true"
+    tolerations:
+      - key: agent-substrate.platform.example/dedicated
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "2"
+        memory: 2Gi

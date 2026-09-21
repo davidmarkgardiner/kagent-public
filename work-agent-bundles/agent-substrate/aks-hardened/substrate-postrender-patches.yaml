@@ -1,0 +1,411 @@
+# Kustomize patches that harden the Substrate 0.0.9 chart.
+#
+# The chart sets no resources and, apart from atelet (privileged) and a
+# pod-level runAsUser on rustfs, no securityContext. These patches add a
+# read-only root filesystem, non-root users, RuntimeDefault seccomp, drop ALL
+# capabilities, a writable /tmp emptyDir and CPU/memory requests and limits to
+# every workload in the release.
+#
+# The list is in the format shared by a kustomization's `patches:` and a Flux
+# HelmRelease's `spec.postRenderers[].kustomize.patches`. `post-render.sh`
+# uses it for Helm 3 `--post-renderer`. It assumes release name `substrate`
+# (the chart then uses unprefixed object names) in namespace `ate-system`.
+#
+# Resource figures are starting points sized for one non-production node pool.
+# Tune them from observed usage.
+
+# ate-api: ko-built Go binary, root by default. It listens on 443, so the pod
+# allows unprivileged binding of low ports through a safe, namespaced sysctl
+# rather than running as root or adding a capability.
+- target:
+    kind: Deployment
+    name: ate-api-server-deployment
+  patch: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ate-api-server-deployment
+    spec:
+      template:
+        spec:
+          automountServiceAccountToken: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+            sysctls:
+            - name: net.ipv4.ip_unprivileged_port_start
+              value: "0"
+          initContainers:
+          - name: assemble-cred-bundle
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 10m, memory: 16Mi}
+              limits: {cpu: 100m, memory: 32Mi}
+          containers:
+          - name: ate-api-server
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 100m, memory: 128Mi}
+              limits: {cpu: "1", memory: 512Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+
+- target:
+    kind: Deployment
+    name: ate-controller
+  patch: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ate-controller
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: ate-controller
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 50m, memory: 64Mi}
+              limits: {cpu: 500m, memory: 256Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+
+# atenet DNS: CoreDNS serves :53. The coredns image grants the binary
+# cap_net_bind_service as a file capability, so the container must keep
+# NET_BIND_SERVICE in its bounding set or exec fails. Adding NET_BIND_SERVICE
+# after dropping ALL is permitted by the Pod Security "restricted" profile.
+- target:
+    kind: Deployment
+    name: dns
+  patch: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: dns
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+            sysctls:
+            - name: net.ipv4.ip_unprivileged_port_start
+              value: "0"
+          initContainers:
+          - name: init-dns
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 10m, memory: 16Mi}
+              limits: {cpu: 100m, memory: 32Mi}
+          containers:
+          - name: coredns
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+                add: ["NET_BIND_SERVICE"]
+            resources:
+              requests: {cpu: 50m, memory: 32Mi}
+              limits: {cpu: 200m, memory: 128Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          - name: dns-controller
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 20m, memory: 32Mi}
+              limits: {cpu: 200m, memory: 128Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+
+- target:
+    kind: Deployment
+    name: atenet-router
+  patch: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: atenet-router
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: atenet-router
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 50m, memory: 64Mi}
+              limits: {cpu: 500m, memory: 256Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          - name: agentgateway
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 100m, memory: 128Mi}
+              limits: {cpu: "1", memory: 512Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+
+# RustFS already runs as 10001. It keeps data on its PVC at /data and writes
+# logs to /logs at startup, which fails on a read-only root without a volume.
+- target:
+    kind: Deployment
+    name: rustfs
+  patch: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: rustfs
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: rustfs
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 100m, memory: 256Mi}
+              limits: {cpu: "1", memory: 1Gi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /logs
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 256Mi
+          - name: logs
+            emptyDir:
+              sizeLimit: 512Mi
+
+# Valkey: the chart runs valkey-server directly (bypassing the image's
+# gosu entrypoint), so run it as the image's valkey user (999). nodes.conf and
+# the AOF live on the /data PVC.
+- target:
+    kind: StatefulSet
+    name: valkey-cluster
+  patch: |
+    apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: valkey-cluster
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: valkey
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 50m, memory: 64Mi}
+              limits: {cpu: 500m, memory: 256Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+
+- target:
+    kind: Job
+    name: valkey-cluster-init
+  patch: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: valkey-cluster-init
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: init
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 10m, memory: 32Mi}
+              limits: {cpu: 200m, memory: 128Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 16Mi
+
+# The aws-cli Job only creates the RustFS bucket. HOME points at the
+# writable /tmp so the CLI never touches the read-only root filesystem.
+- target:
+    kind: Job
+    name: rustfs-bucket-init
+  patch: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: rustfs-bucket-init
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: create-bucket
+            env:
+            - name: HOME
+              value: /tmp
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests: {cpu: 50m, memory: 64Mi}
+              limits: {cpu: 500m, memory: 256Mi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+
+# atelet must stay privileged: it drives gVisor checkpoint/restore and
+# containerd on the node. It is one of the two workloads that need a policy
+# exception. The patch still gives it a read-only root filesystem and limits,
+# and pins it to the dedicated Substrate node pool (the chart has no values
+# for placement). Replace the label and taint with the approved values; they
+# must match the WorkerPool in workerpool.yaml.
+- target:
+    kind: DaemonSet
+    name: atelet
+  patch: |
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      name: atelet
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            agent-substrate.platform.example/enabled: "true"
+          tolerations:
+          - key: agent-substrate.platform.example/dedicated
+            operator: Equal
+            value: "true"
+            effect: NoSchedule
+          containers:
+          - name: atelet
+            securityContext:
+              privileged: true
+              readOnlyRootFilesystem: true
+            resources:
+              requests: {cpu: 250m, memory: 256Mi}
+              limits: {cpu: "2", memory: 2Gi}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 1Gi
