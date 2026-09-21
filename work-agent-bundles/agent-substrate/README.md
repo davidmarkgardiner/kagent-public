@@ -22,6 +22,7 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 - Adapting to the work cluster (AKS): [`WORK-CLUSTER-ADAPTATION.md`](WORK-CLUSTER-ADAPTATION.md)
 - **Air-gapped AKS install and verification:** [`AIRGAPPED-AKS-README.md`](AIRGAPPED-AKS-README.md)
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
+- **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)
 - **Copy-ready GitLab issue:** [`GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md`](GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md)
 
 > **Known issue (registry):** the Go ADK agent-runtime image resolves against the chart's
@@ -151,6 +152,7 @@ bash scripts/verify-aks-substrate.sh \
 | `WORK-CLUSTER-ADAPTATION.md` | How to run this on the work cluster (AKS), gVisor/Kyverno gate, checklist |
 | `AIRGAPPED-AKS-README.md` | Pinned artifact, Flux/Helm order and air-gapped AKS verification guidance |
 | `INSTALL-OPTIONS.md` | Separate Substrate releases vs kagent subchart, and which to use |
+| `IMAGES.md` | Minimal image list to mirror, with digests, split into required and optional |
 | `GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md` | Copy-ready Kanban issue for the air-gapped AKS evaluation |
 | `scripts/install-substrate.sh` | One-shot, idempotent, stdin-key installer |
 | `scripts/verify-aks-substrate.sh` | Read-only AKS CRD, rollout, WorkerPool and SandboxAgent verifier |
