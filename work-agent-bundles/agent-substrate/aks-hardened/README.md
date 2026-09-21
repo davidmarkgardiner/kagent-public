@@ -10,6 +10,53 @@ The Substrate chart ships almost no hardening (no resources, and no
 securityContext except on atelet). This bundle adds it with a Kustomize
 post-renderer, so the unpacked charts stay untouched.
 
+## Proof-of-concept path (start here)
+
+**This is a non-production proof of concept.** The goal is to get it up and
+running and tested, not to productionise it. Use the out-of-the-box defaults,
+and skip everything this section doesn't list.
+
+**Keep:**
+- **The hardening post-render patches.** The cluster safeguards block pods
+  without a read-only root filesystem and resource limits, so this is the
+  only hardening that is required. It is just the `--post-renderer` flag on
+  the `helm` commands in [Install](#install).
+- **The existing AKS `substrate` node pool.** atelet and the gVisor workers
+  select it by the label AKS already puts on every node,
+  `kubernetes.azure.com/agentpool=substrate`. They tolerate any NoSchedule
+  taint on it, so no custom label or taint needs approval. Check the pool name:
+  ```sh
+  kubectl get nodes -L kubernetes.azure.com/agentpool
+  ```
+  If it isn't `substrate`, change it in `substrate-postrender-patches.yaml`
+  (atelet) and `workerpool.yaml`. If no node carries the label, atelet and the
+  workers stay Pending.
+- **A time-boxed policy exception in `ate-system`**, for atelet and the
+  WorkerPool pods only (see
+  [What still needs a policy exception](#what-still-needs-a-policy-exception)).
+
+**Use the defaults:**
+- **Certificates:** let the chart generate them (already the default in
+  `substrate-values.yaml`). Don't pre-create `ateapi-tls` or `ateapi-ca`, and
+  don't use Key Vault or External Secrets. After Substrate is installed, copy
+  its CA into the kagent namespace once (Install step 6).
+- **Valkey and RustFS:** use the bundled ones, not external Redis or S3. Put
+  random RustFS credentials in `substrate-values.yaml` rather than the chart
+  default `rustfsadmin`.
+- **Install tool:** the Helm CLI, as in [Install](#install). Flux is optional.
+
+**Skip:** Key Vault, bring-your-own certificates, external Redis/S3, a new
+dedicated node pool, custom node labels or taints, session-key pre-creation
+and Flux.
+
+**Success:**
+1. A `SandboxAgent` reaches Ready with a golden snapshot (see [Agents](#agents)).
+2. Then one model call succeeds through the approved model endpoint.
+
+**Stop and report if:**
+- admission rejects anything other than atelet or the worker pods; or
+- ate-api cannot reach the token issuer (see [Token issuer](#token-issuer)).
+
 ## What was tested
 
 **Tested:** boot-tested on 2026-09-21 on a 3-node kind cluster (Kubernetes
@@ -34,6 +81,9 @@ Substrate pool.
 - AKS itself: your Deployment Safeguards or Kyverno policies, the AKS node
   image, and an external (AKS OIDC) token issuer.
 - An actual Flux reconcile.
+- Placement by the AKS pool label `kubernetes.azure.com/agentpool`. The kind
+  run used a custom label and taint; the switch to the AKS label was only
+  checked at render time.
 - A model call from the agent. The test used a dummy key, and boot and
   snapshot do not call the model.
 
@@ -43,8 +93,8 @@ Substrate pool.
 |-----|-----------|----------------|
 | External Redis cluster | **No** | Bundled Valkey, hardened (6 pods minimum, 1 GiB PVC each). |
 | External S3 store | **No** | Bundled RustFS plus the `aws-cli` bucket Job, hardened. The bucket must stay `ate-snapshots`, because kagent's default snapshot location uses that name. |
-| Substrate node placement | Recommended | The patches pin atelet and the WorkerPool to the dedicated pool. The chart has no placement values for atelet. |
-| Approved node label and taint | Only for a dedicated pool | Placeholders `agent-substrate.platform.example/enabled` and `.../dedicated`. Replace them in `substrate-postrender-patches.yaml` **and** `workerpool.yaml`. |
+| Substrate node placement | Use the existing `substrate` pool | The patches pin atelet and the WorkerPool to it. The chart has no placement values for atelet. |
+| Approved node label and taint | **No** | Placement uses AKS's built-in `kubernetes.azure.com/agentpool` label and tolerates any NoSchedule taint on that pool. |
 | Security approval | **Yes** | Two workloads are privileged by design (see below). |
 | Policy exceptions | **Yes, for two workloads only** | Everything else passes the hardening checks and Pod Security `restricted`. |
 | Chart availability | Done | Point the installs at the unpacked charts. |
@@ -129,7 +179,8 @@ Service `targetPort` patch, and is not included here.
 - the registry
 - the issuer
 - the RustFS keys
-- the node label and taint (also in `substrate-postrender-patches.yaml`)
+- the pool name, only if it isn't `substrate`: in `workerpool.yaml` and
+  `substrate-postrender-patches.yaml`
 
 **Releases:** Substrate is its own release, `substrate` in `ate-system`
 (the "separate releases" option in [`../INSTALL-OPTIONS.md`](../INSTALL-OPTIONS.md)).

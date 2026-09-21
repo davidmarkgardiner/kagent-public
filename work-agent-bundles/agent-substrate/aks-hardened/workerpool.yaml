@@ -3,8 +3,9 @@
 # and sets its securityContext itself (privileged, root, hostPath); that cannot be
 # changed, so these pods need the same policy exception as atelet. Resources and
 # placement can be set, and are required by the cluster safeguards.
-# nodeSelector and tolerations must match the atelet patch in
-# substrate-postrender-patches.yaml.
+# The nodeSelector uses the AKS built-in pool label and must match the atelet
+# patch in substrate-postrender-patches.yaml (change `substrate` if the pool has
+# another name). The toleration accepts any NoSchedule taint on that pool.
 apiVersion: ate.dev/v1alpha1
 kind: WorkerPool
 metadata:
@@ -18,11 +19,9 @@ spec:
   sandboxClass: gvisor
   template:
     nodeSelector:
-      agent-substrate.platform.example/enabled: "true"
+      kubernetes.azure.com/agentpool: substrate
     tolerations:
-      - key: agent-substrate.platform.example/dedicated
-        operator: Equal
-        value: "true"
+      - operator: Exists
         effect: NoSchedule
     resources:
       requests:

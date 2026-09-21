@@ -373,9 +373,11 @@
 # atelet must stay privileged: it drives gVisor checkpoint/restore and
 # containerd on the node. It is one of the two workloads that need a policy
 # exception. The patch still gives it a read-only root filesystem and limits,
-# and pins it to the dedicated Substrate node pool (the chart has no values
-# for placement). Replace the label and taint with the approved values; they
-# must match the WorkerPool in workerpool.yaml.
+# and pins it to the Substrate node pool (the chart has no values for
+# placement). It selects the pool by the label AKS puts on every node,
+# kubernetes.azure.com/agentpool, and tolerates any NoSchedule taint on that
+# pool, so no custom label or taint is needed. Change `substrate` if the pool
+# has another name; it must match workerpool.yaml.
 - target:
     kind: DaemonSet
     name: atelet
@@ -388,11 +390,9 @@
       template:
         spec:
           nodeSelector:
-            agent-substrate.platform.example/enabled: "true"
+            kubernetes.azure.com/agentpool: substrate
           tolerations:
-          - key: agent-substrate.platform.example/dedicated
-            operator: Equal
-            value: "true"
+          - operator: Exists
             effect: NoSchedule
           containers:
           - name: atelet
