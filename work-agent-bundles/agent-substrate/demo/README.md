@@ -9,6 +9,10 @@ work cluster.
 | **A. Session continuity** — "What Is an Agent Substrate? How It Sits Under kagent" | An agent stores a marker, its actor suspends, a later request in the same session restores the actor and returns the marker, and a second session gets a different actor that never saw it | This folder: [`run-memory-demo.sh`](run-memory-demo.sh) |
 | **B. One front door** — "One Front Door, No Side Doors" | Team agents reach their own MCP backends through dedicated agentgateway listeners; a platform Substrate specialist answers through a fifth listener and its actor returns to Suspended with a new snapshot; rogue credentials and direct paths are refused | The sibling bundle [`kagent-agentgateway-tenant-isolation`](../../kagent-agentgateway-tenant-isolation/), via its `scripts/verify.sh` and `TEST-MATRIX.md` |
 
+For how these two demos map onto a phase 1 work rollout (agentgateway in,
+Entra ID deferred), see
+[`../../kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md`](../../kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md).
+
 The original home-lab runs were kagent `0.10.0-beta7` with Substrate `v0.0.8`
 (demo A, 14 September 2026) and kagent `0.10.1` with Substrate `0.0.9`
 (demo B, 16 September 2026). The work cluster should pin its own versions and

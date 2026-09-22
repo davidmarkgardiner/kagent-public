@@ -19,6 +19,11 @@ database:
         tag: "18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f"
 
 controller:
+  # Behind agentgateway, switch this to trusted-proxy, as the red isolation run
+  # did. The chart default, unsecure, trusts an X-User-Id header and is only
+  # safe while nothing else can reach the controller.
+  # auth:
+  #   mode: trusted-proxy
   substrate:
     enabled: true
     ateApiEndpoint: dns:///api.ate-system.svc:443

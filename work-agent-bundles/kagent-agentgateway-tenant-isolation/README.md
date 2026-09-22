@@ -15,6 +15,12 @@ The platform owns the shared Gateway, HTTPRoutes, AgentgatewayBackends, Agentgat
 
 The checked chart digests are recorded in `platform/versions.lock`; the installer pulls each chart and refuses to continue unless the OCI manifest digest matches the lock.
 
+## Phase 1 for the work cluster
+
+For a work rollout that includes agentgateway but defers Entra ID, start with
+[`PHASE1-WORK-EVIDENCE.md`](PHASE1-WORK-EVIDENCE.md): which gates are already
+proven, which Gateway API version is actually required, and the order of work.
+
 ## Red result
 
 The final integrated `red` run at `2026-09-16T18:44:09Z` passed every implemented gate. Both application-team A2A-to-MCP paths completed and incremented only their own MCP counters. The authenticated Substrate path returned the required security-review headings, then suspended its actor with a new snapshot. The rogue namespace was denied at JWT, tool, network, RBAC, admission, Pod Security, and ReferenceGrant boundaries. The durable receipt is `evidence/red/2026-09-16-summary.tsv`; `evidence/red/2026-09-16-runtime.md` records the live versions and limits.
