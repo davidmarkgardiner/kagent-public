@@ -16,6 +16,11 @@ GitLab project values, approval routes, and demo targets needed across bundles.
 
 ## Bundle Map
 
+Start Agent Substrate, agent isolation, and Entra identity work with
+[`AGENT-PLATFORM-WORK-START-HERE.md`](AGENT-PLATFORM-WORK-START-HERE.md). It
+orders the three capabilities, links each bundle's receipt, and lists what has
+not been proven yet.
+
 Start PostgreSQL MCP workplace work with
 [`POSTGRES-MCP-WORK-START-HERE.md`](POSTGRES-MCP-WORK-START-HERE.md). It gives
 the deploy-now MCPg connection-string path and the strategic FastMCP/UAMI path.
@@ -55,6 +60,8 @@ VISUAL.html      - lightweight stakeholder/SRE workflow visual
 | `incident-evidence-trace-log-metrics/` | Trace, log, and metric evidence packs | Builds source-backed incident evidence from Grafana MCP metrics, logs, traces or trace fallback, dashboards, and triage synthesis |
 | `aks-fleet-reporting-day2/` | AKS fleet reporting and day-2 ops | Platform gets repeatable fleet inventory, health, dashboards, and day-to-day reporting |
 | `cluster-health-baseline-sentinel/` | Cluster-scope baseline detection and generic triage | Catches cluster-wide problems namespace routing structurally cannot: periodic whole-cluster snapshot, baseline drift detection, and a generic orchestrator agent that investigates. Proven end-to-end on RED. Includes `REVERSE-PROMPT.md` for an independent team to design their own answer. |
+| `agent-substrate/` | Agent Substrate install, hardening, and the suspend/restore demo | Installs kagent plus Substrate against admission safeguards, then proves an actor suspends, restores and keeps session state |
+| `kagent-agentgateway-tenant-isolation/` | Team agent and MCP isolation behind agentgateway, with Entra | Proves each team reaches only its own MCP backend, rogue callers are refused at token, network, RBAC and admission boundaries, and Entra tokens drive the same policies |
 | `aks-mcp-fleet-kubeconfig-refresh/` | Central AKS credential refresh with fixed-target MCP/Agent routing | Builds and validates one morning fleet candidate, atomically publishes one single-context Secret key per alias, and routes Argo payloads to fixed-target AKS-MCP/Agent pairs; two-cluster homelab A2A proof included |
 
 ## Recommended Work Order
