@@ -1,5 +1,7 @@
 # AKS Entra overlay
 
+A local rehearsal of this profile with real Entra tokens, and what it proved, is in [`LOCAL-REHEARSAL.md`](LOCAL-REHEARSAL.md).
+
 Apply this profile only after replacing every `{{PLACEHOLDER}}` and installing Gateway API v1.6.2 experimental CRDs. The official v1.5 guide used v1.6.0 experimental; this bundle pins the latest v1.6 patch available at build time and requires server-side dry-run before promotion.
 
 For each team, create a public-client Entra app registration for interactive MCP access, expose an API scope, and create a team-specific app role. Keep the A2A app role and MCP app role distinct. Use the v2 issuer only when the tokens actually contain that `iss`. The policy accepts both documented Entra audience forms.
