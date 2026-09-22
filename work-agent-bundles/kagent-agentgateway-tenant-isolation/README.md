@@ -20,6 +20,8 @@ The checked chart digests are recorded in `platform/versions.lock`; the installe
 For a work rollout that includes agentgateway but defers Entra ID, start with
 [`PHASE1-WORK-EVIDENCE.md`](PHASE1-WORK-EVIDENCE.md): which gates are already
 proven, which Gateway API version is actually required, and the order of work.
+Self-service onboarding of a team's own agent is planned, not built:
+[`ONBOARDING-AUTOMATION-SPIKE.md`](ONBOARDING-AUTOMATION-SPIKE.md).
 
 ## Red result
 

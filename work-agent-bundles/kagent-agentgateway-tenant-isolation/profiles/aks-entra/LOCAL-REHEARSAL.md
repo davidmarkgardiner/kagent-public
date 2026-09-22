@@ -24,6 +24,10 @@ and [`entra-jwks.yaml`](entra-jwks.yaml) with placeholders substituted.
 | Cross-lane | valid token carrying `team-chat.a2a.invoke` | **403** | `authorization failed` |
 | MCP route overlay | n/a | **accepted** | `mcp-route-patches.yaml` passes server-side dry run on Gateway API v1.6.2 |
 
+The MCP policy in this profile expects the role `team-event.mcp.use` and also
+pins the tool name. The home-lab run below used `team-event.mcp.invoke`; keep
+the role names in the policies and the Entra app roles in step.
+
 The gateway fetched Microsoft's signing keys over the internet through the
 `entra-jwks` backend and validated every token offline after that. Each
 rejection is a distinct control, and each one names its own reason in the
@@ -32,6 +36,41 @@ gateway log, so a receipt can quote them.
 The route overlay result closes the gap from the red run: on red it failed
 against Gateway API v1.4, because the v1.6 CORS filter field did not exist
 ([`../../evidence/red/2026-09-16-entra-schema-dry-run.md`](../../evidence/red/2026-09-16-entra-schema-dry-run.md)).
+
+## End to end through kagent, on the home lab
+
+The table above put the policy in front of a plain backend. On **2026-09-22**
+the same Entra identity was then run through the full path on the home-lab
+`red` cluster, which still holds the tenant-isolation rehearsal: kagent
+`0.10.1`, agentgateway `v1.5.0`, Gateway API `v1.4`.
+
+Both of that team's lanes were switched from the disposable JWT profile to
+this Entra profile, and the team's client received a second app role for its
+MCP lane:
+
+| Step | Result |
+|---|---|
+| No token to the A2A lane | **401** |
+| Entra token with no roles claim | **403** |
+| Entra token with `team-event.a2a.invoke` | **200**, task `completed` |
+| The agent's own call to its MCP server, with an Entra token carrying `team-event.mcp.invoke` | tool ran; the answer contained the `INC-1001` fixture |
+
+So the whole line holds with Microsoft-issued identity at both hops: caller →
+gateway A2A lane → kagent agent → gateway MCP lane → MCP tool → answer.
+
+Two things worth keeping from that run:
+
+- **The first attempt failed usefully.** With only the A2A lane switched, the
+  call authenticated and reached the agent, which then failed with
+  `failed to list MCP tools: ... Unauthorized`. An agent's identity to its
+  tools is a second, separate credential; onboarding has to issue both.
+- **Admission blocked a `kubectl rollout restart` of the agent Deployment**:
+  "Only the platform kagent controller may create kagent-managed Deployments."
+  That is the tenant boundary doing its job. Recycle the Pod instead, or let
+  the controller reconcile.
+
+`red` was restored afterwards: both policies and the agent's token secret were
+put back from backups, and the `entra-jwks` objects were removed.
 
 ## Two findings that will bite in a work tenant
 
