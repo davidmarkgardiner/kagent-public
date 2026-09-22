@@ -88,7 +88,20 @@ sed -e "s/^  name: demo-sandbox-agent$/  name: $agent/" \
 k apply -f "$receipt_dir/status/sandboxagent-applied.yaml" >/dev/null || exit 1
 cleanup() {
   if [[ $keep == 0 ]]; then
+    # Deleting a SandboxAgent runs the kagent.dev/sandbox-agent-substrate-cleanup
+    # finalizer, which needs a running controller. Wait for it, so the object is
+    # not left Terminating if the controller is scaled down afterwards.
     k -n "$namespace" delete sandboxagent "$agent" --ignore-not-found --wait=false >/dev/null 2>&1
+    local gone=0 i
+    for i in $(seq 1 24); do
+      if [[ -z $(k -n "$namespace" get sandboxagent "$agent" --ignore-not-found --no-headers 2>/dev/null) ]]; then
+        gone=1; break
+      fi
+      sleep 5
+    done
+    if [[ $gone == 0 ]]; then
+      echo "warning: $namespace/$agent is still terminating. Its finalizer needs a running kagent-controller; leave the controller up until it clears." >&2
+    fi
   fi
   [[ -n ${pf_pid:-} ]] && kill "$pf_pid" 2>/dev/null
   return 0
@@ -140,14 +153,24 @@ answer_of() { # strips the agent's last text part out of an A2A response
   jq -r '[.result.history[]? | select(.role=="agent") | .parts[]? | select(.kind=="text") | .text] | last // ""' "$1" 2>/dev/null
 }
 # Was there a successful SuspendActor with a fresh snapshot since $2?
+# Suspension follows the response by a few seconds, so poll rather than sleep once.
 suspend_witness() { # label since
-  local label=$1 since=$2 log="$receipt_dir/status/$label-lifecycle.jsonl"
-  k -n "$ate_namespace" logs "deployment/$ATE_API_DEPLOY" --since-time="$since" > "$log" 2>/dev/null
-  jq -s --arg agent "$agent" 'any(.[];
-      .method == "/ateapi.Control/SuspendActor"
-      and .err == null
-      and (.resp.actor.status == 4)
-      and ((.resp.actor.actor_template_name // "") | startswith($agent + "-")))' "$log" 2>/dev/null
+  local label=$1
+  local since=$2
+  local log="$receipt_dir/status/$label-lifecycle.jsonl"
+  local found=false
+  local attempt
+  for attempt in $(seq 1 12); do
+    k -n "$ate_namespace" logs "deployment/$ATE_API_DEPLOY" --since-time="$since" > "$log" 2>/dev/null
+    found=$(jq -s --arg agent "$agent" 'any(.[];
+        .method == "/ateapi.Control/SuspendActor"
+        and .err == null
+        and (.resp.actor.status == 4)
+        and ((.resp.actor.actor_template_name // "") | startswith($agent + "-")))' "$log" 2>/dev/null)
+    [[ $found == true ]] && break
+    sleep 5
+  done
+  echo "${found:-false}"
 }
 
 ATE_API_DEPLOY=$(k -n "$ate_namespace" get deploy -o name 2>/dev/null | grep -m1 'ate-api-server' | sed 's#deployment.apps/##')
@@ -161,7 +184,6 @@ ans=$(answer_of "$receipt_dir/responses/S1R1.body")
 record P01 'session one stored the marker' "$code ${ans:-no-answer}" \
   "$([[ $code == 200 && $ans == *"MARKER STORED"* ]] && echo PASS || echo FAIL)"
 if [[ -n $ATE_API_DEPLOY ]]; then
-  sleep 10
   w=$(suspend_witness S1R1 "$(cat "$receipt_dir/status/S1R1.started")")
   record S01 'actor suspended after request one' "SuspendActor status:4 witness=${w:-false}" \
     "$([[ ${w:-false} == true ]] && echo PASS || echo FAIL)"
@@ -173,7 +195,6 @@ ans=$(answer_of "$receipt_dir/responses/S1R2.body")
 record P02 'same session returned the marker after suspension' "$code ${ans:-no-answer}" \
   "$([[ $code == 200 && $ans == *"$marker"* ]] && echo PASS || echo FAIL)"
 if [[ -n $ATE_API_DEPLOY ]]; then
-  sleep 10
   w=$(suspend_witness S1R2 "$(cat "$receipt_dir/status/S1R2.started")")
   record S02 'actor suspended again after request two' "SuspendActor status:4 witness=${w:-false}" \
     "$([[ ${w:-false} == true ]] && echo PASS || echo FAIL)"

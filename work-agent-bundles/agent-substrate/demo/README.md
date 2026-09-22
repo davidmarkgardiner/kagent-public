@@ -95,12 +95,33 @@ returned 404 for sandbox agents, so this demo needs the `0.10.x`
 
 ### Status of these commands
 
-The payload shape, the response parsing and the `SuspendActor` witness are
-taken from `scripts/verify.sh` in the tenant-isolation bundle, which has been
-run against the home lab. The home-lab session-continuity run itself was
-driven through the kagent UI and API rather than this script, and the script
-has not yet been run end to end on a work cluster. Treat its first run as part
-of the demo: if a check fails, capture the receipt directory before retrying.
+**The script was run end to end on the home-lab `red` cluster on
+22 September 2026 and all nine checks passed**, against kagent `0.10.1` with
+Substrate `0.0.9` in subchart mode (so `--ate-namespace kagent`), a
+three-replica WorkerPool and a synthetic agent that was deleted afterwards:
+
+```
+R00 WorkerPool present                         kagent/kagent-default replicas=3
+R01 SandboxAgent Ready                         Ready=True
+R02 ActorTemplate Ready with golden snapshot   phase=Ready snapshot=present
+P01 session one stored the marker              200 MARKER STORED
+S01 actor suspended after request one          SuspendActor status:4 witness=true
+P02 same session returned the marker           200 ORANGE-FALCON-17
+S02 actor suspended again after request two    SuspendActor status:4 witness=true
+P03 second session did not inherit the marker  200 NO MARKER IN THIS SESSION
+P04 the two sessions used different context ids
+```
+
+It has not been run on a work cluster. The earlier home-lab recording was
+driven through the kagent UI and API rather than this script.
+
+### Deleting the demo agent needs the controller
+
+A `SandboxAgent` carries the `kagent.dev/sandbox-agent-substrate-cleanup`
+finalizer, which only the kagent controller can clear. The script waits for
+the deletion to finish and warns if it does not. Do not scale the controller
+down until the object is gone, or it will sit in `Terminating` until the
+controller returns.
 
 ## Demo B: the front-door isolation story
 
