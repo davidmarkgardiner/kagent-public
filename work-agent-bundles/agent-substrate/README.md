@@ -24,6 +24,7 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
 - **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)
 - **Hardened air-gapped AKS install (read-only root, limits, exceptions):** [`aks-hardened/README.md`](aks-hardened/README.md)
+- **Reproducing the two recorded demos on a work cluster:** [`demo/README.md`](demo/README.md)
 - **Copy-ready GitLab issue:** [`GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md`](GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md)
 
 > **Known issue (registry):** the Go ADK agent-runtime image resolves against the chart's
@@ -155,6 +156,7 @@ bash scripts/verify-aks-substrate.sh \
 | `INSTALL-OPTIONS.md` | Separate Substrate releases vs kagent subchart, and which to use |
 | `IMAGES.md` | Minimal image list to mirror, with digests, split into required and optional |
 | `aks-hardened/` | Hardened air-gapped AKS install: values, post-render patches, WorkerPool, checks |
+| `demo/` | Session-continuity demo runner and receipt template; maps both recorded demos to work-cluster steps |
 | `GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md` | Copy-ready Kanban issue for the air-gapped AKS evaluation |
 | `scripts/install-substrate.sh` | One-shot, idempotent, stdin-key installer |
 | `scripts/verify-aks-substrate.sh` | Read-only AKS CRD, rollout, WorkerPool and SandboxAgent verifier |
