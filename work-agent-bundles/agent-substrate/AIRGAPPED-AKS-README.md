@@ -65,11 +65,18 @@ Before changing AKS, retain a versioned deployment manifest containing:
    > select the mirror declaratively. Never hand-patch the generated
    > ActorTemplate because the controller owns and rewrites it. See
    > [`evidence/RUN-2026-07-16.md`](evidence/RUN-2026-07-16.md).
-3. Internal registry CA trust and image-pull credentials, where required.
-4. An approved internal model endpoint and a Secret reference for its
+3. **The pinned gVisor `runsc` asset** (not in any OCI chart image). Without it,
+   actors never boot on a cluster that cannot reach `gs://gvisor`. Preferred
+   path is node pre-seed; RustFS upload is the alternative. Work-agent
+   walkthrough (download from GCS/GitHub, extract, build pre-seed image, Azure
+   Blob courier caveats):
+   [`runsc-asset/WORK-AGENT-MIRROR-WALKTHROUGH.md`](runsc-asset/WORK-AGENT-MIRROR-WALKTHROUGH.md).
+   Design notes: [`runsc-asset/README.md`](runsc-asset/README.md).
+4. Internal registry CA trust and image-pull credentials, where required.
+5. An approved internal model endpoint and a Secret reference for its
    credential. Never put model API keys in Git, Helm values, shell history or
    command arguments.
-5. Rendered Flux `HelmRepository`/`HelmRelease` values and image-rewrite policy.
+6. Rendered Flux `HelmRepository`/`HelmRelease` values and image-rewrite policy.
    Production-like AKS installation must reconcile from Git; the commands below
    are render/validation references only.
 
@@ -167,6 +174,8 @@ sets `SSL_CERT_FILE`. Do not use `ateApiInsecure=true` outside a disposable lab.
   trust in the kagent controller.
 - Node-kernel checkpoint/restore proof on the selected pool.
 - Internal registry reachability and image-pull proof from that pool.
+- gVisor `runsc` asset reachable without public GCS (pre-seed or RustFS) — see
+  [`runsc-asset/`](runsc-asset/).
 - Approved object/snapshot storage, retention and encryption decision.
 - Approved internal model/provider endpoint reachable from an actor.
 
