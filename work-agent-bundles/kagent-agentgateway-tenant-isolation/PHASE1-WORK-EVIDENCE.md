@@ -162,7 +162,7 @@ pre-existing app.
 
 | Item | Why |
 |---|---|
-| Entra ID issuer, app registrations, API scopes, A2A and MCP app roles | Red has no workplace Entra tenant. `E01` shows the JWKS backend and five JWT policies pass server-side schema validation only. Since then a local rehearsal has proven the same policies against real Entra tokens: [`profiles/aks-entra/LOCAL-REHEARSAL.md`](profiles/aks-entra/LOCAL-REHEARSAL.md) |
+| Entra ID issuer, app registrations, API scopes, A2A and MCP app roles | Red has no workplace Entra tenant. `E01` shows the JWKS backend and five JWT policies pass server-side schema validation only. Since then a local rehearsal has proven the same policies against real Entra tokens ([`profiles/aks-entra/LOCAL-REHEARSAL.md`](profiles/aks-entra/LOCAL-REHEARSAL.md)), and against real **Entra Agent ID** identities ([`profiles/aks-entra/AGENT-ID-REHEARSAL.md`](profiles/aks-entra/AGENT-ID-REHEARSAL.md)) |
 | Gateway API v1.6.2 experimental | Only the Entra route overlay needs it, for the v1.6 CORS filter |
 | Live discovery, PKCE, app-role denial, workload-token refresh across expiry, external TLS | Needs a real tenant and hostname |
 

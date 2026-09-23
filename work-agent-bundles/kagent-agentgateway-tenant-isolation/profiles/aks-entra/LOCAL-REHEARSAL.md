@@ -202,7 +202,11 @@ gateway side is unaffected: the same policies validate issuer, audience and
 role claims whatever issued them, which is why the swap is an identity-side
 change rather than a re-test of the isolation gates.
 
-Two things to confirm with the identity team before planning on it:
+**Since proven.** Agent ID identities were created and a real agent identity
+token was accepted by this profile's policy, unchanged:
+[`AGENT-ID-REHEARSAL.md`](AGENT-ID-REHEARSAL.md).
+
+One thing to confirm with the identity team before planning on it:
 Microsoft states Agent ID is available to all Entra customers, but extending
 Entra security features (conditional access, identity protection, governance)
 to agents requires **Microsoft Agent 365** licensing, included in Microsoft
@@ -223,8 +227,8 @@ to agents requires **Microsoft Agent 365** licensing, included in Microsoft
   that gate needs a long-running test rather than a trick.
 - **Interactive PKCE with real users**, which this run did not cover: every
   token here came from client credentials.
-- **Entra Agent ID itself**, and whether Agent 365 licensing is available at
-  work.
+- **Agent 365 licensing** at work. Entra Agent ID itself has since been
+  proven against this same policy: see [`AGENT-ID-REHEARSAL.md`](AGENT-ID-REHEARSAL.md).
 - **Client secrets are what this run used.** Rotation, storage and revocation
   of those secrets were not addressed; federated credentials would remove the
   problem rather than solve it.

@@ -10,7 +10,7 @@ work cluster yet.
 | 1. Install kagent and Substrate, hardened for admission safeguards | [`agent-substrate/aks-hardened/`](agent-substrate/aks-hardened/README.md) | Boot-tested on kind; includes a proof-of-concept path that skips the optional parts |
 | 2. Prove Substrate: suspend, restore and session memory | [`agent-substrate/demo/`](agent-substrate/demo/README.md) | One script, all 9 checks passed on the home lab 2026-09-22 |
 | 3. Prove isolation: teams' agents and MCP servers behind agentgateway | [`kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md`](kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md) | 38 gates passed on the home lab 2026-09-16 |
-| 4. Add Entra identity | [`kagent-agentgateway-tenant-isolation/profiles/aks-entra/LOCAL-REHEARSAL.md`](kagent-agentgateway-tenant-isolation/profiles/aks-entra/LOCAL-REHEARSAL.md) | Real Entra tokens proven locally and end to end through kagent on the home lab 2026-09-22 |
+| 4. Add Entra identity, with Agent ID as the target | [`kagent-agentgateway-tenant-isolation/profiles/aks-entra/LOCAL-REHEARSAL.md`](kagent-agentgateway-tenant-isolation/profiles/aks-entra/LOCAL-REHEARSAL.md) | Real Entra tokens proven locally and end to end through kagent 2026-09-22; **Entra Agent ID identities proven against the same policy 2026-09-23** ([`AGENT-ID-REHEARSAL.md`](kagent-agentgateway-tenant-isolation/profiles/aks-entra/AGENT-ID-REHEARSAL.md)) |
 | 5. Self-service onboarding for teams | [`kagent-agentgateway-tenant-isolation/ONBOARDING-AUTOMATION-SPIKE.md`](kagent-agentgateway-tenant-isolation/ONBOARDING-AUTOMATION-SPIKE.md) | **Plan only. Not built.** |
 
 Steps 3 and 4 need agentgateway, which this bundle configures through Gateway
