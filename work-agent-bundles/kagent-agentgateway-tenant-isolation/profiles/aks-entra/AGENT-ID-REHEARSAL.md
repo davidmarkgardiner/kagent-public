@@ -85,11 +85,36 @@ curl -X POST "https://login.microsoftonline.com/$TENANT/oauth2/v2.0/token" \
 The resulting token carries `sub`, `oid` and `azp` of the **agent identity**,
 `aud` of the API, and the `roles` claim the policy matches on.
 
+Production credentials and the sidecar are covered separately in
+[`PRODUCTION-CREDENTIALS.md`](PRODUCTION-CREDENTIALS.md): a certificate-backed
+blueprint is proven, a managed identity is configured, and the sidecar has a
+caveat worth reading before adopting it.
+
 A client secret on the blueprint is a lab shortcut. Microsoft's guidance is a
 managed identity or certificate as the blueprint credential, and for
 containerised agents the Entra ID Auth SDK sidecar, which performs both stages
 and hands the agent a token on `localhost:7000`. That sidecar is the obvious
 shape for a kagent agent Pod and is untested here.
+
+## Also run on the red cluster
+
+On 2026-09-23 the same identities were wired into the home-lab `red` rehearsal,
+with **two** agent identities: one as the caller and one as the agent's own
+identity for its MCP calls. Both lanes were switched to this Entra profile.
+
+```
+listener=event-a2a  status=200  jwt.sub=<caller agent identity>
+listener=event-mcp  status=200  jwt.sub=<the agent's own agent identity>
+```
+
+The task completed and the answer carried the `INC-1001` fixture from the MCP
+tool, so the whole path held with Agent ID at both hops. red was restored from
+backups afterwards.
+
+One trap: the first attempt failed with `failed to list MCP tools: Unauthorized`
+because the agent Pod still held the previous token. kagent's controller renders
+that credential into the agent, so a new token needs a reconcile and a fresh
+Pod, not just a Secret update.
 
 ## What this does not cover
 
