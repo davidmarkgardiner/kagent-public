@@ -185,10 +185,22 @@ relationships, and supports OAuth 2.0, MCP and A2A. It has no Kubernetes or
 Gateway API component: it changes **who** the token represents, not how the
 gateway validates it.
 
-This rehearsal used ordinary app registrations with app roles and client
-credentials, which is plain Entra workload identity, not Agent ID. Swapping in
-Agent ID would keep the gateway policies as they are; the issuer, audience and
-role claims still drive the decision.
+**What this rehearsal actually used**, stated precisely, because two different
+things get called "workload identity": app registrations with app roles, and
+OAuth 2.0 **client-credentials** tokens authenticated with a **client secret**.
+That is ordinary Entra application identity. It is:
+
+- **not** Microsoft Entra Agent ID, which would give each agent its own
+  identity rather than one application per lane; and
+- **not** AKS workload identity federation either, which exchanges a
+  projected Kubernetes service-account token for an Entra token with no stored
+  secret. A federated credential is the better target for agent Pods, and
+  it has not been tested here.
+
+Both of those change **who the token represents and how it is obtained**. The
+gateway side is unaffected: the same policies validate issuer, audience and
+role claims whatever issued them, which is why the swap is an identity-side
+change rather than a re-test of the isolation gates.
 
 Two things to confirm with the identity team before planning on it:
 Microsoft states Agent ID is available to all Entra customers, but extending
@@ -213,3 +225,6 @@ to agents requires **Microsoft Agent 365** licensing, included in Microsoft
   token here came from client credentials.
 - **Entra Agent ID itself**, and whether Agent 365 licensing is available at
   work.
+- **Client secrets are what this run used.** Rotation, storage and revocation
+  of those secrets were not addressed; federated credentials would remove the
+  problem rather than solve it.
