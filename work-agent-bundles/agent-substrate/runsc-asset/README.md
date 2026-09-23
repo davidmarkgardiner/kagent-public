@@ -7,6 +7,10 @@ storage the actor never boots, which is the failure the work team hit.
 **There is a way that needs no object storage and no egress at all**, and it
 was proven on 2026-09-23. Read the next section before anything else.
 
+**Work-agent copy/paste procedure** (GitHub tarball → extract → pre-seed or
+RustFS, and why native Azure Blob HTTPS is not enough):
+[`WORK-AGENT-MIRROR-WALKTHROUGH.md`](WORK-AGENT-MIRROR-WALKTHROUGH.md).
+
 ## First, clearing up two things
 
 **The chart's "S3" is not AWS.** The Substrate chart deploys **RustFS**, an
@@ -20,7 +24,8 @@ Job to create a bucket. Any S3-compatible client would do.
 with `ATE_STORAGE_BACKEND`, and the only values are `s3` and GCS (the default).
 Azure Blob exposes no S3-compatible endpoint, so it cannot be plugged in as-is.
 On Azure the practical answer is the bundled RustFS on Azure disks, or an
-S3-compatible appliance if your platform already runs one.
+S3-compatible appliance if your platform already runs one. Blob is fine as an
+offline **courier** into the air gap; atelet still needs Option A/B below.
 
 ## Recommended: pre-seed the node cache
 
@@ -33,7 +38,8 @@ URL is never used.
 [`preseed-daemonset.yaml`](preseed-daemonset.yaml) does this: an init container
 from an image that carries the binary, verifying the digest and installing it
 with mode 0755, then a pause container to hold the DaemonSet. It needs no
-network.
+network. Build that image with [`Dockerfile.runsc`](Dockerfile.runsc) after
+downloading a digest-matched `runsc` (see the walkthrough).
 
 **Proven, end to end.** On a two-node kind cluster with the hardened Substrate
 install:
@@ -95,10 +101,12 @@ air-gapped cluster will usually refuse.
 
 ## What to tell the platform team
 
-The ask is not "an S3 bucket". It is either:
+The ask is not "an S3 bucket" and not "public Blob HTTPS for SandboxConfig". It
+is either:
 
-- **one mirrored image** carrying a 130 MB binary, plus a DaemonSet (preferred,
+- **one mirrored image** carrying a ~120 MB binary, plus a DaemonSet (preferred,
   proven); or
+- RustFS (already in the chart) holding the object + URL rewrite; or
 - an egress exception for `storage.googleapis.com` (probably refused).
 
 The bundled RustFS covers snapshot storage either way, and lives on Azure
