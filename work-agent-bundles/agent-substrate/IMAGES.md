@@ -110,8 +110,14 @@ atelet downloads `runsc` at runtime from the `gvisor-default` `SandboxConfig`:
 `gs://gvisor/releases/release/20260622/{x86_64,aarch64}/runsc`, pinned by
 sha256. It is not an OCI image, so image mirroring does not cover it. An
 air-gapped cluster needs that URL reachable, or the asset moved into a
-location atelet can read. Upstream atelet falls back to the cluster's own
-snapshot bucket, but that has not been tested here on the 0.0.9 fork.
+location atelet can read.
+
+**Solved, and it needs no object storage.** atelet returns immediately if the
+binary is already at `/var/lib/ateom-gvisor/static-files/runsc-<sha256>` on the
+node, so a DaemonSet can pre-seed it from a mirrored image and the asset URL is
+never used. Proven on 2026-09-23. See
+[`runsc-asset/README.md`](runsc-asset/README.md), which also explains that the
+chart's "S3" is an in-cluster RustFS on an ordinary PVC, not AWS.
 
 ## Copy-paste mirror list
 

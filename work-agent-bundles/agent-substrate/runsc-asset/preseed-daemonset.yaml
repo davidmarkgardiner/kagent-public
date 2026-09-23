@@ -1,0 +1,76 @@
+# Pre-seeds the pinned gVisor runsc binary into atelet's on-node cache, so no
+# actor boot ever fetches it. atelet checks
+# /var/lib/ateom-gvisor/static-files/runsc-<sha256> first and returns straight
+# away on a hit, which removes any need for gs:// egress or object storage for
+# this asset.
+#
+# Replace {{INTERNAL_REGISTRY}} with the registry holding an image that carries
+# the binary at /runsc, and set the digest and node selector for your pool.
+# amd64 nodes (AKS default) use the x86_64 binary:
+#   sha256 f18a948bf9c8bbb54eb998549a3a8d719a1c7de2efbe8fdd2ff0ee5fecd06f19
+# arm64 nodes use:
+#   sha256 62eee121f8c188e347c428acc96f111568ede3be37b906046b6f28bbe2cc40c0
+# Both digests were verified against the Substrate 0.0.9 SandboxConfig on
+# 2026-09-23.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: runsc-preseed
+  namespace: ate-system
+  labels:
+    app.kubernetes.io/name: runsc-preseed
+spec:
+  selector:
+    matchLabels: {app: runsc-preseed}
+  template:
+    metadata:
+      labels: {app: runsc-preseed}
+    spec:
+      # Must cover every node that can host a Substrate worker.
+      nodeSelector:
+        kubernetes.azure.com/agentpool: substrate
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+      initContainers:
+        - name: seed
+          # An image that ships the binary at /runsc. Build it from the approved
+          # source and mirror it; the container needs no network.
+          image: "{{INTERNAL_REGISTRY}}/gvisor/runsc:20260622"
+          securityContext:
+            runAsUser: 0                      # writes to a hostPath
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              sha={{RUNSC_SHA256}}
+              target=/host/static-files/runsc-$sha
+              if [ -f "$target" ]; then echo "already seeded: $target"; exit 0; fi
+              mkdir -p /host/static-files
+              echo "$sha  /runsc" | sha256sum -c -
+              install -m 0755 /runsc "$target"
+              echo "seeded $target"
+          volumeMounts:
+            - {name: hostdir, mountPath: /host}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+      containers:
+        - name: pause
+          image: "{{INTERNAL_REGISTRY}}/pause:3.10.2"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+            seccompProfile: {type: RuntimeDefault}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+      volumes:
+        - name: hostdir
+          hostPath: {path: /var/lib/ateom-gvisor, type: DirectoryOrCreate}

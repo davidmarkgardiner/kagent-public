@@ -49,6 +49,10 @@ and skip everything this section doesn't list.
 dedicated node pool, custom node labels or taints, session-key pre-creation
 and Flux.
 
+**Do not skip:** the pinned gVisor `runsc` asset. atelet fetches it from
+`gs://gvisor/...` by default, and an actor cannot boot without it. Pre-seed it
+on the node pool first — [`../runsc-asset/README.md`](../runsc-asset/README.md).
+
 **Success:**
 1. A `SandboxAgent` reaches Ready with a golden snapshot (see [Agents](#agents)).
 2. Then one model call succeeds through the approved model endpoint.
