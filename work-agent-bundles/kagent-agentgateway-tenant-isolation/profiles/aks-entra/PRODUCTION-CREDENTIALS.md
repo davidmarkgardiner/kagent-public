@@ -161,6 +161,78 @@ Three ways out, none yet built:
 Option 3 is worth an hour of research before anyone builds option 1, because it
 removes the credential from the agent altogether.
 
+## Replicating this at work
+
+### The credential chain, which has two federated credentials
+
+With a managed identity there are **two** trust links, and it is easy to
+configure one and expect the other to work:
+
+```
+AKS Pod (service account)
+  │  federated credential #1, on the UAMI:
+  │    issuer  = the cluster's OIDC issuer URL
+  │    subject = system:serviceaccount:<ns>:<sa>
+  ▼
+User-assigned managed identity
+  │  federated credential #2, on the BLUEPRINT app:
+  │    issuer  = https://login.microsoftonline.com/<tenant>/v2.0
+  │    subject = <UAMI principalId>
+  │    audience= api://AzureADTokenExchange
+  ▼
+Blueprint  ──fmi_path──▶  Agent identity  ──▶  token the gateway accepts
+```
+
+Only #2 was created here. #1 is ordinary AKS workload identity and was not
+built, because a home lab has no AKS.
+
+### The UAMI needs no Azure RBAC
+
+This catches people out: the managed identity is **not** granted permissions on
+the API. It only needs to be trusted by the blueprint (#2 above). Authorization
+comes from the **app role on the agent identity**, which is what the gateway
+policy matches. Do not assign the UAMI a role on the API and expect it to
+change the token.
+
+### AKS prerequisites for the Pod
+
+Not tested here; standard workload identity setup:
+
+- The cluster has the OIDC issuer and workload identity enabled; note the
+  issuer URL.
+- The agent's service account is annotated
+  `azure.workload.identity/client-id: <uami-clientId>`.
+- The Pod carries the label `azure.workload.identity/use: "true"`.
+- Federated credential #1 exists on the UAMI for that exact
+  `system:serviceaccount:<ns>:<sa>` subject.
+
+### Checklist
+
+| Item | Proven here? |
+|---|---|
+| Tenant can create blueprints and agent identities through Graph beta | **Yes**, in a tenant with no licences at all |
+| Roles on the agent identity drive the gateway decision | **Yes** |
+| Two-stage `fmi_path` exchange with a **client secret** | **Yes** |
+| Same exchange with a **certificate** | **Yes** |
+| Same exchange with a **managed identity** assertion | **No** — needs Azure compute |
+| Federated credential #2 (blueprint trusts UAMI) | Created, never used |
+| Federated credential #1 (UAMI trusts the cluster service account) | **No** |
+| Sidecar returns an **agent identity** token for a custom API | **No** — see the caveat above |
+| Gateway policy accepts an agent identity token, unchanged | **Yes**, twice, including through kagent on a live cluster |
+
+So with the image mirrored and the identities in place, the work agent can
+replicate everything proven above. The two open links are AKS workload identity
+for the Pod and the sidecar's behaviour on a custom API. Neither blocks a
+demonstration: the certificate-backed exchange is proven and needs no Azure
+compute at all.
+
+### Permissions to do it
+
+Creating the blueprint, the blueprint principal and the agent identities needs
+Application Administrator or Cloud Application Administrator, with Global
+Administrator for first-time setup, plus consent for the app-role assignments.
+That is an identity-team task, not a cluster task.
+
 ## Order for the work cluster
 
 1. Blueprint credential: **UAMI plus federated credential**, with the
