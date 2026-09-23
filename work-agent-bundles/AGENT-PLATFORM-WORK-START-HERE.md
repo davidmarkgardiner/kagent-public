@@ -61,6 +61,7 @@ Digests resolved 2026-09-22; re-resolve before mirroring.
 | kagent Python ADK runtime, for ordinary team agents | `ghcr.io/kagent-dev/kagent/app:0.10.1` | `sha256:d39d5c948386a4777f4b704cc151bf5bf193ce85c47a8a8e8642644243197f41` |
 | rehearsal fixture | `docker.io/curlimages/curl:8.16.0` | `sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6` |
 | rehearsal fixture | `docker.io/library/python:3.13-alpine` | `sha256:79e7a9b9ff1cbceff819f856fb374477792a5967759d94df266de7b7b4120e6f` |
+| Entra ID Auth SDK sidecar, only if you adopt that pattern | `mcr.microsoft.com/entra-sdk/auth-sidecar:1.1.2-azurelinux3.0-distroless` | `sha256:73a8763100c93c3da1a3ed1ba3af2c6122c0517687354dceded30537a1aee97f` (**amd64 only** — it will not schedule on arm64 nodes) |
 
 Gateway API and the agentgateway charts are manifests and OCI charts rather
 than images; their pinned versions and chart digests are in

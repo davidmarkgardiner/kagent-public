@@ -104,6 +104,16 @@ AllowedHosts=*
 a second container in the agent's Pod, with no Service and no host port. The
 agent reaches it on `http://127.0.0.1:5000`, and `/healthz` backs the probe.
 
+On a cluster with admission safeguards, that container needs the same
+treatment as everything else in
+[`../../../agent-substrate/aks-hardened/`](../../../agent-substrate/aks-hardened/README.md):
+CPU and memory requests and limits, `readOnlyRootFilesystem`,
+`allowPrivilegeEscalation: false`, dropped capabilities and a RuntimeDefault
+seccomp profile. It already runs as a non-root user (`APP_UID 1654`). It also
+writes ASP.NET data-protection keys under `/home/app`, so a read-only root
+filesystem needs a writable volume there — untested, and worth checking early
+rather than at admission time. Mirror the image by digest; it is amd64 only.
+
 ## The sidecar: what was observed
 
 Image: `mcr.microsoft.com/entra-sdk/auth-sidecar`, currently
