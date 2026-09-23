@@ -23,6 +23,16 @@ proven, which Gateway API version is actually required, and the order of work.
 Self-service onboarding of a team's own agent is planned, not built:
 [`ONBOARDING-AUTOMATION-SPIKE.md`](ONBOARDING-AUTOMATION-SPIKE.md).
 
+## Published demonstration
+
+The red run below is the evidence behind the published video
+"One Front Door, No Side Doors": https://www.youtube.com/watch?v=eAJpU-oWUdg
+
+[`video/CLAIM-MAP.md`](video/CLAIM-MAP.md) maps every spoken claim to the gate
+that supports it and the wording allowed; [`video/SCRIPT.md`](video/SCRIPT.md)
+is the narration. Watch it first to see the shape of the rehearsal before
+running [`RED-RUNBOOK.md`](RED-RUNBOOK.md).
+
 ## Red result
 
 The final integrated `red` run at `2026-09-16T18:44:09Z` passed every implemented gate. Both application-team A2A-to-MCP paths completed and incremented only their own MCP counters. The authenticated Substrate path returned the required security-review headings, then suspended its actor with a new snapshot. The rogue namespace was denied at JWT, tool, network, RBAC, admission, Pod Security, and ReferenceGrant boundaries. The durable receipt is `evidence/red/2026-09-16-summary.tsv`; `evidence/red/2026-09-16-runtime.md` records the live versions and limits.

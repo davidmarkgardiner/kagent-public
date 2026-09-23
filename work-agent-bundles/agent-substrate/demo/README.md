@@ -13,6 +13,18 @@ For how these two demos map onto a phase 1 work rollout (agentgateway in,
 Entra ID deferred), see
 [`../../kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md`](../../kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md).
 
+### The published demonstrations
+
+| Video | Watch | What it shows | Claims and evidence |
+|---|---|---|---|
+| A. Session continuity | https://www.youtube.com/watch?v=3BTzlDPiVfk | A marker stored, the actor suspended, the marker returned after restore, a second session isolated | [`VIDEO-CLAIM-MAP.md`](VIDEO-CLAIM-MAP.md), run receipt [`../evidence/LIVE-RUN-2026-09-14.md`](../evidence/LIVE-RUN-2026-09-14.md) |
+| B. One front door | https://www.youtube.com/watch?v=eAJpU-oWUdg | Team lanes, the Substrate specialist answering, the actor returning to Suspended | [`../../kagent-agentgateway-tenant-isolation/video/CLAIM-MAP.md`](../../kagent-agentgateway-tenant-isolation/video/CLAIM-MAP.md) |
+
+Watch A before running anything: it is the same sequence this folder
+automates. [`RECORDING-RUNBOOK.md`](RECORDING-RUNBOOK.md) is how that video was
+captured, including the stop conditions, if the work team wants its own
+recording.
+
 The original home-lab runs were kagent `0.10.0-beta7` with Substrate `v0.0.8`
 (demo A, 14 September 2026) and kagent `0.10.1` with Substrate `0.0.9`
 (demo B, 16 September 2026). The work cluster should pin its own versions and

@@ -18,6 +18,15 @@ API objects. Where the AKS Istio add-on is enabled those CRDs already exist, so
 the step is installing agentgateway only — see "When Istio already owns the
 Gateway API CRDs" in the evidence sheet before touching anything cluster-wide.
 
+Steps 2 and 3 are **already built, run and recorded** in the home lab, with a
+published video each. The work is repeating them in the work environment, not
+designing them:
+
+| | Video | Runbook to follow | Evidence to match |
+|---|---|---|---|
+| Substrate | https://www.youtube.com/watch?v=3BTzlDPiVfk | [`agent-substrate/demo/`](agent-substrate/demo/README.md), one script | [`agent-substrate/evidence/LIVE-RUN-2026-09-14.md`](agent-substrate/evidence/LIVE-RUN-2026-09-14.md) |
+| Isolation | https://www.youtube.com/watch?v=eAJpU-oWUdg | [`kagent-agentgateway-tenant-isolation/RED-RUNBOOK.md`](kagent-agentgateway-tenant-isolation/RED-RUNBOOK.md): preflight, install, render, deploy, verify | [`.../evidence/red/2026-09-16-summary.tsv`](kagent-agentgateway-tenant-isolation/evidence/red/2026-09-16-summary.tsv), 38 gates |
+
 Read [`PHASE1-WORK-EVIDENCE.md`](kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md)
 first: it maps each question a reviewer will ask onto the gate that answers it,
 and says which Gateway API version is actually required.
