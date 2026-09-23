@@ -51,6 +51,59 @@ obtains a managed identity token and presents it as the stage 1
 sidecar. This is the target for work; it was configured here but never used,
 because obtaining a managed identity token requires Azure-hosted compute.
 
+## The sidecar: what it is and how to run it
+
+The Microsoft Entra ID Auth SDK sidecar is a small ASP.NET service that holds
+the **blueprint's** credential and performs the OAuth exchanges, so agent code
+never sees a credential. The agent asks it for a ready-made `Authorization`
+header and forwards that to the downstream API. Only the sidecar talks to
+`login.microsoftonline.com`.
+
+**Image.** `mcr.microsoft.com/entra-sdk/auth-sidecar`. There is no `latest`
+tag; pick a version, for example `1.1.2-azurelinux3.0-distroless`. It is
+**amd64 only**, which matters on arm64 laptops and nodes. It is distroless, so
+there is no shell for debugging: use its logs.
+
+**Endpoints** (`ASPNETCORE_URLS` sets the port; the sample uses 5000):
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /AuthorizationHeaderUnauthenticated/{api}?AgentIdentity={agent-app-id}` | Autonomous, app-only. Returns `{"authorizationHeader":"Bearer ..."}` |
+| `GET /AuthorizationHeader/{api}?AgentIdentity={agent-app-id}` | On-behalf-of. Also requires the user's token as `Authorization: Bearer <Tc>` |
+| `GET /healthz` | Liveness. The only endpoint that answers from outside the loopback boundary |
+
+`{api}` is the name of a downstream API you define in configuration, not a URL.
+
+**Configuration**, all environment variables. This is the set used here:
+
+```sh
+AzureAd__Instance=https://login.microsoftonline.com/
+AzureAd__TenantId=<tenant-id>
+AzureAd__ClientId=<blueprint-app-id>          # the BLUEPRINT, not the agent
+AzureAd__ClientCredentials__0__SourceType=ClientSecret
+AzureAd__ClientCredentials__0__ClientSecret=<secret>   # lab only
+DownstreamApis__laneapi__BaseUrl=https://<api-host>/
+DownstreamApis__laneapi__Scopes__0=api://<api-app-id>/.default
+DownstreamApis__laneapi__RequestAppToken=true          # app-only; see the caveat below
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://+:5000
+AllowedHosts=*
+```
+
+**Credential source types**, set through
+`AzureAd__ClientCredentials__0__SourceType`:
+
+| Value | Use |
+|---|---|
+| `ClientSecret` | Local development only |
+| `SignedAssertionFromManagedIdentity` | Production on Azure, zero secrets — pair with the federated credential above |
+| `KeyVault` | Certificate from Key Vault |
+| `StoreWithThumbprint` | Certificate from the local machine store |
+
+**Shape in Kubernetes.** Because of the loopback finding below, the sidecar is
+a second container in the agent's Pod, with no Service and no host port. The
+agent reaches it on `http://127.0.0.1:5000`, and `/healthz` backs the probe.
+
 ## The sidecar: what was observed
 
 Image: `mcr.microsoft.com/entra-sdk/auth-sidecar`, currently
