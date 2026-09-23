@@ -42,6 +42,44 @@ cluster-wide Gateway API install. If it is absent, install the **standard**
 channel at the version your platform team accepts, and keep v1.6.2
 experimental as a phase-2 item.
 
+### When Istio already owns the Gateway API CRDs
+
+This is the good case: the prerequisite is met and phase 1 installs only the
+agentgateway CRDs and controller. Three things still need care, because those
+CRDs are cluster-scoped and now shared.
+
+**Do not apply the v1.6.2 experimental manifest over them.** The
+[`../agent-substrate/aks-hardened/`](../agent-substrate/aks-hardened/README.md)
+sibling profile and [`profiles/fresh-cluster/README.md`](profiles/fresh-cluster/README.md)
+assume an empty cluster, where installing Gateway API is safe. On a cluster
+where Istio owns those CRDs, applying a different version or channel is a
+cluster-wide change that lands on Istio too. Use what is installed. If the
+Entra CORS overlay later needs v1.6.2 experimental, that is a coordinated
+change with whoever owns the service mesh, not a step in this bundle.
+
+**Check what the CRDs actually serve**, not just the bundle version:
+
+```sh
+kubectl get crd gateways.gateway.networking.k8s.io \
+  -o jsonpath='{.metadata.annotations.gateway\.networking\.k8s\.io/bundle-version}{"\n"}'
+kubectl api-resources --api-group=gateway.networking.k8s.io
+```
+
+`entra-jwks.yaml` declares `BackendTLSPolicy` as `gateway.networking.k8s.io/v1`,
+which is what red served on v1.4. Older Gateway API versions serve that kind
+under an alpha group version, so if the second command shows something else,
+change the `apiVersion` in that file to match. ReferenceGrant, which gate
+`N13` uses, is standard-channel and present either way.
+
+**Expect two controllers on the same objects.** agentgateway runs with its own
+`GatewayClass` (`tenant-agentgateway`) and controller name
+(`agentgateway.dev/tenant-isolation`), plus namespace discovery selectors, so
+it only reconciles its own Gateway. But `HTTPRoute` and policy status then
+carries more than one ancestor, and red already saw this with an older shared
+agentgateway controller: the receipt reads the **dedicated controller's status
+ancestor**, not the first one in the list. Any status check written at work
+must do the same, or it will read Istio's entry and report the wrong answer.
+
 Note that Substrate itself already runs agentgateway as a plain sidecar with a
 config file, with no Gateway API involved. That is the `atenet-router` in
 [`../agent-substrate/IMAGES.md`](../agent-substrate/IMAGES.md), and it is

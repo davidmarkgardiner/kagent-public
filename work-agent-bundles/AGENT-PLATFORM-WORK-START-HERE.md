@@ -13,6 +13,11 @@ work cluster yet.
 | 4. Add Entra identity | [`kagent-agentgateway-tenant-isolation/profiles/aks-entra/LOCAL-REHEARSAL.md`](kagent-agentgateway-tenant-isolation/profiles/aks-entra/LOCAL-REHEARSAL.md) | Real Entra tokens proven locally and end to end through kagent on the home lab 2026-09-22 |
 | 5. Self-service onboarding for teams | [`kagent-agentgateway-tenant-isolation/ONBOARDING-AUTOMATION-SPIKE.md`](kagent-agentgateway-tenant-isolation/ONBOARDING-AUTOMATION-SPIKE.md) | **Plan only. Not built.** |
 
+Steps 3 and 4 need agentgateway, which this bundle configures through Gateway
+API objects. Where the AKS Istio add-on is enabled those CRDs already exist, so
+the step is installing agentgateway only — see "When Istio already owns the
+Gateway API CRDs" in the evidence sheet before touching anything cluster-wide.
+
 Read [`PHASE1-WORK-EVIDENCE.md`](kagent-agentgateway-tenant-isolation/PHASE1-WORK-EVIDENCE.md)
 first: it maps each question a reviewer will ask onto the gate that answers it,
 and says which Gateway API version is actually required.
