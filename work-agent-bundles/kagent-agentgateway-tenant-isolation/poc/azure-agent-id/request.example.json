@@ -1,0 +1,10 @@
+{
+  "requestId": "team-event-incident-adviser-mcp",
+  "blueprintAppId": "{{BLUEPRINT_APP_ID}}",
+  "agent": {
+    "namespace": "team-event",
+    "name": "incident-adviser",
+    "serviceAccount": "incident-adviser-id"
+  },
+  "mcpRole": "team-event.mcp.use"
+}

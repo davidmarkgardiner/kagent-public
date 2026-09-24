@@ -84,6 +84,11 @@ The example keeps the executable skill reference disabled because the rehearsal 
 
 ## Authentication profiles
 
+The [Azure Agent ID onboarding PoC](poc/azure-agent-id/README.md) validates a
+proposed AACM result and renders a private GitOps pilot overlay. It has an
+offline Kustomize test and a read-only Azure preflight; it is not yet a live
+AACM-to-AKS token flow.
+
 For the Microsoft Entra Agent ID work-agent handoff, start with
 [`profiles/aks-entra/WORK-AGENT-START-HERE.md`](profiles/aks-entra/WORK-AGENT-START-HERE.md).
 It begins with the agent-side inventory and token-refresh decision, then gates

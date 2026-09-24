@@ -1,0 +1,14 @@
+{
+  "requestId": "team-event-incident-adviser-mcp",
+  "state": "Ready",
+  "blueprintAppId": "{{BLUEPRINT_APP_ID}}",
+  "agentAppId": "{{AGENT_APP_ID}}",
+  "agentObjectId": "{{AGENT_OBJECT_ID}}",
+  "uamiClientId": "{{UAMI_CLIENT_ID}}",
+  "serviceAccountSubject": "system:serviceaccount:team-event:incident-adviser-id",
+  "grantedRoles": ["team-event.mcp.use"],
+  "federation": {
+    "serviceAccountToUami": true,
+    "uamiToBlueprint": true
+  }
+}
