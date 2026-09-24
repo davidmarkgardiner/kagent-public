@@ -21,6 +21,7 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 - **Where it fits (orchestration vs execution):** [`ARCHITECTURE-FIT.md`](ARCHITECTURE-FIT.md)
 - Adapting to the work cluster (AKS): [`WORK-CLUSTER-ADAPTATION.md`](WORK-CLUSTER-ADAPTATION.md)
 - **Air-gapped AKS install and verification:** [`AIRGAPPED-AKS-README.md`](AIRGAPPED-AKS-README.md)
+- **Question for the Kubernetes and Agent Substrate teams about the public `runsc` download:** [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](RUNSC-AIRGAP-ROADMAP-QUESTION.md)
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
 - **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)
 - **The pinned runsc asset without gs:// egress (the usual air-gapped blocker):** [`runsc-asset/README.md`](runsc-asset/README.md)

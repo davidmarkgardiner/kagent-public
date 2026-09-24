@@ -19,26 +19,6 @@ A complete platform stack for production Kubernetes on Azure:
 
 ---
 
-## Agent Substrate in network-isolated clusters
-
-The kagent `SandboxAgent` evaluation pins Agent Substrate v0.0.9. Its
-`SandboxConfig/gvisor-default` points to a `runsc` binary in the public
-`gs://gvisor` bucket. The `ateom-gvisor` container image does not carry that
-binary, so mirroring the Helm charts and images alone does not let an actor
-start without public egress.
-
-The tested offline path packages the pinned binary in an internal image and
-uses a DaemonSet to seed `atelet`'s cache on every Substrate worker node. On a
-cache hit, `atelet` skips the public fetch. See the
-[runsc asset guide](work-agent-bundles/agent-substrate/runsc-asset/README.md)
-and the [air-gapped AKS runbook](work-agent-bundles/agent-substrate/AIRGAPPED-AKS-README.md#the-runsc-asset-is-a-separate-air-gap-requirement).
-Substrate v0.0.9 still defaults to a public source, and its object-store path
-tries anonymous Google Storage first. The upstream question is whether it will
-support an internal-only source or bundle the pinned binary for restricted AKS
-and GCP deployments.
-
----
-
 ## Kagent v2 TL;DR
 
 The first iteration was a basic specialist agent focused on namespace-level triage. This iteration evolves it into a connected AI SRE system with triage, evidence gathering, remediation planning, governance, and evaluation.
@@ -104,6 +84,7 @@ examples/           Quickstart and sample payloads
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
 | Use the Kagent v2 work-agent bundle catalogue | [`work-agent-bundles/`](work-agent-bundles/README.md) |
+| Share the Agent Substrate air-gap roadmap question | [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](work-agent-bundles/agent-substrate/RUNSC-AIRGAP-ROADMAP-QUESTION.md) |
 | Explain the Kagent platform value story to stakeholders | [`WORK-KAGENT-VALUE-STORY-ONE-PAGER.md`](WORK-KAGENT-VALUE-STORY-ONE-PAGER.md) |
 | Explain why kagent replaced HolmesGPT for default triage | [`HOLMES-TO-KAGENT-DECISION-FRONT-SHEET.md`](HOLMES-TO-KAGENT-DECISION-FRONT-SHEET.md) |
 | Present the Kagent v2 stakeholder demo | [`WORK-STAKEHOLDER-DEMO-RUNBOOK.html`](WORK-STAKEHOLDER-DEMO-RUNBOOK.html) |

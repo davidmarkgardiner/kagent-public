@@ -64,9 +64,9 @@ pinned v0.0.9 digest and node verification steps. Check the installed
 An internal S3-compatible object store is another possible asset source, but
 the [v0.0.9 fetcher](https://github.com/kagent-dev/substrate/blob/v0.0.9/cmd/atelet/sandbox_assets.go)
 tries anonymous Google Storage before its configured store. The pre-seed path
-avoids that attempt. The upstream request is an internal-only asset source or
-a bundled binary that works without the cache workaround in restricted AKS
-and GCP environments.
+avoids that attempt. The
+[roadmap question](RUNSC-AIRGAP-ROADMAP-QUESTION.md) asks upstream for an
+internal-only source or a bundled binary for restricted AKS and GCP clusters.
 
 ## Air-gap preparation
 
