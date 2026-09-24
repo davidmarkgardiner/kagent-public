@@ -40,6 +40,10 @@ the DaemonSet, verify on the node — follow
 [`PACKAGE-AND-PRESEED.md`](PACKAGE-AND-PRESEED.md).** The image is built from
 [`Dockerfile.runsc`](Dockerfile.runsc).
 
+**No egress to `storage.googleapis.com`?** A prepared zip containing the
+binary and the build files is published as a release asset; see
+[`offline-bundle/README.md`](offline-bundle/README.md).
+
 **Proven, end to end.** On a two-node kind cluster with the hardened Substrate
 install:
 

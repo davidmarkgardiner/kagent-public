@@ -46,6 +46,20 @@ For Substrate `0.0.9` this was, verified 2026-09-23:
 
 **Use the architecture of the node pool, not of your laptop.**
 
+## Shortcut: the prepared bundle
+
+If the blocker is simply that nothing in the environment can reach
+`storage.googleapis.com`, skip steps 2 and 3 and take the prepared zip, which
+already contains the binary, the Dockerfile, the build script and the
+DaemonSet:
+
+**https://github.com/davidmarkgardiner/kagent-public/releases/tag/runsc-asset-20260622**
+
+See [`offline-bundle/README.md`](offline-bundle/README.md). Carry the zip in,
+run `./build.sh <registry>/gvisor/runsc:20260622 <registry>/library/busybox:1.36`,
+push, then continue from step 5. `make-bundle.sh` regenerates the same zip
+from upstream if you would rather not depend on the release.
+
 ## Step 2 — Fetch the binary on a connected machine
 
 The pinned object is served over ordinary HTTPS, so the `gs://` scheme in the
