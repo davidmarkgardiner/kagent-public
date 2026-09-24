@@ -2,6 +2,8 @@
 
 This is a narrow, repeatable slice of the proposed **GitOps request → AACM → Agent ID binding → kagent Agent** flow. It deliberately does not pretend to know AACM's internal API. The two JSON examples define a proposed request/result contract for one `team-event/incident-adviser` MCP lane; map the real AACM response into that contract only after its owners confirm the fields.
 
+For a shareable explanation, open the [single-file HTML architecture walkthrough](architecture-walkthrough.html). To contact the work identity/AACM owner, use the [copyable request template](WORK-IDENTITY-REQUEST.md); it is not a submitted ticket.
+
 ## What the PoC proves now
 
 - The renderer refuses a mismatched blueprint, unexpected MCP role, wrong ServiceAccount subject, or missing federation link.
