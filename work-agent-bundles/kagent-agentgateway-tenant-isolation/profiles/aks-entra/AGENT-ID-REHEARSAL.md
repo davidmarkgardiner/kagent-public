@@ -91,10 +91,11 @@ blueprint is proven, a managed identity is configured, and the sidecar has a
 caveat worth reading before adopting it.
 
 A client secret on the blueprint is a lab shortcut. Microsoft's guidance is a
-managed identity or certificate as the blueprint credential, and for
-containerised agents the Entra ID Auth SDK sidecar, which performs both stages
-and hands the agent a token on `localhost:7000`. That sidecar is the obvious
-shape for a kagent agent Pod and is untested here.
+managed identity or certificate as the blueprint credential. A later
+certificate-backed exchange was proven; the Entra ID Auth SDK sidecar was also
+tested, but did not return an Agent ID token for the custom API. See
+[`PRODUCTION-CREDENTIALS.md`](PRODUCTION-CREDENTIALS.md) before selecting a
+production token path.
 
 ## Also run on the red cluster
 
@@ -122,10 +123,15 @@ Pod, not just a Secret update.
   (`subscribedSkus` was empty), which was enough for the identity and token
   flow. Conditional access, identity protection and governance for agents
   require **Microsoft Agent 365** licensing.
-- **The sidecar**, managed-identity or certificate credentials, and on-behalf-of
-  or agent-user flows. Only the autonomous app-only flow was exercised.
+- **This first gateway run** did not cover a sidecar, managed identity,
+  certificate, on-behalf-of or agent-user flow. Later certificate and sidecar
+  tests are recorded in [`PRODUCTION-CREDENTIALS.md`](PRODUCTION-CREDENTIALS.md);
+  AKS managed-identity exchange and agent-user flows remain unproven here.
 - **kagent wiring.** The token was proven at the gateway, not yet issued from
   inside an agent Pod. The two-credential finding in
   [`LOCAL-REHEARSAL.md`](LOCAL-REHEARSAL.md) still applies: an agent also needs
   an identity for its own MCP calls.
-- **Graph beta.** Every call above is on the beta endpoint and may change.
+- **Graph beta.** The commands above record the lab's beta routes, not a
+  current work-tenant procedure. Microsoft now documents a v1.0 blueprint
+  create route and a different beta Agent ID create route. Verify the current
+  Graph APIs and least-privileged permissions before any work-tenant change.

@@ -1,5 +1,7 @@
 # AKS Entra overlay
 
+For a work-agent handoff that starts with the kagent side and separates later Azure/Entra approvals, use [`WORK-AGENT-START-HERE.md`](WORK-AGENT-START-HERE.md).
+
 A local rehearsal of this profile with real Entra tokens, and what it proved, is in [`LOCAL-REHEARSAL.md`](LOCAL-REHEARSAL.md).
 
 Apply this profile only after replacing every `{{PLACEHOLDER}}` and installing Gateway API v1.6.2 experimental CRDs. The official v1.5 guide used v1.6.0 experimental; this bundle pins the latest v1.6 patch available at build time and requires server-side dry-run before promotion.

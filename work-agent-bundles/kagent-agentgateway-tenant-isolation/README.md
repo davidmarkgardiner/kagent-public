@@ -84,6 +84,11 @@ The example keeps the executable skill reference disabled because the rehearsal 
 
 ## Authentication profiles
 
+For the Microsoft Entra Agent ID work-agent handoff, start with
+[`profiles/aks-entra/WORK-AGENT-START-HERE.md`](profiles/aks-entra/WORK-AGENT-START-HERE.md).
+It begins with the agent-side inventory and token-refresh decision, then gates
+Azure and Entra changes on a separate permissions and ownership review.
+
 The red profile uses a disposable RSA key and short-lived JWTs. It proves strict issuer, audience, claim, and signature enforcement without claiming Entra parity.
 
 The AKS overlay in `profiles/aks-entra/` follows the native Entra MCP discovery pattern for interactive MCP clients, including the MCP and two OAuth discovery route matches. Kagent-to-MCP is a service-to-service call, so it uses a separately acquired workload token. Native MCP OAuth discovery does not mint or refresh that runtime token. The official distinction is documented at https://agentgateway.dev/docs/kubernetes/latest/documentation/mcp/auth/setup/ and the Entra configuration is documented at https://agentgateway.dev/docs/kubernetes/latest/documentation/mcp/auth/entra/.

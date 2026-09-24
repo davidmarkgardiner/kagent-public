@@ -238,10 +238,15 @@ compute at all.
 
 ### Permissions to do it
 
-Creating the blueprint, the blueprint principal and the agent identities needs
-Application Administrator or Cloud Application Administrator, with Global
-Administrator for first-time setup, plus consent for the app-role assignments.
-That is an identity-team task, not a cluster task.
+Do not use a single directory-role assumption for every operation. Microsoft
+now documents `AgentIdentityBlueprint.Create` as the least-privileged Graph
+application permission for [blueprint creation](https://learn.microsoft.com/en-us/graph/api/agentidentityblueprint-post?view=graph-rest-1.0),
+and its [agent-management guidance](https://learn.microsoft.com/en-us/entra/agent-id/manage-agent-identities-admin)
+distinguishes blueprint creation from managing Agent IDs. Check the current
+Graph permission, ownership, delegated directory role (if applicable), admin
+consent, and API app-role-assignment rights **per operation** in the work
+tenant. Azure RBAC on the AKS SPN does not provide Graph permissions. Route
+anything the SPN cannot do to an authorized identity owner.
 
 ## Order for the work cluster
 
