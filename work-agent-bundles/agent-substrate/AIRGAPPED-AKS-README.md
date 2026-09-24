@@ -43,6 +43,31 @@ compatibility evidence and a full golden-snapshot plus A2A run.
 The kagent CRD allows Kubernetes to accept a `SandboxAgent`; the Agent
 Substrate charts provide the WorkerPool and runtime that make it run.
 
+## The `runsc` asset is a separate air-gap requirement
+
+The [Substrate v0.0.9 chart](https://github.com/kagent-dev/substrate/blob/v0.0.9/charts/substrate/templates/sandboxconfig-gvisor.yaml)
+sets `SandboxConfig/gvisor-default` to fetch `runsc` from the public
+`gs://gvisor` bucket. `runsc` is a separate asset; the `ateom-gvisor` worker
+image does not contain it. Without a local copy, an actor cannot start in a
+cluster that blocks public Google Storage.
+
+The [runsc asset guide](runsc-asset/README.md) documents the tested offline
+path. It packages the exact binary and checksum into an image, mirrors that
+image to the internal registry, and uses a DaemonSet to pre-seed `atelet`'s
+content-addressed cache on every node that can host a worker. `atelet` checks
+the cache before it attempts a download, so a cache hit needs no public
+request. The [packaging procedure](runsc-asset/PACKAGE-AND-PRESEED.md) and
+[prepared offline bundle](runsc-asset/offline-bundle/README.md) include the
+pinned v0.0.9 digest and node verification steps. Check the installed
+`SandboxConfig` before using them; another version may pin a different asset.
+
+An internal S3-compatible object store is another possible asset source, but
+the [v0.0.9 fetcher](https://github.com/kagent-dev/substrate/blob/v0.0.9/cmd/atelet/sandbox_assets.go)
+tries anonymous Google Storage before its configured store. The pre-seed path
+avoids that attempt. The upstream request is an internal-only asset source or
+a bundled binary that works without the cache workaround in restricted AKS
+and GCP environments.
+
 ## Air-gap preparation
 
 Before changing AKS, retain a versioned deployment manifest containing:
@@ -65,11 +90,13 @@ Before changing AKS, retain a versioned deployment manifest containing:
    > select the mirror declaratively. Never hand-patch the generated
    > ActorTemplate because the controller owns and rewrites it. See
    > [`evidence/RUN-2026-07-16.md`](evidence/RUN-2026-07-16.md).
-3. Internal registry CA trust and image-pull credentials, where required.
-4. An approved internal model endpoint and a Secret reference for its
+3. The pinned `runsc` binary, its checksum, the mirrored delivery image, and
+   the DaemonSet that seeds every eligible node before an actor starts.
+4. Internal registry CA trust and image-pull credentials, where required.
+5. An approved internal model endpoint and a Secret reference for its
    credential. Never put model API keys in Git, Helm values, shell history or
    command arguments.
-5. Rendered Flux `HelmRepository`/`HelmRelease` values and image-rewrite policy.
+6. Rendered Flux `HelmRepository`/`HelmRelease` values and image-rewrite policy.
    Production-like AKS installation must reconcile from Git; the commands below
    are render/validation references only.
 
@@ -167,6 +194,8 @@ sets `SSL_CERT_FILE`. Do not use `ateApiInsecure=true` outside a disposable lab.
   trust in the kagent controller.
 - Node-kernel checkpoint/restore proof on the selected pool.
 - Internal registry reachability and image-pull proof from that pool.
+- Pinned `runsc` binary present in `atelet`'s cache on every eligible node,
+  with no public download during an actor boot.
 - Approved object/snapshot storage, retention and encryption decision.
 - Approved internal model/provider endpoint reachable from an actor.
 
