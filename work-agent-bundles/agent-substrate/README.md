@@ -24,6 +24,7 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
 - **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)
 - **The pinned runsc asset without gs:// egress (the usual air-gapped blocker):** [`runsc-asset/README.md`](runsc-asset/README.md)
+  - step-by-step packaging: [`runsc-asset/PACKAGE-AND-PRESEED.md`](runsc-asset/PACKAGE-AND-PRESEED.md)
 - **Hardened air-gapped AKS install (read-only root, limits, exceptions):** [`aks-hardened/README.md`](aks-hardened/README.md)
 - **Reproducing the two recorded demos on a work cluster:** [`demo/README.md`](demo/README.md)
 - **Copy-ready GitLab issue:** [`GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md`](GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md)

@@ -35,6 +35,11 @@ from an image that carries the binary, verifying the digest and installing it
 with mode 0755, then a pause container to hold the DaemonSet. It needs no
 network.
 
+**For the step-by-step — fetch the binary, build the image, push it, fill in
+the DaemonSet, verify on the node — follow
+[`PACKAGE-AND-PRESEED.md`](PACKAGE-AND-PRESEED.md).** The image is built from
+[`Dockerfile.runsc`](Dockerfile.runsc).
+
 **Proven, end to end.** On a two-node kind cluster with the hardened Substrate
 install:
 
