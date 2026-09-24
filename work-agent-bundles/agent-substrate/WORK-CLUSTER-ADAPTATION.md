@@ -32,14 +32,16 @@ Substrate's suspend/resume needs gVisor (`runsc`) checkpoint/restore (CRIU):
 
 - **GKE is first-class** because **GKE Sandbox provides managed gVisor**. AKS has **no
   managed gVisor equivalent**.
-- Substrate ships its own gVisor userspace **inside the `ateom-gvisor` pod** (gVisor-in-pod,
-  not a node `RuntimeClass`), so AKS does **not** need a special node runtime.
+- Substrate runs `ateom-gvisor` inside a worker pod, so AKS does not need a
+  node-level gVisor `RuntimeClass`. In v0.0.9, `atelet` fetches the separate
+  `runsc` binary named by `SandboxConfig/gvisor-default` unless its node cache
+  already has the pinned binary.
 - But checkpoint/restore still requires **privileged / elevated pod capabilities** and a
   **node kernel** that supports the C/R syscalls.
 
 So on AKS the question is **"will admission control let the privileged atelet
-and hostPath run, can kagent securely trust ate-api, and does the selected node
-path pass the lifecycle test?"**
+and hostPath run, can kagent securely trust ate-api, does each worker node have
+`runsc`, and does the selected node path pass the lifecycle test?"**
 
 ## AKS blockers to clear first
 
@@ -64,6 +66,9 @@ path pass the lifecycle test?"**
    service-account issuer. kagent 0.10.1 also needs the ate-api CA mounted into
    its controller (for example through `SSL_CERT_FILE`) when TLS verification
    is enabled.
+7. **Pinned `runsc` binary.** Mirroring the `ateom-gvisor` image does not supply
+   the asset. Use the [tested pre-seed path](runsc-asset/README.md) so `atelet`
+   finds it locally and never requests the public `gs://gvisor` object.
 
 ## Recommended AKS rollout path
 
@@ -72,7 +77,7 @@ Do **not** graft this onto a shared prod cluster first.
 1. **Prove on kind (done in this bundle).** Baseline evidence in [`evidence/`](evidence/).
 2. **Dedicated AKS dev cluster or dedicated node pool.** Isolated, tainted, labelled for
    substrate; nothing else scheduled there.
-3. **Clear the 6 blockers above** — the Kyverno exception is the long pole; engage whoever
+3. **Clear the 7 blockers above** — the Kyverno exception is the long pole; engage whoever
    owns policy early.
 4. **Install through the air-gapped GitOps path.** Follow
    [`AIRGAPPED-AKS-README.md`](AIRGAPPED-AKS-README.md): mirror pinned charts and images,
