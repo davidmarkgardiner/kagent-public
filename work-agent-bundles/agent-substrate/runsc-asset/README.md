@@ -35,6 +35,10 @@ from an image that carries the binary, verifying the digest and installing it
 with mode 0755, then a pause container to hold the DaemonSet. It needs no
 network.
 
+For screenshots of the official gVisor release-path documentation and the exact
+Google Cloud Storage object metadata (without triggering a binary download),
+use [public upstream source evidence](VENDOR-SOURCE-EVIDENCE.md).
+
 **For the step-by-step — fetch the binary, build the image, push it, fill in
 the DaemonSet, verify on the node — follow
 [`PACKAGE-AND-PRESEED.md`](PACKAGE-AND-PRESEED.md).** The image is built from

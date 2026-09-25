@@ -98,7 +98,9 @@ docker run --rm --entrypoint sh "$REGISTRY/gvisor/runsc:20260622" \
   -c 'ls -l /runsc && sha256sum /runsc'
 ```
 
-Tested: image built, `/runsc` present, 120710090 bytes, digest intact.
+Tested: image built and `/runsc` present with the pinned digest. The public
+upstream object was 129078244 bytes when rechecked on 2026-09-25; use the
+SHA-256 pin as the acceptance gate. See [source screenshots and metadata](VENDOR-SOURCE-EVIDENCE.md).
 
 ## Step 4 — Push it to your registry
 

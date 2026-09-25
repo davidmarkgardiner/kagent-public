@@ -60,6 +60,8 @@ request. The [packaging procedure](runsc-asset/PACKAGE-AND-PRESEED.md) and
 [prepared offline bundle](runsc-asset/offline-bundle/README.md) include the
 pinned v0.0.9 digest and node verification steps. Check the installed
 `SandboxConfig` before using them; another version may pin a different asset.
+For the public vendor-source path and screenshots that can be used in an
+acquisition record, see [runsc upstream source evidence](runsc-asset/VENDOR-SOURCE-EVIDENCE.md).
 
 An internal S3-compatible object store is another possible asset source, but
 the [v0.0.9 fetcher](https://github.com/kagent-dev/substrate/blob/v0.0.9/cmd/atelet/sandbox_assets.go)
