@@ -1,0 +1,31 @@
+flowchart LR
+  %% Door 1: an application calls an agent. The caller never receives the agent's blueprint credential.
+  subgraph inbound["Door 1 — application invokes Event Agent"]
+    app["Application Pod<br/>caller ServiceAccount"] -->|projected AKS OIDC assertion| wi["AKS Workload Identity<br/>federation for caller UAMI or app"]
+    wi --> entra_a2a["Microsoft Entra ID<br/>issues Event A2A token"]
+    grant_a2a["Event A2A API app role<br/>assigned to caller principal"] -.-> entra_a2a
+    entra_a2a -->|"aud = Event A2A API; role = invoke"| gateway_a2a["agentgateway A2A<br/>verify JWT and exact caller ID"]
+    gateway_a2a -->|allow only if route policy matches| agent["Event kagent Agent"]
+  end
+
+  %% Door 2: the running agent gets its own Agent ID token to call an MCP.
+  subgraph outbound["Door 2 — Event Agent calls approved MCP tool"]
+    runtime_sa["Agent runtime Pod<br/>dedicated ServiceAccount"]
+    runtime_sa -->|direct AKS OIDC federation| blueprint["Agent ID blueprint<br/>separate runtime trust"]
+    blueprint --> child["Runtime child Agent ID<br/>MCP-audience token"]
+    grant_mcp["Event MCP API app role<br/>assigned to child Agent ID"] -.-> child
+    child --> gateway_mcp["agentgateway MCP<br/>aud + role + exact child ID + tool"]
+    gateway_mcp -->|allow only named tool| mcp["Event MCP<br/>lookup_incident"]
+  end
+
+  agent --> runtime_sa
+  mcp -.-> azure["Azure resource, if needed<br/>separate MCP/workflow identity + Azure RBAC"]
+
+  classDef caller fill:#eaf2f5,stroke:#355f76,color:#20241f;
+  classDef issuer fill:#f0edf6,stroke:#665b86,color:#20241f;
+  classDef gate fill:#f9ece6,stroke:#a54f35,color:#20241f;
+  classDef backend fill:#eaf2e8,stroke:#47694b,color:#20241f;
+  class app,wi,runtime_sa caller;
+  class entra_a2a,grant_a2a,blueprint,child,grant_mcp issuer;
+  class gateway_a2a,gateway_mcp gate;
+  class agent,mcp,azure backend;

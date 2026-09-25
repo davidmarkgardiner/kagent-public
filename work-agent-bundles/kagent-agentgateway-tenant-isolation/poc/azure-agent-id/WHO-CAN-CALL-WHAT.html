@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Who can call the agent? What can the agent call?</title>
+  <style>
+    :root {
+      --bg: #faf9f5; --paper: #fff; --ink: #20241f; --muted: #596157;
+      --line: #d8dbd1; --blue: #355f76; --blue-bg: #eaf2f5;
+      --clay: #a54f35; --clay-bg: #f9ece6; --olive: #47694b;
+      --olive-bg: #eaf2e8; --purple: #665b86; --purple-bg: #f0edf6;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+    a { color: var(--blue); }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 26px; }
+    .top { background: var(--paper); border-bottom: 1px solid var(--line); }
+    .top .wrap { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding-top: 15px; padding-bottom: 15px; }
+    .brand { font: 700 12px var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+    nav { display: flex; gap: 18px; flex-wrap: wrap; }
+    nav a { color: var(--muted); font: 12px var(--mono); text-decoration: none; }
+    main { padding-bottom: 58px; }
+    section { border-bottom: 1px solid var(--line); padding: 56px 0; }
+    .hero { padding-top: 64px; }
+    .eyebrow { display: flex; align-items: center; gap: 10px; color: var(--clay); font: 700 12px var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; display: block; width: 23px; height: 3px; background: var(--clay); }
+    h1, h2 { font-family: var(--serif); letter-spacing: -.025em; line-height: 1.1; }
+    h1 { max-width: 850px; font-size: clamp(40px, 5.5vw, 66px); margin: 18px 0 20px; }
+    h2 { font-size: clamp(29px, 3.6vw, 43px); margin: 12px 0 18px; }
+    h1 em, h2 em { color: var(--clay); font-weight: 400; }
+    h3 { font-size: 18px; margin: 0 0 8px; }
+    p { margin: 0 0 16px; }
+    .lede { font-size: 20px; color: #3b443b; max-width: 900px; }
+    .muted, .small { color: var(--muted); }
+    .small { font-size: 13px; }
+    .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+    .card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+    .summary .card:first-child { border-top: 4px solid var(--blue); }
+    .summary .card:last-child { border-top: 4px solid var(--olive); }
+    .badge { display: inline-block; border-radius: 30px; padding: 4px 9px; font: 700 11px var(--mono); letter-spacing: .025em; }
+    .blue { color: var(--blue); background: var(--blue-bg); }
+    .clay { color: var(--clay); background: var(--clay-bg); }
+    .olive { color: var(--olive); background: var(--olive-bg); }
+    .purple { color: var(--purple); background: var(--purple-bg); }
+    .diagram { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow-x: auto; padding: 14px; }
+    .diagram svg { display: block; width: 100%; min-width: 920px; height: auto; }
+    .caption { font-size: 14px; color: var(--muted); margin-top: 14px; }
+    .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .cols .card { min-height: 190px; }
+    .cols p:last-child, .card p:last-child { margin-bottom: 0; }
+    .matrix { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--line); font-size: 14px; }
+    .matrix th, .matrix td { border-bottom: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
+    .matrix th { background: #f0f0e9; font: 700 12px var(--mono); letter-spacing: .02em; }
+    .matrix tr:last-child td { border-bottom: 0; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .callout { background: var(--clay-bg); border-left: 4px solid var(--clay); border-radius: 0 9px 9px 0; padding: 18px 22px; margin-top: 22px; }
+    .callout.safe { background: var(--olive-bg); border-color: var(--olive); }
+    .steps { display: grid; gap: 12px; }
+    .step { display: flex; gap: 16px; align-items: flex-start; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; }
+    .num { flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--clay-bg); color: var(--clay); font: 700 15px var(--mono); }
+    code { font: .9em var(--mono); }
+    .links { display: flex; flex-wrap: wrap; gap: 12px 22px; }
+    footer { color: var(--muted); font-size: 13px; padding: 28px 0 45px; }
+    @media (max-width: 760px) {
+      .top .wrap { align-items: flex-start; flex-direction: column; }
+      .wrap { padding: 0 17px; }
+      section { padding: 42px 0; }
+      .summary, .cols, .two { grid-template-columns: 1fr; }
+      .matrix { display: block; overflow-x: auto; }
+      .matrix th, .matrix td { min-width: 145px; }
+    }
+    @media print { .top { display: none; } body { background: #fff; } section { break-inside: avoid; padding: 22px 0; } .card, .diagram { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <header class="top"><div class="wrap"><div class="brand">Entra Agent ID · AKS · agentgateway</div><nav aria-label="Page sections"><a href="#doors">Two doors</a><a href="#blueprint">Blueprint</a><a href="#examples">Examples</a><a href="#owners">Who configures it</a></nav></div></header>
+  <main>
+    <section class="hero"><div class="wrap">
+      <div class="eyebrow">The infra blueprint work, in one picture</div>
+      <h1>Who may call the agent? <em>What may the agent call?</em></h1>
+      <p class="lede">Treat these as two separate doors. An application Pod can use its existing AKS Workload Identity pattern to get an <em>A2A-audience</em> token for the agent. Entra issues that token; agentgateway makes the per-request allow/deny decision. The agent later uses its own blueprint-backed identity for MCP calls.</p>
+      <div class="summary">
+        <div class="card"><span class="badge blue">DOOR 1 · INBOUND</span><h3>Caller → agent</h3><p>Assign an <strong>invoke-agent</strong> A2A app role to the caller's Entra principal. An AKS application can obtain that API token through Workload Identity; the A2A gateway checks it before forwarding.</p></div>
+        <div class="card"><span class="badge olive">DOOR 2 · OUTBOUND</span><h3>Agent → MCP/tool</h3><p>Grant a separate <strong>use-MCP</strong> role to the runtime child Agent ID. The MCP gateway checks that identity and permits only selected tools.</p></div>
+      </div>
+    </div></section>
+
+    <section id="doors"><div class="wrap">
+      <div class="eyebrow">Read left to right, then down</div>
+      <h2>Two requests. <em>Two decisions.</em></h2>
+      <div class="diagram" role="img" aria-label="An application Pod uses its own ServiceAccount and AKS Workload Identity to obtain an Entra A2A token for the Event Agent API. Agentgateway validates that token and enforces the caller policy before reaching the agent. The running agent separately uses its blueprint-backed child Agent ID MCP token to reach a permitted MCP tool. Azure resource access by the MCP requires separate RBAC.">
+        <svg viewBox="0 0 1120 650" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#687c6b"/></marker>
+            <marker id="down" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#a54f35"/></marker>
+          </defs>
+          <rect x="12" y="12" width="1096" height="297" rx="15" fill="#eaf2f5" stroke="#c8dce4"/>
+          <rect x="12" y="327" width="1096" height="311" rx="15" fill="#eaf2e8" stroke="#d0dfce"/>
+          <text x="35" y="43" fill="#355f76" font-size="15" font-family="monospace" font-weight="700">DOOR 1  ·  WHO MAY INVOKE THIS AGENT?</text>
+          <text x="35" y="357" fill="#47694b" font-size="15" font-family="monospace" font-weight="700">DOOR 2  ·  WHICH MCP AND TOOL MAY THIS AGENT USE?</text>
+
+          <g font-family="system-ui,sans-serif" text-anchor="middle">
+            <rect x="35" y="95" width="180" height="110" rx="11" fill="#fff" stroke="#a9c4d0"/>
+            <text x="125" y="125" font-size="17" font-weight="700" fill="#20241f">Application Pod</text>
+            <text x="125" y="152" font-size="13" fill="#596157">caller ServiceAccount</text>
+            <text x="125" y="178" font-size="13" fill="#596157">its own identity</text>
+
+            <rect x="250" y="95" width="185" height="110" rx="11" fill="#fff" stroke="#a9c4d0"/>
+            <text x="342" y="124" font-size="17" font-weight="700" fill="#20241f">AKS Workload ID</text>
+            <text x="342" y="151" font-size="13" fill="#596157">OIDC federation</text>
+            <text x="342" y="177" font-size="13" fill="#596157">caller UAMI / app</text>
+
+            <rect x="470" y="95" width="185" height="110" rx="11" fill="#fff" stroke="#a9c4d0"/>
+            <text x="562" y="124" font-size="17" font-weight="700" fill="#20241f">Entra A2A token</text>
+            <text x="562" y="151" font-size="13" fill="#596157">aud = Event A2A API</text>
+            <text x="562" y="177" font-size="13" fill="#596157">role = invoke</text>
+
+            <rect x="690" y="95" width="190" height="110" rx="11" fill="#fff" stroke="#a54f35" stroke-width="2"/>
+            <text x="785" y="124" font-size="17" font-weight="700" fill="#a54f35">A2A gateway</text>
+            <text x="785" y="151" font-size="13" fill="#596157">verify JWT + audience</text>
+            <text x="785" y="177" font-size="13" fill="#596157">role + caller ID</text>
+
+            <rect x="925" y="95" width="165" height="110" rx="11" fill="#fff" stroke="#47694b" stroke-width="2"/>
+            <text x="1007" y="125" font-size="18" font-weight="700" fill="#20241f">Agent</text>
+            <text x="1007" y="152" font-size="13" fill="#596157">kagent Pod</text>
+            <text x="1007" y="178" font-size="13" fill="#596157">team-event</text>
+
+            <rect x="37" y="420" width="210" height="105" rx="11" fill="#fff" stroke="#9bb89a"/>
+            <text x="142" y="450" font-size="17" font-weight="700" fill="#20241f">Runtime Agent ID</text>
+            <text x="142" y="476" font-size="13" fill="#596157">child of blueprint</text>
+            <text x="142" y="499" font-size="13" fill="#596157">dedicated Pod identity</text>
+
+            <rect x="315" y="420" width="220" height="105" rx="11" fill="#fff" stroke="#9bb89a"/>
+            <text x="425" y="450" font-size="17" font-weight="700" fill="#20241f">Entra MCP token</text>
+            <text x="425" y="476" font-size="13" fill="#596157">aud = MCP API</text>
+            <text x="425" y="499" font-size="13" fill="#596157">role = use MCP</text>
+
+            <rect x="605" y="420" width="215" height="105" rx="11" fill="#fff" stroke="#a54f35" stroke-width="2"/>
+            <text x="712" y="449" font-size="17" font-weight="700" fill="#a54f35">MCP gateway</text>
+            <text x="712" y="475" font-size="13" fill="#596157">aud + role + exact</text>
+            <text x="712" y="498" font-size="13" fill="#596157">child ID + tool name?</text>
+
+            <rect x="895" y="420" width="185" height="105" rx="11" fill="#fff" stroke="#47694b" stroke-width="2"/>
+            <text x="987" y="450" font-size="17" font-weight="700" fill="#20241f">MCP</text>
+            <text x="987" y="476" font-size="13" fill="#596157">lookup_incident</text>
+            <text x="987" y="499" font-size="13" fill="#596157">only in this example</text>
+          </g>
+
+          <g fill="none" stroke="#687c6b" stroke-width="2.5" marker-end="url(#arrow)">
+            <path d="M215 150H246"/><path d="M435 150H466"/>
+            <path d="M655 150H686"/><path d="M880 150H921"/>
+            <path d="M247 472H311"/><path d="M535 472H601"/><path d="M820 472H891"/>
+          </g>
+          <path d="M1007 207V300H142V416" fill="none" stroke="#a54f35" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#down)"/>
+          <text x="35" y="248" fill="#355f76" font-size="12" font-family="monospace">ENTRA: app-role assignment is reflected in the issued token</text>
+          <text x="565" y="248" fill="#a54f35" font-size="12" font-family="monospace">GATEWAY: allow/deny on each A2A request</text>
+          <text x="345" y="287" fill="#a54f35" font-size="13" font-family="system-ui,sans-serif" font-weight="700">The agent switches to its own identity for the next call</text>
+          <text x="35" y="592" fill="#47694b" font-size="12" font-family="monospace">DENY: wrong child Agent ID or forbidden tool, even if the role matches</text>
+          <text x="897" y="561" fill="#596157" font-size="12" font-family="system-ui,sans-serif">Azure access is separate:</text>
+          <text x="897" y="580" fill="#596157" font-size="12" font-family="system-ui,sans-serif">MCP/workflow identity + Azure RBAC</text>
+        </svg>
+      </div>
+      <p class="caption">The application Pod uses its own UAMI or app principal as the <em>caller</em>. It does not receive the agent's blueprint credential. Entra issues an A2A token with its assigned role; agentgateway validates and authorizes each A2A request. The agent's separate child Agent ID token is for the MCP door.</p>
+      <div class="two" style="margin-top:16px">
+        <div class="card"><span class="badge blue">EXISTING AKS PATTERN</span><h3>Token for Azure</h3><p>The Pod uses Workload Identity to request a token for an Azure resource. Azure RBAC governs what that caller can do at the resource.</p></div>
+        <div class="card"><span class="badge clay">THIS AGENT CALL</span><h3>Token for A2A</h3><p>The same federation pattern can request a <strong>different audience</strong>: the Event A2A API. Entra supplies the assigned invoke role; agentgateway enforces the A2A route policy. An ARM token is not an A2A token.</p></div>
+      </div>
+      <div class="callout safe"><strong>UAMI is fine as an A2A caller:</strong> the caller UAMI can receive the A2A API app-role assignment. This does <em>not</em> revive the failed ServiceAccount → UAMI → Agent ID blueprint chain. The agent runtime's direct ServiceAccount → blueprint federation is a separate flow.</div>
+      <div class="callout"><strong>Human versus app:</strong> this DAG follows the application-Pod path. A human signs in interactively and needs a user-context access token for the A2A API. If an application instead calls using one app-only token for all its users, the gateway can identify the <em>application</em>, not the individual human behind each request.</div>
+    </div></section>
+
+    <section id="blueprint"><div class="wrap">
+      <div class="eyebrow">Where the infra blueprint fits</div>
+      <h2>The blueprint is a <em>credential bridge</em>, not the whole access policy.</h2>
+      <div class="cols">
+        <div class="card"><span class="badge purple">1 · AKS TRUST</span><h3>Pod → blueprint</h3><p>The AKS ServiceAccount's exact OIDC issuer and <code>system:serviceaccount:namespace:name</code> subject match a federated credential on the blueprint. The ServiceAccount annotation points to the blueprint client ID.</p></div>
+        <div class="card"><span class="badge purple">2 · RUNTIME IDENTITY</span><h3>Blueprint → child Agent ID</h3><p>The token holder obtains a token for its child Agent ID. A blueprint credential may select other children under that blueprint, so use a dedicated trust boundary or a broker that enforces the child choice.</p></div>
+        <div class="card"><span class="badge purple">3 · ACTUAL GRANTS</span><h3>Caller and child get different roles</h3><p>The A2A API defines <code>agent.invoke</code> for the caller UAMI/app principal. The MCP API defines <code>mcp.use</code> for the runtime child Agent ID. Declaring a permission on a blueprint is not itself a grant.</p></div>
+      </div>
+      <div class="callout safe"><strong>Separate Azure RBAC:</strong> if the MCP accesses Key Vault, AKS, or another Azure resource, its own execution identity needs the appropriate resource-scoped Azure role. The agent's permission to call an MCP does not automatically grant that Azure role. A direct agent-to-Azure call would require a separate grant to the agent identity.</div>
+    </div></section>
+
+    <section id="examples"><div class="wrap">
+      <div class="eyebrow">Concrete outcomes</div>
+      <h2>What is allowed, <em>and what is denied?</em></h2>
+      <table class="matrix">
+        <thead><tr><th>Request</th><th>Expected result</th><th>Enforced where</th></tr></thead>
+        <tbody>
+          <tr><td>Approved application Pod → Event Agent</td><td>Its own Workload Identity obtains an Event A2A token; allowed only with the A2A audience, invoke role, and approved caller identity.</td><td>Entra assignment at issuance; A2A gateway at each request</td></tr>
+          <tr><td>Other app or human → Event Agent</td><td>Denied without the required assignment or approved caller identity.</td><td>Entra issuance/assignment + A2A gateway policy</td></tr>
+          <tr><td>Event Agent → Event MCP <code>lookup_incident</code></td><td>Allowed with MCP audience, use role, exact runtime child ID, and allowed tool name.</td><td>Entra assignment + MCP gateway policy</td></tr>
+          <tr><td>Event Agent → another MCP or forbidden tool</td><td>Denied unless it has that MCP's grant and gateway policy; tool list is enforced at the gateway.</td><td>MCP gateway policy + network isolation</td></tr>
+          <tr><td>Other namespace → Agent/MCP Service directly</td><td>Blocked in the tested AKS design; a namespace label alone is not authorization.</td><td>NetworkPolicy; route/ReferenceGrant governs cross-namespace backend references</td></tr>
+        </tbody>
+      </table>
+      <p class="small" style="margin-top:13px">The disposable AKS pilot tested an approved <em>Agent ID</em> caller, same-role wrong-child denials, the allowed MCP tool, forbidden-tool denial, and direct-service blocking. An ordinary UAMI/app-principal caller and human sign-in are proposed work patterns, not tested pilot claims.</p>
+    </div></section>
+
+    <section id="owners"><div class="wrap">
+      <div class="eyebrow">What each team actually sets up</div>
+      <h2>Entra issues the grants. <em>AKS enforces the path.</em></h2>
+      <div class="two">
+        <div class="card"><span class="badge purple">INFRA ID / AACM TEAM</span><div class="steps" style="margin-top:17px">
+          <div class="step"><span class="num">1</span><div>Approve dedicated blueprint, principal, child Agent ID, owner, and exact AKS federated issuer/ServiceAccount subject.</div></div>
+          <div class="step"><span class="num">2</span><div>Define/reuse protected A2A and MCP API registrations, audiences, and app roles.</div></div>
+          <div class="step"><span class="num">3</span><div>Assign the A2A role to each approved caller UAMI/app/service principal; assign the MCP role to the runtime child Agent ID. Return IDs and read-back privately.</div></div>
+        </div></div>
+        <div class="card"><span class="badge olive">AKS / PLATFORM TEAM</span><div class="steps" style="margin-top:17px">
+          <div class="step"><span class="num">1</span><div>For an AKS caller, bind its Pod ServiceAccount to its own UAMI/app Workload Identity. Separately deploy the agent's dedicated blueprint-federated ServiceAccount through GitOps; restrict who can use or alter it.</div></div>
+          <div class="step"><span class="num">2</span><div>Protect A2A and MCP routes with separate gateway policies. Check audience, role, and exact identity together; allow only approved tools.</div></div>
+          <div class="step"><span class="num">3</span><div>Use NetworkPolicy to prevent backend bypass, review ReferenceGrants, and implement short-lived token renewal with expiry/fail-closed tests.</div></div>
+        </div></div>
+      </div>
+      <div class="callout"><strong>Work rollout status:</strong> the sanitized home-lab AKS test proved selected positive and negative paths, but not the work tenant, human-user entry, automatic child-token renewal, or expiry failure. The existing namespace admission/RBAC bundle does not by itself prove exclusive use of the federated ServiceAccount. Those are work acceptance gates.</div>
+      <div class="links"><a href="WHO-CAN-CALL-WHAT.mmd">Mermaid DAG source</a><a href="WORK-GITLAB-IDENTITY-TICKET.md">Identity team ticket</a><a href="WORK-IDENTITY-IMPLEMENTATION-PLAYBOOK.md">Identity steps</a><a href="AKS-FULL-E2E-EVIDENCE-2026-09-25.md">AKS test evidence</a><a href="../../profiles/aks-entra/WORK-AGENT-START-HERE.md">Platform handoff</a></div>
+    </div></section>
+  </main>
+  <footer><div class="wrap">Public, placeholder-safe explainer. The real AACM contract, app/agent IDs, service accounts, and role assignments belong in approved private records.</div></footer>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Work GitLab ticket: Agent ID blueprint and app-registration onboarding
 
-Copy the section below into the **private work GitLab project** and replace the placeholders there. This is a proposed request to the infra identity/AACM owners, not an actual ticket, an approved AACM schema, or authority to change the work tenant. Keep real tenant, subscription, application, and identity IDs, OIDC issuer URLs, contacts, and internal links out of this public repository.
+Copy the section below into the **private work GitLab project** and replace the placeholders there. This draft mainly covers [Request 2: agent blueprint and MCP permission](WORK-REQUEST-2-AGENT-BLUEPRINT-MCP.md). Submit [Request 1: caller UAMI and A2A permission](WORK-REQUEST-1-CALLER-UAMI-A2A.md) separately, or make it a distinct change item in the same private ticket. This is not an actual ticket, an approved AACM schema, or authority to change the work tenant. Keep real tenant, subscription, application, and identity IDs, OIDC issuer URLs, contacts, and internal links out of this public repository.
 
 ## Copy into GitLab
 
@@ -20,7 +20,7 @@ The PoC used custom Python/Graph code, **not** an AACM template. Please review i
 
 **AKS federation inputs supplied by the platform team:** cluster `{{AKS_CLUSTER_NAME}}`, exact OIDC issuer `{{AKS_OIDC_ISSUER}}` (including any trailing slash), credential-owning workload `{{TOKEN_HOLDER_WORKLOAD}}`, ServiceAccount `{{SERVICE_ACCOUNT}}`, and subject `system:serviceaccount:{{NAMESPACE}}:{{SERVICE_ACCOUNT}}`. Confirm whether the token holder is the kagent Pod or a dedicated per-agent token proxy **before** creating the federated credential. A proxy would use its own ServiceAccount. If the cluster or token holder is not yet fixed, create the blueprint and API permissions first and leave federation pending.
 
-**Protected API and least-privilege action:** `{{MCP_API_NAME}}`, audience `{{MCP_API_AUDIENCE}}`, application role value `{{MCP_ROLE_VALUE}}`, tool `{{ALLOWED_TOOL}}`. If inbound A2A access is in scope, agree a separate `{{A2A_API_AUDIENCE}}`, `{{A2A_ROLE_VALUE}}`, and caller Agent ID.
+**Protected API and least-privilege action:** `{{MCP_API_NAME}}`, audience `{{MCP_API_AUDIENCE}}`, application role value `{{MCP_ROLE_VALUE}}`, tool `{{ALLOWED_TOOL}}`. If inbound A2A access is in scope, agree a separate `{{A2A_API_AUDIENCE}}`, `{{A2A_ROLE_VALUE}}`, and caller identity. The work caller may be a UAMI service principal; the home-lab caller was an Agent ID.
 
 We are piloting an isolated kagent agent on AKS. The agent must receive its own Entra Agent ID, and the protected MCP API must accept only the approved child Agent ID with the approved application role through agentgateway. Could the infra identity/AACM team help us establish the **manual onboarding path now**, including who approves and performs each step, so that we can later automate the same reviewed contract? This ticket is for identity-side design and provisioning; it does **not** request an AKS cluster or workload deployment.
 
@@ -42,6 +42,9 @@ For repeatable manual onboarding, could we agree a request/approval/read-back ch
 ## Public references for the conversation
 
 - [Identity PoC and its proof boundaries](README.md)
+- [Work-form wording and explicit action-permission mapping](WORK-FORM-BLUEPRINT-ACTION-REQUEST.md)
+- [Request 1: caller UAMI and A2A role](WORK-REQUEST-1-CALLER-UAMI-A2A.md)
+- [Request 2: agent blueprint and MCP role](WORK-REQUEST-2-AGENT-BLUEPRINT-MCP.md)
 - [Implementation playbook and exact home-lab script sequence](WORK-IDENTITY-IMPLEMENTATION-PLAYBOOK.md)
 - [Native Azure CLI and Graph request examples](WORK-NATIVE-GRAPH-CLI-EXAMPLES.md)
 - [Sanitized disposable AKS end-to-end evidence](AKS-FULL-E2E-EVIDENCE-2026-09-25.md)
