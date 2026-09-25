@@ -29,4 +29,4 @@ spec:
       action: Allow
       policy:
         matchExpressions:
-          - '"team-event.a2a.invoke" in jwt.roles'
+          - '"team-event.a2a.invoke" in jwt.roles && jwt.oid == "{{TEAM_EVENT_CALLER_AGENT_OBJECT_ID}}"'

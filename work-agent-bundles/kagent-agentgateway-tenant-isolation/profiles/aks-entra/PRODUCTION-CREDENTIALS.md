@@ -1,5 +1,7 @@
 # Agent ID in production: credentials and the sidecar
 
+> **2026-09-25 correction:** the 2026-09-23 UAMI-to-blueprint plan below is historical. A disposable AKS test proved direct ServiceAccount-to-blueprint federation and found that ServiceAccount → UAMI → blueprint fails with `AADSTS700231`. Use the [current AKS evidence](../../poc/azure-agent-id/AKS-FULL-E2E-EVIDENCE-2026-09-25.md) and [work identity ticket](../../poc/azure-agent-id/WORK-GITLAB-IDENTITY-TICKET.md) before any work-tenant implementation. The sidecar/custom-API and automatic token-refresh gaps remain open.
+
 What to use instead of a client secret, and what the Entra ID Auth SDK sidecar
 does and does not do. Everything below was tried on 2026-09-23 against a
 throwaway tenant; each row says whether it was proven, configured or only read
@@ -14,7 +16,8 @@ refuses the latter outright. So this is the one credential that matters.
 |---|---|---|
 | **Client secret** | **Proven**, and only for a lab | Microsoft's own guidance says not to use it in production |
 | **Certificate** | **Proven end to end** | Self-signed certificate on the blueprint, a hand-built RS256 client assertion, then the two-stage exchange. Produced an agent identity token with `roles`, no secret anywhere |
-| **Managed identity (UAMI)** | **Configured, not exercised** | The preferred option. A UAMI and the federated credential on the blueprint were created successfully; using it needs Azure-hosted compute to obtain the managed identity token, which a home lab has no way to produce |
+| **UAMI via AKS federation** | **Exercised; chained exchange failed** | AKS SA → UAMI succeeded, but its Entra-issued token → blueprint failed `AADSTS700231`. Do not use this as the work AKS blueprint credential chain. |
+| **Direct AKS ServiceAccount federation** | **Proven in disposable AKS** | Exact OIDC issuer/ServiceAccount subject trusted on blueprint; child Agent ID MCP and A2A token paths passed. Requires identity-owner approval and a dedicated blueprint or trusted broker boundary. |
 | Key Vault certificate | Read only | The sidecar's `KeyVault` source type |
 
 ### Certificate, proven
@@ -33,7 +36,7 @@ as `client_assertion` with
 `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`.
 Stage 2 is unchanged.
 
-### Managed identity, configured
+### Managed identity, historical configuration — not the AKS design
 
 ```sh
 az identity create -g <rg> -n <uami-name>          # note its principalId
@@ -45,11 +48,13 @@ az ad app federated-credential create --id "$BLUEPRINT_APP_ID" --parameters '{
 }'
 ```
 
-The blueprint then trusts that managed identity, and whatever runs as the UAMI
-obtains a managed identity token and presents it as the stage 1
-`client_assertion`. On AKS that is workload identity on the Pod running the
-sidecar. This is the target for work; it was configured here but never used,
-because obtaining a managed identity token requires Azure-hosted compute.
+The earlier proposal was for the blueprint to trust that managed identity.
+On the 2026-09-25 AKS pilot, the ServiceAccount obtained a UAMI token, but
+presenting that Entra-issued token as the blueprint assertion failed with
+`AADSTS700231`. Microsoft states that [Entra-issued tokens cannot be used as
+federated assertions](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation).
+The UAMI and its blueprint credential remain identity-only PoC artifacts, not
+proof of a working AKS chain.
 
 ## The sidecar: what it is and how to run it
 
@@ -173,68 +178,41 @@ removes the credential from the agent altogether.
 
 ## Replicating this at work
 
-### The credential chain, which has two federated credentials
-
-With a managed identity there are **two** trust links, and it is easy to
-configure one and expect the other to work:
+### The AKS credential chain that passed
 
 ```
-AKS Pod (service account)
-  │  federated credential #1, on the UAMI:
-  │    issuer  = the cluster's OIDC issuer URL
-  │    subject = system:serviceaccount:<ns>:<sa>
+AKS Pod / dedicated ServiceAccount
+  │  FIC on the BLUEPRINT app:
+  │    issuer   = the cluster's OIDC issuer URL
+  │    subject  = system:serviceaccount:{{NAMESPACE}}:{{SERVICE_ACCOUNT}}
+  │    audience = api://AzureADTokenExchange
   ▼
-User-assigned managed identity
-  │  federated credential #2, on the BLUEPRINT app:
-  │    issuer  = https://login.microsoftonline.com/<tenant>/v2.0
-  │    subject = <UAMI principalId>
-  │    audience= api://AzureADTokenExchange
-  ▼
-Blueprint  ──fmi_path──▶  Agent identity  ──▶  token the gateway accepts
+Dedicated blueprint ──fmi_path──▶ child Agent ID ──app role──▶ protected API
 ```
 
-Only #2 was created here. #1 is ordinary AKS workload identity and was not
-built, because a home lab has no AKS.
+The ServiceAccount annotation uses the **blueprint app client ID**, and the Pod
+has `azure.workload.identity/use: "true"`. The runtime, approved caller, and
+rogue pilot used separate blueprints and exact subjects. The UAMI middle hop
+is not part of this working chain. A UAMI may still serve unrelated Azure
+resource access, but it should not receive the Agent ID API role.
 
-### The UAMI needs no Azure RBAC
+### Current proof and open gates
 
-This catches people out: the managed identity is **not** granted permissions on
-the API. It only needs to be trusted by the blueprint (#2 above). Authorization
-comes from the **app role on the agent identity**, which is what the gateway
-policy matches. Do not assign the UAMI a role on the API and expect it to
-change the token.
-
-### AKS prerequisites for the Pod
-
-Not tested here; standard workload identity setup:
-
-- The cluster has the OIDC issuer and workload identity enabled; note the
-  issuer URL.
-- The agent's service account is annotated
-  `azure.workload.identity/client-id: <uami-clientId>`.
-- The Pod carries the label `azure.workload.identity/use: "true"`.
-- Federated credential #1 exists on the UAMI for that exact
-  `system:serviceaccount:<ns>:<sa>` subject.
-
-### Checklist
-
-| Item | Proven here? |
+| Item | 2026-09-25 AKS result |
 |---|---|
-| Tenant can create blueprints and agent identities through Graph beta | **Yes**, in a tenant with no licences at all |
-| Roles on the agent identity drive the gateway decision | **Yes** |
-| Two-stage `fmi_path` exchange with a **client secret** | **Yes** |
-| Same exchange with a **certificate** | **Yes** |
-| Same exchange with a **managed identity** assertion | **No** — needs Azure compute |
-| Federated credential #2 (blueprint trusts UAMI) | Created, never used |
-| Federated credential #1 (UAMI trusts the cluster service account) | **No** |
-| Sidecar returns an **agent identity** token for a custom API | **No** — see the caveat above |
-| Gateway policy accepts an agent identity token, unchanged | **Yes**, twice, including through kagent on a live cluster |
+| Exact ServiceAccount → blueprint federation and child `fmi_path` exchange | **PASS** for runtime, approved caller, and rogue identities |
+| Separate MCP and A2A API app roles | **PASS**; assigned to child Agent ID principals |
+| Gateway checks issuer, audience, role **and exact child `oid`** | **PASS after correction**; one combined CEL expression per route |
+| Same-role wrong-child, missing-role, missing/wrong-audience denial | **PASS**; see the [evidence receipt](../../poc/azure-agent-id/AKS-FULL-E2E-EVIDENCE-2026-09-25.md) |
+| Direct rogue-to-Agent and rogue-to-MCP bypass | **BLOCKED** by Cilium NetworkPolicy |
+| Manual token replacement and Agent Pod restart | **PASS**; not automatic refresh |
+| Automatic refresh, expiry behavior, sidecar custom-API token | **NOT PROVEN** |
+| Work-tenant AACM request and approval process | **NOT EXERCISED** |
 
-So with the image mirrored and the identities in place, the work agent can
-replicate everything proven above. The two open links are AKS workload identity
-for the Pod and the sidecar's behaviour on a custom API. Neither blocks a
-demonstration: the certificate-backed exchange is proven and needs no Azure
-compute at all.
+Do not reuse the earlier UAMI renderer or identity-only blueprint FIC as a
+work-cluster manifest. The work identity and AKS owners must approve the direct
+federation and child credential boundary, while the platform team supplies a
+production token broker/refresher and GitOps delivery.
 
 ### Permissions to do it
 
@@ -250,9 +228,13 @@ anything the SPN cannot do to an authorized identity owner.
 
 ## Order for the work cluster
 
-1. Blueprint credential: **UAMI plus federated credential**, with the
-   certificate path as the fallback. Never a secret.
-2. Keep the two-stage `fmi_path` exchange, which is proven, until the sidecar
-   is shown to return agent identity tokens for a custom API.
-3. Decide the kagent credential question above before designing onboarding
-   automation around it.
+1. Ask infra ID/AACM to approve a dedicated blueprint boundary, child Agent
+   ID, protected API app roles, and direct AKS ServiceAccount-to-blueprint
+   federation. Use the [copy-ready GitLab ticket](../../poc/azure-agent-id/WORK-GITLAB-IDENTITY-TICKET.md).
+2. Keep the proven two-stage `fmi_path` exchange, with a reviewed credential
+   broker or refresher. Do not embed a client secret or long-lived token in
+   the agent. Do not assume the Microsoft sidecar returns the child Agent ID
+   for this custom API until that is demonstrated.
+3. Bind role and exact child identity in **one** gateway CEL expression; test
+   same-role wrong-child denial, direct network bypass, token expiry, and
+   rollover before promoting a workload.

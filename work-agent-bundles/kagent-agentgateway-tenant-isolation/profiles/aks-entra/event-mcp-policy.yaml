@@ -37,7 +37,7 @@ spec:
       action: Allow
       policy:
         matchExpressions:
-          - '"team-event.mcp.use" in jwt.roles'
+          - '"team-event.mcp.use" in jwt.roles && jwt.oid == "{{TEAM_EVENT_RUNTIME_AGENT_OBJECT_ID}}"'
   backend:
     mcp:
       authorization:

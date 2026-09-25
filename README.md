@@ -84,6 +84,7 @@ examples/           Quickstart and sample payloads
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
 | Use the Kagent v2 work-agent bundle catalogue | [`work-agent-bundles/`](work-agent-bundles/README.md) |
+| Share the tested AKS + Entra Agent ID isolation path and work identity request | [AKS walkthrough](work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/aks-agentid-e2e-walkthrough.html) · [GitLab ticket draft](work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-GITLAB-IDENTITY-TICKET.md) |
 | Share the Agent Substrate air-gap roadmap question | [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](work-agent-bundles/agent-substrate/RUNSC-AIRGAP-ROADMAP-QUESTION.md) |
 | Explain the Kagent platform value story to stakeholders | [`WORK-KAGENT-VALUE-STORY-ONE-PAGER.md`](WORK-KAGENT-VALUE-STORY-ONE-PAGER.md) |
 | Explain why kagent replaced HolmesGPT for default triage | [`HOLMES-TO-KAGENT-DECISION-FRONT-SHEET.md`](HOLMES-TO-KAGENT-DECISION-FRONT-SHEET.md) |

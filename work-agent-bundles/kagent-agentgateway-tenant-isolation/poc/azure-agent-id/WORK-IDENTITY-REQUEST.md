@@ -1,5 +1,7 @@
 # Copyable work request: Agent ID blueprint and MCP API registration
 
+For the current, copy-ready GitLab ticket covering manual onboarding and the 2026-09-25 AKS federation finding, use [WORK-GITLAB-IDENTITY-TICKET.md](WORK-GITLAB-IDENTITY-TICKET.md). The older two-hop trust proposal below is superseded.
+
 This is a **ticket template**, not a submitted ticket or a confirmed AACM API payload. Replace the public example names with approved work names and keep actual tenant, subscription, application, and identity IDs in the private work system.
 
 ## Copy into the identity/AACM team's intake
@@ -17,7 +19,7 @@ Please also tell us the approved AACM request and owner for creating a **child A
 
 Please return, in the approved private work record: the blueprint application ID and object ID; blueprint principal object ID; MCP API application ID, object ID, and service-principal object ID; the app-role ID and value; owners and sponsors; and the AACM intake contract or request reference. Confirm whether these objects were created or pre-existing, and who owns later revocation.
 
-For a later, separately reviewed AKS step, we intend to bind a dedicated ServiceAccount to a user-assigned managed identity and federate that UAMI to the blueprint. Please identify who owns the two trust links: **AKS ServiceAccount → UAMI** and **UAMI → blueprint**. Do not create an AKS cluster or deploy a workload as part of this request.
+For a later, separately reviewed AKS step, please identify the owner of **direct AKS ServiceAccount → blueprint** federation. The proposed ServiceAccount → UAMI → blueprint chain failed in the 2026-09-25 home-lab AKS pilot with `AADSTS700231`; see the current GitLab ticket above. Do not create an AKS cluster or deploy a workload as part of this work request.
 
 ## How to interpret this request
 
