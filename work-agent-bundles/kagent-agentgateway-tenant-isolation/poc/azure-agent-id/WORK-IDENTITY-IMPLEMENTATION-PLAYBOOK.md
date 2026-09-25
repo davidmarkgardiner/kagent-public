@@ -2,6 +2,8 @@
 
 This is an implementation reference for the [copy-ready work GitLab ticket](WORK-GITLAB-IDENTITY-TICKET.md), not an approved AACM schema or authority to change the work tenant. Keep real object IDs, OIDC issuer URLs, internal contacts, credentials, and token values in the private work ticket/identity record only. The home-lab pilot was not created from an AACM template. We wrote Python scripts that used the signed-in Azure CLI's Microsoft Graph access, then checked every created object by reading it back. The later AKS pilot added **direct** ServiceAccount-to-blueprint federation and proved the token and gateway path; no checked-in script currently provisions that successful AKS federation or replays the whole AKS pilot.
 
+For an identity-team handoff without Python, use the [native Azure CLI and Graph examples](WORK-NATIVE-GRAPH-CLI-EXAMPLES.md). They are review templates, not tested work-tenant automation.
+
 ## Exact home-lab implementation reference
 
 The identity-only run used these commands from this directory, with an interactive user signed into the intended **home-lab** tenant and a private receipt directory outside this public repo:

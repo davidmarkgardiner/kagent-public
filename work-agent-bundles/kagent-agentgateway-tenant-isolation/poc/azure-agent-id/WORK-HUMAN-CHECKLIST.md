@@ -15,6 +15,10 @@ Copy this message and replace the contact name:
 >
 > https://github.com/davidmarkgardiner/kagent-public/blob/main/work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-GITLAB-IDENTITY-TICKET.md
 >
+> Native Azure CLI and Graph examples, if useful to your team:
+>
+> https://github.com/davidmarkgardiner/kagent-public/blob/main/work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-NATIVE-GRAPH-CLI-EXAMPLES.md
+>
 > Could we review the request together and agree what information you need from us?
 
 ## Supply the exact AKS details in the private ticket

@@ -12,6 +12,8 @@ Copy the section below into the **private work GitLab project** and replace the 
 
 **How we built the home-lab pilot / proposed work procedure:** https://github.com/davidmarkgardiner/kagent-public/blob/main/work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-IDENTITY-IMPLEMENTATION-PLAYBOOK.md
 
+**Native Azure CLI / Graph request examples (no Python):** https://github.com/davidmarkgardiner/kagent-public/blob/main/work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-NATIVE-GRAPH-CLI-EXAMPLES.md
+
 The PoC used custom Python/Graph code, **not** an AACM template. Please review its ordered steps and tell us which you already support through AACM, which you would perform manually, and what approved request/response contract we can automate. Do not run its historical UAMI-federation script unchanged in the work tenant.
 
 **Pilot workload:** namespace `{{NAMESPACE}}`, agent `{{AGENT_NAME}}`
@@ -41,6 +43,7 @@ For repeatable manual onboarding, could we agree a request/approval/read-back ch
 
 - [Identity PoC and its proof boundaries](README.md)
 - [Implementation playbook and exact home-lab script sequence](WORK-IDENTITY-IMPLEMENTATION-PLAYBOOK.md)
+- [Native Azure CLI and Graph request examples](WORK-NATIVE-GRAPH-CLI-EXAMPLES.md)
 - [Sanitized disposable AKS end-to-end evidence](AKS-FULL-E2E-EVIDENCE-2026-09-25.md)
 - [Current AKS/Entra architecture walkthrough](aks-agentid-e2e-walkthrough.html)
 - [Work-agent AKS/Entra handoff](../../profiles/aks-entra/WORK-AGENT-START-HERE.md)
