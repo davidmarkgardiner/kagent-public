@@ -288,15 +288,25 @@ class Board:
         marker = f"<!-- sdlc-rig-turn:v1:{iid}:{stage}:"
         recent = [note for note in notes if marker in note.get("body", "")]
         if recent:
-            latest = max(datetime.fromisoformat(note["created_at"].replace("Z", "+00:00"))
-                         for note in recent)
-            if datetime.now(timezone.utc) - latest < timedelta(minutes=self.replay_hold_min):
+            latest = max(recent, key=lambda note: (
+                datetime.fromisoformat(note["created_at"].replace("Z", "+00:00")),
+                note.get("id", 0)))
+            turn_id = latest["body"].split(marker, 1)[1].split(" -->", 1)[0]
+            finished = f"<!-- sdlc-rig-turn-finished:v1:{iid}:{stage}:{turn_id} -->"
+            started_at = datetime.fromisoformat(latest["created_at"].replace("Z", "+00:00"))
+            if (not any(finished in note.get("body", "") for note in notes)
+                    and datetime.now(timezone.utc) - started_at < timedelta(minutes=self.replay_hold_min)):
                 raise TurnCoolingDown(f"PM {stage} turn is inside its replay hold")
+        turn_id = uuid.uuid4().hex
         self.gitlab.request("POST", f"/issues/{iid}/notes", {
-            "body": marker + uuid.uuid4().hex + f" -->\nPM turn started; retry held for {self.replay_hold_min} minutes."
+            "body": marker + turn_id + f" -->\nPM turn started; retry held for {self.replay_hold_min} minutes if it does not finish."
         })
         prompt = f"BOARD_STAGE={stage}\nParent issue IID: {iid}.\n{details}\n"
-        return a2a(self.pm_url, stage, prompt, self.timeout)
+        reply = a2a(self.pm_url, stage, prompt, self.timeout)
+        self.gitlab.request("POST", f"/issues/{iid}/notes", {
+            "body": f"<!-- sdlc-rig-turn-finished:v1:{iid}:{stage}:{turn_id} -->\nPM turn returned successfully."
+        })
+        return reply
 
     def attempt(self, iid, stage, cause, expected):
         notes = self.gitlab.bot_notes("issues", iid)

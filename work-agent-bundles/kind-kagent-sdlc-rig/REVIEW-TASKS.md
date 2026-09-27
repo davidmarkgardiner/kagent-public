@@ -42,8 +42,9 @@ still required before a workplace canary is called successful.
   The A2A timeout of 150s (`30-board-cronjob.yaml:54`) is shorter than the model timeout of 300s (`00-foundation.yaml:31`) plus nested worker calls. The retry at `:308-313`/`:356-364` can create duplicate children, which wedges the issue at `:145-146`, or run builders concurrently.
   First: check whether kagent continues a turn after the client disconnects.
   Interim mitigation: a bot-authored start note before every PM turn and a
-  configurable replay hold (minimum/default 25 minutes). This is not proof that
-  a timed-out turn has stopped. Observe one timeout in the supervised canary;
+  matching finish note after successful A2A completion. Only unfinished turns
+  face the configurable replay hold (minimum/default 25 minutes). This is not
+  proof that a timed-out turn has stopped. Observe one timeout in the supervised canary;
   durable task IDs and `tasks/get` are required before unattended use.
 
 - [x] **A6. Only trust markers written by the bot.** [R] (blocker if the project is public or has other members)
@@ -111,5 +112,6 @@ still required before a workplace canary is called successful.
 - [ ] A forged PASS note is ignored.
 - [ ] A human relabel to `agent:build` or `agent:changes` blocks; retry through `agent:plan` only after removing the old branch.
 - [ ] Deliberately time out one PM turn, observe when its original task finishes, and check that no replay overlaps it.
+- [ ] Confirm a completed REWORK turn can be called again without waiting for the replay hold.
 - [ ] Two scheduled polls observed, including one idle poll; the Lease is clear afterwards.
 - [ ] Evidence recorded in `evidence/RUN-<date>.md`.

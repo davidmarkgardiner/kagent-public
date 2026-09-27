@@ -308,6 +308,30 @@ class IdentityAndReplayTests(unittest.TestCase):
         self.assertEqual(sum("sdlc-rig-turn:v1:40:PLAN:" in note["body"]
                              for note in gitlab.issue_notes), 2)
 
+    def test_completed_pm_turn_can_retry_same_stage_immediately(self):
+        gitlab = FakeGitLab()
+        board = Board(gitlab, "http://unused")
+        with patch("board_poller.a2a", return_value="PM reply") as call:
+            self.assertEqual(board.call_pm("REWORK", 40, "details"), "PM reply")
+            self.assertEqual(board.call_pm("REWORK", 40, "details"), "PM reply")
+        self.assertEqual(call.call_count, 2)
+        starts = [note["body"] for note in gitlab.issue_notes
+                  if "sdlc-rig-turn:v1:40:REWORK:" in note["body"]]
+        finishes = [note["body"] for note in gitlab.issue_notes
+                    if "sdlc-rig-turn-finished:v1:40:REWORK:" in note["body"]]
+        self.assertEqual(len(starts), len(finishes))
+        self.assertEqual(len(starts), 2)
+
+    def test_failed_pm_turn_keeps_replay_hold(self):
+        gitlab = FakeGitLab()
+        board = Board(gitlab, "http://unused")
+        with patch("board_poller.a2a", side_effect=RuntimeError("disconnected")) as call:
+            with self.assertRaisesRegex(RuntimeError, "disconnected"):
+                board.call_pm("BUILD", 40, "details")
+            with self.assertRaises(TurnCoolingDown):
+                board.call_pm("BUILD", 40, "details")
+        self.assertEqual(call.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

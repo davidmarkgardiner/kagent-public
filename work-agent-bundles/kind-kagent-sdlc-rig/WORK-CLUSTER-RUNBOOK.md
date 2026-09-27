@@ -49,7 +49,8 @@ were locally checked but have not had a workplace functional run.
   credentials out of the profile and provide target-specific `no_proxy` hosts.
 - `kagent_namespace` names the namespace running the controller that discovers
   RemoteMCPServer tools; it defaults to `kagent`. `pm_replay_hold_min` sets the
-  stage retry hold (minimum/default 25 minutes). The hold is a mitigation until
+  stage retry hold (minimum/default 25 minutes) when a turn has no completion
+  note. A completed turn can retry immediately. The hold is a mitigation until
   target timeout behaviour is observed, not proof that a timed-out task stopped.
 
 ## 1. Inspect and render offline
@@ -191,6 +192,14 @@ Observe at least two scheduled polls, including an idle poll. To pause intake
 or investigate, set `suspend:true`; this does not stop an already running Job.
 Wait for active Jobs to finish. Record issue/MR/pipeline URLs, image digests,
 CRD/controller versions, pod logs, and actual resource usage as target evidence.
+
+Before replacing a GitLab credential, suspend intake and let active Jobs
+finish. Record the current `GET /user` ID without recording the token. GitLab
+project access tokens have their own bot identities; creating a separate token
+can make older notes, children, and label events fail the authorship checks.
+Prefer GitLab's Rotate action on the existing token, update the target Secret,
+then verify the new credential's `GET /user` ID matches before resuming.
+If the identity changes, drain or explicitly migrate in-flight issues first.
 
 ## Rollback and promotion
 
