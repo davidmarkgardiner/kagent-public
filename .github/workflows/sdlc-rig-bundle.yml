@@ -1,0 +1,32 @@
+name: SDLC rig bundle
+
+on:
+  pull_request:
+    paths:
+      - 'work-agent-bundles/kind-kagent-sdlc-rig/**'
+      - '.github/workflows/sdlc-rig-bundle.yml'
+  push:
+    paths:
+      - 'work-agent-bundles/kind-kagent-sdlc-rig/**'
+      - '.github/workflows/sdlc-rig-bundle.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned YAML parser
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install PyYAML==6.0.2
+      - name: Run board and renderer regression tests
+        run: .venv/bin/python -m unittest discover -s work-agent-bundles/kind-kagent-sdlc-rig -p 'test_*.py' -v
+      - name: Render suspended credential-free example
+        run: |
+          .venv/bin/python work-agent-bundles/kind-kagent-sdlc-rig/render-work-bundle.py \
+            --profile work-agent-bundles/kind-kagent-sdlc-rig/work-profile.example.json \
+            --output /tmp/sdlc-rig-example.yaml
