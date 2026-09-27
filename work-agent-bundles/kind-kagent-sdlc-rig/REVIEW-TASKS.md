@@ -94,6 +94,7 @@ still required before a workplace canary is called successful.
 - [ ] **B9. Keep other users' comments out of builder prompts.** Only include follow-up notes from the bot's user ID (`:345-349`).
 - [ ] **B10. Keep the queue under the paging limit.** Exclude `agent:accepted` and `agent:blocked` in the query at `:135`, so it stays below the 500-item limit at `:129`.
 - [ ] **B11. Check cluster admission policy.** [P] Confirm Pod Security and admission policy against the agent pods and the Namespace labels during the target dry-run.
+- [ ] **B12. Bound per-issue label event history.** `state_label_authored_by_bot()` uses the 500-item `pages()` limit. A long-running issue can exceed it and abort the whole poll until B1 is fixed. Read the latest relevant event with bounded pagination or block only that issue.
 
 ## C. Supervised canary run checklist
 
