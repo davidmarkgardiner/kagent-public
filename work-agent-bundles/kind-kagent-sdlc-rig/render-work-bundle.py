@@ -121,7 +121,7 @@ def client_network(pod, container, data):
 def render(data):
     manifests = []
     foundation = list(yaml.safe_load_all((ROOT / "00-foundation.yaml").read_text()))
-    foundation = [item for item in foundation if item["kind"] != "Secret"]
+    foundation = [item for item in foundation if item["kind"] not in {"Namespace", "Secret"}]
     model = next(item for item in foundation if item["kind"] == "ModelConfig")
     model["metadata"]["name"] = "sdlc-work-model"
     model["spec"]["model"] = data["model_name"]
@@ -170,6 +170,9 @@ def render(data):
                                     "values": ["sdlc-pm", "sdlc-builder", "sdlc-tester", "sdlc-reviewer"]}
                                ]}}, {"namespaceSelector": {"matchLabels": {
                                    "kubernetes.io/metadata.name": data.get("kagent_namespace", "kagent")
+                               }}, "podSelector": {"matchLabels": {
+                                   "app.kubernetes.io/name": "kagent",
+                                   "app.kubernetes.io/component": "controller"
                                }}}], "ports": [{"protocol": "TCP", "port": 8080}]}]}})
 
     manifests.append({"apiVersion": "v1", "kind": "ConfigMap",

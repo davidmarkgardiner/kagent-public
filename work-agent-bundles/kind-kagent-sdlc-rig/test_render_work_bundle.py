@@ -17,7 +17,8 @@ class WorkRenderTests(unittest.TestCase):
         profile = renderer.profile_from(ROOT / "work-profile.example.json")
         objects = renderer.render(profile)
         self.assertNotIn("Secret", [item["kind"] for item in objects])
-        self.assertEqual(len(objects), 19)
+        self.assertNotIn("Namespace", [item["kind"] for item in objects])
+        self.assertEqual(len(objects), 18)
         cron = next(item for item in objects if item["kind"] == "CronJob")
         self.assertTrue(cron["spec"]["suspend"])
         pod = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]
@@ -38,7 +39,10 @@ class WorkRenderTests(unittest.TestCase):
                          {"sdlc-pm", "sdlc-builder", "sdlc-tester", "sdlc-reviewer"})
         self.assertEqual(policy["spec"]["ingress"][0]["from"][1],
                          {"namespaceSelector": {"matchLabels": {
-                             "kubernetes.io/metadata.name": "kagent"}}})
+                             "kubernetes.io/metadata.name": "kagent"}},
+                          "podSelector": {"matchLabels": {
+                              "app.kubernetes.io/name": "kagent",
+                              "app.kubernetes.io/component": "controller"}}})
         pm = next(item for item in objects if item["kind"] == "Agent"
                   and item["metadata"]["name"] == "sdlc-pm")
         tool_names = [name for tool in pm["spec"]["declarative"]["tools"]

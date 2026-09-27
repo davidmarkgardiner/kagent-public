@@ -72,8 +72,8 @@ The example uses `gitlab.example.invalid` and cannot perform a live GitLab
 turn. Inspect the rendered YAML for the exact project path, GitLab API URL,
 model route, allowed paths, namespace, Secrets, image, schedule, and
 `CronJob.spec.suspend: true`. The renderer rejects unpinned images and unsafe
-file paths. It emits 19 resources, including MCP ingress NetworkPolicy, and no
-Secret object.
+file paths. It emits 18 resources, including MCP ingress NetworkPolicy, and no
+Namespace or Secret object. The target process owns namespace creation.
 
 ## 2. Target preflight
 
@@ -98,9 +98,10 @@ kagent A2A, and Kubernetes API. For private GitLab, arrange trusted CA roots
 for the MCP and poller via the optional combined CA bundle. Confirm the CNI
 enforces NetworkPolicy and that agent pods carry the expected
 `app.kubernetes.io/name` labels before relying on MCP ingress isolation.
-The policy also permits all pods in `kagent_namespace` to reach the MCP so
-the controller can list its tools. Confirm this namespace is dedicated to
-trusted kagent components.
+The policy also permits the controller pod in `kagent_namespace` to reach the
+MCP so it can list tools. Confirm the controller pod has
+`app.kubernetes.io/name=kagent` and `app.kubernetes.io/component=controller`;
+the local v0.7.13 lab pod has both labels, but the target must be checked.
 
 Check the target's Secret provisioning path and RBAC policy. The poller's
 ServiceAccount gets only `get` and `update` for its named Lease. It needs an

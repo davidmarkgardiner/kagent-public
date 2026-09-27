@@ -5,12 +5,13 @@ Source: independent review of commit `02ff4daad92905585f6ebf933934242e047d1731`
 credentials, no deploy. Line numbers refer to that commit, relative to this folder.
 
 Legend: **[R]** reproduced offline with a fake GitLab · **[P]** plausible, not reproduced.
-Section A now records source fixes on this branch. The original repro scripts
+Section A now records source fixes on this branch. A5 has a mitigation and
+remains open for timeout observation during the supervised canary. The original repro scripts
 remain under `review-repros/` as historical observations; the new assertions
 are in `test_board_poller.py` and `test_render_work_bundle.py`. Section C is
 still required before a workplace canary is called successful.
 
-## A. Before the single sandbox canary
+## A. Source fixes and mitigations for the single sandbox canary
 
 - [x] **A1. Stop the PM from changing board labels.**
   `10-a2a-agents.yaml:125` gives the PM `gitlab_update_issue`, which replaces all labels and accepts `state_event` (`vendor/gitlab-delivery-mcp.yaml:91-105`). The prompt at `10-a2a-agents.yaml:91` tells it to label `agent:accepted`.
@@ -56,7 +57,9 @@ still required before a workplace canary is called successful.
   active state, require the latest add event for that state label to be written
   by the bot; a human relabel moves to blocked before old evidence is read.
   Done in source: tests cover direct human relabels to build and changes, plus
-  stale branch in plan. Live GitLab label event behaviour awaits the canary.
+  stale branch in plan. Read-only checks of two existing lab issues confirmed
+  that GitLab emits the expected label add/remove events and user IDs. A live
+  manual relabel attempt against the updated poller remains a canary check.
 
 - [x] **A8. Make the work-cluster install runnable.**
   - [x] `preflight.sh`: gateway/controller deployments and rendered ModelConfig are configurable by environment.
@@ -66,8 +69,9 @@ still required before a workplace canary is called successful.
 - [x] **A9. Restrict access to the GitLab MCP on a shared cluster.** (not needed on kind)
   The MCP has no authentication (`vendor/gitlab-delivery-mcp.yaml:185-209`), and the rendered bundle has no NetworkPolicy.
   Fix: a NetworkPolicy lets named `sdlc-rig` agent pods and the kagent controller
-  namespace reach `sdlc-gitlab-mcp:8080` for tool discovery. The controller
-  namespace is a profile key. Renderer tests cover both peers. Target CNI
+  pod reach `sdlc-gitlab-mcp:8080` for tool discovery. The controller
+  namespace is a profile key; its pod selector uses chart labels observed on
+  the lab's v0.7.13 controller. Renderer tests cover both peers. Target CNI
   enforcement, agent pod labels, controller tool discovery, and MCP reachability
   still need a live check before enabling polling.
 
@@ -90,10 +94,12 @@ still required before a workplace canary is called successful.
 - [ ] **B10. Keep the queue under the paging limit.** Exclude `agent:accepted` and `agent:blocked` in the query at `:135`, so it stays below the 500-item limit at `:129`.
 - [ ] **B11. Check cluster admission policy.** [P] Confirm Pod Security and admission policy against the agent pods and the Namespace labels during the target dry-run.
 
-## C. Canary run checklist (after A is done)
+## C. Supervised canary run checklist
 
 - [ ] Fixed branch rendered; `python3 -m unittest discover -s . -p 'test_*.py'` passes.
 - [ ] Human-owned `.gitlab-ci.yml` on target `main` passes before the first issue.
+  The existing home-lab sandbox `main` had only `README.md` at the read-only
+  check on 2026-09-27; it does not yet meet this prerequisite.
 - [ ] Inspect the CI job: it calls `node --test tests/` directly and does not execute an editable npm script.
 - [ ] Target NetworkPolicy is enforced; allowed agent pods can reach MCP and an unrelated pod cannot.
 - [ ] With policy applied, the kagent controller can discover GitLab MCP tools and RemoteMCPServer reports Accepted with tools listed.
