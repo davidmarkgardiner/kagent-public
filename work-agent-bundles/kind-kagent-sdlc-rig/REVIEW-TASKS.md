@@ -44,7 +44,10 @@ still required before a workplace canary is called successful.
   Interim mitigation: a bot-authored start note before every PM turn and a
   matching finish note after successful A2A completion. Only unfinished turns
   face the configurable replay hold (minimum/default 25 minutes). This is not
-  proof that a timed-out turn has stopped. Observe one timeout in the supervised canary;
+  proof that a timed-out turn has stopped. One live timeout showed the PM
+  continued for about 15 seconds after the client disconnected, while an
+  immediate poll reused its single child without replay. This does not bound
+  every turn's lifetime; see `evidence/RUN-2026-09-27.md`.
   durable task IDs and `tasks/get` are required before unattended use.
 
 - [x] **A6. Only trust markers written by the bot.** [R] (blocker if the project is public or has other members)
@@ -60,7 +63,8 @@ still required before a workplace canary is called successful.
   Done in source: tests cover direct human relabels to build and changes, plus
   stale branch in plan. Read-only checks of two existing lab issues confirmed
   that GitLab emits the expected label add/remove events and user IDs. A live
-  manual relabel attempt against the updated poller remains a canary check.
+  A live direct human `agent:build` add was blocked by the updated poller;
+  see `evidence/RUN-2026-09-27.md`.
 
 - [x] **A8. Make the work-cluster install runnable.**
   - [x] `preflight.sh`: gateway/controller deployments and rendered ModelConfig are configurable by environment.
@@ -74,7 +78,9 @@ still required before a workplace canary is called successful.
   namespace is a profile key; its pod selector uses chart labels observed on
   the lab's v0.7.13 controller. Renderer tests cover both peers. Target CNI
   enforcement, agent pod labels, controller tool discovery, and MCP reachability
-  still need a live check before enabling polling.
+  passed a home-lab live check with an allowed PM route, controller tool
+  discovery, and an unrelated pod denied; see `evidence/RUN-2026-09-27.md`.
+  Repeat this check on the workplace target.
 
 - [x] **A10. Add regression tests** for A2, A3, A6 and A7 in `test_board_poller.py`, based on the offline repro scripts.
 
@@ -100,8 +106,8 @@ still required before a workplace canary is called successful.
 
 - [ ] Fixed branch rendered; `python3 -m unittest discover -s . -p 'test_*.py'` passes.
 - [ ] Human-owned `.gitlab-ci.yml` on target `main` passes before the first issue.
-  The existing home-lab sandbox `main` had only `README.md` at the read-only
-  check on 2026-09-27; it does not yet meet this prerequisite.
+  The home-lab sandbox gained a human-owned CI file and passed its main
+  pipeline on 2026-09-27; the workplace target needs its own check.
 - [ ] Inspect the CI job: it calls `node --test tests/` directly and does not execute an editable npm script.
 - [ ] Target NetworkPolicy is enforced; allowed agent pods can reach MCP and an unrelated pod cannot.
 - [ ] With policy applied, the kagent controller can discover GitLab MCP tools and RemoteMCPServer reports Accepted with tools listed.
