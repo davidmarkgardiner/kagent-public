@@ -21,7 +21,10 @@ were locally checked but have not had a workplace functional run.
   version change needs a fresh canary.
 - One **sandbox** GitLab project, a target branch, and 1–12 named files. A
   human must commit and verify `.gitlab-ci.yml` on the target branch before
-  intake; the agent file profile and candidate diff checker reject CI changes. The
+  intake. For this Node canary, its test job must run `node --test tests/`
+  directly, without `npm test` or another script from builder-editable
+  `package.json`. Inspect that command on the target branch before intake.
+  The agent file profile and candidate diff checker reject CI changes. The
   project token belongs in a namespace Secret named `gitlab-project-token`,
   key `token`, scoped to that project with only the access the MCP calls need.
   The server exposes issue, branch, file, pipeline, draft MR, and note calls.
@@ -44,6 +47,10 @@ were locally checked but have not had a workplace functional run.
   outbound HTTPS calls. The renderer always bypasses the proxy for cluster DNS
   names; the poller's Kubernetes API call bypasses it directly. Keep proxy
   credentials out of the profile and provide target-specific `no_proxy` hosts.
+- `kagent_namespace` names the namespace running the controller that discovers
+  RemoteMCPServer tools; it defaults to `kagent`. `pm_replay_hold_min` sets the
+  stage retry hold (minimum/default 25 minutes). The hold is a mitigation until
+  target timeout behaviour is observed, not proof that a timed-out task stopped.
 
 ## 1. Inspect and render offline
 
@@ -91,6 +98,10 @@ kagent A2A, and Kubernetes API. For private GitLab, arrange trusted CA roots
 for the MCP and poller via the optional combined CA bundle. Confirm the CNI
 enforces NetworkPolicy and that agent pods carry the expected
 `app.kubernetes.io/name` labels before relying on MCP ingress isolation.
+The policy also permits all pods in `kagent_namespace` to reach the MCP so
+the controller can list its tools. Confirm this namespace is dedicated to
+trusted kagent components.
+
 Check the target's Secret provisioning path and RBAC policy. The poller's
 ServiceAccount gets only `get` and `update` for its named Lease. It needs an
 in-pod token to use that Lease; the other pods do not need a Kubernetes token.
@@ -116,6 +127,11 @@ kubectl --context "$KUBE_CONTEXT" -n sdlc-rig auth can-i get lease/sdlc-board-po
 kubectl --context "$KUBE_CONTEXT" -n sdlc-rig auth can-i update lease/sdlc-board-poller \
   --as=system:serviceaccount:sdlc-rig:sdlc-board-poller
 ```
+
+With the NetworkPolicy applied, inspect the RemoteMCPServer status for
+`Accepted` and discovered GitLab tools. Check controller logs for tool-list
+errors, and confirm a real PM turn can call a GitLab MCP tool. A kind default
+CNI may not enforce the policy, so it cannot prove this ingress path.
 
 Pod Ready is only a readiness check. Invoke the PM and echo worker with a
 unique nonce, and verify the PM returns the same nonce through its delegated
@@ -147,13 +163,21 @@ held Lease as routine recovery. The holder timeout exceeds the Job's
 210-second active deadline. Kubernetes Lease updates use resource-version
 conflict control; verify this behavior in the target environment.
 
+To retry a blocked or accepted issue, inspect the old artifacts, remove its
+old `agentic/sdlc-rig-<iid>` branch through the project owner process, then
+set `agent:plan`. Direct human relabels to build, test, review, or changes
+are blocked by the poller. In the supervised canary, time out one PM turn and
+record when the original task actually ends before relying on the replay hold.
+
 Acceptance requires independently checking exactly one child, a branch whose
 diff stays within allowed files, a successful pipeline on the branch's current
 SHA, an open **draft** MR on that SHA, a reviewer PASS note naming the parent
 and SHA, and parent `agent:accepted`. Verify an induced failed-CI or requested
 changes case routes to `agent:changes` and returns after repair. The poller
-does not merge. Use at least two narrow issues in an unattended scheduled soak
-before treating this as repeatable in the workplace.
+records tester PASS from the PM text reply; independently inspect the tester
+turn during the canary because that marker alone does not prove delegation.
+The poller does not merge. Use at least two narrow issues in an unattended
+scheduled soak before treating this as repeatable in the workplace.
 
 Only after the canary passes, enable the schedule:
 

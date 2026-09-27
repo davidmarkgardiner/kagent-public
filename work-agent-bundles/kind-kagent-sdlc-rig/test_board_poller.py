@@ -22,6 +22,7 @@ class FakeGitLab:
         self.mr_notes = []
         self.branch_head = SHA
         self.pipeline_status = "success"
+        self.state_author = 7
 
     def child(self, iid):
         return self.child_issue
@@ -32,7 +33,11 @@ class FakeGitLab:
     def transition(self, iid, expected, destination):
         self.transitions.append((iid, expected, destination))
         self.labels = ["sdlc-rig-poc", destination]
+        self.state_author = 7
         return True
+
+    def state_label_authored_by_bot(self, iid, state):
+        return self.state_author == 7
 
     def post_once(self, iid, key, detail):
         self.notes_posted.append((iid, key))
@@ -131,6 +136,28 @@ class BoardResumeTests(unittest.TestCase):
         self.assertTrue(board.process({"iid": 40, "labels": gitlab.labels}))
         self.assertEqual(gitlab.transitions, [(40, "agent:plan", "agent:blocked")])
 
+    def test_human_relabel_to_build_cannot_reuse_previous_evidence(self):
+        gitlab = FakeGitLab()
+        gitlab.labels = ["sdlc-rig-poc", "agent:build"]
+        gitlab.state_author = 99
+        gitlab.post_once(40, "tested-" + SHA[:12], "Previous tester receipt")
+        gitlab.merge_request = {"iid": 10, "draft": True, "sha": SHA}
+        gitlab.mr_notes = [{"id": 8, "author": {"id": 7},
+                            "body": f"<!-- sdlc-rig-review parent=40 sha={SHA} -->\nREVIEW_VERDICT: PASS"}]
+        board = Board(gitlab, "http://unused")
+        board.call_pm = lambda *args: self.fail("old evidence must not reach PM")
+        self.assertTrue(board.process({"iid": 40, "labels": gitlab.labels}))
+        self.assertEqual(gitlab.transitions, [(40, "agent:build", "agent:blocked")])
+
+    def test_human_relabel_to_changes_is_blocked_before_rework(self):
+        gitlab = FakeGitLab()
+        gitlab.labels = ["sdlc-rig-poc", "agent:changes"]
+        gitlab.state_author = 99
+        board = Board(gitlab, "http://unused")
+        board.call_pm = lambda *args: self.fail("rework must not run")
+        self.assertTrue(board.process({"iid": 40, "labels": gitlab.labels}))
+        self.assertEqual(gitlab.transitions, [(40, "agent:changes", "agent:blocked")])
+
     def test_three_distinct_failed_ci_commits_block(self):
         gitlab = FakeGitLab()
         gitlab.labels = ["sdlc-rig-poc", "agent:test"]
@@ -222,6 +249,21 @@ class DiffScopeTests(unittest.TestCase):
 
 
 class IdentityAndReplayTests(unittest.TestCase):
+    def test_latest_add_of_current_state_must_be_by_bot(self):
+        gitlab = object.__new__(GitLab)
+        gitlab.bot_user_id = lambda: 7
+        def events(path):
+            self.assertEqual(path, "/issues/40/resource_label_events")
+            return [
+                {"id": 4, "action": "add", "label": {"name": "agent:build"}, "user": {"id": 7}},
+                {"id": 8, "action": "add", "label": {"name": "agent:build"}, "user": {"id": 99}},
+                {"id": 9, "action": "add", "label": {"name": "unrelated"}, "user": {"id": 7}},
+            ]
+        gitlab.pages = events
+        self.assertFalse(gitlab.state_label_authored_by_bot(40, "agent:build"))
+        self.assertTrue(gitlab.state_label_authored_by_bot(40, "unrelated"))
+        self.assertFalse(gitlab.state_label_authored_by_bot(40, "agent:test"))
+
     def test_only_bot_authored_notes_count_as_evidence(self):
         gitlab = object.__new__(GitLab)
         gitlab.bot_user_id = lambda: 7
@@ -257,7 +299,7 @@ class IdentityAndReplayTests(unittest.TestCase):
         gitlab.issue_notes.append({
             "body": "<!-- sdlc-rig-turn:v1:40:PLAN:abc -->",
             "author": {"id": 7},
-            "created_at": (datetime.now(timezone.utc) - timedelta(minutes=11)).isoformat(),
+            "created_at": (datetime.now(timezone.utc) - timedelta(minutes=26)).isoformat(),
         })
         board = Board(gitlab, "http://unused")
         with patch("board_poller.a2a", return_value="CHILD_IID: 42") as call:

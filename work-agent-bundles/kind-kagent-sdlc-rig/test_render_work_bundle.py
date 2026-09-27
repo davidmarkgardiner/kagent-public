@@ -36,6 +36,9 @@ class WorkRenderTests(unittest.TestCase):
         self.assertEqual(set(policy["spec"]["ingress"][0]["from"][0]["podSelector"]
                              ["matchExpressions"][0]["values"]),
                          {"sdlc-pm", "sdlc-builder", "sdlc-tester", "sdlc-reviewer"})
+        self.assertEqual(policy["spec"]["ingress"][0]["from"][1],
+                         {"namespaceSelector": {"matchLabels": {
+                             "kubernetes.io/metadata.name": "kagent"}}})
         pm = next(item for item in objects if item["kind"] == "Agent"
                   and item["metadata"]["name"] == "sdlc-pm")
         tool_names = [name for tool in pm["spec"]["declarative"]["tools"]
@@ -59,6 +62,26 @@ class WorkRenderTests(unittest.TestCase):
         self.assertEqual(env["GITLAB_TARGET_BRANCH"], "develop")
         self.assertEqual(json.loads(env["GITLAB_ALLOWED_FILES"]), ["README.md"])
         self.assertEqual(env["BOARD_LEASE_REQUIRED"], "true")
+        self.assertEqual(env["PM_REPLAY_HOLD_MIN"], "25")
+
+    def test_custom_controller_namespace_and_replay_hold_reach_rendered_stack(self):
+        profile = renderer.profile_from(ROOT / "work-profile.example.json")
+        profile["kagent_namespace"] = "kagent-system"
+        profile["pm_replay_hold_min"] = 30
+        objects = renderer.render(profile)
+        policy = next(item for item in objects if item["kind"] == "NetworkPolicy")
+        self.assertEqual(policy["spec"]["ingress"][0]["from"][1]["namespaceSelector"]
+                         ["matchLabels"]["kubernetes.io/metadata.name"], "kagent-system")
+        cron = next(item for item in objects if item["kind"] == "CronJob")
+        env = {item["name"]: item.get("value") for item in cron["spec"]["jobTemplate"]
+               ["spec"]["template"]["spec"]["containers"][0]["env"]}
+        self.assertEqual(env["PM_REPLAY_HOLD_MIN"], "30")
+
+    def test_rejects_short_replay_hold(self):
+        profile = renderer.profile_from(ROOT / "work-profile.example.json")
+        profile["pm_replay_hold_min"] = 10
+        with self.assertRaisesRegex(ValueError, "pm_replay_hold_min"):
+            renderer.profile_from(self._write_profile(profile))
 
     def test_rejects_unsafe_file_profile(self):
         profile = renderer.profile_from(ROOT / "work-profile.example.json")

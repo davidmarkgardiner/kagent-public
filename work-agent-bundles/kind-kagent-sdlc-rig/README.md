@@ -72,7 +72,7 @@ kubectl --context "$KUBE_CONTEXT" -n sdlc-rig create configmap sdlc-board-poller
   --from-file=board_poller.py=board_poller.py --dry-run=client -o yaml |
   kubectl --context "$KUBE_CONTEXT" apply -f -
 kubectl --context "$KUBE_CONTEXT" apply -f 30-board-cronjob.yaml
-KUBE_CONTEXT="$KUBE_CONTEXT" bash preflight.sh
+KUBE_CONTEXT="$KUBE_CONTEXT" MODEL_CONFIG_NAME=kimi-gateway bash preflight.sh
 ```
 
 The existing gateway controller and proxy need to be scheduled onto a Ready

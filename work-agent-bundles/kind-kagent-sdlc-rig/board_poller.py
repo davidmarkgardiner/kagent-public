@@ -161,6 +161,16 @@ class GitLab:
         issues = self.pages("/issues?state=opened&labels=sdlc-rig-poc")
         return sorted(issues, key=lambda item: item["iid"])
 
+    def state_label_authored_by_bot(self, iid, state):
+        events = self.pages(f"/issues/{iid}/resource_label_events")
+        additions = [event for event in events
+                     if event.get("action") == "add"
+                     and (event.get("label") or {}).get("name") == state]
+        if not additions:
+            return False
+        latest = max(additions, key=lambda event: event["id"])
+        return (latest.get("user") or {}).get("id") == self.bot_user_id()
+
     def child(self, parent_iid):
         # Search is a hint; exact parent annotation is the identity check.
         query = urllib.parse.quote(f"Child of #{parent_iid}", safe="")
@@ -262,12 +272,16 @@ def a2a(pm_url, stage, prompt, timeout):
 
 
 class Board:
-    def __init__(self, gitlab, pm_url, timeout=150, target_branch="main", allowed_paths=ALLOWED_PATHS):
+    def __init__(self, gitlab, pm_url, timeout=150, target_branch="main", allowed_paths=ALLOWED_PATHS,
+                 replay_hold_min=25):
+        if replay_hold_min < 25:
+            raise ValueError("PM_REPLAY_HOLD_MIN must be at least 25")
         self.gitlab = gitlab
         self.pm_url = pm_url
         self.timeout = timeout
         self.target_branch = target_branch
         self.allowed_paths = set(allowed_paths)
+        self.replay_hold_min = replay_hold_min
 
     def call_pm(self, stage, iid, details):
         notes = self.gitlab.bot_notes("issues", iid)
@@ -276,10 +290,10 @@ class Board:
         if recent:
             latest = max(datetime.fromisoformat(note["created_at"].replace("Z", "+00:00"))
                          for note in recent)
-            if datetime.now(timezone.utc) - latest < timedelta(minutes=10):
-                raise TurnCoolingDown(f"PM {stage} turn is inside its ten-minute replay hold")
+            if datetime.now(timezone.utc) - latest < timedelta(minutes=self.replay_hold_min):
+                raise TurnCoolingDown(f"PM {stage} turn is inside its replay hold")
         self.gitlab.request("POST", f"/issues/{iid}/notes", {
-            "body": marker + uuid.uuid4().hex + " -->\nPM turn started; retry held for ten minutes."
+            "body": marker + uuid.uuid4().hex + f" -->\nPM turn started; retry held for {self.replay_hold_min} minutes."
         })
         prompt = f"BOARD_STAGE={stage}\nParent issue IID: {iid}.\n{details}\n"
         return a2a(self.pm_url, stage, prompt, self.timeout)
@@ -338,6 +352,9 @@ class Board:
         if state not in ACTIVE:
             return False
         branch = f"agentic/sdlc-rig-{iid}"
+        if state != "agent:plan" and not self.gitlab.state_label_authored_by_bot(iid, state):
+            return self.advance(iid, state, "agent:blocked", "human-relabel-" + state,
+                                "Human relabel detected: retry only via agent:plan after removing the branch.")
         if state == "agent:plan" and self.gitlab.branch(branch):
             return self.advance(iid, state, "agent:blocked", "stale-branch",
                                 "Stale branch exists for this issue; human must inspect before retry.")
@@ -530,7 +547,8 @@ def main():
     if not isinstance(allowed_paths, list) or not allowed_paths or not all(isinstance(p, str) for p in allowed_paths):
         raise ValueError("GITLAB_ALLOWED_FILES must be a nonempty JSON string array")
     board = Board(GitLab(token, project, api_url, target_branch), pm_url,
-                  int(os.environ.get("A2A_TIMEOUT", "150")), target_branch, allowed_paths)
+                  int(os.environ.get("A2A_TIMEOUT", "150")), target_branch, allowed_paths,
+                  int(os.environ.get("PM_REPLAY_HOLD_MIN", "25")))
     lease = KubeLease() if os.environ.get("BOARD_LEASE_REQUIRED") == "true" else None
     if lease and not lease.acquire():
         log("lease_busy")

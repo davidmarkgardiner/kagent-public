@@ -21,6 +21,9 @@ still required before a workplace canary is called successful.
   `board_poller.py:369-373` recalculates the SHA in review, and `:395-449` never checks for a `tested-<sha>` marker.
   Fix: in `agent:review`, if the issue has no `sdlc-rig:v1:<iid>:tested-<sha12>` marker, move it back to `agent:test`.
   Done when: a new head SHA during review routes back to test (regression test).
+  Canary limit: the `tested-<sha>` marker records the PM's PASS reply. It does
+  not independently prove that the tester worker ran; treat tester output as
+  advisory until a bot-authored, SHA-bound tester artifact is checked.
 
 - [x] **A3. Put a limit on the CI-failure rework loop.** [R]
   `:377-379` → `:350-354`/`:363` loops `test ↔ changes` with no limit (30 of 30 fake runs never reached blocked).
@@ -31,14 +34,16 @@ still required before a workplace canary is called successful.
   `.gitlab-ci.yml` is allowed at `board_poller.py:25`, `render-gitlab-mcp.py:36` and `work-profile.example.json:5`, and the builder edited it in the live run.
   Fix: remove it from `allowed_files`, have a human commit CI to `main`, and have `committed()` reject diffs that touch it.
   Done when: a branch diff containing `.gitlab-ci.yml` raises or blocks.
+  The builder may still edit `package.json`; the human-owned CI job must invoke
+  `node --test tests/` directly, without npm scripts.
 
-- [x] **A5. Don't call the PM again while a timed-out turn may still be running.** [P]
+- [ ] **A5. Don't call the PM again while a timed-out turn may still be running.** [P]
   The A2A timeout of 150s (`30-board-cronjob.yaml:54`) is shorter than the model timeout of 300s (`00-foundation.yaml:31`) plus nested worker calls. The retry at `:308-313`/`:356-364` can create duplicate children, which wedges the issue at `:145-146`, or run builders concurrently.
   First: check whether kagent continues a turn after the client disconnects.
-  Fix: wait at least 10 minutes after the last attempt note for a stage before calling the PM again, or store the A2A task ID and check it with `tasks/get` first.
-  Implemented a bot-authored start note before every PM turn and a ten-minute
-  stage replay hold. Source inspection found no dependable client-disconnect
-  cancellation contract; target timeout behaviour remains a canary observation.
+  Interim mitigation: a bot-authored start note before every PM turn and a
+  configurable replay hold (minimum/default 25 minutes). This is not proof that
+  a timed-out turn has stopped. Observe one timeout in the supervised canary;
+  durable task IDs and `tasks/get` are required before unattended use.
 
 - [x] **A6. Only trust markers written by the bot.** [R] (blocker if the project is public or has other members)
   `review_note()` at `:279-289` and `child()` at `:138-147` never check the note or issue author.
@@ -47,8 +52,11 @@ still required before a workplace canary is called successful.
 
 - [x] **A7. Refuse to reuse an old branch when an issue is retried.** [R]
   The branch name is fixed per issue (`:301`). Build advances without calling the builder when a commit already exists (`:350-354`), and an old PASS note still matches (`:412`).
-  Fix: in `agent:plan`, if the branch exists, move to `agent:blocked` with "stale branch; rename or delete before retry".
-  Done when: relabelling an issue that already has a branch goes to blocked (regression test).
+  Fix: in `agent:plan`, an existing branch moves to blocked. For every other
+  active state, require the latest add event for that state label to be written
+  by the bot; a human relabel moves to blocked before old evidence is read.
+  Done in source: tests cover direct human relabels to build and changes, plus
+  stale branch in plan. Live GitLab label event behaviour awaits the canary.
 
 - [x] **A8. Make the work-cluster install runnable.**
   - [x] `preflight.sh`: gateway/controller deployments and rendered ModelConfig are configurable by environment.
@@ -57,9 +65,11 @@ still required before a workplace canary is called successful.
 
 - [x] **A9. Restrict access to the GitLab MCP on a shared cluster.** (not needed on kind)
   The MCP has no authentication (`vendor/gitlab-delivery-mcp.yaml:185-209`), and the rendered bundle has no NetworkPolicy.
-  Fix: a NetworkPolicy that only lets `sdlc-rig` agent pods reach `sdlc-gitlab-mcp:8080`.
-  Renderer emits the policy. Target CNI enforcement, agent pod labels, and MCP
-  reachability still need a live check before enabling polling.
+  Fix: a NetworkPolicy lets named `sdlc-rig` agent pods and the kagent controller
+  namespace reach `sdlc-gitlab-mcp:8080` for tool discovery. The controller
+  namespace is a profile key. Renderer tests cover both peers. Target CNI
+  enforcement, agent pod labels, controller tool discovery, and MCP reachability
+  still need a live check before enabling polling.
 
 - [x] **A10. Add regression tests** for A2, A3, A6 and A7 in `test_board_poller.py`, based on the offline repro scripts.
 
@@ -84,12 +94,16 @@ still required before a workplace canary is called successful.
 
 - [ ] Fixed branch rendered; `python3 -m unittest discover -s . -p 'test_*.py'` passes.
 - [ ] Human-owned `.gitlab-ci.yml` on target `main` passes before the first issue.
+- [ ] Inspect the CI job: it calls `node --test tests/` directly and does not execute an editable npm script.
 - [ ] Target NetworkPolicy is enforced; allowed agent pods can reach MCP and an unrelated pod cannot.
+- [ ] With policy applied, the kagent controller can discover GitLab MCP tools and RemoteMCPServer reports Accepted with tools listed.
 - [ ] If configured, target CA and proxy work from MCP and poller pods.
 - [ ] Preflight passes against the rendered stack.
 - [ ] PM echo nonce returns through a real worker turn.
 - [ ] One parent issue goes from `agent:plan` to `agent:accepted` with one child, a diff limited to allowed paths, green CI on the head SHA, a draft MR on that SHA, and a PASS note written by the bot.
 - [ ] An induced CI failure goes to `agent:changes` and comes back; three failures reach `agent:blocked`.
 - [ ] A forged PASS note is ignored.
+- [ ] A human relabel to `agent:build` or `agent:changes` blocks; retry through `agent:plan` only after removing the old branch.
+- [ ] Deliberately time out one PM turn, observe when its original task finishes, and check that no replay overlaps it.
 - [ ] Two scheduled polls observed, including one idle poll; the Lease is clear afterwards.
 - [ ] Evidence recorded in `evidence/RUN-<date>.md`.

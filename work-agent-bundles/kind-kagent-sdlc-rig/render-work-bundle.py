@@ -19,7 +19,7 @@ REQUIRED = {
     "model_client_secret_key", "pm_a2a_url", "python_image", "schedule",
     "allow_control_plane",
 }
-OPTIONAL = {"ca_configmap", "https_proxy", "no_proxy"}
+OPTIONAL = {"ca_configmap", "https_proxy", "no_proxy", "kagent_namespace", "pm_replay_hold_min"}
 
 
 def endpoint(value, *, https_only=False):
@@ -86,6 +86,12 @@ def profile_from(path):
     if no_proxy is not None and (not isinstance(no_proxy, str) or not no_proxy or len(no_proxy) > 1024
                                  or not re.fullmatch(r"[A-Za-z0-9.,:/_-]+", no_proxy)):
         raise ValueError("no_proxy must be a comma-separated host list or null")
+    namespace = data.get("kagent_namespace", "kagent")
+    if not isinstance(namespace, str) or len(namespace) > 63 or not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", namespace):
+        raise ValueError("kagent_namespace must be a DNS label")
+    replay_hold_min = data.get("pm_replay_hold_min", 25)
+    if type(replay_hold_min) is not int or not 25 <= replay_hold_min <= 1440:
+        raise ValueError("pm_replay_hold_min must be an integer from 25 to 1440")
     return data
 
 
@@ -162,7 +168,9 @@ def render(data):
                                "ingress": [{"from": [{"podSelector": {"matchExpressions": [
                                    {"key": "app.kubernetes.io/name", "operator": "In",
                                     "values": ["sdlc-pm", "sdlc-builder", "sdlc-tester", "sdlc-reviewer"]}
-                               ]}}], "ports": [{"protocol": "TCP", "port": 8080}]}]}})
+                               ]}}, {"namespaceSelector": {"matchLabels": {
+                                   "kubernetes.io/metadata.name": data.get("kagent_namespace", "kagent")
+                               }}}], "ports": [{"protocol": "TCP", "port": 8080}]}]}})
 
     manifests.append({"apiVersion": "v1", "kind": "ConfigMap",
                       "metadata": {"name": "sdlc-rig-settings", "namespace": "sdlc-rig"},
@@ -204,6 +212,7 @@ def render(data):
         ("GITLAB_ALLOWED_FILES", json.dumps(sorted(data["allowed_files"]))),
         ("PM_A2A_URL", data["pm_a2a_url"]),
         ("BOARD_LEASE_REQUIRED", "true"),
+        ("PM_REPLAY_HOLD_MIN", str(data.get("pm_replay_hold_min", 25))),
     ):
         env(container, key, value)
     manifests.append(cron)
