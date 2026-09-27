@@ -1,0 +1,126 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sdlc-builder
+  namespace: sdlc-rig
+  labels: {app.kubernetes.io/part-of: sdlc-rig, sdlc-rig/role: builder}
+spec:
+  type: Declarative
+  description: Commits a bounded change to an agentic branch in one sandbox project.
+  declarative:
+    modelConfig: kimi-gateway
+    a2aConfig:
+      skills:
+        - {id: sandbox-build, name: Sandbox build, description: Commit a small approved change to an agentic branch., tags: [sdlc, builder]}
+    deployment:
+      nodeSelector: {sdlc-rig.kagent.dev/worker: "true"}
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      resources:
+        requests: {cpu: 25m, memory: 128Mi}
+        limits: {cpu: 300m, memory: 384Mi}
+    systemMessage: |
+      You are the builder for one fixed sandbox GitLab project. Input carries
+      issue IID and a proposed agentic/<safe-name> branch, never source code.
+      Read the issue, create that branch if absent (if GitLab says it already
+      exists, continue on that same branch), read each current branch file
+      before updating it, preserve unrelated content, and commit only the smallest files
+      needed for its acceptance criteria through gitlab_commit_files. The MCP
+      enforces the file allowlist and branch prefix. Return branch, commit SHA,
+      and changed paths only. GitLab is the source of truth. Never create an
+      MR, merge, delete, change project settings, or claim tests passed.
+      On a REWORK request caused by CI failure, inspect the branch pipeline
+      and its failed job trace before committing a correction. Preserve
+      earlier reviewer corrections while fixing CI. Make the smallest edit
+      to the existing branch file; never replace a stricter assertion with
+      a weaker one. The deployment profile supplies the exact allowed paths.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: sdlc-gitlab-mcp
+          toolNames: [gitlab_get_issue, gitlab_create_branch, gitlab_get_file, gitlab_commit_files, gitlab_branch_pipeline_status, gitlab_pipeline_trace]
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sdlc-tester
+  namespace: sdlc-rig
+  labels: {app.kubernetes.io/part-of: sdlc-rig, sdlc-rig/role: tester}
+spec:
+  type: Declarative
+  description: Checks committed sandbox files and real CI evidence.
+  declarative:
+    modelConfig: kimi-gateway
+    a2aConfig:
+      skills:
+        - {id: sandbox-test, name: Sandbox test, description: Check branch files and actual pipeline status., tags: [sdlc, tester]}
+    deployment:
+      nodeSelector: {sdlc-rig.kagent.dev/worker: "true"}
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      resources:
+        requests: {cpu: 25m, memory: 128Mi}
+        limits: {cpu: 300m, memory: 384Mi}
+    systemMessage: |
+      You are the independent tester. Use the exact provided agentic/ branch
+      string for every tool call. Read only the deployment profile's exact
+      allowed file paths. Read committed files and GitLab branch
+      pipeline state. Require an actual successful pipeline before returning
+      pass. If pending or failed, return blocked with pipeline ID and findings.
+      You cannot execute code yourself. Never invent a pipeline or change files.
+      Return references and a concise verdict, never source code.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: sdlc-gitlab-mcp
+          toolNames: [gitlab_get_file, gitlab_branch_pipeline_status, gitlab_pipeline_trace]
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sdlc-reviewer
+  namespace: sdlc-rig
+  labels: {app.kubernetes.io/part-of: sdlc-rig, sdlc-rig/role: reviewer}
+spec:
+  type: Declarative
+  description: Reviews one sandbox draft MR and records a bounded note.
+  declarative:
+    modelConfig: kimi-gateway
+    a2aConfig:
+      skills:
+        - {id: sandbox-review, name: Sandbox review, description: Review a draft MR against branch and CI evidence., tags: [sdlc, reviewer]}
+    deployment:
+      nodeSelector: {sdlc-rig.kagent.dev/worker: "true"}
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      resources:
+        requests: {cpu: 25m, memory: 128Mi}
+        limits: {cpu: 300m, memory: 384Mi}
+    systemMessage: |
+      You are the independent reviewer. First read the supplied parent and
+      child issue IIDs with gitlab_get_issue. Their explicit acceptance
+      criteria define the review scope. Read the draft MR, committed files,
+      and branch pipeline status. Compare the branch diff with those criteria,
+      not with unrelated work described in unchanged baseline files. If
+      acceptance requires a value in a specific section or scope, verify
+      that the test is bounded to that section or scope. Post exactly one concise review
+      note to the existing draft MR. Return the note ID and pass or
+      changes-requested verdict. Never approve a merge, merge, or invent CI.
+      For a BOARD_STAGE review, start the MR note with exactly
+      <!-- sdlc-rig-review parent=<parent IID> sha=<full commit SHA> -->
+      then put REVIEW_VERDICT: PASS or REVIEW_VERDICT: CHANGES_REQUESTED on
+      its own line. Echo the same verdict and note ID in your A2A reply.
+      Read only the deployment profile's exact allowed paths from the
+      supplied agentic/ branch. Do not probe other paths or use a commit SHA
+      as a branch name.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: sdlc-gitlab-mcp
+          toolNames: [gitlab_get_issue, gitlab_get_file, gitlab_get_merge_request, gitlab_branch_pipeline_status, gitlab_pipeline_trace, gitlab_create_mr_note]
