@@ -19,7 +19,9 @@ were locally checked but have not had a workplace functional run.
   agentgateway model route, and a worker node with capacity. Check the exact
   installed API schema before applying. The lab used kagent v0.7.13; a target
   version change needs a fresh canary.
-- One **sandbox** GitLab project, a target branch, and 1–12 named files. The
+- One **sandbox** GitLab project, a target branch, and 1–12 named files. A
+  human must commit and verify `.gitlab-ci.yml` on the target branch before
+  intake; the agent file profile and candidate diff checker reject CI changes. The
   project token belongs in a namespace Secret named `gitlab-project-token`,
   key `token`, scoped to that project with only the access the MCP calls need.
   The server exposes issue, branch, file, pipeline, draft MR, and note calls.
@@ -36,6 +38,12 @@ were locally checked but have not had a workplace functional run.
   `sdlc-rig-poc`, and branch prefix `agentic/sdlc-rig-` are fixed in this
   version. Use a dedicated namespace and project. Do not place a second copy
   against the same project without changing those identities and re-testing.
+- Optional `ca_configmap` names a pre-provisioned ConfigMap with a **combined**
+  CA bundle under `ca.crt`; it is mounted in the MCP and poller, and both use
+  `SSL_CERT_FILE`. Optional `https_proxy` and `no_proxy` configure their
+  outbound HTTPS calls. The renderer always bypasses the proxy for cluster DNS
+  names; the poller's Kubernetes API call bypasses it directly. Keep proxy
+  credentials out of the profile and provide target-specific `no_proxy` hosts.
 
 ## 1. Inspect and render offline
 
@@ -57,7 +65,8 @@ The example uses `gitlab.example.invalid` and cannot perform a live GitLab
 turn. Inspect the rendered YAML for the exact project path, GitLab API URL,
 model route, allowed paths, namespace, Secrets, image, schedule, and
 `CronJob.spec.suspend: true`. The renderer rejects unpinned images and unsafe
-file paths. It emits 18 resources and no Secret object.
+file paths. It emits 19 resources, including MCP ingress NetworkPolicy, and no
+Secret object.
 
 ## 2. Target preflight
 
@@ -71,7 +80,7 @@ kubectl --context "$KUBE_CONTEXT" cluster-info
 kubectl --context "$KUBE_CONTEXT" get crd agents.kagent.dev modelconfigs.kagent.dev remotemcpservers.kagent.dev
 kubectl --context "$KUBE_CONTEXT" get nodes -o wide
 kubectl --context "$KUBE_CONTEXT" get pods -A | grep -E 'kagent|agentgateway'
-kubectl --context "$KUBE_CONTEXT" apply --dry-run=server -f work-rendered.yaml
+kubectl --context "$KUBE_CONTEXT" apply --dry-run=client -f work-rendered.yaml
 ```
 
 Confirm the target worker has the `sdlc-rig.kagent.dev/worker=true` label and
@@ -79,7 +88,9 @@ room for the five agent pods, MCP, and poller. `allow_control_plane` should
 stay `false` in the profile unless target policy explicitly permits it.
 Check target DNS/TLS and network policy from pods to GitLab, model gateway,
 kagent A2A, and Kubernetes API. For private GitLab, arrange trusted CA roots
-for the MCP and poller; the stock Python image uses its standard trust store.
+for the MCP and poller via the optional combined CA bundle. Confirm the CNI
+enforces NetworkPolicy and that agent pods carry the expected
+`app.kubernetes.io/name` labels before relying on MCP ingress isolation.
 Check the target's Secret provisioning path and RBAC policy. The poller's
 ServiceAccount gets only `get` and `update` for its named Lease. It needs an
 in-pod token to use that Lease; the other pods do not need a Kubernetes token.
@@ -92,12 +103,14 @@ values in commands, manifests, shell history, logs, or the archive. Apply the
 reviewed manifest, then check scheduling and endpoints:
 
 ```bash
+# Create sdlc-rig through the target namespace process first.
 kubectl --context "$KUBE_CONTEXT" apply -f work-rendered.yaml --dry-run=server
-# After confirming the context, create namespace sdlc-rig through the target
-# namespace process and provision its two Secrets.
+# Provision the two Secrets and optional CA ConfigMap through target processes.
 kubectl --context "$KUBE_CONTEXT" apply -f work-rendered.yaml
 kubectl --context "$KUBE_CONTEXT" -n sdlc-rig get agent,modelconfig,remotemcpserver,deploy,svc,cronjob,lease
 kubectl --context "$KUBE_CONTEXT" -n sdlc-rig get pods -o wide
+GATEWAY_NAMESPACE=agentgateway-system GATEWAY_DEPLOYMENTS='agentgateway agent-gw' \
+  MODEL_CONFIG_NAME=sdlc-work-model KUBE_CONTEXT="$KUBE_CONTEXT" bash preflight.sh
 kubectl --context "$KUBE_CONTEXT" -n sdlc-rig auth can-i get lease/sdlc-board-poller \
   --as=system:serviceaccount:sdlc-rig:sdlc-board-poller
 kubectl --context "$KUBE_CONTEXT" -n sdlc-rig auth can-i update lease/sdlc-board-poller \

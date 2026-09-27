@@ -33,13 +33,15 @@ def main() -> None:
     if not re.fullmatch(r"[A-Za-z0-9._/-]{1,100}", args.target_branch) or ".." in args.target_branch:
         parser.error("invalid target branch")
     allowed_files = args.allowed_file or [
-        "README.md", "package.json", "tests/calculator.test.mjs", ".gitlab-ci.yml"
+        "README.md", "package.json", "tests/calculator.test.mjs"
     ]
     if len(set(allowed_files)) != len(allowed_files) or not 1 <= len(allowed_files) <= 12:
         parser.error("provide 1 to 12 distinct allowed files")
     if any(not re.fullmatch(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*", path)
            or ".." in path.split("/") for path in allowed_files):
         parser.error("allowed files must be safe relative paths")
+    if ".gitlab-ci.yml" in allowed_files:
+        parser.error("CI configuration is human-owned and cannot be an allowed file")
 
     source = Path(__file__).resolve().parent / "vendor" / "gitlab-delivery-mcp.yaml"
     resources = list(yaml.safe_load_all(source.read_text()))

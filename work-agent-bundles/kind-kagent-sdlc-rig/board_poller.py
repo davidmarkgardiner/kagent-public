@@ -22,7 +22,7 @@ import uuid
 
 STATES = ("agent:plan", "agent:build", "agent:test", "agent:review", "agent:changes", "agent:accepted", "agent:blocked")
 ACTIVE = set(STATES[:-2])
-ALLOWED_PATHS = {"README.md", "package.json", "tests/calculator.test.mjs", ".gitlab-ci.yml"}
+ALLOWED_PATHS = {"README.md", "package.json", "tests/calculator.test.mjs"}
 REVIEW_RE = re.compile(r"<!-- sdlc-rig-review parent=(\d+) sha=([0-9a-f]{40}) -->")
 
 
@@ -30,6 +30,10 @@ class ApiError(RuntimeError):
     def __init__(self, code, path):
         super().__init__(f"GitLab HTTP {code} for {path}")
         self.code = code
+
+
+class TurnCoolingDown(RuntimeError):
+    """A prior PM turn may still be running after the client disconnects."""
 
 
 def log(event, **fields):
@@ -45,6 +49,8 @@ class KubeLease:
         service_account = Path("/var/run/secrets/kubernetes.io/serviceaccount")
         self.token = (service_account / "token").read_text().strip()
         self.context = ssl.create_default_context(cafile=str(service_account / "ca.crt"))
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                                  urllib.request.HTTPSHandler(context=self.context))
         self.url = (f"https://{host}:{port}/apis/coordination.k8s.io/v1"
                     f"/namespaces/{namespace}/leases/{name}")
         self.identity = "board-" + uuid.uuid4().hex
@@ -56,7 +62,7 @@ class KubeLease:
         if body is not None:
             headers["Content-Type"] = "application/json"
         req = urllib.request.Request(self.url, data=body, headers=headers, method=method)
-        with urllib.request.urlopen(req, timeout=10, context=self.context) as response:
+        with self.opener.open(req, timeout=10) as response:
             return json.load(response)
 
     def acquire(self):
@@ -100,7 +106,9 @@ class GitLab:
             raise ValueError("GitLab API URL must be an HTTPS /api/v4 endpoint")
         self.token = token
         self.default_branch = default_branch
-        self.base = api_url.rstrip("/") + "/projects/" + urllib.parse.quote(project, safe="")
+        self.api_root = api_url.rstrip("/")
+        self.base = self.api_root + "/projects/" + urllib.parse.quote(project, safe="")
+        self._bot_user_id = None
 
     def request(self, method, path, data=None, missing_ok=False):
         url = self.base + path
@@ -131,6 +139,24 @@ class GitLab:
     def issue(self, iid):
         return self.request("GET", f"/issues/{iid}")
 
+    def bot_user_id(self):
+        if self._bot_user_id is None:
+            req = urllib.request.Request(self.api_root + "/user",
+                                         headers={"Authorization": "Bearer " + self.token,
+                                                  "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as response:
+                self._bot_user_id = json.load(response)["id"]
+        return self._bot_user_id
+
+    def bot_notes(self, kind, iid):
+        user_id = self.bot_user_id()
+        return [note for note in self.notes(kind, iid)
+                if (note.get("author") or {}).get("id") == user_id]
+
+    def marker_count(self, iid, key_prefix):
+        marker = f"<!-- sdlc-rig:v1:{iid}:{key_prefix}"
+        return sum(marker in note.get("body", "") for note in self.bot_notes("issues", iid))
+
     def queue(self):
         issues = self.pages("/issues?state=opened&labels=sdlc-rig-poc")
         return sorted(issues, key=lambda item: item["iid"])
@@ -139,9 +165,11 @@ class GitLab:
         # Search is a hint; exact parent annotation is the identity check.
         query = urllib.parse.quote(f"Child of #{parent_iid}", safe="")
         matches = self.pages(f"/issues?state=all&search={query}")
+        user_id = self.bot_user_id()
         children = [item for item in matches
                     if item.get("title", "").startswith(f"Child of #{parent_iid}:")
-                    and item.get("description", "").startswith(f"Parent: #{parent_iid}")]
+                    and item.get("description", "").startswith(f"Parent: #{parent_iid}")
+                    and (item.get("author") or {}).get("id") == user_id]
         if len(children) > 1:
             raise RuntimeError(f"multiple child issues for parent {parent_iid}")
         return children[0] if children else None
@@ -172,7 +200,7 @@ class GitLab:
 
     def post_once(self, iid, key, message):
         marker = f"<!-- sdlc-rig:v1:{iid}:{key} -->"
-        if any(marker in note.get("body", "") for note in self.notes("issues", iid)):
+        if any(marker in note.get("body", "") for note in self.bot_notes("issues", iid)):
             return
         self.request("POST", f"/issues/{iid}/notes", {"body": marker + "\n" + message})
 
@@ -242,11 +270,22 @@ class Board:
         self.allowed_paths = set(allowed_paths)
 
     def call_pm(self, stage, iid, details):
+        notes = self.gitlab.bot_notes("issues", iid)
+        marker = f"<!-- sdlc-rig-turn:v1:{iid}:{stage}:"
+        recent = [note for note in notes if marker in note.get("body", "")]
+        if recent:
+            latest = max(datetime.fromisoformat(note["created_at"].replace("Z", "+00:00"))
+                         for note in recent)
+            if datetime.now(timezone.utc) - latest < timedelta(minutes=10):
+                raise TurnCoolingDown(f"PM {stage} turn is inside its ten-minute replay hold")
+        self.gitlab.request("POST", f"/issues/{iid}/notes", {
+            "body": marker + uuid.uuid4().hex + " -->\nPM turn started; retry held for ten minutes."
+        })
         prompt = f"BOARD_STAGE={stage}\nParent issue IID: {iid}.\n{details}\n"
         return a2a(self.pm_url, stage, prompt, self.timeout)
 
     def attempt(self, iid, stage, cause, expected):
-        notes = self.gitlab.notes("issues", iid)
+        notes = self.gitlab.bot_notes("issues", iid)
         prefix = f"<!-- sdlc-rig-attempt:v1:{iid}:{stage}:"
         count = sum(prefix in note.get("body", "") for note in notes) + 1
         marker = f"{prefix}{count} -->"
@@ -272,12 +311,12 @@ class Board:
         if sha == base["commit"]["id"]:
             return None
         paths = self.gitlab.changed_paths(branch)
-        if not paths or not set(paths).issubset(self.allowed_paths):
+        if not paths or ".gitlab-ci.yml" in paths or not set(paths).issubset(self.allowed_paths):
             raise RuntimeError(f"branch {branch} has unapproved or no changed paths")
         return sha, paths
 
     def review_note(self, iid, mr_iid, sha):
-        for note in sorted(self.gitlab.notes("merge_requests", mr_iid),
+        for note in sorted(self.gitlab.bot_notes("merge_requests", mr_iid),
                            key=lambda item: item["id"], reverse=True):
             body = note.get("body", "")
             match = REVIEW_RE.search(body)
@@ -299,6 +338,9 @@ class Board:
         if state not in ACTIVE:
             return False
         branch = f"agentic/sdlc-rig-{iid}"
+        if state == "agent:plan" and self.gitlab.branch(branch):
+            return self.advance(iid, state, "agent:blocked", "stale-branch",
+                                "Stale branch exists for this issue; human must inspect before retry.")
         child = self.gitlab.child(iid)
         log("picked", iid=iid, state=state, child=child["iid"] if child else None)
 
@@ -306,6 +348,8 @@ class Board:
             if not child:
                 try:
                     self.call_pm("PLAN", iid, "Read this issue and create exactly one child with the required Parent annotation. Do not call workers or change labels.")
+                except TurnCoolingDown:
+                    return False
                 except Exception as exc:
                     log("pm_error", iid=iid, stage="plan", error=type(exc).__name__)
                 child = self.gitlab.child(iid)
@@ -329,7 +373,7 @@ class Board:
                                 f"{latest_pipeline['status']} on SHA {previous}. Inspect its failed job trace and correct CI.")
                 mr = self.gitlab.mr(branch)
                 if mr:
-                    notes = self.gitlab.notes("merge_requests", mr["iid"])
+                    notes = self.gitlab.bot_notes("merge_requests", mr["iid"])
                     reviews = sorted(
                         (note for note in notes if REVIEW_RE.search(note.get("body", ""))),
                         key=lambda item: item["id"], reverse=True)
@@ -357,6 +401,8 @@ class Board:
                 self.call_pm(stage, iid,
                              f"Child issue IID: {child['iid']}. Exact branch: {branch}. "
                              f"Delegate sdlc-builder once. Feedback: {feedback or 'none'}")
+            except TurnCoolingDown:
+                return False
             except Exception as exc:
                 log("pm_error", iid=iid, stage=stage.lower(), error=type(exc).__name__)
             commit = self.committed(branch)
@@ -375,8 +421,13 @@ class Board:
             log("waiting_ci", iid=iid, pipeline=pipeline["id"] if pipeline else None)
             return False
         if pipeline["status"] != "success":
-            return self.advance(iid, state, "agent:changes", "ci-failed-" + sha[:12],
-                                f"Pipeline {pipeline['id']} ended `{pipeline['status']}` on `{sha}`; builder rework assigned.")
+            self.gitlab.post_once(iid, "ci-failed-" + sha[:12],
+                                  f"Pipeline {pipeline['id']} ended `{pipeline['status']}` on `{sha}`.")
+            if self.gitlab.marker_count(iid, "ci-failed-") >= 3:
+                return self.advance(iid, state, "agent:blocked", "ci-failure-limit",
+                                    "Three failed CI commits exhausted; human inspection required.")
+            return self.advance(iid, state, "agent:changes", "ci-rework-" + sha[:12],
+                                f"Builder rework assigned for failed pipeline {pipeline['id']} on `{sha}`.")
 
         if state == "agent:test":
             try:
@@ -384,6 +435,8 @@ class Board:
                                      f"Child IID {child['iid']}; exact branch {branch}; SHA {sha}; "
                                      f"pipeline {pipeline['id']} is success; changed paths {', '.join(paths)}. "
                                      "Delegate sdlc-tester once. Return exactly TEST_VERDICT: PASS or BLOCKED.")
+            except TurnCoolingDown:
+                return False
             except Exception as exc:
                 log("pm_error", iid=iid, stage="test", error=type(exc).__name__)
                 reply = ""
@@ -393,12 +446,17 @@ class Board:
                                 f"Tester PASS for pipeline {pipeline['id']} on `{sha}`. Reviewer assigned.")
 
         if state == "agent:review":
+            if not self.gitlab.marker_count(iid, "tested-" + sha[:12] + " -->"):
+                return self.advance(iid, state, "agent:test", "retest-" + sha[:12],
+                                    f"Current SHA `{sha}` has no bot tester PASS marker; retest required.")
             mr = self.gitlab.mr(branch)
             if not mr:
                 try:
                     self.call_pm("MR", iid,
                                  f"Child IID {child['iid']}; branch {branch}; SHA {sha}; "
                                  f"pipeline {pipeline['id']} is success. Create exactly one draft MR. No reviewer call yet.")
+                except TurnCoolingDown:
+                    return False
                 except Exception as exc:
                     log("pm_error", iid=iid, stage="mr", error=type(exc).__name__)
                 mr = self.gitlab.mr(branch)
@@ -418,6 +476,8 @@ class Board:
                                  f"changed paths {', '.join(paths)}. Delegate reviewer once. "
                                  f"The MR note must contain <!-- sdlc-rig-review parent={iid} sha={sha} --> "
                                  "and a REVIEW_VERDICT line.")
+                except TurnCoolingDown:
+                    return False
                 except Exception as exc:
                     log("pm_error", iid=iid, stage="review", error=type(exc).__name__)
                 note, verdict = self.review_note(iid, mr["iid"], sha)
@@ -436,6 +496,8 @@ class Board:
                                      f"GitLab-verified reviewer PASS note {note['id']}. "
                                      "Finish with one unformatted line exactly PM_VERDICT: ACCEPT if "
                                      "all criteria pass, else PM_VERDICT: BLOCKED.")
+            except TurnCoolingDown:
+                return False
             except Exception as exc:
                 log("pm_error", iid=iid, stage="accept", error=type(exc).__name__)
                 reply = ""
@@ -444,6 +506,14 @@ class Board:
                                  if line.strip().startswith("PM_VERDICT:")]
                 log("missing_accept_receipt", iid=iid, verdict_lines=verdict_lines)
                 return self.attempt(iid, "accept-" + sha[:12], "PM acceptance receipt missing.", state)
+            latest = self.committed(branch)
+            if not latest or latest[0] != sha or not self.gitlab.marker_count(iid, "tested-" + sha[:12] + " -->"):
+                return self.advance(iid, state, "agent:test", "retest-after-accept-" + sha[:12],
+                                    "Candidate changed during PM acceptance; test the current head.")
+            current_mr = self.gitlab.mr(branch)
+            _, current_verdict = self.review_note(iid, current_mr["iid"], sha) if current_mr else (None, None)
+            if not current_mr or not current_mr.get("draft") or current_mr.get("sha") != sha or current_verdict != "PASS":
+                raise RuntimeError("Draft MR or bot PASS review changed during PM acceptance")
             return self.advance(iid, state, "agent:accepted", "accepted-" + sha[:12],
                                 f"PM accepted child #{child['iid']}; pipeline {pipeline['id']} success, "
                                 f"draft MR !{mr['iid']}, reviewer PASS note {note['id']}. Merge remains human owned.")

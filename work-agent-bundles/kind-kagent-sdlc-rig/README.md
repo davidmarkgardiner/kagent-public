@@ -4,7 +4,7 @@ For a self-contained **non-production work-cluster transfer**, start with
 [`WORK-CLUSTER-RUNBOOK.md`](WORK-CLUSTER-RUNBOOK.md),
 [`work-profile.example.json`](work-profile.example.json), and
 `render-work-bundle.py`. The work renderer produces a digest-pinned,
-credential-free, **suspended** 18-resource manifest. The commands below
+credential-free, **suspended** 19-resource manifest. The commands below
 describe the original Proxmox lab path and are retained as historical pilot
 instructions; do not use them for workplace installation.
 
@@ -24,6 +24,9 @@ The independent [review task list](REVIEW-TASKS.md) separates work required
 before a workplace sandbox canary from later hardening. Its credential-free
 [offline reproductions](review-repros/README.md) are preserved for regression
 test development.
+The review fixes on this branch have offline tests and a home-lab API server
+dry-run; the historical lab runs below used the earlier manifests. The updated
+poller and MCP NetworkPolicy still need a supervised live canary.
 
 ## Configuration
 
@@ -38,10 +41,13 @@ test development.
 The source adapter is bundled at
 [`vendor/gitlab-delivery-mcp.yaml`](vendor/gitlab-delivery-mcp.yaml).
 By default, `render-gitlab-mcp.py` narrows its file profile to `README.md`,
-`package.json`, `tests/calculator.test.mjs`, and `.gitlab-ci.yml`; the work
+`package.json`, and `tests/calculator.test.mjs`; the work
 renderer supplies the profile's named files. It also returns recoverable
 MCP tool errors and prevents a duplicate `Draft:` MR title. It fails if the
 source patterns change, so the adapter must be reviewed after upstream edits.
+CI configuration is human-owned: prepare and verify `.gitlab-ci.yml` on the
+target branch before admitting an issue. Neither the builder's file profile nor
+the poller's branch-diff check permits it in a candidate change.
 
 ## Deploy and check
 

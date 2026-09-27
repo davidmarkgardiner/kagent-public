@@ -3,6 +3,11 @@
 set -euo pipefail
 
 CONTEXT="${KUBE_CONTEXT:?Set KUBE_CONTEXT to the target kubeconfig context}"
+GATEWAY_NAMESPACE="${GATEWAY_NAMESPACE:-agentgateway-system}"
+GATEWAY_DEPLOYMENTS="${GATEWAY_DEPLOYMENTS:-agentgateway agent-gw}"
+MODEL_CONFIG_NAME="${MODEL_CONFIG_NAME:-sdlc-work-model}"
+KAGENT_NAMESPACE="${KAGENT_NAMESPACE:-kagent}"
+KAGENT_CONTROLLER_DEPLOYMENT="${KAGENT_CONTROLLER_DEPLOYMENT:-kagent-controller}"
 K=(kubectl --context "$CONTEXT")
 started=$(date +%s)
 
@@ -10,14 +15,15 @@ started=$(date +%s)
   jq -e '[.items[] | any(.status.conditions[]; .type == "Ready" and .status == "True")] | any' >/dev/null
 printf 'PASS labelled node Ready\n'
 
-for deployment in agentgateway agent-gw; do
-  "${K[@]}" -n agentgateway-system rollout status "deployment/$deployment" --timeout=10s >/dev/null
+[[ -n "$GATEWAY_DEPLOYMENTS" ]] || { echo 'GATEWAY_DEPLOYMENTS must name at least one deployment' >&2; exit 1; }
+for deployment in $GATEWAY_DEPLOYMENTS; do
+  "${K[@]}" -n "$GATEWAY_NAMESPACE" rollout status "deployment/$deployment" --timeout=10s >/dev/null
 done
-"${K[@]}" -n kagent rollout status deployment/kagent-controller --timeout=10s >/dev/null
+"${K[@]}" -n "$KAGENT_NAMESPACE" rollout status "deployment/$KAGENT_CONTROLLER_DEPLOYMENT" --timeout=10s >/dev/null
 "${K[@]}" -n sdlc-rig rollout status deployment/sdlc-gitlab-mcp --timeout=10s >/dev/null
 printf 'PASS gateway, controller, GitLab MCP Ready\n'
 
-"${K[@]}" -n sdlc-rig get modelconfig kimi-gateway -o json |
+"${K[@]}" -n sdlc-rig get modelconfig "$MODEL_CONFIG_NAME" -o json |
   jq -e 'any(.status.conditions[]?; .type == "Accepted" and .status == "True")' >/dev/null
 "${K[@]}" -n sdlc-rig get secret gitlab-project-token -o json |
   jq -e '.data | has("token")' >/dev/null

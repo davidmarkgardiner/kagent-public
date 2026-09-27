@@ -19,6 +19,7 @@ REQUIRED = {
     "model_client_secret_key", "pm_a2a_url", "python_image", "schedule",
     "allow_control_plane",
 }
+OPTIONAL = {"ca_configmap", "https_proxy", "no_proxy"}
 
 
 def endpoint(value, *, https_only=False):
@@ -34,8 +35,8 @@ def endpoint(value, *, https_only=False):
 
 def profile_from(path):
     data = json.loads(Path(path).read_text())
-    if not isinstance(data, dict) or set(data) != REQUIRED:
-        raise ValueError(f"profile keys must be exactly {sorted(REQUIRED)}")
+    if not isinstance(data, dict) or not REQUIRED <= set(data) or set(data) - REQUIRED - OPTIONAL:
+        raise ValueError(f"profile needs {sorted(REQUIRED)} and only optional {sorted(OPTIONAL)}")
     strings = ("project_path", "target_branch", "model_name", "model_client_secret_name",
                "model_client_secret_key", "python_image", "schedule")
     if any(not isinstance(data[key], str) or not data[key] or "{{" in data[key]
@@ -60,6 +61,8 @@ def profile_from(path):
         raise ValueError("allowed_files contains an unsafe path")
     if len(set(files)) != len(files):
         raise ValueError("allowed_files must have distinct paths")
+    if ".gitlab-ci.yml" in files:
+        raise ValueError("CI configuration is human-owned and cannot be an allowed file")
     api = endpoint(data["gitlab_api_url"], https_only=True)
     if urlparse(api).path.rstrip("/") != "/api/v4":
         raise ValueError("gitlab_api_url must end in /api/v4")
@@ -71,6 +74,18 @@ def profile_from(path):
         raise ValueError("python_image must be pinned by sha256 digest")
     if not re.fullmatch(r"[0-9*/,-]+(?: [0-9*/,-]+){4}", data["schedule"]):
         raise ValueError("schedule must be a five-field numeric cron expression")
+    ca = data.get("ca_configmap")
+    if ca is not None and (not isinstance(ca, str) or not re.fullmatch(r"[a-z0-9]([-a-z0-9.]*[a-z0-9])?", ca) or len(ca) > 63):
+        raise ValueError("ca_configmap must be a ConfigMap name or null")
+    proxy = data.get("https_proxy")
+    if proxy is not None:
+        if not isinstance(proxy, str):
+            raise ValueError("https_proxy must be a URL or null")
+        endpoint(proxy)
+    no_proxy = data.get("no_proxy")
+    if no_proxy is not None and (not isinstance(no_proxy, str) or not no_proxy or len(no_proxy) > 1024
+                                 or not re.fullmatch(r"[A-Za-z0-9.,:/_-]+", no_proxy)):
+        raise ValueError("no_proxy must be a comma-separated host list or null")
     return data
 
 
@@ -81,6 +96,20 @@ def env(container, key, value):
         found["value"] = value
     else:
         container["env"].append({"name": key, "value": value})
+
+
+def client_network(pod, container, data):
+    if data.get("ca_configmap"):
+        pod.setdefault("volumes", []).append({"name": "sdlc-extra-ca",
+                                               "configMap": {"name": data["ca_configmap"],
+                                                             "items": [{"key": "ca.crt", "path": "ca.crt"}]}})
+        container.setdefault("volumeMounts", []).append({"name": "sdlc-extra-ca",
+                                                         "mountPath": "/etc/sdlc-ca", "readOnly": True})
+        env(container, "SSL_CERT_FILE", "/etc/sdlc-ca/ca.crt")
+    if data.get("https_proxy"):
+        env(container, "HTTPS_PROXY", data["https_proxy"])
+        internal = ".svc,.cluster.local,localhost,127.0.0.1"
+        env(container, "NO_PROXY", internal + ("," + data["no_proxy"] if data.get("no_proxy") else ""))
 
 
 def render(data):
@@ -119,10 +148,21 @@ def render(data):
     for item in mcp:
         if item["kind"] == "Deployment":
             pod = item["spec"]["template"]["spec"]
-            pod["containers"][0]["image"] = data["python_image"]
+            container = pod["containers"][0]
+            container["image"] = data["python_image"]
+            client_network(pod, container, data)
             if not data["allow_control_plane"]:
                 pod.pop("tolerations", None)
     manifests.extend(mcp)
+
+    manifests.append({"apiVersion": "networking.k8s.io/v1", "kind": "NetworkPolicy",
+                      "metadata": {"name": "sdlc-gitlab-mcp-ingress", "namespace": "sdlc-rig"},
+                      "spec": {"podSelector": {"matchLabels": {"app.kubernetes.io/name": "sdlc-gitlab-mcp"}},
+                               "policyTypes": ["Ingress"],
+                               "ingress": [{"from": [{"podSelector": {"matchExpressions": [
+                                   {"key": "app.kubernetes.io/name", "operator": "In",
+                                    "values": ["sdlc-pm", "sdlc-builder", "sdlc-tester", "sdlc-reviewer"]}
+                               ]}}], "ports": [{"protocol": "TCP", "port": 8080}]}]}})
 
     manifests.append({"apiVersion": "v1", "kind": "ConfigMap",
                       "metadata": {"name": "sdlc-rig-settings", "namespace": "sdlc-rig"},
@@ -157,6 +197,7 @@ def render(data):
     if not data["allow_control_plane"]:
         pod.pop("tolerations", None)
     container = pod["containers"][0]
+    client_network(pod, container, data)
     for key, value in (
         ("GITLAB_API_URL", data["gitlab_api_url"]),
         ("GITLAB_TARGET_BRANCH", data["target_branch"]),

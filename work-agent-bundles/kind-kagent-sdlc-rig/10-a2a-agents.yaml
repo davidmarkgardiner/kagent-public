@@ -88,8 +88,7 @@ spec:
       yourself; if it is pending, return a blocked receipt for a later retry.
       Only after a successful pipeline, open one draft MR and pass its IID,
       branch, and pipeline ID to sdlc-reviewer. Require its note ID and verdict.
-      Label the parent agent:accepted only if CI and review pass; otherwise
-      agent:changes. Return issue, child, branch, commit, pipeline, MR, note,
+      Leave all parent board labels to the poller. Return issue, child, branch, commit, pipeline, MR, note,
       and verdict references. Stop after one builder pass and one review pass.
       Never invent a worker or GitLab result. Never merge or deploy.
     tools:
@@ -122,4 +121,4 @@ spec:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
           name: sdlc-gitlab-mcp
-          toolNames: [gitlab_get_issue, gitlab_create_issue, gitlab_update_issue, gitlab_branch_pipeline_status, gitlab_create_draft_mr, gitlab_pipeline_status]
+          toolNames: [gitlab_get_issue, gitlab_create_issue, gitlab_branch_pipeline_status, gitlab_create_draft_mr, gitlab_pipeline_status]

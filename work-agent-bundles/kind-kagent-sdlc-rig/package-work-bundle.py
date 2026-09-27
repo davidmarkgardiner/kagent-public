@@ -14,7 +14,7 @@ NAME = "kind-kagent-sdlc-rig"
 FILES = (
     "00-foundation.yaml", "10-a2a-agents.yaml", "20-delivery-workers.yaml",
     "30-board-cronjob.yaml", "BOARD-POLLING-PRESENTATION.html", "PLAN.md",
-    "README.md", "WORK-CLUSTER-RUNBOOK.md", "board_poller.py",
+    "README.md", "REVIEW-TASKS.md", "WORK-CLUSTER-RUNBOOK.md", "board_poller.py",
     "images.lock.tsv", "package-work-bundle.py", "preflight.sh",
     "render-gitlab-mcp.py", "render-work-bundle.py", "test_board_poller.py",
     "test_render_work_bundle.py", "work-profile.example.json",
@@ -22,6 +22,8 @@ FILES = (
     "evidence/2026-09-27-unattended-lease-canary.md",
     "tools/PROVENANCE.md", "tools/kagent-a2a-invoke.sh",
     "vendor/PROVENANCE.md", "vendor/gitlab-delivery-mcp.yaml",
+    "review-repros/README.md", "review-repros/repro_ci_loop.py",
+    "review-repros/repro_findings.py",
 )
 
 
