@@ -20,6 +20,11 @@ Open the [HTML presentation](BOARD-POLLING-PRESENTATION.html) for a visual
 walkthrough of the annotated board and direct links to both GitLab issues,
 pipelines, and draft MRs.
 
+The independent [review task list](REVIEW-TASKS.md) separates work required
+before a workplace sandbox canary from later hardening. Its credential-free
+[offline reproductions](review-repros/README.md) are preserved for regression
+test development.
+
 ## Configuration
 
 | Value | Set outside this public repository |
