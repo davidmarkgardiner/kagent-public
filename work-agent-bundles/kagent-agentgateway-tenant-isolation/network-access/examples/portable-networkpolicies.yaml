@@ -1,0 +1,99 @@
+# Portable fallback. These access labels must be platform-owned and protected
+# by admission on Pods and workload Pod templates. Kubernetes NetworkPolicy
+# cannot select annotations or ServiceAccounts. Audit all other allow policies.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-gateway-ingress
+  namespace: tenant-gateway-system
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: tenant-gateway
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-event-a2a-caller
+  namespace: tenant-gateway-system
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: tenant-gateway
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: team-event
+          podSelector:
+            matchLabels:
+              access.agentgateway.dev/event-a2a-caller: "true"
+      ports:
+        - {protocol: TCP, port: 8081}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-event-mcp-caller
+  namespace: tenant-gateway-system
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: tenant-gateway
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: team-event
+          podSelector:
+            matchLabels:
+              access.agentgateway.dev/event-mcp-client: "true"
+      ports:
+        - {protocol: TCP, port: 8082}
+---
+# A team namespace also requires default-deny ingress/egress and separate
+# required control-plane exceptions, as in the existing isolation renderer.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-to-event-agent
+  namespace: team-event
+spec:
+  podSelector:
+    matchLabels:
+      access.agentgateway.dev/event-agent: "true"
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tenant-gateway-system
+          podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: tenant-gateway
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-to-event-mcp
+  namespace: team-event
+spec:
+  podSelector:
+    matchLabels:
+      tenant-isolation.agentgateway.dev/component: mcp
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tenant-gateway-system
+          podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: tenant-gateway
+      ports:
+        - {protocol: TCP, port: 8080}

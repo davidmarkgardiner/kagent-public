@@ -23,6 +23,10 @@ proven, which Gateway API version is actually required, and the order of work.
 Self-service onboarding of a team's own agent is planned, not built:
 [`ONBOARDING-AUTOMATION-SPIKE.md`](ONBOARDING-AUTOMATION-SPIKE.md).
 
+For the proposed work-cluster rule that only selected Pods may connect to the
+gateway and only the gateway may reach Agent/MCP backends, see the
+[network-access desired state, example policies and verification matrix](network-access/README.md).
+
 ## Published demonstration
 
 The red run below is the evidence behind the published video

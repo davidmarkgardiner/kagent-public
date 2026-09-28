@@ -1,0 +1,85 @@
+# Design examples only. Inspect installed Cilium CRDs and actual endpoint labels.
+# Replace placeholders in a private GitOps overlay. These ingress rules do not
+# define the complete DNS, Entra, model, controller, gateway or metrics egress.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-event-adapter-to-a2a-gateway
+  namespace: tenant-gateway-system
+spec:
+  endpointSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: tenant-gateway
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: team-event
+            io.cilium.k8s.policy.serviceaccount: event-adapter
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-event-agent-to-mcp-gateway
+  namespace: tenant-gateway-system
+spec:
+  endpointSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: tenant-gateway
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: team-event
+            io.cilium.k8s.policy.serviceaccount: "{{AGENT_SERVICE_ACCOUNT}}"
+      toPorts:
+        - ports:
+            - port: "8082"
+              protocol: TCP
+---
+# Direct-Agent-Service shape proved in the disposable AKS pilot. The red lab's
+# A2A route instead targeted the dedicated kagent controller Service.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-gateway-to-incident-agent
+  namespace: team-event
+spec:
+  endpointSelector:
+    matchLabels:
+      io.cilium.k8s.policy.serviceaccount: "{{AGENT_SERVICE_ACCOUNT}}"
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: tenant-gateway-system
+            gateway.networking.k8s.io/gateway-name: tenant-gateway
+            io.cilium.k8s.policy.serviceaccount: "{{GATEWAY_SERVICE_ACCOUNT}}"
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+---
+# The MCP Deployment needs serviceAccountName: incident-tools; the checked-in
+# lab Deployment currently falls back to the default ServiceAccount.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-gateway-to-incident-mcp
+  namespace: team-event
+spec:
+  endpointSelector:
+    matchLabels:
+      tenant-isolation.agentgateway.dev/component: mcp
+      io.cilium.k8s.policy.serviceaccount: incident-tools
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: tenant-gateway-system
+            gateway.networking.k8s.io/gateway-name: tenant-gateway
+            io.cilium.k8s.policy.serviceaccount: "{{GATEWAY_SERVICE_ACCOUNT}}"
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
