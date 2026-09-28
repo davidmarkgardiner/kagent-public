@@ -12,7 +12,7 @@ Copy this request into an approved private ticket. Replace every placeholder the
 
 **Target agent:** `{{AGENT_NAME}}` and its protected A2A API `{{A2A_API_NAME}}`
 
-**Change requested from the Entra team:** Create or identify the protected A2A API application and service principal. Confirm its Application ID URI and token audience `{{A2A_API_AUDIENCE}}`. Define or confirm the **application app role** `{{A2A_INVOKE_ROLE_VALUE}}` with `allowedMemberTypes: ["Application"]`. Assign that role to the service principal for the **caller UAMI** listed below. If the agent blueprint itself is the approved A2A resource app, tell us; our home-lab design used a separate A2A API app registration. Do not assign this caller role to the runtime child Agent ID by default.
+**Change requested from the Entra team:** Create or identify the protected A2A API application and service principal. Confirm its Application ID URI and token audience `{{A2A_API_AUDIENCE}}`. Define or confirm the **application app role** `{{A2A_INVOKE_ROLE_VALUE}}` with `allowedMemberTypes: ["Application"]`. Assign that role to the service principal for the **caller UAMI** listed below. This A2A API is a separate protected resource; this request does not require an Agent ID blueprint or a child Agent ID. Do not assign the caller role to the runtime child Agent ID.
 
 **Caller UAMI I will provide:**
 
@@ -36,7 +36,7 @@ Copy this request into an approved private ticket. Replace every placeholder the
 
 The FIC for this request belongs on the **caller UAMI**. I will create it if my Azure access and change process permit it. The caller ServiceAccount will reference `{{CALLER_UAMI_CLIENT_ID}}`. The Pod will use the `azure.workload.identity/use: "true"` label. AKS mounts a projected ServiceAccount token; it does not mount the UAMI itself.
 
-**Authorization outcome:** The application requests an Entra access token for `{{A2A_API_AUDIENCE}}`, not for Azure Resource Manager. That token must identify the caller UAMI and carry `{{A2A_INVOKE_ROLE_VALUE}}`. The application sends it to the protected A2A route. Agentgateway will verify the token issuer, audience, app role, and exact caller object ID before forwarding to `{{AGENT_NAME}}`.
+**Authorization outcome:** The application requests an Entra access token for `{{A2A_API_AUDIENCE}}`, not for Azure Resource Manager. That token must identify the caller UAMI and carry `{{A2A_INVOKE_ROLE_VALUE}}`. The application sends it to the protected A2A route. Agentgateway will verify the token issuer, audience, app role, and exact caller object ID before forwarding to `{{AGENT_NAME}}`. The platform-owned route and policy restrict access to this named agent; the Entra app-role assignment alone does not select an agent.
 
 **Why this is needed:** We need to prove that this application can invoke `{{AGENT_NAME}}` but an unapproved application cannot. The Entra app-role assignment places the approved role in this caller's A2A API token. The gateway policy enforces access on each call and denies roleless tokens. Please confirm whether the protected API also requires app-role assignment before Entra issues a token. No Azure resource RBAC or Agent ID blueprint permission is requested for the caller in this ticket.
 
