@@ -12,6 +12,8 @@ Copy this request into an approved private ticket. Replace every placeholder the
 
 **Target agent:** `{{AGENT_NAME}}` and its protected A2A API `{{A2A_API_NAME}}`
 
+**Two different addresses:** `{{A2A_API_AUDIENCE}}` identifies the API in an Entra access token. It is **not** the HTTP address of the agent. The platform team will separately publish `{{A2A_GATEWAY_URL}}` and configure an A2A gateway route to the Kubernetes Service for `{{AGENT_NAME}}`.
+
 **Change requested from the Entra team:** Create or identify the protected A2A API application and service principal. Confirm its Application ID URI and token audience `{{A2A_API_AUDIENCE}}`. Define or confirm the **application app role** `{{A2A_INVOKE_ROLE_VALUE}}` with `allowedMemberTypes: ["Application"]`. Assign that role to the service principal for the **caller UAMI** listed below. This A2A API is a separate protected resource; this request does not require an Agent ID blueprint or a child Agent ID. Do not assign the caller role to the runtime child Agent ID.
 
 **Caller UAMI I will provide:**
@@ -38,6 +40,16 @@ The FIC for this request belongs on the **caller UAMI**. I will create it if my 
 
 **Authorization outcome:** The application requests an Entra access token for `{{A2A_API_AUDIENCE}}`, not for Azure Resource Manager. That token must identify the caller UAMI and carry `{{A2A_INVOKE_ROLE_VALUE}}`. The application sends it to the protected A2A route. Agentgateway will verify the token issuer, audience, app role, and exact caller object ID before forwarding to `{{AGENT_NAME}}`. The platform-owned route and policy restrict access to this named agent; the Entra app-role assignment alone does not select an agent.
 
+**How the application reaches the agent and authenticates, step by step:**
+
+1. The caller Pod runs under `{{CALLER_NAMESPACE}}/{{CALLER_SERVICE_ACCOUNT}}`. AKS projects a signed ServiceAccount token into that Pod. The UAMI's federated identity credential trusts that exact AKS OIDC issuer and ServiceAccount subject.
+2. The application or its Azure identity library presents that projected token to Entra and requests an access token for the A2A API (typically the API's `/.default` scope). Entra validates the AKS assertion against the UAMI FIC, checks the UAMI's A2A app-role assignment, and issues a short-lived token with the A2A audience, UAMI identity, and role.
+3. The application makes the A2A HTTP request to **`{{A2A_GATEWAY_URL}}`**, with that access token in the HTTP `Authorization` header using the `Bearer` scheme. This URL is a platform-owned gateway endpoint, not an Entra endpoint. The caller never addresses the Agent Pod directly.
+4. Agentgateway validates the Entra token signature using the configured issuer's public signing keys, then checks expiry, issuer, A2A audience, role **and** exact UAMI object ID. The gateway normally performs this check itself; it does not call Entra for a yes/no answer on every A2A request.
+5. If allowed, the A2A HTTPRoute forwards the request to the named agent's Kubernetes Service. The agent processes it and its response returns through the gateway. If the token or policy fails, the gateway rejects the call before it reaches the agent.
+
+The **Entra team's deliverable** is the protected API/audience, app role, UAMI grant, and relevant federation read-back. The **platform team's deliverable** is a reachable gateway URL, an A2A route to the named Agent Service, JWT and exact-caller policy, and network restrictions. Both are needed for the application to reach the agent.
+
 **Why this is needed:** We need to prove that this application can invoke `{{AGENT_NAME}}` but an unapproved application cannot. The Entra app-role assignment places the approved role in this caller's A2A API token. The gateway policy enforces access on each call and denies roleless tokens. Please confirm whether the protected API also requires app-role assignment before Entra issues a token. No Azure resource RBAC or Agent ID blueprint permission is requested for the caller in this ticket.
 
 **Return in the private ticket:** A2A API app/client ID, service-principal object ID, Application ID URI, role value and role ID, the UAMI object ID used as `principalId`, the app-role assignment read-back, owner, approver, and revocation path. Confirm whether your team, my team, or the platform team owns the caller UAMI FIC. Do not return credentials or access tokens.
@@ -46,14 +58,14 @@ The FIC for this request belongs on the **caller UAMI**. I will create it if my 
 
 ## Desired state and definition of done
 
-The named AKS application uses its own ServiceAccount and UAMI to obtain a short-lived token for `{{A2A_API_AUDIENCE}}`. Entra has assigned `{{A2A_INVOKE_ROLE_VALUE}}` to that UAMI service principal. The platform's A2A gateway route accepts that role **and the exact approved UAMI object ID** for `{{AGENT_NAME}}`; the role by itself is insufficient to select or invoke the agent.
+The named AKS application uses its own ServiceAccount and UAMI to obtain a short-lived token for `{{A2A_API_AUDIENCE}}`. Entra has assigned `{{A2A_INVOKE_ROLE_VALUE}}` to that UAMI service principal. The application calls `{{A2A_GATEWAY_URL}}`; the platform's A2A gateway route accepts that role **and the exact approved UAMI object ID**, then forwards to the Service for `{{AGENT_NAME}}`. The role by itself is insufficient to select or invoke the agent.
 
 Close the identity team's change when the protected API, role, UAMI assignment, ownership, and FIC owner have been read back and returned in the private ticket. Close the platform verification only when a fresh workload token and gateway tests below pass. Object creation or a successful token request alone is not end-to-end proof.
 
 | Test from the caller workload or an approved test client | Expected result and evidence |
 |---|---|
 | Obtain a fresh token for the A2A API; inspect claims without recording the token | Expected tenant issuer, A2A `aud`, UAMI `oid`, and `{{A2A_INVOKE_ROLE_VALUE}}` in `roles`; sanitized claim summary. |
-| Invoke the named agent through its A2A gateway route with that token | Gateway allows the request and the named agent returns a valid response; gateway/agent request correlation recorded. |
+| Send an A2A request with that token to `{{A2A_GATEWAY_URL}}` | Gateway allows the request, routes it to the named Agent Service, and the agent returns a valid response; gateway/agent request correlation recorded. |
 | Repeat with no token, wrong audience, and a token missing the role | Each request is denied before reaching the agent; record gateway decision and absence of upstream invocation. |
 | Repeat with a different caller identity, including one with the same role if available | Gateway denies it because its `oid` is not the approved UAMI; record the decision. |
 | Revoke the UAMI's A2A app-role grant in an approved test window and obtain a **new** token | The new token lacks the role or token issuance is refused under the API's assignment policy; the gateway denies it. Do not use an already issued token as revocation proof. |
