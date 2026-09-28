@@ -25,6 +25,9 @@
     .walk ol{margin:0;padding-left:1.35em;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:27px;row-gap:7px}
     .walk li{padding-left:3px}
     .walk li::marker{font-weight:800;color:var(--blue)}
+    .walk.mcp{border-left-color:var(--green)}
+    .walk.mcp .key{color:var(--green)}
+    .walk.mcp li::marker{color:var(--green)}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
     .card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:20px 22px 18px;min-width:0}
     .card.a{border-top:6px solid var(--blue)}.card.b{border-top:6px solid var(--green)}
@@ -66,6 +69,17 @@
       <li><strong>The gateway checks and routes.</strong> It verifies the token signature, issuer, expiry, audience, role and exact UAMI ID, then forwards to the named Agent Service. A denied call never reaches the agent.</li>
     </ol>
   </section>
+  <section class="walk mcp" aria-label="Request 2 authentication handshake">
+    <h2>Request 2: how does the agent actually reach MCP?</h2>
+    <p class="key">Say this: “The MCP audience says what the child token is for. Our MCP gateway URL is where the tool request goes.”</p>
+    <ol>
+      <li><strong>The agent chooses a tool.</strong> Its MCP client is configured to use our gateway route. The agent Pod, or a dedicated token proxy, holds the exact ServiceAccount trusted by the blueprint.</li>
+      <li><strong>Entra issues a child token.</strong> That ServiceAccount authenticates the blueprint. The token holder selects the approved child Agent ID and requests a token for the MCP API. Its inherited role appears in the child token.</li>
+      <li><strong>The client calls our MCP gateway URL.</strong> The agent or its dedicated proxy attaches the child token to the outbound MCP request. The API audience is not this network address.</li>
+      <li><strong>The gateway checks and routes.</strong> It verifies the token, inherited role, exact child ID and requested tool, then forwards only an approved call to the MCP Service. MCP executes the tool and returns the result.</li>
+    </ol>
+    <p class="footer"><strong>Still to prove:</strong> how the deployed agent attaches and renews a fresh child token. The pilot's static header and Pod restart did not prove automatic renewal.</p>
+  </section>
   <section class="grid" aria-label="Two request comparison">
     <article class="card a">
       <span class="badge">Request 1 · application → agent</span>
@@ -97,6 +111,7 @@
       <dl>
         <dt>We give</dt><dd>Agent/token-holder ServiceAccount, cluster, OIDC issuer, MCP API and allowed tool.</dd>
         <dt>Entra gives</dt><dd>Blueprint and child IDs, federation trust, inheritable MCP role, approved grant on the blueprint principal and read-backs.</dd>
+        <dt>We build</dt><dd>MCP gateway URL, route to the MCP Service, exact-child/tool policy and renewable token handoff.</dd>
         <dt>We prove</dt><dd>Child token has the inherited role and the tool works. Wrong child, missing role or forbidden tool is denied.</dd>
       </dl>
     </article>
