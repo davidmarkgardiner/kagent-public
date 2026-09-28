@@ -44,6 +44,22 @@ The FIC for this request belongs on the **caller UAMI**. I will create it if my 
 
 **Acceptance:** The caller obtains a fresh A2A-audience token with the expected `iss`, `aud`, `roles`, and `oid` claims. Agentgateway allows the approved caller and denies a missing token, wrong audience, missing role, or wrong caller identity. We will record sanitized claim summaries, not token values.
 
+## Desired state and definition of done
+
+The named AKS application uses its own ServiceAccount and UAMI to obtain a short-lived token for `{{A2A_API_AUDIENCE}}`. Entra has assigned `{{A2A_INVOKE_ROLE_VALUE}}` to that UAMI service principal. The platform's A2A gateway route accepts that role **and the exact approved UAMI object ID** for `{{AGENT_NAME}}`; the role by itself is insufficient to select or invoke the agent.
+
+Close the identity team's change when the protected API, role, UAMI assignment, ownership, and FIC owner have been read back and returned in the private ticket. Close the platform verification only when a fresh workload token and gateway tests below pass. Object creation or a successful token request alone is not end-to-end proof.
+
+| Test from the caller workload or an approved test client | Expected result and evidence |
+|---|---|
+| Obtain a fresh token for the A2A API; inspect claims without recording the token | Expected tenant issuer, A2A `aud`, UAMI `oid`, and `{{A2A_INVOKE_ROLE_VALUE}}` in `roles`; sanitized claim summary. |
+| Invoke the named agent through its A2A gateway route with that token | Gateway allows the request and the named agent returns a valid response; gateway/agent request correlation recorded. |
+| Repeat with no token, wrong audience, and a token missing the role | Each request is denied before reaching the agent; record gateway decision and absence of upstream invocation. |
+| Repeat with a different caller identity, including one with the same role if available | Gateway denies it because its `oid` is not the approved UAMI; record the decision. |
+| Revoke the UAMI's A2A app-role grant in an approved test window and obtain a **new** token | The new token lacks the role or token issuance is refused under the API's assignment policy; the gateway denies it. Do not use an already issued token as revocation proof. |
+
+The platform team owns the ServiceAccount/UAMI federation, A2A route and policy, test clients, and sanitized gateway evidence. The Entra team owns or identifies the API/role and assignment, provides their read-backs, and confirms the FIC owner. The two teams jointly review the acceptance evidence.
+
 ## Identity-team mapping
 
 For the app-role assignment, `principalId` is `{{CALLER_UAMI_PRINCIPAL_OBJECT_ID}}`, `resourceId` is `{{A2A_API_SERVICE_PRINCIPAL_OBJECT_ID}}`, and `appRoleId` is `{{A2A_INVOKE_ROLE_ID}}`. The app registration defines the role; the caller UAMI service principal receives it. The A2A route policy is a separate platform change.

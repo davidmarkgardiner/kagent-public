@@ -60,6 +60,22 @@ If a dedicated token proxy acquires the child Agent ID token, use **its** Servic
 
 **Acceptance:** The chosen AKS ServiceAccount obtains a fresh child Agent ID token with expected `iss`, `aud`, inherited `roles`, and exact child `oid`, without a direct child app-role assignment. Agentgateway permits `{{ALLOWED_MCP_TOOL}}` for a platform-approved child and denies wrong audience, missing role, an unapproved child identity, and forbidden tools. Repeat the token and gateway checks as each additional child is onboarded. The platform team must also test token renewal and expiry behavior before production use.
 
+## Desired state and definition of done
+
+The chosen ServiceAccount federates directly to the blueprint application. The blueprint principal has an approved grant for `{{MCP_ROLE_VALUE}}` on `{{MCP_API_NAME}}`, and the blueprint declares the MCP API role in `requiredResourceAccess` and enables role inheritance in `inheritablePermissions`. A child Agent ID receives that role in a fresh MCP-audience token **without a direct child grant**. The platform's MCP gateway route accepts the exact onboarded child identity, inherited role, and approved tool. All present and future blueprint children inherit the Entra role, but each child still needs platform gateway onboarding before using this route.
+
+Close the identity team's change when the blueprint, child link, FIC, API role, inheritance configuration, blueprint-principal grant, owner, future-child process, and revocation path have been read back in the private ticket. Close the platform verification only when the token and route tests below pass. The historical direct-child-grant pilot does not satisfy this inherited-grant test.
+
+| Test from the agent token holder or an approved test client | Expected result and evidence |
+|---|---|
+| Exchange the projected ServiceAccount token through the blueprint and request a **fresh child** token for the MCP API | Expected tenant issuer, MCP `aud`, exact child `oid`, and inherited `{{MCP_ROLE_VALUE}}` in `roles`; no direct child assignment in the identity read-back. Record only sanitized claims. |
+| Have the approved child call `{{ALLOWED_MCP_TOOL}}` through the MCP gateway | Gateway allows the request and MCP returns the expected bounded tool response; correlate gateway and MCP request logs. |
+| Try no token, wrong audience, missing role, wrong child identity, and a forbidden MCP tool | Each call is denied before the protected tool executes; record gateway decision and absence of backend action. |
+| In an approved pilot, create a second child under the same blueprint and obtain a fresh MCP token | The second child receives the inherited role without its own app-role grant. Gateway denies it until its exact identity and allowed tool are deliberately onboarded; then the permitted call succeeds. |
+| Renew the child token across expiry, then test the agreed grant-revocation procedure with a **new** token | Renewal succeeds before production use; after revocation, a new token lacks the role or issuance is refused, and the gateway denies it. Previously issued tokens may remain valid until expiry. |
+
+The Entra team owns or identifies the blueprint, child, API/role, FIC, inheritance configuration, grant, and their read-backs. The platform team owns token acquisition and renewal, gateway child/tool policy, network controls, and sanitized runtime evidence. The MCP owner confirms the tool and backend result. These owners jointly review the acceptance evidence.
+
 ## Identity-team mapping
 
 For the app-role assignment, `principalId` is `{{BLUEPRINT_PRINCIPAL_OBJECT_ID}}`, `resourceId` is `{{MCP_API_SERVICE_PRINCIPAL_OBJECT_ID}}`, and `appRoleId` is `{{MCP_ROLE_ID}}`. The blueprint application holds the AKS FIC and declares the resource app eligible for inheritance. The protected MCP API application defines the role. The blueprint principal receives the approved grant; its child Agent IDs receive the inherited role in their API tokens. The gateway policy and Kubernetes network controls are separate platform changes.
