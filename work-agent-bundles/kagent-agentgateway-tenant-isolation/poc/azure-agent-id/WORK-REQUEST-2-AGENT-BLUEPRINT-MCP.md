@@ -1,16 +1,16 @@
-# Request 2: Give one agent an identity and MCP permission
+# Request 2: Give child agents an inherited MCP permission
 
 Copy this request into an approved private ticket. Replace every placeholder there. Do not put real tenant, identity, cluster, or service IDs in this public repository. This request covers the **running agent**. It does not grant a calling application access to the agent. Use [Request 1](WORK-REQUEST-1-CALLER-UAMI-A2A.md) for that work.
 
 ## Copy into the work request
 
-**Title:** Create an Entra Agent ID blueprint and assign the MCP app role to the child Agent ID for `{{AGENT_NAME}}`
+**Title:** Create an Entra Agent ID blueprint and inherit the MCP app role for its child Agent IDs
 
 **Environment and owner:** `{{ENVIRONMENT}}`; `{{REQUESTING_TEAM}}`; `{{BUSINESS_SPONSOR}}`
 
 **Agent workload:** `{{AGENT_NAME}}` in AKS namespace `{{AGENT_NAMESPACE}}`
 
-**Change requested from the Entra team:** Create or approve a dedicated Entra Agent ID blueprint and blueprint principal for this trust boundary. Create one runtime child Agent ID under that blueprint. Configure a federated identity credential on the **blueprint application** that trusts the exact AKS issuer and ServiceAccount subject below. Create or identify the protected MCP API app registration and service principal. Define or confirm the **application app role** `{{MCP_ROLE_VALUE}}` with `allowedMemberTypes: ["Application"]`. Assign that role **directly to the runtime child Agent ID service principal**.
+**Change requested from the Entra team:** Create or approve a dedicated Entra Agent ID blueprint and blueprint principal for the agents intended to share this MCP API permission. Create one runtime child Agent ID under that blueprint. Configure a federated identity credential on the **blueprint application** that trusts the exact AKS issuer and ServiceAccount subject below. Create or identify the protected MCP API app registration and service principal. Define or confirm the **application app role** `{{MCP_ROLE_VALUE}}` with `allowedMemberTypes: ["Application"]`. Declare that role in the blueprint's `requiredResourceAccess`, configure the MCP resource app in `inheritablePermissions` with roles enabled and delegated scopes disabled, and obtain an approved grant of that app role to the **blueprint principal**. Do not assign it directly to the child for this request.
 
 **Agent identity objects:**
 
@@ -19,9 +19,9 @@ Copy this request into an approved private ticket. Replace every placeholder the
 | Agent ID blueprint application | `{{BLUEPRINT_NAME}}` | Credential-owning blueprint for this trust boundary. |
 | Blueprint app/client ID | `{{BLUEPRINT_APP_CLIENT_ID}}` | Kubernetes ServiceAccount annotation and token request client ID. |
 | Blueprint application object ID | `{{BLUEPRINT_APP_OBJECT_ID}}` | Graph application object for the FIC. This is not the client ID. |
-| Blueprint principal object ID | `{{BLUEPRINT_PRINCIPAL_OBJECT_ID}}` | Entra tenant service principal for the blueprint. |
+| Blueprint principal object ID | `{{BLUEPRINT_PRINCIPAL_OBJECT_ID}}` | Entra tenant service principal receiving the MCP app-role grant. |
 | Child Agent ID | `{{CHILD_AGENT_NAME}}` | Runtime agent identity created under the blueprint. |
-| Child Agent ID object ID | `{{CHILD_AGENT_OBJECT_ID}}` | Principal receiving the MCP app role and expected token `oid`. |
+| Child Agent ID object ID | `{{CHILD_AGENT_OBJECT_ID}}` | Expected token `oid`; the MCP role is inherited rather than directly assigned. |
 
 **Agent AKS federation inputs supplied by the platform team:**
 
@@ -46,19 +46,20 @@ If a dedicated token proxy acquires the child Agent ID token, use **its** Servic
 | MCP API audience | `{{MCP_API_AUDIENCE}}` | Expected token `aud` at the gateway. |
 | MCP app-role value | `{{MCP_ROLE_VALUE}}` | Expected token `roles` value. Pilot example: `team-event.mcp.use`. |
 | MCP app-role ID | `{{MCP_ROLE_ID}}` | `appRoleId` in the role assignment. |
-| Runtime child Agent ID object ID | `{{CHILD_AGENT_OBJECT_ID}}` | `principalId` in the role assignment and expected token `oid`. |
+| Blueprint principal object ID | `{{BLUEPRINT_PRINCIPAL_OBJECT_ID}}` | `principalId` in the MCP app-role assignment. |
+| Runtime child Agent ID object ID | `{{CHILD_AGENT_OBJECT_ID}}` | Expected token `oid` and platform gateway onboarding identity. |
 | Permitted MCP tool | `{{ALLOWED_MCP_TOOL}}` | Gateway tool policy. Pilot example: `lookup_incident`. |
 
-**Inheritance requested:** Do **not** make the MCP role inheritable across a reused blueprint for this pilot. Assign it to `{{CHILD_AGENT_OBJECT_ID}}` only. If your process requires blueprint inheritance, stop and confirm that every current and future child of this blueprint should receive this role. Record the approved child set, resource app, grant, and revocation plan before enabling inheritance. A declaration in `requiredResourceAccess` or `inheritablePermissions` is not itself a grant.
+**Inheritance requested:** Make the approved MCP API application role inheritable by **all present and future child Agent IDs of this blueprint**. Limit this blueprint to the trust boundary whose children are intended to use `{{MCP_API_NAME}}`. For that resource app, configure application-role inheritance and no delegated-scope inheritance. Record the blueprint owner, current child inventory, future-child approval process, resource app, exact role grant, and revocation plan. `requiredResourceAccess` and `inheritablePermissions` are declarations, not grants; the administrator must also approve the role grant on the blueprint principal. In the current Entra API, `allAllowed` role inheritance includes later roles granted to this blueprint principal for the same resource app, so treat each later grant as access for all children and review it accordingly. Confirm the inherited role in a fresh child API token because it might not appear as a direct child assignment in Graph or the portal.
 
-**Authorization outcome:** The agent acquires a child Agent ID token for `{{MCP_API_AUDIENCE}}`. The token must carry the child `oid` and `{{MCP_ROLE_VALUE}}`. Agentgateway will accept that child identity and role only on the approved MCP route. Its MCP policy will allow only `{{ALLOWED_MCP_TOOL}}`. The app role is an API permission; Entra does not map it to an MCP tool name by itself.
+**Authorization outcome:** The agent acquires a child Agent ID token for `{{MCP_API_AUDIENCE}}`. The token must carry the child `oid` and inherited `{{MCP_ROLE_VALUE}}` in `roles`. Agentgateway will accept the approved child identity and role only on the MCP route, then allow only `{{ALLOWED_MCP_TOOL}}`. New children inherit the Entra role without another child app-role assignment; platform gateway and network onboarding remain separate. The app role is an API permission; Entra does not map it to an MCP tool name by itself.
 
-**Why this is needed:** We need to prove that `{{AGENT_NAME}}` can use the approved MCP tool but another agent cannot use the same route, even if it has a similar role. No Azure subscription or resource-group RBAC is requested merely to call the MCP. If the MCP backend later needs to access an Azure resource, its execution identity needs a separate least-privilege Azure RBAC request.
+**Why this is needed:** Agents intentionally created under this blueprint should share the MCP API permission without a new Entra role assignment for every child. The platform must still control which child identities and MCP tools can use its route; a role alone does not prove blueprint membership or grant a tool. No Azure subscription or resource-group RBAC is requested merely to call the MCP. If the MCP backend later needs to access an Azure resource, its execution identity needs a separate least-privilege Azure RBAC request.
 
-**Return in the private ticket:** Blueprint app/client ID and object ID, blueprint-principal object ID, child Agent ID app/client and object IDs, child-to-blueprint link, FIC name and exact issuer/subject/audience, MCP API app/client and service-principal object IDs, MCP audience, role value and role ID, direct child app-role assignment read-back, owner, sponsor, approver, review date, and revocation path. Do not return credentials or access tokens.
+**Return in the private ticket:** Blueprint app/client ID and object ID, blueprint-principal object ID, child Agent ID app/client and object IDs, child-to-blueprint link, FIC name and exact issuer/subject/audience, MCP API app/client and service-principal object IDs, MCP audience, role value and role ID, `requiredResourceAccess` and `inheritablePermissions` read-backs for that resource app, blueprint-principal app-role grant/consent read-back, current child inventory and future-child owner, sanitized fresh child-token claim summary, owner, sponsor, approver, review date, and revocation path. Do not return credentials or access tokens.
 
-**Acceptance:** The chosen AKS ServiceAccount obtains a fresh child Agent ID token with expected `iss`, `aud`, `roles`, and exact child `oid`. Agentgateway permits `{{ALLOWED_MCP_TOOL}}` and denies wrong audience, missing role, wrong child identity, and forbidden tools. The platform team must also test token renewal and expiry behavior before production use.
+**Acceptance:** The chosen AKS ServiceAccount obtains a fresh child Agent ID token with expected `iss`, `aud`, inherited `roles`, and exact child `oid`, without a direct child app-role assignment. Agentgateway permits `{{ALLOWED_MCP_TOOL}}` for a platform-approved child and denies wrong audience, missing role, an unapproved child identity, and forbidden tools. Repeat the token and gateway checks as each additional child is onboarded. The platform team must also test token renewal and expiry behavior before production use.
 
 ## Identity-team mapping
 
-For the app-role assignment, `principalId` is `{{CHILD_AGENT_OBJECT_ID}}`, `resourceId` is `{{MCP_API_SERVICE_PRINCIPAL_OBJECT_ID}}`, and `appRoleId` is `{{MCP_ROLE_ID}}`. The blueprint application holds the AKS FIC. The protected MCP API application defines the role. The child Agent ID receives the role. The gateway policy and Kubernetes network controls are separate platform changes.
+For the app-role assignment, `principalId` is `{{BLUEPRINT_PRINCIPAL_OBJECT_ID}}`, `resourceId` is `{{MCP_API_SERVICE_PRINCIPAL_OBJECT_ID}}`, and `appRoleId` is `{{MCP_ROLE_ID}}`. The blueprint application holds the AKS FIC and declares the resource app eligible for inheritance. The protected MCP API application defines the role. The blueprint principal receives the approved grant; its child Agent IDs receive the inherited role in their API tokens. The gateway policy and Kubernetes network controls are separate platform changes.

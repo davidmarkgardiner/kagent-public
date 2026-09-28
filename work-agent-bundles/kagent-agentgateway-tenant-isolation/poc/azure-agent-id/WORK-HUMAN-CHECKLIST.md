@@ -9,7 +9,7 @@ Use this checklist to start the identity-team conversation and track your decisi
 
 Copy this message and replace the contact name:
 
-> Hi {{IDENTITY_CONTACT}}, we're preparing a small AKS and kagent Agent ID pilot. Could your team help us create or approve a dedicated Agent ID blueprint and child Agent ID, register or reuse an MCP API application, and assign its application role to the child Agent ID? We also need a federated credential on the blueprint that trusts one exact AKS OIDC issuer and Kubernetes ServiceAccount. We will confirm the issuer and ServiceAccount subject with our AKS team before you create that credential.
+> Hi {{IDENTITY_CONTACT}}, we're preparing a small AKS and kagent Agent ID pilot. Could your team help us create or approve a dedicated Agent ID blueprint and child Agent ID, register or reuse an MCP API application, configure its application role as inheritable, and grant that role to the blueprint principal for its present and future children? We also need a federated credential on the blueprint that trusts one exact AKS OIDC issuer and Kubernetes ServiceAccount. We will confirm the issuer and ServiceAccount subject with our AKS team before you create that credential.
 >
 > Could you tell us how to request this through AACM or your approved process, who approves the app registration and role assignment, and what your team can run for us? A script, Graph, or the portal is fine if it follows your process. We will handle the Kubernetes deployment, gateway policy, and runtime token renewal. Here is our sanitized request and home-lab implementation reference:
 >
@@ -26,12 +26,13 @@ Copy this message and replace the contact name:
 - [ ] Confirm the target AKS cluster and its owner. Ask the AKS owner or work agent to read the OIDC issuer and confirm that Workload Identity is enabled. The [work-agent walkthrough](../../profiles/aks-entra/WORK-AGENT-START-HERE.md) gives the read-only command.
 - [ ] Decide which workload will obtain Agent ID tokens. If the kagent Pod does it, use its dedicated ServiceAccount. If a separate per-agent token proxy does it, use the proxy's dedicated ServiceAccount. Do not guess a default name.
 - [ ] Record the namespace, ServiceAccount name, and exact subject `system:serviceaccount:{{NAMESPACE}}:{{SERVICE_ACCOUNT}}`. Copy the issuer exactly, including its trailing slash. If this decision is still open, ask the identity team to start the blueprint and API registration work but hold the federated credential.
-- [ ] Agree the MCP API name, audience, application role value, and permitted tool with the MCP owner. Ask whether the inbound A2A caller needs its own Agent ID, API audience, and role.
+- [ ] Agree the MCP API name, audience, application role value, and permitted tool with the MCP owner. For Request 1, record the caller UAMI, separate A2A API audience, and A2A role.
 - [ ] Replace the placeholders in the **private** identity ticket. Keep the real OIDC URL, tenant, application IDs, and contact details out of the public repo.
 
 ## Check the identity-team response
 
-- [ ] Get the approved blueprint and blueprint-principal IDs, child Agent ID app and object IDs, MCP API app and service-principal IDs, exact audience, role value and role ID, and the role assignment to the **child** principal.
+- [ ] Get the approved blueprint and blueprint-principal IDs, child Agent ID app and object IDs, MCP API app and service-principal IDs, exact audience, role value and role ID, `requiredResourceAccess` and `inheritablePermissions` read-backs, the grant to the **blueprint principal**, and a fresh child-token claim summary showing the inherited role.
+- [ ] Record every current child under this blueprint, the owner and approval process for future children, and the effect of later grants to the blueprint principal. Register each approved child identity in the MCP gateway policy.
 - [ ] Get a read-back of the blueprint federated credential. Check its issuer, ServiceAccount subject, and `api://AzureADTokenExchange` audience against the private ticket.
 - [ ] Ask who owns Graph permissions, admin consent, later role changes, and revocation. Ask for the real AACM intake and response contract so the process can later be automated. Do not request broad directory access for the AKS SPN as a shortcut.
 

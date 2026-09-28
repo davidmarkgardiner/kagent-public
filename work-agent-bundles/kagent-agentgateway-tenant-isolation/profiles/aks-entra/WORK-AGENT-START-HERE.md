@@ -35,7 +35,7 @@ Agent.spec.declarative.deployment.labels["azure.workload.identity/use"] = "true"
 
 These are field mappings, not a complete manifest. If a separate proxy holds the credential, annotate **its** ServiceAccount and label **its** Pod instead; do not give the kagent Pod unnecessary blueprint access. Check the fields against the installed CRD and read them back after deployment. The old [`generate.py`](../../poc/azure-agent-id/generate.py) annotates a UAMI and is not a template for this direct path.
 
-The identity owner creates the FIC and assigns the API role to the **child Agent ID principal**. The platform owner creates the ServiceAccount and Agent manifest, configures agentgateway, and proves the runtime token flow. Entra API app roles, Azure RBAC, and Kubernetes RBAC are different permissions. Do not ask for cluster-admin or broad Graph access merely to get an MCP API role.
+For the requested work design, the identity owner creates the FIC, declares MCP inheritance on the blueprint, and obtains the MCP API app-role grant on the **blueprint principal**. All children of that blueprint inherit the role. The platform owner creates the ServiceAccount and Agent manifest, configures agentgateway for each exact approved child identity and tool, and proves the runtime token flow. The historical AKS pilot used a direct child grant; blueprint inheritance still needs live proof. Entra API app roles, Azure RBAC, and Kubernetes RBAC are different permissions. Do not ask for cluster-admin or broad Graph access merely to get an MCP API role.
 
 ## 1. Inspect the current agent lane without changing it
 

@@ -78,7 +78,38 @@ az ad sp show --id '{{MCP_APP_ID}}' --query '{id:id,appId:appId}'
 
 Record the API service-principal object `id` as `{{MCP_SP_OBJECT_ID}}`. `api://{{MCP_APP_ID}}` is an example audience; if the MCP owner already has an approved Application ID URI, use and verify that instead.
 
-## 3. Child Agent ID and MCP app-role assignment
+## 3. Blueprint inheritance, MCP app-role grant, and child Agent ID
+
+Request 2 now uses **blueprint-level inheritance**. The historical PoC directly granted the child; the review-only steps below have not been executed in the work tenant. Have the identity owner declare the MCP API app role in the blueprint's `requiredResourceAccess` and read that declaration back. It is a consent request, not a grant. Then create or review an `inheritablePermissions` entry for the MCP resource app with roles enabled and scopes disabled. The exact Graph shape is:
+
+```http
+POST https://graph.microsoft.com/v1.0/applications/microsoft.graph.agentIdentityBlueprint/{{BLUEPRINT_OBJECT_ID}}/inheritablePermissions
+Content-Type: application/json
+OData-Version: 4.0
+
+{
+  "resourceAppId": "{{MCP_APP_ID}}",
+  "inheritableScopes": {"@odata.type": "#microsoft.graph.noScopes", "kind": "none"},
+  "inheritableRoles": {"@odata.type": "#microsoft.graph.allAllowedRoles", "kind": "allAllowed"}
+}
+```
+
+If an entry already exists for this resource app, review and `PATCH` it rather than creating a duplicate. The identity owner must then obtain the approved grant of `{{MCP_ROLE_ID}}` on the **blueprint principal**. For a private `mcp-role-assignment.json`, use:
+
+```json
+{
+  "principalId": "{{BLUEPRINT_PRINCIPAL_OBJECT_ID}}",
+  "resourceId": "{{MCP_SP_OBJECT_ID}}",
+  "appRoleId": "{{MCP_ROLE_ID}}"
+}
+```
+
+```sh
+az rest --method POST --url 'https://graph.microsoft.com/v1.0/servicePrincipals/{{MCP_SP_OBJECT_ID}}/appRoleAssignedTo' --headers Content-Type=application/json --body @mcp-role-assignment.json
+az rest --method GET --url 'https://graph.microsoft.com/v1.0/servicePrincipals/{{BLUEPRINT_PRINCIPAL_OBJECT_ID}}/appRoleAssignments'
+```
+
+The `allAllowed` setting includes later MCP API roles granted to this blueprint principal. Restrict the blueprint to the approved child population and review later grants. Verify the inherited role in a fresh child API token: Graph may not show it as a direct child assignment.
 
 Create a private `child-agent.json`. The blueprint link takes its **app/client ID**, not its object ID. Microsoft currently documents this typed endpoint in Graph v1.0; its broader admin guide still shows a beta example, so the identity team should confirm the version it supports before a work change.
 
@@ -96,20 +127,10 @@ Create a private `child-agent.json`. The blueprint link takes its **app/client I
 az rest --method POST --url 'https://graph.microsoft.com/v1.0/servicePrincipals/microsoft.graph.agentIdentity' --headers Content-Type=application/json --body @child-agent.json
 ```
 
-Record the returned child `id` as `{{CHILD_AGENT_OBJECT_ID}}`. Assign the MCP role to **that child principal**, not to the blueprint or a UAMI. Create private `mcp-role-assignment.json`:
-
-```json
-{
-  "principalId": "{{CHILD_AGENT_OBJECT_ID}}",
-  "resourceId": "{{MCP_SP_OBJECT_ID}}",
-  "appRoleId": "{{MCP_ROLE_ID}}"
-}
-```
+Record the returned child `id` as `{{CHILD_AGENT_OBJECT_ID}}` and its blueprint link. Register that exact child object ID in the platform MCP gateway policy.
 
 ```sh
-az rest --method POST --url 'https://graph.microsoft.com/v1.0/servicePrincipals/{{MCP_SP_OBJECT_ID}}/appRoleAssignedTo' --headers Content-Type=application/json --body @mcp-role-assignment.json
 az rest --method GET --url 'https://graph.microsoft.com/v1.0/servicePrincipals/{{CHILD_AGENT_OBJECT_ID}}/microsoft.graph.agentIdentity'
-az rest --method GET --url 'https://graph.microsoft.com/v1.0/servicePrincipals/{{CHILD_AGENT_OBJECT_ID}}/appRoleAssignments'
 ```
 
 This is a Microsoft Entra **API app role**, not an Azure subscription/resource-group RBAC role. `az role assignment create` and delegated-scope grants are not substitutes.
@@ -138,7 +159,7 @@ The equivalent Graph collection is `POST https://graph.microsoft.com/v1.0/applic
 
 ## 5. Identity-team read-back and platform handoff
 
-Return the blueprint application and principal IDs, child Agent ID object ID and blueprint link, MCP API app and service-principal IDs, exact API audience, role value/ID and assignment, and exact FIC issuer/subject/audience **in the private ticket**. Record owner, approver, lifecycle, consent, and revocation path. Avoid returning credentials or access tokens. Object creation alone does not prove workload authentication.
+Return the blueprint application and principal IDs, child Agent ID object ID and blueprint link, MCP API app and service-principal IDs, exact API audience, role value/ID, `requiredResourceAccess` and `inheritablePermissions` read-backs, blueprint-principal grant, sanitized child-token claim summary, and exact FIC issuer/subject/audience **in the private ticket**. Record owner, current children, future-child approval, approver, lifecycle, consent, and revocation path. Avoid returning credentials or access tokens. Object creation alone does not prove workload authentication.
 
 The platform team then puts the **blueprint app/client ID** on the credential-holding Kubernetes ServiceAccount, enables AKS Workload Identity mutation on its Pod, and implements dynamic child Agent ID token acquisition/renewal. It must test the intended agent-to-MCP call and wrong-child, missing-role, wrong-audience, direct-backend, and expiry/revocation denials. The FIC is durable trust; short-lived tokens still need renewal. See the [work-agent walkthrough](../../profiles/aks-entra/WORK-AGENT-START-HERE.md) and [AKS evidence](AKS-FULL-E2E-EVIDENCE-2026-09-25.md).
 
@@ -147,3 +168,4 @@ The platform team then puts the **blueprint app/client ID** on the credential-ho
 - [Blueprint create](https://learn.microsoft.com/en-us/graph/api/agentidentityblueprint-post?view=graph-rest-1.0), [blueprint principal create](https://learn.microsoft.com/en-us/graph/api/agentidentityblueprintprincipal-post?view=graph-rest-1.0), [child Agent ID create](https://learn.microsoft.com/en-us/graph/api/agentidentity-post?view=graph-rest-1.0), and [Agent ID admin guide](https://learn.microsoft.com/en-us/entra/agent-id/create-delete-agent-identities)
 - [Azure CLI `az rest`](https://learn.microsoft.com/en-us/cli/azure/reference-index?view=azure-cli-latest#az-rest), [`az ad app`](https://learn.microsoft.com/en-us/cli/azure/ad/app?view=azure-cli-latest), [`az ad sp`](https://learn.microsoft.com/en-us/cli/azure/ad/sp?view=azure-cli-latest), and [app federated credentials](https://learn.microsoft.com/en-us/cli/azure/ad/app/federated-credential?view=azure-cli-latest)
 - [Graph app-role assignment](https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-approleassignedto?view=graph-rest-1.0) and [app federated credential](https://learn.microsoft.com/en-us/graph/api/federatedidentitycredential-post?view=graph-rest-1.0)
+- [Blueprint permission declarations and grants](https://learn.microsoft.com/en-us/entra/agent-id/concept-inheritable-permissions) and [Graph inheritance configuration](https://learn.microsoft.com/en-us/entra/agent-id/configure-inheritable-permissions-blueprints)
