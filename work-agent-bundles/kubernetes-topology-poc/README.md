@@ -6,22 +6,28 @@ builds a Kubernetes relationship snapshot, serves a clickable namespace map,
 and exposes bounded queries through both HTTP and MCP. It does not claim to
 measure application health or live network traffic.
 
+**Tool decision update:** An [in-cluster Radar evaluation](RADAR-EVALUATION.md)
+covered the standard Kubernetes topology UI, watch-based collection, and
+read-only MCP query path with an existing Apache-2.0 tool. Treat this custom
+collector and viewer as a comparison fixture; assess Radar's identified gaps
+before expanding this code.
+
 ## Tool choice
 
 | Tool | Good at | Boundary for this use case |
 |---|---|---|
-| [Headlamp Map and Projects](https://headlamp.dev/docs/latest/learn/projects/) | Open source Kubernetes UI with namespace, resource, project, and multi-cluster navigation. Its [map extension API](https://headlamp.dev/docs/latest/development/plugins/functionality/extending-the-map/) can add our knowledge links and custom kinds. | Recommended human UI. It is not a durable shared memory database or an agent query API by itself. |
+| [Radar](https://github.com/skyhook-io/radar) | Open source in-cluster Kubernetes topology UI, watch-based inventory, and built-in read-only MCP tools. | Best current trial candidate; the lab found a missing `AgentgatewayBackend` route hop and no curated guidance edges. |
+| [Headlamp Map and Projects](https://headlamp.dev/docs/latest/learn/projects/) | Open source Kubernetes UI with namespace, resource, project, and multi-cluster navigation. Its [map extension API](https://headlamp.dev/docs/latest/development/plugins/functionality/extending-the-map/) can add custom kinds. | Alternative human UI. Built-in MCP client support currently requires the Desktop app; agents would need a separate MCP service. |
 | [Cilium Hubble UI](https://docs.cilium.io/en/stable/observability/hubble/index.html) | Observed service-to-service flows, DNS, and a traffic service map when Cilium/Hubble is installed. | Add for actual communication evidence. A Service selector or route declaration does not prove a request flowed. |
 | [Kiali](https://kiali.io/docs/features/topology/) | Istio traffic topology and mesh configuration. | Strong if the fleet uses Istio; not a general Kubernetes inventory map. |
-| This lab viewer | One small snapshot and agent tool contract over Kubernetes API objects. | Demonstrates semantics, freshness, and health caveats before a Headlamp plugin or durable store is chosen. |
+| This lab viewer | One small snapshot and agent tool contract over Kubernetes API objects. | Comparison fixture for checking specific relationship coverage and health caveats. |
 
-**Recommended direction:** Use Headlamp for the interactive UI. Build a
-read-only inventory service from Kubernetes watches and expose its bounded
-relationship API to kagent through MCP. Keep the backend choice behind that
-API: ordinary PostgreSQL relationship tables first, Apache AGE as a graph
-query candidate, and Neo4j only if measured results warrant it. Store
-runbook/skill/KB *references* in the graph; Git and querydoc remain the source
-of approved content.
+**Recommended direction:** Evaluate Radar first for the standard topology UI,
+watch-based inventory, and bounded MCP reads. Headlamp remains an alternative
+human UI, but its built-in MCP client currently requires Headlamp Desktop;
+that does not fit a headless in-cluster deployment. Add only the relationship
+or guidance functionality the evaluation shows is missing. Keep Git and
+querydoc authoritative for approved runbook, skill, and KB content.
 
 ## What the lab maps
 
