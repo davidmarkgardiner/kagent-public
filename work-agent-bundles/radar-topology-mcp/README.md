@@ -23,7 +23,7 @@ flowchart LR
 
 ## What is proven and what remains
 
-The [lab evaluation](../kubernetes-topology-poc/RADAR-EVALUATION.md) verified
+The [lab evaluation](https://github.com/davidmarkgardiner/kagent-public/blob/6ea619c2/work-agent-bundles/kubernetes-topology-poc/RADAR-EVALUATION.md) verified
 Radar deployment, browser navigation, informer updates, a direct bounded MCP
 neighborhood result, kagent discovery, and Agent readiness. A conversational
 A2A test hit the upstream model quota before tool use. This bundle's narrowed
@@ -55,12 +55,17 @@ in the lab. Service names do not prove DNS resolution or observed traffic.
 | `scripts/render.py` | Resolves inputs, rejects unresolved placeholders, writes installable YAML. |
 | `scripts/verify.py` | Checks the chart checksum, permission boundaries, Agent tools, and Flux values. |
 | `scripts/probe-mcp.py` | Reads the tool catalog and makes one capped neighborhood query. |
+| `scripts/shared/` | Exact snapshots of the repository's canonical Agent verification and A2A helpers, included so the copied folder works by itself. |
 | `knowledge/` | Proposed guidance bindings, investigation procedure, and evaluation rubric. |
 
 ## 1. Prepare the workplace inputs
 
-Tools: `helm`, `kubectl`, Python 3.9+, and PyYAML for local verification. Use the
-repository's shared verification/A2A helpers from the same checkout.
+Tools: `helm`, `kubectl`, Bash, `curl`, `jq`, Python 3.9+, and PyYAML for local
+verification. The canonical repository verification/A2A helpers are included
+unchanged under `scripts/shared/`; `versions.json` checks their hashes. Make
+future helper changes in the source repository's `scripts/` first, then refresh
+these copies and their hashes. You can copy this entire bundle folder into the
+approved workplace checkout without copying the rest of the public repository.
 
 ```bash
 cd work-agent-bundles/radar-topology-mcp
@@ -192,11 +197,11 @@ kubectl --context "$RADAR_KUBE_CONTEXT" -n "$RADAR_KAGENT_NAMESPACE" \
   get remotemcpserver radar-topology -o jsonpath='{.status.conditions}'
 kubectl --context "$RADAR_KUBE_CONTEXT" -n "$RADAR_KAGENT_NAMESPACE" \
   get remotemcpserver radar-topology -o jsonpath='{.status.discoveredTools[*].name}'
-# From this bundle directory, use the repository's shared helpers:
-bash ../../scripts/kagent-verify-agent.sh --context "$RADAR_KUBE_CONTEXT" \
+# From this bundle directory, use the bundled canonical shared helpers:
+bash scripts/shared/kagent-verify-agent.sh --context "$RADAR_KUBE_CONTEXT" \
   --ns "$RADAR_KAGENT_NAMESPACE" --controller-ns "$RADAR_KAGENT_NAMESPACE" \
   --agent radar-topology-reader
-bash ../../scripts/kagent-a2a-invoke.sh --context "$RADAR_KUBE_CONTEXT" \
+bash scripts/shared/kagent-a2a-invoke.sh --context "$RADAR_KUBE_CONTEXT" \
   --ns "$RADAR_KAGENT_NAMESPACE" --controller-ns "$RADAR_KAGENT_NAMESPACE" \
   --agent radar-topology-reader --timeout 90 \
   --text 'Use get_neighborhood to show what connects to Service radar-topology in namespace radar-topology. Cite its returned relationship and explain whether it proves live traffic.'

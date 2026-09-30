@@ -13,6 +13,9 @@ p.add_argument('--helm-manifest', type=pathlib.Path, required=True)
 p.add_argument('--chart', type=pathlib.Path, required=True)
 a = p.parse_args()
 versions = json.loads((ROOT / 'versions.json').read_text())
+for name, digest in versions['shared_helpers'].items():
+    if hashlib.sha256((ROOT / 'scripts/shared' / name).read_bytes()).hexdigest() != digest:
+        raise SystemExit('FAIL: bundled canonical helper differs: ' + name)
 if hashlib.sha256(a.chart.read_bytes()).hexdigest() != versions['chart_sha256']:
     raise SystemExit('FAIL: chart archive differs from reviewed 1.15.0 package')
 docs = []

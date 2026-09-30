@@ -4,7 +4,7 @@
 kagent Agent querying a known resource's connections through read-only MCP.
 
 Start with [README.md](README.md). Review the [local proof](VERIFICATION.md)
-and [known coverage gaps](../kubernetes-topology-poc/RADAR-EVALUATION.md).
+and [known coverage gaps](README.md#what-is-proven-and-what-remains).
 
 1. Choose the approved cluster/context, dedicated Radar namespace, kagent
    namespace, existing accepted ModelConfig, and approved image/chart source.

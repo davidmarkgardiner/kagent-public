@@ -8,6 +8,7 @@ Go runtime. Workplace values and raw model/provider responses are excluded.
 | Config render | Real non-secret lab config rendered; shipped unresolved model placeholder must be filled before rendering. |
 | Archive | Radar 1.15.0 package SHA256 matched `versions.json`. |
 | Helm/Flux shape | Helm rendered successfully; custom verifier confirmed one Pod, selected inventory reads, internal Service, matching Flux values, and two Agent tools. Flux reconciliation was not tested. |
+| Guard checks | Verifier rejected an injected workload mutation permission; renderer rejected an unresolved ModelConfig. Bundled canonical helper hashes matched the source scripts. |
 | Kubernetes schema | Namespace, access, NetworkPolicy, Helm resources, and kagent objects passed server validation in the lab. Namespace must exist before dry-running namespaced resources. |
 | Narrow profile | Installed the bundle's custom RBAC and chart values in a separate disposable namespace; Deployment Ready. |
 | Permission checks | list Pods=yes; patch Deployments=no; read Secrets=no; create Pods=no; create pods/exec=no for the dedicated ServiceAccount. |
