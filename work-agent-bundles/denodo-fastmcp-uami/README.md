@@ -9,6 +9,8 @@ data-owner-approved workplace view and fields before use.
 
 For a private work-agent run, start with
 [`WORK-AGENT-START-HERE.md`](WORK-AGENT-START-HERE.md).
+For the JDBC JAR and isolated image delivery, use
+[`AIRGAPPED-DRIVER-HANDOFF.md`](AIRGAPPED-DRIVER-HANDOFF.md).
 
 ## Architecture
 
@@ -46,7 +48,8 @@ It does not make a home-lab machine into an Azure managed-identity host.
 The JDBC connection sets `ssl=true` and
 `sslTrustServerCertificate=false`. Supply the private CA through the JVM
 truststore in the approved work image if needed; do not disable validation.
-The driver JAR version must match the DVP server version/update. The public
+Prefer the driver from the DVP server's version/update; check documented
+compatibility before using a different version. The public
 image deliberately omits the proprietary JAR. Build the derived image with
 `deploy/Dockerfile.with-driver` in approved private CI using an immutable base
 digest and a privately delivered matching driver. Never commit the JAR.

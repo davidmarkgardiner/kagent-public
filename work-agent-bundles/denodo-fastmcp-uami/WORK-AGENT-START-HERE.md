@@ -4,6 +4,7 @@ Use this file with the work agent in the private work environment. The source
 bundle is `work-agent-bundles/denodo-fastmcp-uami/`. Its home-lab proof is
 synthetic only. Keep all workplace coordinates, IDs, driver binaries, tokens,
 query results, and rendered manifests out of the public repository and chat.
+Use `AIRGAPPED-DRIVER-HANDOFF.md` for vendor JAR sourcing and image transfer.
 
 ## Paste this task to the work agent
 
