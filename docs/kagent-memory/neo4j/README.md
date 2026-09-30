@@ -1,9 +1,8 @@
 # Shared memory for kagent: PostgreSQL or Neo4j?
 
-**Recommendation:** Start with PostgreSQL + pgvector for shared, curated
-incident memory. Add Neo4j only if a measured comparison shows that graph
-traversal improves real triage answers enough to justify another stateful
-service. Keep the agent-facing MCP tools the same whichever backend wins.
+For the kagent use case tested in the local lab, **start with PostgreSQL +
+pgvector**, then add Neo4j only if a fair comparison shows a clear gain in
+incident investigation.
 
 This is an architecture recommendation, not a production deployment decision.
 The Neo4j work so far is a local kind lab with synthetic data. It proved that
@@ -11,16 +10,18 @@ kagent can use bounded graph lookups through MCP and agentgateway; it did not
 compare Neo4j with a PostgreSQL implementation on representative incidents or
 prove workplace readiness.
 
-## Which memory problem are we solving?
+## Which option fits?
 
-| Component | Role | Fit for shared incident knowledge |
-|---|---|---|
-| A2A session context | Carries one conversation or task across turns. | No durable, cross-agent knowledge base. |
-| Native kagent memory | Recalls facts for an agent and user through vector similarity. Current 1.x documentation requires external PostgreSQL with pgvector. | Useful for agent/user recall, but memories are not shared across agents. Check the installed kagent version before applying 1.x configuration. |
-| Shared memory MCP backed by PostgreSQL | Exposes curated incidents, lessons, evidence, relationships, and similarity search through bounded tools. | Recommended starting point. |
-| Shared memory MCP backed by Neo4j | Exposes the same tools, with graph traversal behind them. | Candidate if multi-hop questions consistently benefit. |
-| Vector (the observability collector) | Collects, transforms, and routes telemetry into the incident workflow. | An input pipeline, not the long-lived knowledge store. |
-| pgvector (the PostgreSQL extension) | Adds vector similarity search to PostgreSQL. | A retrieval feature, not a substitute for structured records, citations, or relationship tables. |
+| Option | Best fit |
+|---|---|
+| **kagent native memory** | Facts recalled across conversations for one agent and user. Current [kagent memory docs](https://kagent.dev/docs/kagent/1.x/agents/agent-memory/) say it uses external PostgreSQL with pgvector and is **not shared between agents**. Check the installed kagent version before applying 1.x configuration. |
+| **Shared PostgreSQL + pgvector** | A common, governed store for incidents, lessons, evidence, and similarity search. Relationship tables and bounded recursive queries can also answer dependency questions. This is already the repo's [production target](../production-target/README.md). |
+| **Neo4j** | A stronger candidate when investigations repeatedly need to follow several relationships—for example, service → dependency → change → incident → runbook. Its [Cypher path queries](https://neo4j.com/docs/cypher-manual/current/patterns/) make that model natural, but it adds another database to operate. |
+| **Vector** | If you mean the Vector already in our telemetry pipeline, it [collects, transforms, and routes observability data](https://vector.dev/docs/introduction/); it is not the durable incident-memory store. If you mean *vector search*, pgvector provides that inside PostgreSQL: https://github.com/pgvector/pgvector |
+
+A2A session context carries one conversation or task across turns; it is not
+the shared incident store. Keep the agent-facing MCP tools the same whichever
+shared-memory backend wins.
 
 The repo's [production memory target](../production-target/README.md) separates
 native per-agent memory, shared incident memory, Git runbooks, querydoc search,
