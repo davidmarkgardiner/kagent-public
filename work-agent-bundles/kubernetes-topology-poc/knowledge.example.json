@@ -1,0 +1,17 @@
+[
+  {
+    "resource_id": "Service:neo4j-memory-lab/demo-inventory",
+    "kind": "Runbook",
+    "path": "work-agent-bundles/kubernetes-topology-poc/demo-runbook.md"
+  },
+  {
+    "resource_id": "Service:neo4j-memory-lab/demo-inventory",
+    "kind": "Skill",
+    "path": "agents/skills/fleet-health/SKILL.md"
+  },
+  {
+    "resource_id": "Service:neo4j-memory-lab/demo-inventory",
+    "kind": "Knowledge",
+    "path": "docs/kagent-memory/production-target/README.md"
+  }
+]
