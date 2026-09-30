@@ -1,0 +1,7 @@
+# Build only in the approved private registry pipeline with a matching Denodo JDBC JAR.
+# The public base image contains no vendor driver.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+USER root
+COPY --chown=10001:10001 denodo-vdp-jdbcdriver.jar /opt/denodo/denodo-vdp-jdbcdriver.jar
+USER 10001:10001

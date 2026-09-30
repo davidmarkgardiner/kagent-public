@@ -1,0 +1,93 @@
+# Validate against installed CRDs and preserve existing work Gateway/Agent objects.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: denodo-fastmcp
+  namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+spec:
+  mcp:
+    failureMode: FailClosed
+    sessionRouting: Stateful
+    targets:
+      - name: denodo-fastmcp
+        static:
+          host: denodo-fastmcp.{{NAMESPACE}}.svc.cluster.local
+          port: 8000
+          path: /mcp
+          protocol: StreamableHTTP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: denodo-fastmcp
+  namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+spec:
+  parentRefs:
+    - name: "{{AGENTGATEWAY_NAME}}"
+      namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /mcp/denodo-fastmcp}
+      backendRefs:
+        - group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: denodo-fastmcp
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: denodo-fastmcp
+  namespace: "{{AGENTGATEWAY_NAMESPACE}}"
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: denodo-fastmcp
+  backend:
+    mcp:
+      authorization:
+        action: Allow
+        policy:
+          matchExpressions:
+            - >-
+              mcp.tool.name in ["get_inventory_data_product_details",
+                "get_namespace_count", "get_namespace_summary"]
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: denodo-fastmcp
+  namespace: "{{KAGENT_NAMESPACE}}"
+spec:
+  description: Bounded read-only Denodo inventory tools.
+  protocol: STREAMABLE_HTTP
+  url: http://{{AGENTGATEWAY_NAME}}.{{AGENTGATEWAY_NAMESPACE}}.svc.cluster.local/mcp/denodo-fastmcp
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: denodo-fastmcp
+  namespace: "{{KAGENT_NAMESPACE}}"
+spec:
+  type: Declarative
+  description: Read-only inventory agent using approved Denodo views.
+  declarative:
+    runtime: python
+    modelConfig: "{{MODEL_CONFIG}}"
+    systemMessage: |
+      Use only the approved Denodo inventory tools. Begin with product details.
+      State that answers come from the approved view. Never request raw SQL,
+      writes, or data outside the available tools. If a result is truncated,
+      state that fact and request a narrower filter. Do not auto-page or
+      reconstruct an export in chat.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: denodo-fastmcp
+          namespace: "{{KAGENT_NAMESPACE}}"
+          toolNames:
+            - get_inventory_data_product_details
+            - get_namespace_count
+            - get_namespace_summary

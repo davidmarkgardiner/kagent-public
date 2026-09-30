@@ -1,0 +1,3 @@
+azure-identity==1.25.3
+fastmcp==2.14.3
+jpype1==1.6.0
