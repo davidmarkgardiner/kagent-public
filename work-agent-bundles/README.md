@@ -55,6 +55,7 @@ VISUAL.html      - lightweight stakeholder/SRE workflow visual
 | `sre-adoption-feedback-loop/` | SRE adoption and feedback loop | SRE onboards one app, uses/reviews the workflow, captures feedback, routes improvements, and reports adoption |
 | `kagent-triage-v2-kb-gitlab-mcp/` | KB + doc2vec/querydoc + GitLab MCP | Agent updates KB docs through GitLab MCP, reindexes querydoc, and proves cited retrieval |
 | `gitlab-mcp-gitops-pr/` | GitLab MCP GitOps PRs | Agent creates a branch, updates code/YAML/docs, opens an MR, and leaves it for human review |
+| [`kind-kagent-sdlc-rig/`](kind-kagent-sdlc-rig/WORK-AGENT-START-PROMPT.md) | GitLab issue-board SDLC | Cluster-admin installer prompt, target renderer, constrained GitLab MCP, PM/worker manifests and canary checks; supervised sandbox operation |
 | [`gitlab-ci-agent-quality-gate/`](gitlab-ci-agent-quality-gate/README.md) | Pipeline-triggered review and test evidence | Implementation handoff with a fail-closed CI client, bridge contract, VirtualService template, and workplace acceptance gates; bridge/executor and target proof still required |
 | `gitlab-agent-feedback-loop/` | GitLab Issue-comment feedback | Allowlisted human feedback reaches a read-only kagent through Argo Events and receives one bounded Issue-note response |
 | `chaos-reliability-remediation/` | Chaos and remediation proof | SRE requests controlled lower-env chaos, triage, gated remediation, recovery proof, and report |
