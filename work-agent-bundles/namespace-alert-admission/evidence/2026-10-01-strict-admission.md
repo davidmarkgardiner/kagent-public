@@ -30,7 +30,9 @@ recovery rehearsal. Kafka consumers used read_committed isolation.
 
 The JSON receipt fingerprints the actual gate/schema/harness mounted in the
 successful home-lab test. Since then only gate.py's 30-day retention pruning
-changed; its runtime test remains pending the scoped GitHub CI run. The rest of
+changed; the retention test and all 22 behavior tests then passed in GitHub
+CI on commit `37e3a88`, together with Vector/Kafka wire proofs. See
+[EVIDENCE.md](../EVIDENCE.md) for the run and separate scan status. The rest of
 the publish/group/report logic is identical to the lab-tested gate.
 
 ## Preconditions and limits

@@ -175,4 +175,6 @@ cleaned up. No ticket writer or agent was exercised.
 The [strict recovery receipt](../../work-agent-bundles/namespace-alert-admission/evidence/2026-10-01-strict-admission.md)
 records the successful restart, concurrency, seven accelerated dates, database
 rollback and transaction/topic-recreation checks. Final retention runtime
-verification remains pending the scoped GitHub CI check.
+verification subsequently passed with all 22 behavior tests and Vector/Kafka
+wire proofs. The workflow installs its scan dependency; check the latest CI
+status for the combined result.
