@@ -9,6 +9,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=pathlib.Path, required=True)
 parser.add_argument('--out', type=pathlib.Path, required=True)
+parser.add_argument('--runtime', choices=['go', 'legacy'], default='go',
+                    help='legacy omits the unsupported runtime field on older kagent CRDs')
 args = parser.parse_args()
 config = json.loads(args.config.read_text())
 expected = {'radar_namespace', 'kagent_namespace', 'model_config', 'image_repository'}
@@ -39,5 +41,7 @@ for path in sorted((ROOT / 'templates').glob('*.tmpl')):
         content = content.replace('{{' + key + '}}', value)
     if '{{' in content or '}}' in content:
         parser.error(f'Unresolved placeholder in {path.name}')
+    if args.runtime == 'legacy' and path.name == 'kagent-agent.yaml.tmpl':
+        content = content.replace('    runtime: go\n', '')
     (args.out / path.name.removesuffix('.tmpl')).write_text(content)
 print('Rendered:', args.out.resolve())

@@ -1,9 +1,18 @@
 # Radar topology MCP — workplace trial bundle
 
+For the workplace OCI snapshot registry, start with
+[AIRGAPPED-OCI-HANDOFF.md](AIRGAPPED-OCI-HANDOFF.md).
+
 Install the open-source Radar collector and browser UI inside one Kubernetes
 cluster, then give a kagent Agent bounded, read-only relationship queries.
 This is a starting point for workplace review and installation, not a production
 certification or a completed shared knowledge graph.
+
+The preferred knowledge integration reuses the existing doc2vec/querydoc KB.
+See [KNOWLEDGE-INTEGRATION.md](KNOWLEDGE-INTEGRATION.md) for the small Agent
+delta and [live KB evidence](KNOWLEDGE-VERIFICATION-2026-10-01.md). The earlier
+[custom guidance prototype](GUIDANCE-INTEGRATION.md) remains as experimental
+reference; it is not the target architecture.
 
 **Pinned:** Radar chart/image 1.15.0. The lab used kagent 0.10.1, v1alpha2
 `RemoteMCPServer`/`Agent`, and the Go runtime. Use the workplace's existing
@@ -17,17 +26,69 @@ flowchart LR
   R --> U[Browser UI via localhost port-forward]
   A[kagent topology reader] -->|two allowed tools| M[Radar /mcp-readonly]
   M --> R
-  A -. future approved lookup .-> G[Existing knowledge service]
+  A -->|contextual document search| G[Existing querydoc knowledge service]
   G -. references .-> B[Runbooks, skills, KB articles and rubrics]
 ```
 
+## Work-agent TLDR: air-gapped OCI installation
+
+1. Import Radar image `ghcr.io/skyhook-io/radar:1.15.0` and Helm package
+   `radar-1.15.0.tgz` into the workplace's internal OCI snapshot registry.
+   Use the verified checksums/digests and import commands in
+   [AIRGAPPED-OCI-HANDOFF.md](AIRGAPPED-OCI-HANDOFF.md). The Helm artifact is a
+   `.tgz` package; importing the chart does not import its container image.
+2. Set `image_repository` to the internal Radar image repository. Render the
+   bundle configuration, and deliver its namespace, selected read-only RBAC,
+   ServiceAccount and NetworkPolicy through the existing workplace flow.
+   Install Radar 1.15.0 from the internal `oci://` chart reference with the
+   generated values. Chart-created RBAC and ServiceAccount are disabled, so
+   the bundle's prerequisites must be present first.
+3. Reuse the workplace's kagent, accepted ModelConfig and vector KB. Register
+   Radar's internal `/mcp-readonly` endpoint and render `knowledge/agent.yaml.tmpl`
+   using `knowledge/render.py`. The knowledge Agent exposes only
+   `get_neighborhood` and the existing querydoc `query_documentation` tool.
+4. If querydoc is absent, mirror `ghcr.io/kagent-dev/doc2vec/mcp:2.11.0` and
+   adapt the existing KB deployment pattern. Use an approved internal embedding
+   endpoint and the same model/dimension for indexing and queries. Any local
+   embedding server also needs its model/tokenizer/config assets imported.
+5. Use an internal indexing pipeline or prebuilt doc2vec indexer. The example
+   CronJob downloads public GitHub source and npm packages; mirroring
+   `node:20-bookworm` alone does not make it work offline. The stock Flux
+   template also references a public Helm repository: replace it with the
+   existing internal OCI delivery pattern. Keep indexing suspended until tested.
+6. Publish approved, current workplace documents with component, stable workload,
+   namespace applicability, version, source, revision and review dates. Exclude
+   expired/unapproved content before retrieval. Replace the synthetic lab runbook.
+7. Verify installed CRD/runtime compatibility, read-only permission denials,
+   actual MCP queries and completed A2A replies. Repeat relevant, unrelated,
+   wrong-scope, expiry and replacement-Pod cases. Confirm Radar's response arrives
+   before the KB search, and record citations, latency and cumulative token usage.
+
+**Before acceptance:** prompt-only expiry handling is partial; the agent can
+repeat expired diagnostic content. Close this through corpus publication.
+Token savings and successful remediation still require workplace comparisons.
+The tested runtime is kagent 0.10.1 Go; preserve the workplace's approved version
+and validate it rather than assuming compatibility or upgrading automatically.
+
+Direct chart download for the connected import machine:
+https://github.com/skyhook-io/helm-charts/releases/download/radar-1.15.0/radar-1.15.0.tgz
+
+Full OCI commands, artifact inventory, digests and offline prerequisites:
+[AIRGAPPED-OCI-HANDOFF.md](AIRGAPPED-OCI-HANDOFF.md).
+
 ## What is proven and what remains
 
-The [lab evaluation](https://github.com/davidmarkgardiner/kagent-public/blob/6ea619c2/work-agent-bundles/kubernetes-topology-poc/RADAR-EVALUATION.md) verified
+The earlier [lab evaluation](https://github.com/davidmarkgardiner/kagent-public/blob/6ea619c2/work-agent-bundles/kubernetes-topology-poc/RADAR-EVALUATION.md) verified
 Radar deployment, browser navigation, informer updates, a direct bounded MCP
 neighborhood result, kagent discovery, and Agent readiness. A conversational
 A2A test hit the upstream model quota before tool use. This bundle's narrowed
 RBAC profile must pass its workplace checks before being relied on.
+
+The later [live KB evaluation](KNOWLEDGE-VERIFICATION-2026-10-01.md) completed
+real A2A calls on kagent 0.10.1 Go. It verified topology-informed document search,
+citations, unrelated/wrong-scope rejection and stable lookup after Pod replacement.
+Expiry handling remains partial. The old model-quota result above describes the
+initial evaluation, not the final local integration status.
 
 Radar maintains current topology in an in-memory cache. Its optional PostgreSQL
 storage is for the event timeline. It does not supply a durable fleet-wide graph
@@ -56,7 +117,13 @@ in the lab. Service names do not prove DNS resolution or observed traffic.
 | `scripts/verify.py` | Checks the chart checksum, permission boundaries, Agent tools, and Flux values. |
 | `scripts/probe-mcp.py` | Reads the tool catalog and makes one capped neighborhood query. |
 | `scripts/shared/` | Exact snapshots of the repository's canonical Agent verification and A2A helpers, included so the copied folder works by itself. |
-| `knowledge/` | Proposed guidance bindings, investigation procedure, and evaluation rubric. |
+| `AIRGAPPED-OCI-HANDOFF.md` | Internal OCI snapshot import/install commands, image inventory, digests and air-gap dependency requirements. |
+| `KNOWLEDGE-INTEGRATION.md` | Reuse existing doc2vec/querydoc, configure retrieval and preserve workplace wiring. |
+| `KNOWLEDGE-VERIFICATION-2026-10-01.md` | Live A2A/tool-trace results, token measurements and remaining limitations. |
+| `knowledge/agent.yaml.tmpl`, `knowledge/render.py` | Separate Radar + existing querydoc Agent and configuration renderer. |
+| `knowledge/probe.py`, `knowledge/summarize-trace.py` | Real MCP response-body measurement and model usage/tool-order extraction. |
+| `knowledge/corpus/`, `knowledge/local-embeddings-lab.py` | Synthetic runbook and lab-only embedding reproducibility assets. |
+| `guidance/`, `GUIDANCE-INTEGRATION.md` | Earlier custom exact-binding prototype, retained as experimental reference. |
 
 ## 1. Prepare the workplace inputs
 

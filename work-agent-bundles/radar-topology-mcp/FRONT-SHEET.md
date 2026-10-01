@@ -1,5 +1,8 @@
 # Start here — Radar topology workplace trial
 
+For the workplace OCI snapshot registry, start with
+[AIRGAPPED-OCI-HANDOFF.md](AIRGAPPED-OCI-HANDOFF.md).
+
 **Goal:** one approved development cluster, a browser topology map, and one
 kagent Agent querying a known resource's connections through read-only MCP.
 
@@ -19,6 +22,15 @@ and [known coverage gaps](README.md#what-is-proven-and-what-remains).
 
 **Included now:** standard inventory collection, relationship UI, current graph
 queries, inline investigation instructions/rubric, and install/verification assets.
+
+**Preferred knowledge integration:** reuse the existing vector KB via
+[KNOWLEDGE-INTEGRATION.md](KNOWLEDGE-INTEGRATION.md) and `knowledge/agent.yaml.tmpl`.
+See [live KB evidence](KNOWLEDGE-VERIFICATION-2026-10-01.md).
+
+**Earlier experimental prototype:** [GUIDANCE-INTEGRATION.md](GUIDANCE-INTEGRATION.md) adds a
+bounded snapshot guidance MCP and a separate four-tool Agent. Full A2A passed
+on kagent 0.10.1 Go; Proxmox 0.7.13 has a response-cleanup failure. Read the
+[live receipt](LIVE-VERIFICATION-2026-10-01.md) before workplace adaptation.
 
 **Next phase:** guidance lookup using the existing approved KB/querydoc service,
 versioned skill packaging, custom AgentgatewayBackend relationships, and fleet
