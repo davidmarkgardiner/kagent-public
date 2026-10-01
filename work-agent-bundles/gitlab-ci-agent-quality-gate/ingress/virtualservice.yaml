@@ -1,0 +1,22 @@
+# Routing template only; TLS Gateway and enforced authentication are required.
+# Destination is the evaluation bridge, not the kagent controller.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: ci-agent-evaluation
+  namespace: "{{EVALUATION_NAMESPACE}}"
+spec:
+  hosts: ["{{AGENT_GATE_HOST}}"]
+  gateways: ["{{GATEWAY_NAMESPACE}}/{{GATEWAY_NAME}}"]
+  http:
+    - match:
+        - method: {exact: POST}
+          uri: {exact: /v1/evaluations}
+        - method: {exact: GET}
+          uri: {regex: '^/v1/evaluations/[A-Za-z0-9_-]{1,128}$'}
+      route:
+        - destination:
+            host: "{{BRIDGE_SERVICE}}.{{EVALUATION_NAMESPACE}}.svc.cluster.local"
+            port: {number: 8080}
+      timeout: 30s
+      # No POST retries: a disconnected agent task may still be running.

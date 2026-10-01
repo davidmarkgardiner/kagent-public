@@ -1,0 +1,21 @@
+# Install only in the operator-owned evaluation project/config.
+# This template does not enforce source-project merge settings by itself.
+# Caller identity must be accepted ONLY for this authority project/protected ref.
+agent-quality-gate:
+  image: "{{APPROVED_PYTHON_IMAGE_WITH_DIGEST}}"
+  stage: test
+  timeout: 12m
+  allow_failure: false
+  id_tokens:
+    AGENT_GATE_ID_TOKEN:
+      aud: "{{AGENT_GATE_AUDIENCE}}"
+  variables:
+    AGENT_GATE_URL: "https://{{AGENT_GATE_HOST}}"
+  script:
+    # Trusted authority resolver must supply UPSTREAM_* after GitLab API checks.
+    # Do not take a candidate SHA from the downstream CI_COMMIT_SHA.
+    - python3 scripts/gate.py --project "$UPSTREAM_PROJECT_ID" --mr "$UPSTREAM_MR_IID" --sha "$UPSTREAM_HEAD_SHA" --pipeline "$CI_PIPELINE_ID" --output agent-gate-result.json
+  artifacts:
+    when: always
+    paths: [agent-gate-result.json]
+    expire_in: 7 days
