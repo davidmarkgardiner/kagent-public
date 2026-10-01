@@ -16,6 +16,11 @@ GitLab project values, approval routes, and demo targets needed across bundles.
 
 ## Bundle Map
 
+Start the in-cluster topology trial with
+[`radar-topology-mcp/FRONT-SHEET.md`](radar-topology-mcp/FRONT-SHEET.md).
+It includes pinned Radar installation assets, read-only kagent wiring, and
+workplace verification gates. Knowledge-service integration is a later phase.
+
 Start Agent Substrate, agent isolation, and Entra identity work with
 [`AGENT-PLATFORM-WORK-START-HERE.md`](AGENT-PLATFORM-WORK-START-HERE.md). It
 orders the three capabilities, links each bundle's receipt, and lists what has
@@ -35,6 +40,7 @@ VISUAL.html      - lightweight stakeholder/SRE workflow visual
 
 | Bundle | Capability | Primary outcome |
 |---|---|---|
+| `radar-topology-mcp/` | In-cluster Kubernetes relationship UI and MCP | Installs Radar 1.15.0 with selected inventory reads, a two-tool kagent Agent, Flux/Helm delivery, and explicit knowledge integration gaps |
 | `agent-runtime-lifecycle/` | Kagent chat, Argo/DeepEval, pod, actor, and harness lifecycles | Explains normal Deployment-backed agents, Argo and Job caller pods, DeepEval suites, Substrate-backed `SandboxAgent` sessions, and OpenClaw or Hermes `AgentHarness` behavior |
 | `kubernetes-mcp-multicluster/` | One Kubernetes MCP across approved AKS/Kubernetes contexts | Builds an immutable multi-context kubeconfig, deploys the read-only MCP server, and proves direct kagent plus agentgateway routing without one Agent per cluster |
 | `postgres-natural-language-query-integration/` | Natural-language PostgreSQL query architecture | Compares retrieval-assisted text-to-SQL with typed MCP tools and defines how both chat front doors can share the FastMCP/UAMI execution boundary |

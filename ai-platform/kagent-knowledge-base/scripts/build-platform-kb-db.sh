@@ -127,6 +127,20 @@ if grep -E -i "incorrect api key|401 unauthorized|error generating embeddings|fa
 fi
 
 test -s "${WORKDIR}/doc2vec/vector-dbs/platform-kb.db"
+# A non-empty SQLite file is not proof that vectors were inserted. Upstream
+# insertion can fall back to an UPDATE of zero rows without reporting failure.
+node <<'NODE'
+const Database = require('better-sqlite3');
+const sqliteVec = require('sqlite-vec');
+const db = new Database('./vector-dbs/platform-kb.db');
+sqliteVec.load(db);
+const result = db.prepare('SELECT COUNT(*) AS chunks, COUNT(DISTINCT url) AS documents FROM vec_items').get();
+db.close();
+if (!result.chunks || !result.documents) {
+  throw new Error('No stored vector chunks; refusing to publish platform-kb.db');
+}
+console.log(JSON.stringify({ stored_chunks: result.chunks, indexed_documents: result.documents }));
+NODE
 cp "${WORKDIR}/doc2vec/vector-dbs/platform-kb.db" "${DIST_DIR}/platform-kb.db"
 
 cat > "${DIST_DIR}/platform-kb-manifest.json" <<EOF

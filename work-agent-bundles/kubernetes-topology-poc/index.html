@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Kubernetes topology lab</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background:#0b1220; color:#e8eef7; }
+    * { box-sizing:border-box; }
+    body { margin:0; }
+    header { padding:20px 26px; border-bottom:1px solid #273449; background:#111b2c; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+    h1 { font-size:20px; margin:0 0 5px; letter-spacing:.01em; }
+    h2 { font-size:15px; margin:0 0 14px; }
+    p { margin:0; }
+    .sub, .muted { color:#a9b7c9; font-size:12px; }
+    .status { border-radius:999px; padding:7px 12px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
+    .healthy { color:#67d7a3; background:#10382d; }
+    .unhealthy { color:#ff8989; background:#442328; }
+    .unknown { color:#eac37a; background:#403321; }
+    main { display:grid; grid-template-columns:250px minmax(360px,1fr) 300px; min-height:calc(100vh - 88px); }
+    aside, section { padding:20px; min-width:0; }
+    .nav { border-right:1px solid #273449; }
+    .details { border-left:1px solid #273449; }
+    input { width:100%; background:#101d31; color:#e8eef7; border:1px solid #39506b; border-radius:8px; padding:10px; margin-bottom:13px; }
+    button { cursor:pointer; font:inherit; }
+    .ns { width:100%; text-align:left; border:1px solid #263c57; color:#e8eef7; background:#132139; border-radius:9px; padding:11px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .ns:hover, .ns.active { border-color:#8eb5ee; background:#1b3151; }
+    .dot { width:9px; height:9px; display:inline-block; border-radius:50%; flex:none; background:#eac37a; }
+    .dot.healthy { background:#42cd8e; } .dot.unhealthy { background:#f07176; } .dot.unknown { background:#e9bd6d; }
+    .legend { display:flex; gap:12px; flex-wrap:wrap; margin:8px 0 20px; color:#a9b7c9; font-size:12px; }
+    .legend span { display:flex; align-items:center; gap:6px; }
+    .topline { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    .canvas-wrap { overflow:auto; border:1px solid #263c57; border-radius:12px; background:radial-gradient(circle at 35% 25%,#172741,#101a2b 65%); min-height:550px; }
+    svg { min-width:100%; }
+    .edge { stroke:#5c779b; stroke-width:1.4; opacity:.57; }
+    .edge.highlight { stroke:#f6ca76; stroke-width:2.5; opacity:1; }
+    .node rect { fill:#1b2c45; stroke:#58769b; stroke-width:1.5; rx:9; }
+    .node text { fill:#ecf2f9; font-size:12px; pointer-events:none; }
+    .node small { color:#a9b7c9; }
+    .node { cursor:pointer; }
+    .node:hover rect, .node.selected rect { stroke:#eac37a; stroke-width:2.5; }
+    .node.healthy rect { stroke:#42cd8e; } .node.unhealthy rect { stroke:#f07176; }
+    .node.unknown rect { stroke:#e9bd6d; }
+    .node.dim { opacity:.27; }
+    .pill { border:1px solid #39506b; padding:4px 7px; border-radius:6px; font-size:11px; color:#b8cce5; }
+    .detail-card { border:1px solid #334960; background:#14243a; border-radius:10px; padding:14px; margin-bottom:12px; overflow-wrap:anywhere; }
+    .detail-card strong { display:block; margin-bottom:7px; }
+    .detail-card dl { margin:0; display:grid; grid-template-columns:70px 1fr; gap:6px; font-size:12px; }
+    .detail-card dt { color:#9db0c8; } .detail-card dd { margin:0; }
+    ul { margin:7px 0 0; padding-left:18px; font-size:12px; line-height:1.7; }
+    code { color:#b8d1f8; }
+    @media(max-width:1050px) { main { grid-template-columns:210px minmax(320px,1fr); } .details { grid-column:1 / -1; border-left:0; border-top:1px solid #273449; } }
+    @media(max-width:650px) { header { align-items:flex-start; } main { display:block; } .nav { border-right:0; border-bottom:1px solid #273449; } .canvas-wrap { min-height:430px; } }
+  </style>
+</head>
+<body>
+<header>
+  <div><h1>Kubernetes topology lab</h1><p class="sub" id="freshness">Connecting to the Kubernetes snapshot…</p></div>
+  <span class="status unknown" id="cluster-status">Unknown</span>
+</header>
+<main>
+  <aside class="nav">
+    <h2>Namespaces</h2>
+    <input id="search" type="search" placeholder="Filter namespaces" aria-label="Filter namespaces">
+    <div id="namespaces"></div>
+  </aside>
+  <section>
+    <div class="topline"><h2 id="map-title">Select a namespace</h2><span class="pill" id="node-count">0 resources</span></div>
+    <div class="legend"><span><i class="dot healthy"></i> Ready</span><span><i class="dot unhealthy"></i> Needs attention</span><span><i class="dot unknown"></i> Unknown</span></div>
+    <div class="canvas-wrap"><svg id="map" role="img" aria-label="Kubernetes resource relationship map"></svg></div>
+    <p class="muted" style="margin-top:12px">Lines show Kubernetes owner references, EndpointSlice backends, Gateway/Ingress routes, or curated guidance. A line is not proof of live network traffic.</p>
+  </section>
+  <aside class="details">
+    <h2>Selected resource</h2>
+    <div id="details-content" class="muted">Select a node to inspect its relations and evidence.</div>
+  </aside>
+</main>
+<script>
+  const SVG='http://www.w3.org/2000/svg';
+  const columns={Gateway:0,Ingress:0,HTTPRoute:1,VirtualService:1,AgentgatewayBackend:2,Service:3,Deployment:4,StatefulSet:4,DaemonSet:4,ReplicaSet:5,Pod:6,Runbook:7,Skill:7,Knowledge:7};
+  const graphState={graph:null,namespace:null,selected:null,signature:null};
+  const byId=id=>document.getElementById(id);
+  function element(name,attrs={}) { const node=document.createElementNS(SVG,name); for(const [key,value] of Object.entries(attrs)) node.setAttribute(key,value); return node; }
+  function setStatus(node,state) { node.className='status '+state; node.textContent=state==='healthy'?'Tracked resources ready':state==='unhealthy'?'Needs attention':'Health incomplete'; }
+  function renderNamespaces() {
+    const root=byId('namespaces');
+    const filter=byId('search').value.toLowerCase();
+    const list=graphState.graph.nodes.filter(n=>n.kind==='Namespace'&&n.name.toLowerCase().includes(filter));
+    const signature=list.map(n=>n.name).join('|');
+    if(root.dataset.signature===signature) {
+      [...root.children].forEach((button,i)=>{button.className='ns'+(graphState.namespace===list[i].name?' active':'');
+        button.lastChild.className='dot '+list[i].health;button.lastChild.setAttribute('aria-label',list[i].health);});
+      return;
+    }
+    root.replaceChildren();root.dataset.signature=signature;
+    for(const ns of list) {
+      const button=document.createElement('button'); button.className='ns'+(graphState.namespace===ns.name?' active':'');
+      const label=document.createElement('span'); label.textContent=ns.name;
+      const dot=document.createElement('i'); dot.className='dot '+ns.health; dot.setAttribute('aria-label',ns.health);
+      button.append(label,dot); button.onclick=()=>{graphState.namespace=ns.name;graphState.selected=null;render();}; root.append(button);
+    }
+  }
+  function visibleGraph() {
+    const nodes=graphState.graph.nodes.filter(n=>n.namespace===graphState.namespace&&n.kind!=='Namespace');
+    const ids=new Set(nodes.map(n=>n.id));
+    const guidance=graphState.graph.edges.filter(e=>e.relation==='HAS_GUIDANCE'&&ids.has(e.source)).map(e=>e.target);
+    for(const node of graphState.graph.nodes) if(guidance.includes(node.id)) {nodes.push(node);ids.add(node.id);}
+    return {nodes,edges:graphState.graph.edges.filter(e=>ids.has(e.source)&&ids.has(e.target))};
+  }
+  function renderMap() {
+    const svg=byId('map'); svg.replaceChildren();
+    const {nodes,edges}=visibleGraph();
+    byId('node-count').textContent=nodes.length+' resources';
+    const groups=new Map(); for(const node of nodes) { const col=columns[node.kind]??7; if(!groups.has(col)) groups.set(col,[]); groups.get(col).push(node); }
+    const present=[...groups.keys()].sort((a,b)=>a-b);
+    const width=Math.max(550,present.length*174+50);
+    const height=Math.max(550,Math.max(0,...[...groups.values()].map(x=>x.length))*70+90);
+    svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('width',width);svg.setAttribute('height',height);
+    const positions=new Map();
+    for(const [col,group] of groups) {
+      group.sort((a,b)=>a.kind.localeCompare(b.kind)||a.name.localeCompare(b.name));
+      const x=25+present.indexOf(col)*174;
+      group.forEach((node,i)=>positions.set(node.id,{x,y:65+i*70}));
+      const title=element('text',{x,y:29,fill:'#8da8c9','font-size':'12'});
+      title.textContent=['Gateway / Ingress','Route','Backend','Service','Workload','ReplicaSet','Pod','Guidance'][col]||'Other'; svg.append(title);
+    }
+    for(const edge of edges) {
+      const a=positions.get(edge.source),b=positions.get(edge.target); if(!a||!b) continue;
+      const line=element('path',{d:`M ${a.x+143} ${a.y+19} C ${a.x+163} ${a.y+19}, ${b.x-18} ${b.y+19}, ${b.x} ${b.y+19}`,fill:'none',class:'edge'+(graphState.selected&&(edge.source===graphState.selected||edge.target===graphState.selected)?' highlight':'')});
+      const title=element('title');title.textContent=edge.relation+' — '+edge.evidence;line.append(title);svg.append(line);
+    }
+    for(const node of nodes) {
+      const pos=positions.get(node.id),g=element('g',{class:'node '+node.health+(graphState.selected===node.id?' selected':'')});
+      g.append(element('rect',{x:pos.x,y:pos.y,width:143,height:38}));
+      const label=element('text',{x:pos.x+10,y:pos.y+16});label.textContent=node.name.length>19?node.name.slice(0,18)+'…':node.name;
+      const kind=element('text',{x:pos.x+10,y:pos.y+30,fill:'#9eb4cf','font-size':'10'});kind.textContent=node.kind;
+      const title=element('title');title.textContent=node.id+' · '+node.health;
+      g.append(label,kind,title);g.onclick=()=>{graphState.selected=node.id;renderMap();renderDetails();};svg.append(g);
+    }
+  }
+  function renderDetails() {
+    const root=byId('details-content');root.replaceChildren();
+    const graph=graphState.graph, node=graph.nodes.find(n=>n.id===graphState.selected);
+    if(!node) {root.textContent='Select a node to inspect its relations and evidence.';return;}
+    const card=document.createElement('div');card.className='detail-card';
+    const heading=document.createElement('strong');heading.textContent=node.kind+' · '+node.name;card.append(heading);
+    const dl=document.createElement('dl');
+    for(const [key,value] of Object.entries({Health:node.health,Namespace:node.namespace||'—',ID:node.id,Endpoints:node.ready_endpoints,DNS:node.dns,Path:node.path})) {
+      if(value===undefined) continue; const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key;dd.textContent=String(value);dl.append(dt,dd);
+    }card.append(dl);root.append(card);
+    const related=graph.edges.filter(e=>e.source===node.id||e.target===node.id);
+    const connections=document.createElement('div');connections.className='detail-card';
+    const label=document.createElement('strong');label.textContent='Relationships ('+related.length+')';connections.append(label);
+    const list=document.createElement('ul');for(const edge of related) {const item=document.createElement('li');item.textContent=edge.relation+' → '+(edge.source===node.id?edge.target:edge.source)+' ['+edge.evidence+']';list.append(item);}connections.append(list);root.append(connections);
+  }
+  function render() {renderNamespaces();byId('map-title').textContent=graphState.namespace||'Select a namespace';renderMap();renderDetails();}
+  async function refresh() {
+    try {
+      const response=await fetch('/api/graph',{cache:'no-store'});if(!response.ok) throw Error('HTTP '+response.status);
+      const next=await response.json();
+      const signature=JSON.stringify([next.nodes,next.edges,next.complete]);
+      const changed=signature!==graphState.signature;
+      graphState.graph=next;graphState.signature=signature;
+      const cluster=graphState.graph.nodes.find(n=>n.kind==='Cluster');
+      setStatus(byId('cluster-status'),cluster?.health||'unknown');
+      const stamp=new Date(graphState.graph.observed_at).toLocaleString();
+      byId('freshness').textContent=`${graphState.graph.context} · snapshot ${stamp} · ${graphState.graph.complete?'all requested APIs read':'partial API read; health unknown'}`;
+      if(!graphState.namespace) {const names=graphState.graph.nodes.filter(n=>n.kind==='Namespace');graphState.namespace=names.find(n=>!n.name.startsWith('kube-'))?.name||names[0]?.name;}
+      if(changed) render();
+    } catch(error) {byId('freshness').textContent='Topology feed unavailable: '+error.message;setStatus(byId('cluster-status'),'unknown');}
+  }
+  byId('search').addEventListener('input',renderNamespaces);
+  refresh();setInterval(refresh,15000);
+</script>
+</body>
+</html>
