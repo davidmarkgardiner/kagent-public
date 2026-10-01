@@ -33,7 +33,8 @@ sandbox identity is a real missing input; cluster-admin does not supply those.
 Ask only for missing inputs that you cannot safely discover.
 
 Find the designated GitLab API URL, exact project path, target branch, allowed
-file paths, CI runner and protected-branch settings. Verify the token supplied
+file paths, CI runner and protected-branch settings. Read CI-RUNNER-SETUP.md if no approved
+runner exists; the agent PAT/MCP connection alone does not execute CI. Verify the token supplied
 through the target secret manager can identify its bot user, read this project,
 and perform the issue/branch/commit/draft-MR/note operations required by the
 canary. Prefer a project-scoped token; an approved service-account PAT can be

@@ -1,0 +1,53 @@
+gitlabUrl: https://gitlab.com/
+concurrent: 1
+checkInterval: 3
+rbac:
+  create: true
+  clusterWideAccess: false
+  rules:
+    - resources: [pods]
+      verbs: [create, delete, get, list, watch]
+    - resources: [pods/attach, pods/exec]
+      verbs: [get, create, patch, delete]
+    - resources: [pods/log]
+      verbs: [get, list]
+    - resources: [secrets]
+      verbs: [create, delete, get, update]
+    - resources: [serviceaccounts]
+      verbs: [get]
+    - resources: [services]
+      verbs: [create, get]
+    - resources: [events]
+      verbs: [list, watch]
+serviceAccount:
+  create: true
+  name: sdlc-ci-manager
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: 500m, memory: 256Mi}
+runners:
+  secret: sdlc-ci-runner-auth
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        namespace = "sdlc-ci-runner"
+        image = "node:20"
+        privileged = false
+        service_account = "sdlc-ci-build"
+        automount_service_account_token = false
+        cpu_request = "100m"
+        cpu_limit = "1"
+        memory_request = "128Mi"
+        memory_limit = "512Mi"
+        helper_cpu_limit = "500m"
+        helper_memory_limit = "256Mi"
+        [runners.kubernetes.build_container_security_context]
+          allow_privilege_escalation = false
+        [runners.kubernetes.helper_container_security_context]
+          allow_privilege_escalation = false
+extraObjects:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: sdlc-ci-build
+    automountServiceAccountToken: false
