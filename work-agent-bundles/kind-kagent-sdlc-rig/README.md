@@ -28,6 +28,9 @@ gates. It is an offline presentation, not a live GitLab dashboard. Use the
 configure the board and observe poller logs, issue notes, CI and draft MR.
 
 
+Fresh two-cluster verification is recorded in [RUN-2026-10-01.md](evidence/RUN-2026-10-01.md).
+For the separate CI executor prerequisite, see [CI-RUNNER-SETUP.md](CI-RUNNER-SETUP.md).
+
 ## Configuration
 
 | Value | Set outside this public repository |

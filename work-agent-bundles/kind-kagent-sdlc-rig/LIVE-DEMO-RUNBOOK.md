@@ -6,6 +6,12 @@ workplace run or real-time browser refresh behavior has been proven here.
 Open BOARD-POLLING-PRESENTATION.html locally for the conceptual walkthrough.
 It has no credentials and does not connect to GitLab or poll the cluster.
 
+Latest home-lab proof: [2026-10-01 two-cluster verification](evidence/RUN-2026-10-01.md).
+The full SDLC path is on Proxmox; the Mac platform was checked separately.
+See [CI runner setup](CI-RUNNER-SETUP.md) when a pipeline remains unassigned.
+Do not run independent pollers on two clusters against the same issue queue:
+the shared Lease only serializes jobs within one cluster.
+
 ## Set up the real Kanban view
 
 Create/reuse these exact project labels: sdlc-rig-poc, agent:plan, agent:build,

@@ -176,6 +176,11 @@ kubectl --context "$KUBE_CONTEXT" -n sdlc-rig logs -f job/{{POLLER_JOB_NAME}} --
 </thead>
 <tbody>
 <tr>
+<td>1 October · Issue #53</td>
+<td>Fresh scheduled plan/build/test/MR/review/accept on Proxmox. One child, README-only diff, green CI and SHA-bound PASS; draft MR !14 stays unmerged.</td>
+<td>Hosted CI needed a dedicated sandbox runner. Mac platform passed separately; no Mac SDLC rig.</td>
+</tr>
+<tr>
 <td>Issue #44</td>
 <td>Entirely scheduled plan/build/test/review/accept, with failed-CI repair and draft MR !12.</td>
 <td>Earlier profile allowed CI-file edits; the hardened profile excludes them.</td>
@@ -199,12 +204,16 @@ kubectl --context "$KUBE_CONTEXT" -n sdlc-rig logs -f job/{{POLLER_JOB_NAME}} --
 </table>
 </div>
 <div class="links">
+<a href="evidence/RUN-2026-10-01.md">Fresh two-cluster proof · 1 October</a>
+<a href="https://gitlab.com/davidmarkgardiner/debt-payoff-calculator-agentic-factory/-/boards/11652698">Real lab demo board</a>
+<a href="https://gitlab.com/davidmarkgardiner/debt-payoff-calculator-agentic-factory/-/merge_requests/14">Lab draft MR !14</a>
+<a href="CI-RUNNER-SETUP.md">CI runner prerequisite</a>
 <a href="evidence/2026-09-27-unattended-lease-canary.md">Scheduled evidence</a>
 <a href="evidence/RUN-2026-09-27.md">Hardened rehearsal evidence</a>
 <a href="https://gitlab.com/davidmarkgardiner/debt-payoff-calculator-agentic-factory/-/work_items/47">Historical lab parent #47</a>
 <a href="https://gitlab.com/davidmarkgardiner/debt-payoff-calculator-agentic-factory/-/merge_requests/13">Historical lab draft MR !13</a>
 </div>
-<p class="subtle">External lab links may require access. Their historical outcomes are recorded above; current GitLab state has not been rechecked for this presentation.</p>
+<p class="subtle">External lab links may require access. Issue #53 was independently checked on 1 October 2026; earlier rows are historical. This offline page does not update live. Watch the real issue, board and cluster logs for a demonstration.</p>
 </section>
 <section id="gaps">
 <p class="eyebrow">06 · Workplace rehearsal</p>
