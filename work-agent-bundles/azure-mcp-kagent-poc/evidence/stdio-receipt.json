@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-10-01T08:30:57.799675+00:00",
+  "status": "PASS_STDIO_DISCOVERY_ONLY",
+  "azure_operations_executed": false,
+  "gateway_runtime_verified": false,
+  "kagent_a2a_executed": false,
+  "server": {
+    "name": "Azure MCP Server",
+    "version": "3.0.0-beta.48"
+  },
+  "tools": [
+    "group_list",
+    "group_resource_list",
+    "monitor_activitylog_list"
+  ],
+  "read_only_annotations": true,
+  "missing_required_parameter_rejected": true,
+  "unregistered_write_tool_denied": true,
+  "parameter_names": {
+    "group_list": [
+      "subscription",
+      "tenant"
+    ],
+    "group_resource_list": [
+      "resource-group",
+      "subscription",
+      "tenant"
+    ],
+    "monitor_activitylog_list": [
+      "event-level",
+      "hours",
+      "resource-group",
+      "resource-name",
+      "resource-type",
+      "subscription",
+      "tenant",
+      "top"
+    ]
+  }
+}

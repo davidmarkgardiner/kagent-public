@@ -1,0 +1,37 @@
+# Discovery rehearsal only: no Azure credentials or host credential directories.
+services:
+  azure-mcp:
+    build: .
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+    command:
+      - server
+      - start
+      - --transport
+      - http
+      - --read-only
+      - --disable-proxy-tools
+      - --dangerously-disable-http-incoming-auth
+      - --outgoing-auth-strategy
+      - UseHostingEnvironmentIdentity
+      - --tool
+      - group_list
+      - --tool
+      - group_resource_list
+      - --tool
+      - monitor_activitylog_list
+    ports:
+      - "127.0.0.1:18081:8080"
+    networks: [rehearsal]
+  gateway:
+    image: cr.agentgateway.dev/agentgateway:v1.3.1@sha256:c3ce7b75da90fef70239befcc1c3adc05152d7b9dd21fcb8351178026a2c4381
+    command: [--file, /etc/agentgateway/config.yaml]
+    volumes:
+      - ./gateway.yaml:/etc/agentgateway/config.yaml:ro
+    ports:
+      - "127.0.0.1:18080:3000"
+    networks: [rehearsal]
+    depends_on: [azure-mcp]
+networks:
+  rehearsal:
+    internal: true

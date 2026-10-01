@@ -1,0 +1,17 @@
+binds:
+- port: 3000
+  listeners:
+  - routes:
+    - matches:
+      - path:
+          exact: /azure/mcp
+      policies:
+        mcpAuthorization:
+          rules:
+          - 'mcp.tool.name in ["group_resource_list", "monitor_activitylog_list"]'
+      backends:
+      - mcp:
+          targets:
+          - name: azure
+            mcp:
+              host: http://azure-mcp:8080/mcp
