@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline → quality gate</title>
+<style>
+:root{--bg:#faf9f5;--paper:#fff;--ink:#202421;--muted:#58615c;--line:#dedfd5;--accent:#356b58;--good:#e9f2e9;--warn:#f8eddb;--clay:#ad593d}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 system-ui,-apple-system,sans-serif}a{color:var(--accent);text-underline-offset:4px}a:focus-visible{outline:3px solid var(--clay);outline-offset:4px}nav{position:fixed;inset:0 auto 0 0;width:240px;padding:35px 22px;border-right:1px solid var(--line);overflow:auto;background:var(--bg)}nav strong{display:block;font:24px/1.15 Georgia,serif;margin-bottom:25px}nav a{display:block;padding:8px 0;font-size:14px;text-decoration:none}main{margin-left:240px;max-width:1400px;padding:0 6vw}section{padding:64px 0;border-bottom:1px solid var(--line);scroll-margin-top:12px}h1,h2{font-family:Georgia,serif;font-weight:500;letter-spacing:-.035em;line-height:1.1}h1{font-size:clamp(38px,5.4vw,70px);max-width:950px}h2{font-size:clamp(30px,4vw,47px)}h3{font-size:20px;line-height:1.3}p{max-width:850px}.eyebrow{font:12px/1.4 ui-monospace,monospace;letter-spacing:.1em;color:var(--accent);text-transform:uppercase}.eyebrow:before{content:'';display:inline-block;width:25px;height:3px;background:var(--accent);margin-right:12px;vertical-align:middle}.lead{font-size:22px;color:var(--muted)}.badge{display:inline-block;padding:5px 11px;background:var(--warn);font-size:13px;border-radius:4px}.note{padding:18px 22px;background:var(--warn);border-left:4px solid var(--clay);margin:24px 0;max-width:950px}.good{background:var(--good);border-color:var(--accent)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.card{border:1px solid var(--line);background:var(--paper);padding:22px;border-radius:6px}.card p{margin-bottom:0;font-size:16px}.diagram,.board-wrap,.table-wrap{overflow-x:auto;margin:28px 0;border:1px solid var(--line);background:var(--paper);border-radius:6px}.diagram svg{display:block;min-width:760px;width:100%;height:auto}.board{display:grid;grid-template-columns:repeat(7,150px);gap:12px;padding:20px}.column{background:var(--bg);min-height:190px;padding:12px;border-top:3px solid var(--accent)}.column h3{font:14px ui-monospace,monospace}.ticket{background:var(--paper);border:1px solid var(--line);padding:12px;font-size:14px}.column:nth-last-child(1),.column:nth-last-child(3){border-color:var(--clay)}table{border-collapse:collapse;width:100%;min-width:600px;font-size:15px}th,td{text-align:left;vertical-align:top;padding:14px;border-bottom:1px solid var(--line)}th{background:#eeeee5}code,pre{font-family:ui-monospace,SFMono-Regular,monospace;font-size:14px}code{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eeeee5;padding:20px;border-radius:6px}li{margin:8px 0}.subtle{color:var(--muted);font-size:14px}.links{display:flex;flex-wrap:wrap;gap:12px}.links a{padding:9px 12px;border:1px solid var(--line);background:var(--paper);border-radius:4px}footer{padding:35px 0;color:var(--muted);font-size:14px}@media(max-width:900px){nav{position:static;width:auto;border-right:0;border-bottom:1px solid var(--line);padding:20px}nav strong{margin-bottom:12px}nav a{display:inline-block;margin-right:18px}main{margin:0;padding:0 22px}section{padding:40px 0}.grid{grid-template-columns:1fr}.lead{font-size:19px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{nav{display:none}main{margin:0;padding:0 15px}section{padding:25px 0;break-inside:avoid}.diagram svg{min-width:0}.board{grid-template-columns:repeat(7,1fr);gap:4px;padding:5px}.column{padding:4px}.column h3{font-size:10px}.ticket{font-size:10px;padding:4px}a{color:inherit}.lead{font-size:18px}}
+</style>
+</head>
+<body>
+<nav aria-label="Presentation sections">
+<strong>Pipeline → quality gate</strong>
+<a href="#overview">Overview</a>
+<a href="#route">Cross-environment route</a>
+<a href="#tests">Test evidence</a>
+<a href="#demo">Future live demo</a>
+<a href="#status">Status / next gates</a>
+</nav>
+<main>
+<section id="overview">
+<p class="eyebrow">Separate workflow · pipeline quality gate</p>
+<span class="badge">Implementation handoff · no live target proof</span>
+<h1>Agent insight. Executed tests. A <em>mandatory merge gate.</em>
+</h1>
+<p class="lead">An external CI runner calls an authenticated endpoint in the agent cluster. The agent reviews the exact commit and proposes tests; an isolated executor supplies actual results.</p>
+<div class="note">The client, CI template, ingress template and service contract are supplied. The evaluation bridge, isolated executor and target merge enforcement still need implementation.</div>
+<div class="links">
+<a href="WORK-AGENT-START-PROMPT.md">Work-agent implementation prompt</a>
+<a href="../kind-kagent-sdlc-rig/BOARD-POLLING-PRESENTATION.html">Issue-board demo →</a>
+<a href="CHECKLIST.md">Target acceptance checks</a>
+</div>
+</section>
+<section id="route">
+<p class="eyebrow">01 · Cross-environment route</p>
+<h2>Expose the evaluation bridge, keep the controller private.</h2>
+<div class="diagram">
+<svg viewBox="0 0 1080 158" role="img" aria-label="The VirtualService routes only bridge submission and status paths. The bridge calls kagent A2A internally." xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+<path d="M0 0 L6 3 L0 6" fill="#356b58"/>
+</marker>
+</defs>
+<rect x="10" y="28" width="244" height="105" rx="6" fill="#e9f2e9" stroke="#356b58"/>
+<text x="22" y="66" font-size="19" fill="#202421">Trusted GitLab CI</text>
+<text x="22" y="96" font-size="14" fill="#58615c">External runner</text>
+<path d="M254 81 h26" stroke="#356b58" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="280" y="28" width="244" height="105" rx="6" fill="#e9f2e9" stroke="#356b58"/>
+<text x="292" y="66" font-size="19" fill="#202421">HTTPS ingress</text>
+<text x="292" y="96" font-size="14" fill="#58615c">TLS + CI identity</text>
+<path d="M524 81 h26" stroke="#356b58" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="550" y="28" width="244" height="105" rx="6" fill="#e9f2e9" stroke="#356b58"/>
+<text x="562" y="66" font-size="19" fill="#202421">Evaluation bridge</text>
+<text x="562" y="96" font-size="14" fill="#58615c">Durable task + SHA check</text>
+<path d="M794 81 h26" stroke="#356b58" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="820" y="28" width="244" height="105" rx="6" fill="#e9f2e9" stroke="#356b58"/>
+<text x="832" y="66" font-size="19" fill="#202421">kagent agents</text>
+<text x="832" y="96" font-size="14" fill="#58615c">Review + test proposals</text>
+</svg>
+</div>
+<p class="subtle">The VirtualService routes only bridge submission and status paths. The bridge calls kagent A2A internally.</p>
+<div class="grid">
+<div class="card">
+<h3>Identity and tools</h3>
+<p>CI gets a short-lived endpoint identity. The bridge and review agents use read-only GitLab access. A GitLab PAT does not authenticate the pipeline to the agent endpoint.</p>
+</div>
+<div class="card">
+<h3>Actual test execution</h3>
+<p>Test proposals run in disposable, credential-free jobs with bounded resources. Agents cannot declare their own test execution successful or merge code.</p>
+</div>
+</div>
+<p>The bridge independently resolves the allowed project, open MR and current head SHA, preserves A2A task IDs, and rejects stale evidence. A VirtualService alone provides no authentication.</p>
+</section>
+<section id="tests">
+<p class="eyebrow">02 · Merge evidence</p>
+<h2>Negative testing still produces a passing test.</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Test type</th>
+<th>Expected evidence</th>
+<th>Gate behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Positive</td>
+<td>Valid input returns the correct result.</td>
+<td>Candidate test passes.</td>
+</tr>
+<tr>
+<td>Negative</td>
+<td>Invalid input is rejected with the expected error.</td>
+<td>Candidate test passes by asserting rejection.</td>
+</tr>
+<tr>
+<td>Regression</td>
+<td>The intended assertion fails on the known-bad baseline and passes on the candidate.</td>
+<td>Both SHA-bound artifacts required.</td>
+</tr>
+<tr>
+<td>Peer review</td>
+<td>Concrete findings with code evidence; no unresolved blockers.</td>
+<td>Structured PASS plus retained review evidence.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A failed download, missing dependency or crashed baseline executor is not an expected regression failure. Missing evidence, model outage, timeout or a changed MR head blocks the check.</p>
+<div class="note">The trusted GitLab gate must be mandatory and tied to the current MR head. Authors must not be able to remove it by editing source CI. Human approval stays separate.</div>
+</section>
+<section id="demo">
+<p class="eyebrow">03 · Future live demonstration</p>
+<h2>Show a blocked change, then a verified fix.</h2>
+<ol>
+<li>Implement and prove bridge authentication, read-only MCP access and isolated executor behavior.</li>
+<li>Submit a sandbox MR containing a known defect. Show the pipeline’s gate job, review artifact and actual test failure.</li>
+<li>Correct the defect. Show baseline expected assertion failure, candidate positive/negative/regression success, and the latest SHA-bound gate.</li>
+<li>Show GitLab denying merge without the mandatory evidence and allowing eligibility after the checks plus human approval.</li>
+</ol>
+<p>Optional MR comments can summarize findings through a separate note-writer identity. They are advisory; a comment or conceptual Kanban card cannot enforce merging. No automatic repository-write/test branch creation is supplied in this handoff.</p>
+<div class="links">
+<a href="contracts/PROTOCOL.md">Bridge contract</a>
+<a href="ci/authority-job.yml">CI template</a>
+<a href="ingress/virtualservice.yaml">Routing template</a>
+</div>
+</section>
+<section id="status">
+<p class="eyebrow">04 · Current status</p>
+<h2>Keep the presentation useful during implementation.</h2>
+<div class="grid">
+<div class="card">
+<h3>Offline checks completed</h3>
+<p>Twelve client tests cover stale identities/SHAs, missing or failed tests, invalid baseline evidence, redirects, polling errors and timeout without resubmission. YAML parsed and safety scan passed.</p>
+</div>
+<div class="card">
+<h3>Target proof still required</h3>
+<p>Live model/MCP calls, ingress identity enforcement, durable recovery, real generated-test execution, and mandatory merge blocking. See the acceptance checklist.</p>
+</div>
+</div>
+<p>Other pipeline opportunities: failed-job diagnosis, documentation drift, IaC/policy review, dependency review and release notes. Begin with review and one language-specific executor before expanding.</p>
+<p>If target implementation stops, show this intended route and identify the last verified component. Do not describe the existing client/template bundle as a working endpoint.</p>
+<div class="links">
+<a href="README.md">Implementation details</a>
+<a href="https://docs.gitlab.com/user/project/merge_requests/status_checks/">GitLab external checks</a>
+<a href="https://docs.gitlab.com/ci/pipelines/downstream_pipelines/">Downstream pipeline behavior</a>
+<a href="https://istio.io/latest/docs/reference/config/security/request_authentication/">Istio identity validation</a>
+</div>
+</section>
+<footer>Updated 1 October 2026 · Open locally in a browser · No external assets, credentials or live connections.</footer>
+</main>
+</body>
+</html>

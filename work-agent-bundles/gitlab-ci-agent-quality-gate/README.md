@@ -20,6 +20,9 @@ controller speaks A2A JSON-RPC, not the evaluation bridge protocol.
 
 ## Deliverables
 
+Open [PIPELINE-QUALITY-GATE-PRESENTATION.html](PIPELINE-QUALITY-GATE-PRESENTATION.html)
+for the stakeholder concept, live-demo destination and explicit implementation gaps.
+
 - ci/authority-job.yml: trusted-authority CI job template, fails closed.
 - scripts/gate.py: bounded asynchronous client and strict result validation.
 - contracts/PROTOCOL.md: bridge, authentication, SHA and test evidence contract.
