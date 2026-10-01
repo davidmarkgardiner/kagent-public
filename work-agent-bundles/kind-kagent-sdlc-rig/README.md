@@ -1,5 +1,9 @@
 # Kubernetes SDLC rig PoC
 
+For a cluster-admin installer, start with
+[`WORK-AGENT-START-PROMPT.md`](WORK-AGENT-START-PROMPT.md). It discovers target
+prerequisites, installs the supplied rig, and requires a real GitLab canary.
+
 For a self-contained **non-production work-cluster transfer**, start with
 [`WORK-CLUSTER-RUNBOOK.md`](WORK-CLUSTER-RUNBOOK.md),
 [`work-profile.example.json`](work-profile.example.json), and

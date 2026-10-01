@@ -1,5 +1,10 @@
 # SDLC rig work-cluster transfer
 
+Give the installer [`WORK-AGENT-START-PROMPT.md`](WORK-AGENT-START-PROMPT.md).
+It assumes direct cluster-admin installation access and walks through discovery,
+Secret/MCP verification, installation and live canary evidence. Runtime agents
+retain their constrained tools and permissions.
+
 This Git folder is a **non-production evaluation bundle** for one existing Kubernetes
 cluster, one model route, and one dedicated GitLab sandbox project. It installs
 a PM, builder, tester, reviewer, echo worker, fixed-project GitLab MCP, and an
