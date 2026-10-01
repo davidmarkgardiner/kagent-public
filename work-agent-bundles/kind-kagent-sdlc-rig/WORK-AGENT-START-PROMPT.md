@@ -6,8 +6,33 @@ target discovery, configuration, installation and a real end-to-end canary;
 do not stop at a plan, rendered YAML or Ready pods. Keep the existing platform
 and unrelated workloads intact. Use the designated sandbox GitLab project.
 
+The target already has kagent, a working ModelConfig/model route, and GitLab
+tokens held in Kubernetes Secrets. Start by understanding that existing setup
+and reusing it. These are discovery starting points to verify, not questions
+to send back to the user or reasons to install a second platform.
+
+You are authorized to inspect the cluster, installed resources, configuration,
+existing deployment/Helm/GitOps wiring, Secret references and authenticated
+GitLab/MCP metadata; infer the required target values; adapt the supplied assets;
+and install/configure the dedicated SDLC sandbox resources. You may provision
+the required namespace, narrow RBAC, policy, Secret wiring, agents, constrained
+MCP, poller and sandbox CI prerequisites, and create demonstration issues,
+branches, commits and draft MRs in the designated project. Carry the work through
+to live proof without asking approval for each routine installation step.
+Existing authorization does not include changing unrelated workloads, replacing
+the shared model/platform, broadening runtime privileges or merging GitLab MRs.
+
+Do not open with a prerequisite questionnaire. Investigate first, explain the
+inferred setup briefly, and proceed. The expected user input is only access to a
+working GitLab MCP and the designated project if it is not already available.
+Verify both yourself using real calls. Ask only when investigation establishes
+a genuine blocker: unavailable/expired credentials or permissions, an ambiguous
+target/project that cannot be resolved, or a required external entitlement.
+Group any such blockers into one concise request with the failed check and the
+smallest remedy. Do not ask the user to supply values you can discover or decide.
+
 Read README.md, WORK-CLUSTER-RUNBOOK.md, REVIEW-TASKS.md,
-work-profile.example.json and evidence/RUN-2026-09-27.md first. Read
+work-profile.example.json and evidence/RUN-2026-10-01.md first. Read
 LIVE-DEMO-RUNBOOK.md and open BOARD-POLLING-PRESENTATION.html before preparing
 a stakeholder demonstration. The rig assets
 are supplied, including its fixed-project GitLab MCP. kagent, agentgateway,
@@ -21,8 +46,26 @@ kagent/controller/CRD versions, controller Service/A2A path and pod labels,
 agentgateway namespace/Deployments, model endpoint and model name, Secret
 references, CNI NetworkPolicy support, admission policy, DNS and image registry
 reachability. Verify Python 3, PyYAML, kubectl, jq and curl on your installer host.
+Use the existing kubectl: there is no requirement for version 1.36. Discover
+client and server versions with kubectl version -o yaml. The client must be
+within one minor version of every target kube-apiserver; prefer the same minor.
+For a 1.31 server, kubectl 1.31 is suitable (1.30–1.32 is the supported skew).
+Resolve missing installer utilities or an incompatible client within the
+authorized environment instead of asking the user to choose a version. Do not
+upgrade the cluster to satisfy an installer-tool preference. See the official
+[version-skew policy](https://kubernetes.io/releases/version-skew-policy/).
 The lab used kagent v0.7.13: inspect target schemas rather than assuming that
 version's manifests will work unchanged.
+
+Trace a working Agent to its ModelConfig, gateway/backend and Secret references.
+Recover the actual model name, endpoint, provider settings, client authentication,
+controller namespace/Service/port and A2A URL from that wiring. Reuse the existing
+model route; do not ask for a new model/provider key. Discover CA, proxy, registry,
+namespace, node selector and scheduling conventions from installed resources.
+Use measured capacity to choose placement and the supplied bounded defaults for
+the dedicated namespace, two-minute suspended poller and narrow permissions.
+If multiple targets remain equally plausible after inspecting the configuration,
+ask which target is intended; never guess a production project or cluster.
 
 Use existing target platform components. If a prerequisite is absent, install
 or configure the approved target component within the authorized sandbox
@@ -32,6 +75,18 @@ to match the lab. Missing platform approval, model entitlement or an unknown
 sandbox identity is a real missing input; cluster-admin does not supply those.
 Ask only for missing inputs that you cannot safely discover.
 
+Trace existing GitLab MCP Deployments/RemoteMCPServers, pod environment and volume
+references to the current GitLab Secret name, namespace and key. Identify the
+API URL and project from deployment settings, GitLab MCP calls, authenticated
+project metadata and any supplied repository remotes. Do not ask for another PAT
+when the existing Secret works. Inspect Secret metadata/references first; access
+values only inside the authenticated operation that needs them, without printing
+Secret objects, base64 data or decoded values. If this rig needs a Secret in its
+own namespace, reuse the existing secret-delivery mechanism or provision the
+minimum required credential securely within the authorized sandbox scope.
+Leave the source Secret and existing consumers intact; do not export unrelated
+credentials. Provider credentials stay in the gateway's existing namespace.
+
 Find the designated GitLab API URL, exact project path, target branch, allowed
 file paths, CI runner and protected-branch settings. Read CI-RUNNER-SETUP.md if no approved
 runner exists; the agent PAT/MCP connection alone does not execute CI. Verify the token supplied
@@ -40,6 +95,14 @@ and perform the issue/branch/commit/draft-MR/note operations required by the
 canary. Prefer a project-scoped token; an approved service-account PAT can be
 used when project tokens are unavailable. Check scope, role and expiry. Never
 ask for a token in chat or print/store it in public Git, shell history or logs.
+Discover the default branch, existing CI, runner eligibility and repository
+layout through authenticated reads. Derive a minimal file allowlist and a small
+canary from that repository rather than asking the user to design them. Prefer
+a bounded documentation change that existing tests can exercise; do not assume
+the sample Node calculator files exist in the work project. If no eligible CI
+runner exists, reuse or provision an approved sandbox runner when the current
+installer identity permits it. Request runner-creation access only after an
+actual permission failure; the runtime Developer token need not have that right.
 
 Distinguish your own installer MCP connection from the deployed rig's MCP:
 access to an MCP tool in your session does not connect the Kubernetes agents.
@@ -61,6 +124,11 @@ project, GitLab API, branch, file, model, Secret, controller/A2A, image and node
 values; set optional CA/proxy/controller namespace values when needed. Keep
 profile and rendered output outside public source control. Do not use lab tokens
 or private endpoint values copied from another environment.
+Populate this profile yourself from the discovered configuration. It is your
+installation artifact, not a form for the user to complete. Make the smallest
+schema/authentication adjustments needed to preserve the working target route;
+if the renderer cannot express that route, adapt the rendered assets and document
+the delta rather than replacing it with the lab's Kimi configuration.
 
 Ensure the dedicated sdlc-rig namespace, worker-node label, GitLab Secret
 (gitlab-project-token / token), model client Secret, and optional combined CA
