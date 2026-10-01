@@ -7,7 +7,9 @@ do not stop at a plan, rendered YAML or Ready pods. Keep the existing platform
 and unrelated workloads intact. Use the designated sandbox GitLab project.
 
 Read README.md, WORK-CLUSTER-RUNBOOK.md, REVIEW-TASKS.md,
-work-profile.example.json and evidence/RUN-2026-09-27.md first. The rig assets
+work-profile.example.json and evidence/RUN-2026-09-27.md first. Read
+LIVE-DEMO-RUNBOOK.md and open BOARD-POLLING-PRESENTATION.html before preparing
+a stakeholder demonstration. The rig assets
 are supplied, including its fixed-project GitLab MCP. kagent, agentgateway,
 a working model route, CI runner and environment-owned Secrets are prerequisites,
 not automatically installed by render-work-bundle.py.
@@ -77,6 +79,13 @@ sandbox owner's controlled CI configuration; runtime builders must never edit
 directly rather than a builder-editable package.json script.
 
 ## 3. Prove the workflow
+
+Configure/reuse a dedicated label-based GitLab board and create or tag a fresh
+parent issue using LIVE-DEMO-RUNBOOK.md and DEMO-ISSUE-TEMPLATE.md. Preserve
+unrelated labels, verify the resulting IID/URL, and expose board/issue/poller-log
+views for observers. The installer does intake; the PM creates the annotated
+child and delegates A2A workers, while the poller controls later labels.
+Do not drag runtime cards or give label-write tools back to the PM.
 
 Keep polling suspended. Verify a unique PM-to-echo A2A nonce and a real GitLab
 MCP read against the configured project. Create one narrowly scoped parent

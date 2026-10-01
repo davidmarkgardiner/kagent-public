@@ -1,7 +1,9 @@
 # Work-agent start prompt
 
 Implement this separate GitLab CI evaluation workflow in a non-production work
-sandbox. Read README.md, contracts/PROTOCOL.md and CHECKLIST.md first. This is an
+sandbox. Read README.md, contracts/PROTOCOL.md and CHECKLIST.md first. Open
+PIPELINE-QUALITY-GATE-PRESENTATION.html to explain the intended flow. Keep its
+status claims aligned with the actual target evidence as implementation progresses. This is an
 implementation handoff; scripts/gate.py is ready client code, but there is no
 bridge/test executor deployment supplied. Do not report it as installed.
 

@@ -20,17 +20,13 @@ settings tool is exposed. The [first live run](evidence/2026-09-27-live-run.md)
 and [unattended scheduled run](evidence/2026-09-27-unattended-lease-canary.md)
 show the actual proof and its limits.
 
-Open the [HTML presentation](BOARD-POLLING-PRESENTATION.html) for a visual
-walkthrough of the annotated board and direct links to both GitLab issues,
-pipelines, and draft MRs.
+Open the [HTML presentation](BOARD-POLLING-PRESENTATION.html) for the current
+workplace concept, label-board walkthrough, latest lab evidence and remaining
+gates. It is an offline presentation, not a live GitLab dashboard. Use the
+[live-demo runbook](LIVE-DEMO-RUNBOOK.md) and
+[issue template](DEMO-ISSUE-TEMPLATE.md) to create/tag a real sandbox parent,
+configure the board and observe poller logs, issue notes, CI and draft MR.
 
-The independent [review task list](REVIEW-TASKS.md) separates work required
-before a workplace sandbox canary from later hardening. Its credential-free
-[offline reproductions](review-repros/README.md) are preserved for regression
-test development.
-The review fixes on this branch have offline tests and a home-lab API server
-dry-run; the historical lab runs below used the earlier manifests. The updated
-poller and MCP NetworkPolicy still need a supervised live canary.
 
 ## Configuration
 
