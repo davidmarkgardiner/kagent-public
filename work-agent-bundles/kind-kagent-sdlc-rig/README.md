@@ -29,6 +29,8 @@ configure the board and observe poller logs, issue notes, CI and draft MR.
 
 
 Fresh two-cluster verification is recorded in [RUN-2026-10-01.md](evidence/RUN-2026-10-01.md).
+Use [HOMELAB-REFERENCE.md](HOMELAB-REFERENCE.md) for checkpoint-by-checkpoint
+commands, verified YAML/Secret references and the completed lab receipts.
 For the separate CI executor prerequisite, see [CI-RUNNER-SETUP.md](CI-RUNNER-SETUP.md).
 
 ## Configuration

@@ -32,12 +32,98 @@ Group any such blockers into one concise request with the failed check and the
 smallest remedy. Do not ask the user to supply values you can discover or decide.
 
 Read README.md, WORK-CLUSTER-RUNBOOK.md, REVIEW-TASKS.md,
-work-profile.example.json and evidence/RUN-2026-10-01.md first. Read
+work-profile.example.json, HOMELAB-REFERENCE.md and evidence/RUN-2026-10-01.md first. Read
 LIVE-DEMO-RUNBOOK.md and open BOARD-POLLING-PRESENTATION.html before preparing
 a stakeholder demonstration. The rig assets
 are supplied, including its fixed-project GitLab MCP. kagent, agentgateway,
 a working model route, CI runner and environment-owned Secrets are prerequisites,
 not automatically installed by render-work-bundle.py.
+
+## Execution order: one checkpoint at a time
+
+Follow these checkpoints in order. The later discovery/configuration sections
+are reference instructions to use as each checkpoint needs them; do not turn
+them into an upfront questionnaire or attempt every integration at once. Before
+advancing, record the actual check, result and evidence reference in a checkpoint
+ledger in evidence/RUN-WORK.md (or the private workplace evidence store). Report
+each checkpoint briefly as PASS or BLOCKED. PASS means proceed autonomously;
+it is not a request for user approval. If a checkpoint fails, diagnose and repair
+that checkpoint, then repeat its failed check before proceeding. Only ask for
+help when a concrete blocker cannot be resolved with existing access. Reuse
+successful artifacts rather than creating duplicate issues or replaying agents.
+At each checkpoint, use HOMELAB-REFERENCE.md for the verified lab identities,
+YAML/Secret-reference examples, command shapes and issue/CI/review receipts.
+Compare them with the actual installed target and adapt the names/endpoints;
+do not copy lab credentials or mistake historical lab receipts for work proof.
+
+### Checkpoint 1 — GitLab token, project and issue access
+
+Discover the existing Kubernetes-held PAT/project token and exact designated
+project first. Using it securely, verify the authenticated identity and project,
+create one fresh, narrowly scoped demo parent with a unique run marker but no
+intake labels, then read it back by IID and verify its title/body/marker. Prove
+the relevant GitLab MCP create/read calls too; direct REST success alone does
+not prove MCP wiring. Retain this issue for all subsequent checkpoints. Do not
+invoke the planner or alter candidate repository code yet. Record project,
+identity, Secret reference, issue IID/URL and actual create/read outcomes, never
+the token. Resolve issue/MCP access before troubleshooting downstream agents.
+
+### Checkpoint 2 — Label admission and poller pickup
+
+Understand/reuse the existing kagent setup and install only the required sandbox
+rig wiring using the reference sections below. Keep the CronJob suspended; verify
+the poller's project, token reference, label selector, Lease and PM A2A endpoint.
+Inspect the existing queue to avoid advancing unrelated active issues. Add
+`sdlc-rig-poc` and `agent:plan` to the checkpoint-1 issue while preserving other
+labels, and read it back. Run exactly one manual poller Job and observe its
+`picked` log for this IID at `agent:plan`. Retain the Job name and log evidence.
+Pods being Ready or an issue merely having labels does not prove pickup.
+
+The supplied poller invokes PLAN immediately after pickup in that same Job;
+there is no separate discovery-only/pause mode. Checkpoints 2 and 3 are ordered
+observations of that single execution. Do not add a second Job or manually call
+PLAN to manufacture a separate handoff. Await the Job's completion and inspect
+both receipts before running any later-stage poll.
+
+### Checkpoint 3 — Handoff to the kagent planner
+
+The planner is the supplied PM Agent (`sdlc-pm`), not a GitLab assignee or a new
+unconnected agent. Verify that the checkpoint-2 Job reached its real A2A endpoint
+and completed PLAN. Check the bot-authored parent notes and exactly one annotated
+child with the correct parent, branch and acceptance criteria. Verify the parent
+advanced to `agent:build`. Record the PM turn and child IID; a pickup log by itself
+does not prove successful planning. Do not trigger BUILD until this passes.
+
+### Checkpoint 4 — Planner delegates implementation
+
+Run the next single manual poller Job only after checkpoint 3 passes. Verify the
+PM delegates through A2A to the builder and that a real approved-file commit is
+created on the expected sandbox branch. Read the branch/diff and parent progress
+notes independently; require the permitted scope and record the full SHA. Keep
+the candidate unmerged. The proven rig uses one child and several specialist
+roles; do not present it as arbitrary multi-task parallel planning.
+
+### Checkpoint 5 — Testing, draft MR and peer review
+
+Resolve CI runner prerequisites now if needed. Require actual successful CI at
+the checkpoint-4 branch head, then advance through TEST, draft-MR creation and
+REVIEW with one completed manual poller Job per checkpoint. Verify the tester's
+real delegation, current-head pipeline/job results, exactly one open draft MR,
+and the bot-authored reviewer verdict naming the parent and full SHA. Record
+each substage separately and inspect its GitLab artifacts before the next poll.
+Do not treat PM/tester text as independent generated-test executor evidence.
+
+### Checkpoint 6 — Acceptance and scheduled demonstration
+
+Run the acceptance poll only after matching test/MR/review evidence passes.
+Independently verify the accepted label, current SHA, allowed diff, green CI,
+draft MR and reviewer PASS. Then complete the runbook's controlled failure/policy
+checks. Enable the normal schedule only after supervised proof passes; use a new
+demo parent to prove scheduled pickup, the complete flow and return to idle.
+Retain the final CronJob/Lease state and observer links. Do not reset the first
+issue or force intermediate labels to repeat the demonstration. Human GitLab MR
+merge remains separate. This order becomes the later audience walkthrough:
+issue access → label pickup → planner → builder → tests → review → acceptance.
 
 ## 1. Discover and resolve prerequisites
 
@@ -150,15 +236,17 @@ directly rather than a builder-editable package.json script.
 ## 3. Prove the workflow
 
 Configure/reuse a dedicated label-based GitLab board and create or tag a fresh
-parent issue using LIVE-DEMO-RUNBOOK.md and DEMO-ISSUE-TEMPLATE.md. Preserve
+parent issue using LIVE-DEMO-RUNBOOK.md and DEMO-ISSUE-TEMPLATE.md at the relevant
+execution checkpoint. Reuse the checkpoint-1 parent for the supervised run; do
+not create another parent just because this reference section is reached. Preserve
 unrelated labels, verify the resulting IID/URL, and expose board/issue/poller-log
 views for observers. The installer does intake; the PM creates the annotated
 child and delegates A2A workers, while the poller controls later labels.
 Do not drag runtime cards or give label-write tools back to the PM.
 
-Keep polling suspended. Verify a unique PM-to-echo A2A nonce and a real GitLab
-MCP read against the configured project. Create one narrowly scoped parent
-issue with explicit acceptance criteria and labels sdlc-rig-poc and agent:plan.
+Keep polling suspended during the supervised checkpoints. Verify a unique
+PM-to-echo A2A nonce as a routing check before the first poll and a real GitLab
+MCP read of the checkpoint-1 parent. Apply intake labels only at checkpoint 2.
 Use exactly one manual poller Job at a time; wait for each to finish. Observe
 PM planning/child creation, A2A builder/tester/reviewer delegation, approved-file
 commits, current-head CI, an open draft MR, and a bot-authored SHA-bound review.
