@@ -1,0 +1,15 @@
+{
+  "cluster": "{{CLUSTER_NAME}}",
+  "namespaces": [
+    "{{WATCHED_NAMESPACE}}"
+  ],
+  "mode": "report-only",
+  "limit": 1,
+  "overrides": {},
+  "timezone_name": "Europe/London",
+  "report_hour": 9,
+  "report_minute": 0,
+  "triage_topic": "{{EXISTING_TRIAGE_TOPIC}}",
+  "digest_topic": "",
+  "max_groups": 10000
+}

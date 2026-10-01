@@ -1,0 +1,193 @@
+{
+  "date": "2026-10-01",
+  "transport": {
+    "candidate_total": 30,
+    "consumed_by_limit": [
+      1,
+      2,
+      2
+    ],
+    "consumed_total": 5,
+    "deferred_total": 25,
+    "distinct_intents": 5,
+    "namespace_limits": [
+      1,
+      2,
+      2
+    ],
+    "owner_resolution": "all Deployment groups resolved via live Kubernetes API",
+    "path": "Kubernetes pod logs + Warning Events -> Alloy -> Vector OTLP -> HTTP gate/PostgreSQL -> Kafka produce/consume",
+    "received_records": 195,
+    "repeated_dispatch": "zero additional sends",
+    "result": "PASS",
+    "samples": [
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "log-timeout",
+        "severity": "error",
+        "signal_kind": "log"
+      }
+    ],
+    "scope": "synthetic signals, isolated broker; no Argo/agent/tickets; manually released report slot; plaintext Kafka only in isolated lab"
+  },
+  "pod_restart": {
+    "candidate_total": 30,
+    "consumed_by_limit": [
+      1,
+      2,
+      2
+    ],
+    "consumed_total": 5,
+    "deferred_total": 25,
+    "distinct_intents": 5,
+    "namespace_limits": [
+      1,
+      2,
+      2
+    ],
+    "owner_resolution": "all Deployment groups resolved via live Kubernetes API",
+    "path": "Kubernetes pod logs + Warning Events -> Alloy -> Vector OTLP -> HTTP gate/PostgreSQL -> Kafka produce/consume",
+    "received_records": 195,
+    "repeated_dispatch": "zero additional sends",
+    "result": "PASS",
+    "samples": [
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "OOMKilled",
+        "severity": "critical",
+        "signal_kind": "event"
+      },
+      {
+        "reason": "log-timeout",
+        "severity": "error",
+        "signal_kind": "log"
+      }
+    ],
+    "scope": "synthetic signals, isolated broker; no Argo/agent/tickets; manually released report slot; plaintext Kafka only in isolated lab"
+  },
+  "adversarial": {
+    "accelerated_days": 7,
+    "ambiguous_transaction_after_restore": "prior transaction fenced; one committed record",
+    "attempted_intake_deliveries": 2016,
+    "clock_regression": "fails closed",
+    "concurrent_intake_callers": 4,
+    "concurrent_publishers": 4,
+    "concurrent_report_calls_per_day": 8,
+    "consumed_total": 35,
+    "database_rollback": "zero extra records",
+    "days": [
+      {
+        "consumed_by_namespace_limit": [
+          1,
+          2,
+          2
+        ],
+        "virtual_day": 1
+      },
+      {
+        "consumed_by_namespace_limit": [
+          1,
+          2,
+          2
+        ],
+        "virtual_day": 2
+      },
+      {
+        "consumed_by_namespace_limit": [
+          1,
+          2,
+          2
+        ],
+        "virtual_day": 3
+      },
+      {
+        "consumed_by_namespace_limit": [
+          1,
+          2,
+          2
+        ],
+        "virtual_day": 4
+      },
+      {
+        "consumed_by_namespace_limit": [
+          1,
+          2,
+          2
+        ],
+        "virtual_day": 5
+      },
+      {
+        "consumed_by_namespace_limit": [
+          1,
+          2,
+          2
+        ],
+        "virtual_day": 6
+      },
+      {
+        "consumed_by_namespace_limit": [
+          1,
+          2,
+          2
+        ],
+        "virtual_day": 7
+      }
+    ],
+    "real_elapsed_days": 0,
+    "result": "PASS",
+    "scope": "actual PostgreSQL and Kafka; in-process synthetic signals and accelerated day clock; no tickets or agents",
+    "topic_recreation": "fails closed; zero records in replacement topic",
+    "unique_synthetic_signals": 672
+  },
+  "local_validation": {
+    "behavioral_tests_passed": 21,
+    "vector_http": "40 signals stored; shadow zero Kafka intents",
+    "kafka_committed_produced_and_consumed": 2,
+    "candidate_signals": 40,
+    "deferred_groups": 38
+  },
+  "cleanup": "CONFIRMED by runner completion marker: all four isolated namespaces removed; independent API read unavailable in restricted session.",
+  "scope": "isolated home lab, synthetic signals, seven accelerated dates; no agents, Argo workflows or tickets tested",
+  "post_test_delta": "30-day outbox/budget pruning and its new test were added after the 21-test run; this narrow delta is not yet runtime-verified",
+  "retention_rerun": "Pending GitHub CI. Local Docker socket and native PostgreSQL shared-memory access denied by sandbox.",
+  "tested_artifact_sha256": {
+    "gate.py": "0076a6a8704f4be9b90b2da2c8932a59d9a56b81a44408996fd174e5c1ee1908",
+    "schema.sql": "fda7115bae8a6a9670794257b8cdf47bf42c6b9a0a04baa5a22678c67a787954",
+    "strict_soak.py": "5400e7f0561d00cfafded4cd1d86da212782b93d9021a39aa2b1db21b61aa5cc",
+    "home_lab_runtime.py": "8524469df0748f69b076c3b08e9925e196fc412fe32e5247a7c6e2af3d31ad1a"
+  },
+  "current_gate_sha256": "1800525ea0a58693d63617ddc413caa39b6a27a6adfb1e3881daeebd0952de1b"
+}

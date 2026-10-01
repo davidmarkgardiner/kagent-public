@@ -1,0 +1,49 @@
+{
+  "candidate_total": 30,
+  "consumed_by_limit": [
+    1,
+    2,
+    2
+  ],
+  "consumed_total": 5,
+  "deferred_total": 25,
+  "distinct_intents": 5,
+  "namespace_limits": [
+    1,
+    2,
+    2
+  ],
+  "owner_resolution": "all Deployment groups resolved via live Kubernetes API",
+  "path": "Kubernetes pod logs + Warning Events -> Alloy -> Vector OTLP -> HTTP gate/PostgreSQL -> Kafka produce/consume",
+  "received_records": 195,
+  "repeated_dispatch": "zero additional sends",
+  "result": "PASS",
+  "samples": [
+    {
+      "reason": "OOMKilled",
+      "severity": "critical",
+      "signal_kind": "event"
+    },
+    {
+      "reason": "OOMKilled",
+      "severity": "critical",
+      "signal_kind": "event"
+    },
+    {
+      "reason": "OOMKilled",
+      "severity": "critical",
+      "signal_kind": "event"
+    },
+    {
+      "reason": "OOMKilled",
+      "severity": "critical",
+      "signal_kind": "event"
+    },
+    {
+      "reason": "log-timeout",
+      "severity": "error",
+      "signal_kind": "log"
+    }
+  ],
+  "scope": "synthetic signals, isolated broker; no Argo/agent/tickets; manually released report slot; plaintext Kafka only in isolated lab"
+}

@@ -1,0 +1,23 @@
+name: Namespace alert admission proof
+on:
+  push:
+    branches: ['feat/namespace-alert-admission-*']
+    paths:
+      - 'work-agent-bundles/namespace-alert-admission/**'
+      - '.github/workflows/namespace-alert-admission.yml'
+  pull_request:
+    paths:
+      - 'work-agent-bundles/namespace-alert-admission/**'
+      - '.github/workflows/namespace-alert-admission.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-vector-kafka:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify final Python and PostgreSQL behavior plus Vector and Kafka wire path
+        run: bash work-agent-bundles/namespace-alert-admission/verify-local.sh
+      - name: Scan bundle for private values
+        run: bash scripts/public-safe-scan.sh work-agent-bundles/namespace-alert-admission

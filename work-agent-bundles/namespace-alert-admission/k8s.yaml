@@ -1,0 +1,110 @@
+# Example only. Render policy.json separately and provide approved PostgreSQL.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: namespace-alert-admission
+  namespace: argo-events
+---
+# Create a Role/RoleBinding pair in EACH allow-listed target namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: namespace-alert-admission-owner-reader
+  namespace: "{{WATCHED_NAMESPACE}}"
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get]
+  - apiGroups: [apps]
+    resources: [replicasets, deployments, statefulsets, daemonsets]
+    verbs: [get]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: namespace-alert-admission-owner-reader
+  namespace: "{{WATCHED_NAMESPACE}}"
+subjects:
+  - kind: ServiceAccount
+    name: namespace-alert-admission
+    namespace: argo-events
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: namespace-alert-admission-owner-reader
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: namespace-alert-admission
+  namespace: argo-events
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: namespace-alert-admission}
+  template:
+    metadata:
+      labels: {app: namespace-alert-admission}
+    spec:
+      serviceAccountName: namespace-alert-admission
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: gate
+          image: "{{ADMISSION_IMAGE_DIGEST}}"
+          ports: [{name: http, containerPort: 8080}]
+          env:
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: namespace-alert-admission, key: database-url}}
+            - name: ADMISSION_AUTH_KEY
+              valueFrom: {secretKeyRef: {name: namespace-alert-admission, key: auth-key}}
+            - name: CONFLUENT_BOOTSTRAP
+              valueFrom: {secretKeyRef: {name: confluent-credentials, key: bootstrap}}
+            - name: KAFKA_SECURITY_CONFIG
+              valueFrom: {secretKeyRef: {name: namespace-alert-admission, key: kafka-security-json}}
+            - name: KAFKA_TOPIC_IDS
+              valueFrom: {secretKeyRef: {name: namespace-alert-admission, key: kafka-topic-ids-json}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+          volumeMounts:
+            - {name: policy, mountPath: /etc/admission, readOnly: true}
+      volumes:
+        - name: policy
+          configMap: {name: namespace-alert-admission-policy}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: namespace-alert-admission
+  namespace: argo-events
+spec:
+  selector: {app: namespace-alert-admission}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+# CNI enforcement must be proven. Use TLS/service-mesh encryption where required.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: namespace-alert-admission-ingress
+  namespace: argo-events
+spec:
+  podSelector:
+    matchLabels: {app: namespace-alert-admission}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: vector-telemetry-triage}
+      ports: [{protocol: TCP, port: 8080}]
