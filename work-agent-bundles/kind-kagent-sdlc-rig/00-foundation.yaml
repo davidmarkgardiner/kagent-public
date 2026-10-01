@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sdlc-rig
+  labels:
+    app.kubernetes.io/part-of: sdlc-rig
+---
+# The existing gateway holds the provider credential. This value is a local
+# client placeholder and grants no access to the upstream Kimi account.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agentgateway-client-key
+  namespace: sdlc-rig
+type: Opaque
+stringData:
+  api-key: not-required
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: kimi-gateway
+  namespace: sdlc-rig
+spec:
+  provider: OpenAI
+  model: kimi-for-coding
+  apiKeySecret: agentgateway-client-key
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: http://agent-gw.agentgateway-system.svc.cluster.local:8081/kimi/v1
+    timeout: 300
+    maxTokens: 2048

@@ -1,0 +1,19 @@
+{
+  "project_path": "example-team/sdlc-sandbox",
+  "gitlab_api_url": "https://gitlab.example.invalid/api/v4",
+  "target_branch": "main",
+  "allowed_files": ["README.md", "package.json", "tests/calculator.test.mjs"],
+  "model_name": "example-model",
+  "model_base_url": "http://model-gateway.agentgateway-system.svc.cluster.local:8081/v1",
+  "model_client_secret_name": "sdlc-model-client-key",
+  "model_client_secret_key": "api-key",
+  "pm_a2a_url": "http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/sdlc-rig/sdlc-pm/",
+  "python_image": "docker.io/library/python@sha256:236173eb74001afe2f60862de935b74fcbd00adfca247b2c27051a70a6a39a2d",
+  "schedule": "*/2 * * * *",
+  "allow_control_plane": false,
+  "kagent_namespace": "kagent",
+  "pm_replay_hold_min": 25,
+  "ca_configmap": null,
+  "https_proxy": null,
+  "no_proxy": null
+}

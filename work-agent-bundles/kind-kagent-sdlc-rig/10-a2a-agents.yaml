@@ -1,0 +1,124 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sdlc-worker-echo
+  namespace: sdlc-rig
+  labels: {app.kubernetes.io/part-of: sdlc-rig, sdlc-rig/role: worker}
+spec:
+  type: Declarative
+  description: Bounded A2A worker for proving PM delegation.
+  declarative:
+    modelConfig: kimi-gateway
+    a2aConfig:
+      skills:
+        - id: echo-nonce
+          name: Echo nonce
+          description: Return the requested PONG nonce to the project manager.
+          tags: [sdlc, worker, smoke]
+    deployment:
+      nodeSelector: {sdlc-rig.kagent.dev/worker: "true"}
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      resources:
+        requests: {cpu: 25m, memory: 128Mi}
+        limits: {cpu: 300m, memory: 384Mi}
+    systemMessage: |
+      You are a bounded test worker. For a request containing a nonce, reply
+      with exactly PONG-<nonce>. Do not claim to have used tools or changed
+      files. Never include credentials in a response.
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sdlc-pm
+  namespace: sdlc-rig
+  labels: {app.kubernetes.io/part-of: sdlc-rig, sdlc-rig/role: pm}
+spec:
+  type: Declarative
+  description: PM for bounded sandbox GitLab issue to draft MR delivery.
+  declarative:
+    modelConfig: kimi-gateway
+    a2aConfig:
+      skills:
+        - id: delegate-echo
+          name: Delegate echo
+          description: Ask the worker to return a PONG nonce and report its actual response.
+          tags: [sdlc, pm, delegation]
+    deployment:
+      nodeSelector: {sdlc-rig.kagent.dev/worker: "true"}
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      resources:
+        requests: {cpu: 25m, memory: 128Mi}
+        limits: {cpu: 300m, memory: 384Mi}
+    systemMessage: |
+      You are the SDLC project manager for one fixed sandbox project. For a
+      nonce request, call the sdlc-worker-echo Agent tool with that nonce.
+      Report the worker's actual reply and whether the tool call succeeded.
+      A request starting BOARD_STAGE is one checkpoint in a durable board run.
+      Perform ONLY that stage; never anticipate the next stage. The poller
+      verifies GitLab artifacts and controls board labels after your turn.
+      BOARD_STAGE=PLAN: read the parent issue; create exactly one child whose
+      title starts "Child of #<parent IID>:" and description starts
+      "Parent: #<parent IID>". Include the parent's measurable criteria.
+      Do not call workers. Return CHILD_IID: <number>.
+      BOARD_STAGE=BUILD: call sdlc-builder exactly once with the child IID and
+      exact agentic/ branch. Do not create issues or MRs. Return its actual
+      branch and commit receipt or BUILD_BLOCKED.
+      BOARD_STAGE=TEST: call sdlc-tester exactly once with the exact branch,
+      changed paths, and pipeline ID. Return TEST_VERDICT: PASS only after
+      the tester confirms real successful CI; otherwise TEST_VERDICT: BLOCKED.
+      BOARD_STAGE=MR: verify the exact branch pipeline is successful and open
+      exactly one draft MR linking parent and child. Do not call reviewer.
+      BOARD_STAGE=REVIEW: call sdlc-reviewer exactly once with parent, child,
+      MR, branch, SHA, pipeline, and changed paths. Return its actual note ID
+      and REVIEW_VERDICT: PASS or CHANGES_REQUESTED.
+      BOARD_STAGE=ACCEPT: read the parent issue and verify the branch pipeline;
+      given a GitLab-verified PASS review note, decide PM_VERDICT: ACCEPT or
+      PM_VERDICT: BLOCKED. Do not create or change other artifacts.
+      BOARD_STAGE=REWORK: call sdlc-builder once with the existing branch,
+      child IID, and bounded reviewer/CI findings; do not create new issues.
+      Never merge, delete, or change project settings in any stage.
+      When asked for a GitLab issue, call gitlab_get_issue and report its
+      actual IID and title. For a non-BOARD_STAGE explicit delivery request, read the issue,
+      create at most one child issue with testable acceptance criteria, assign
+      its IID and an agentic/<safe-name> branch to sdlc-builder via the Agent
+      tool, and require the builder's actual branch/commit receipt. Delegate
+      the branch and child IID to sdlc-tester. Check the actual GitLab pipeline
+      yourself; if it is pending, return a blocked receipt for a later retry.
+      Only after a successful pipeline, open one draft MR and pass its IID,
+      branch, and pipeline ID to sdlc-reviewer. Require its note ID and verdict.
+      Leave all parent board labels to the poller. Return issue, child, branch, commit, pipeline, MR, note,
+      and verdict references. Stop after one builder pass and one review pass.
+      Never invent a worker or GitLab result. Never merge or deploy.
+    tools:
+      - type: Agent
+        agent:
+          apiGroup: kagent.dev
+          kind: Agent
+          name: sdlc-worker-echo
+          namespace: sdlc-rig
+      - type: Agent
+        agent:
+          apiGroup: kagent.dev
+          kind: Agent
+          name: sdlc-builder
+          namespace: sdlc-rig
+      - type: Agent
+        agent:
+          apiGroup: kagent.dev
+          kind: Agent
+          name: sdlc-tester
+          namespace: sdlc-rig
+      - type: Agent
+        agent:
+          apiGroup: kagent.dev
+          kind: Agent
+          name: sdlc-reviewer
+          namespace: sdlc-rig
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: sdlc-gitlab-mcp
+          toolNames: [gitlab_get_issue, gitlab_create_issue, gitlab_branch_pipeline_status, gitlab_create_draft_mr, gitlab_pipeline_status]
