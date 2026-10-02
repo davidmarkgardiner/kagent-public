@@ -14,7 +14,8 @@ NAME = "kind-kagent-sdlc-rig"
 FILES = (
     "00-foundation.yaml", "10-a2a-agents.yaml", "20-delivery-workers.yaml",
     "30-board-cronjob.yaml", "BOARD-POLLING-PRESENTATION.html", "PLAN.md",
-    "README.md", "REVIEW-TASKS.md", "WORK-CLUSTER-RUNBOOK.md", "board_poller.py",
+    "README.md", "MORNING-INSTALL.md", "evidence/REVIEW-2026-10-02.md",
+    "evidence/RUN-WORK.template.md", "REVIEW-TASKS.md", "WORK-CLUSTER-RUNBOOK.md", "board_poller.py",
     "WORK-AGENT-START-PROMPT.md", "LIVE-DEMO-RUNBOOK.md", "DEMO-ISSUE-TEMPLATE.md",
     "HOMELAB-REFERENCE.md", "CI-RUNNER-SETUP.md", "ci-runner-values.example.yaml",
     "evidence/RUN-2026-10-01.md", "images.lock.tsv", "package-work-bundle.py", "preflight.sh",

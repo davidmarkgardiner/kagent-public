@@ -1,5 +1,7 @@
 # Kubernetes SDLC rig PoC
 
+For the reviewed standalone transfer, start with [MORNING-INSTALL.md](MORNING-INSTALL.md).
+
 For a cluster-admin installer, start with
 [`WORK-AGENT-START-PROMPT.md`](WORK-AGENT-START-PROMPT.md). It discovers target
 prerequisites, installs the supplied rig, and requires a real GitLab canary.
@@ -8,7 +10,7 @@ For a self-contained **non-production work-cluster transfer**, start with
 [`WORK-CLUSTER-RUNBOOK.md`](WORK-CLUSTER-RUNBOOK.md),
 [`work-profile.example.json`](work-profile.example.json), and
 `render-work-bundle.py`. The work renderer produces a digest-pinned,
-credential-free, **suspended** 19-resource manifest. The commands below
+credential-free, **suspended** 18-resource manifest. The commands below
 describe the original Proxmox lab path and are retained as historical pilot
 instructions; do not use them for workplace installation.
 
