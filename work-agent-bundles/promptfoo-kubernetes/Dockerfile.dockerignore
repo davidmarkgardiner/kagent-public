@@ -1,0 +1,11 @@
+**
+!work-agent-bundles/
+!work-agent-bundles/aks-skills-specialists/
+!work-agent-bundles/aks-skills-specialists/**
+!work-agent-bundles/promptfoo-kubernetes/
+!work-agent-bundles/promptfoo-kubernetes/**
+**/node_modules
+**/__pycache__
+**/.work
+**/values.private.json
+**/rendered*.yaml

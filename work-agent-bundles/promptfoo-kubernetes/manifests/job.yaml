@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: promptfoo-eval-
+  namespace: promptfoo-evaluation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 3600
+  template:
+    metadata:
+      labels:
+        app: promptfoo-evaluation-run
+    spec:
+      restartPolicy: Never
+      serviceAccountName: promptfoo
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: promptfoo
+        image: '{{INTERNAL_PROMPTFOO_EVAL_IMAGE_WITH_SHA256_DIGEST}}'
+        env:
+        - name: PROMPTFOO_DISABLE_TELEMETRY
+          value: '1'
+        - name: PROMPTFOO_DISABLE_UPDATE
+          value: '1'
+        - name: PROMPTFOO_CONFIG_DIR
+          value: /data
+        - name: NODE_PATH
+          value: /app/node_modules
+        - name: EVAL_PROVIDER
+          value: openai
+        - name: OPENAI_BASE_URL
+          value: '{{INTERNAL_OPENAI_COMPATIBLE_BASE_URL}}'
+        - name: EVAL_MODEL
+          value: '{{MODEL_DEPLOYMENT_NAME}}'
+        - name: EVAL_JUDGE_MODEL
+          value: '{{JUDGE_DEPLOYMENT_NAME}}'
+        envFrom:
+        - secretRef:
+            name: '{{MODEL_AUTH_SECRET}}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: '2'
+            memory: 4Gi
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: tmp
+          mountPath: /tmp
+        command:
+        - /usr/local/bin/run-aks-evaluation
+        args:
+        - '{{EVALUATION_SUITE}}'
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: promptfoo-run-data
+      - name: tmp
+        emptyDir: {}

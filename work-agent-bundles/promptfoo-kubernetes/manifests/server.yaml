@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: promptfoo-data
+  namespace: promptfoo-evaluation
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: '{{STORAGE_CLASS}}'
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promptfoo-ui-providers
+  namespace: promptfoo-evaluation
+data:
+  ui-providers.yaml: "providers:\n- id: openai:chat:{{MODEL_DEPLOYMENT_NAME}}\n  label:\
+    \ Approved internal evaluation model\n  config:\n    apiBaseUrl: '{{INTERNAL_OPENAI_COMPATIBLE_BASE_URL}}'\n"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: promptfoo
+  namespace: promptfoo-evaluation
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: promptfoo
+  template:
+    metadata:
+      labels:
+        app: promptfoo
+    spec:
+      serviceAccountName: promptfoo
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: promptfoo
+        image: '{{INTERNAL_PROMPTFOO_EVAL_IMAGE_WITH_SHA256_DIGEST}}'
+        ports:
+        - name: http
+          containerPort: 3000
+        env:
+        - name: PROMPTFOO_DISABLE_TELEMETRY
+          value: '1'
+        - name: PROMPTFOO_DISABLE_UPDATE
+          value: '1'
+        - name: PROMPTFOO_CONFIG_DIR
+          value: /data
+        - name: NODE_PATH
+          value: /app/node_modules
+        - name: EVAL_PROVIDER
+          value: openai
+        - name: OPENAI_BASE_URL
+          value: '{{INTERNAL_OPENAI_COMPATIBLE_BASE_URL}}'
+        - name: EVAL_MODEL
+          value: '{{MODEL_DEPLOYMENT_NAME}}'
+        - name: EVAL_JUDGE_MODEL
+          value: '{{JUDGE_DEPLOYMENT_NAME}}'
+        envFrom:
+        - secretRef:
+            name: '{{MODEL_AUTH_SECRET}}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: '2'
+            memory: 4Gi
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: tmp
+          mountPath: /tmp
+        - name: providers
+          mountPath: /data/ui-providers.yaml
+          subPath: ui-providers.yaml
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          failureThreshold: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 20
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: promptfoo-data
+      - name: tmp
+        emptyDir: {}
+      - name: providers
+        configMap:
+          name: promptfoo-ui-providers
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: promptfoo
+  namespace: promptfoo-evaluation
+spec:
+  type: ClusterIP
+  selector:
+    app: promptfoo
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http

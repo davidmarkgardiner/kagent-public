@@ -1,0 +1,11 @@
+description: Synthetic offline container plumbing only
+providers:
+  - id: file:///fixtures/fixture.cjs
+prompts:
+  - '{{prompt}}'
+tests:
+  - vars:
+      prompt: Synthetic fixture; no live AKS or model access
+    assert:
+      - type: equals
+        value: SYNTHETIC_AKS_EVALUATION_OK

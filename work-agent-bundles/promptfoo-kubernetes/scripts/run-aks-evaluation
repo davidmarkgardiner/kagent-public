@@ -1,0 +1,28 @@
+#!/bin/sh
+# Run an installed suite without npm, GitHub access or an external pipeline.
+set -eu
+MODE=${1:-quality}
+case "$MODE" in quality|routing|baseline) ;; *) echo 'Usage: run-aks-evaluation quality|routing|baseline' >&2; exit 2 ;; esac
+: "${PROMPTFOO_CONFIG_DIR:=/data}"
+export PROMPTFOO_CONFIG_DIR
+mkdir -p "$PROMPTFOO_CONFIG_DIR/exports"
+LOCK="$PROMPTFOO_CONFIG_DIR/.aks-evaluation-lock"
+if ! mkdir "$LOCK" 2>/dev/null; then echo 'Another CLI evaluation owns the data directory; inspect it before removing a stale lock.' >&2; exit 2; fi
+SKILLS=$(mktemp -d)
+trap 'rm -rf "$SKILLS"; rmdir "$LOCK"' EXIT
+cp -R /opt/aks-evals/payload/upstream/skills/. "$SKILLS/"
+cp -R /opt/aks-evals/payload/local-skills/. "$SKILLS/"
+export SKILLS_BASE="$SKILLS"
+export NODE_PATH=/app/node_modules
+export PROMPTFOO_DISABLE_TELEMETRY=1
+export PROMPTFOO_DISABLE_UPDATE=1
+RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)-$$
+RESULT="$PROMPTFOO_CONFIG_DIR/exports/$MODE-$RUN_ID"
+printf 'Running %s; results: %s.json and %s.html\n' "$MODE" "$RESULT" "$RESULT"
+# Capture a failed eval's outputs too; never convert a failing suite into PASS.
+STATUS=0
+promptfoo eval -c "/opt/aks-evals/evaluation/$MODE.yaml" -o "$RESULT.json" "$RESULT.html" --no-share --no-cache --max-concurrency 2 || STATUS=$?
+if [ "$MODE" != baseline ]; then
+  python3 /opt/aks-evals/evaluation/check-results.py "$RESULT.json" || STATUS=1
+fi
+exit "$STATUS"

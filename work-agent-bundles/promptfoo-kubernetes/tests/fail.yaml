@@ -1,0 +1,11 @@
+description: Synthetic failing-case propagation
+providers:
+  - id: file:///fixtures/fixture.cjs
+prompts:
+  - '{{prompt}}'
+tests:
+  - vars:
+      prompt: Synthetic fixture expected to fail
+    assert:
+      - type: equals
+        value: THIS_VALUE_MUST_NOT_MATCH
