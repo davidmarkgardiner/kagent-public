@@ -1,0 +1,443 @@
+prompts:
+- '{{prompt}}'
+tests:
+- description: Automatic readiness check routes to aks-automatic-readiness
+  metadata:
+    skill: aks-automatic-readiness
+    type: trigger
+  vars:
+    prompt: Is my cluster ready to migrate to AKS Automatic? Check my manifests for
+      incompatibilities.
+  assert:
+  - type: equals
+    value: aks-automatic-readiness
+- description: Migrate Standard to Automatic routes to aks-automatic-readiness
+  metadata:
+    skill: aks-automatic-readiness
+    type: trigger
+  vars:
+    prompt: "I want to move from AKS Standard to AKS Automatic \u2014 what will break?"
+  assert:
+  - type: equals
+    value: aks-automatic-readiness
+- description: Creating a brand-new cluster routes to aks-cluster-setup, not readiness
+  metadata:
+    skill: aks-automatic-readiness
+    type: trigger
+  vars:
+    prompt: Create a new production AKS cluster for me from scratch
+  assert:
+  - type: equals
+    value: aks-cluster-setup
+- description: Create a production cluster routes to aks-cluster-setup
+  metadata:
+    skill: aks-cluster-setup
+    type: trigger
+  vars:
+    prompt: Help me design and create a production-ready AKS cluster with private
+      networking
+  assert:
+  - type: equals
+    value: aks-cluster-setup
+- description: Day-0 SKU/networking design routes to aks-cluster-setup
+  metadata:
+    skill: aks-cluster-setup
+    type: trigger
+  vars:
+    prompt: Should I use AKS Automatic or Standard, and Azure CNI Overlay or kubenet,
+      for a new cluster?
+  assert:
+  - type: equals
+    value: aks-cluster-setup
+- description: Debugging an existing cluster routes to aks-troubleshooting, not setup
+  metadata:
+    skill: aks-cluster-setup
+    type: trigger
+  vars:
+    prompt: My existing cluster's nodes keep going NotReady, help me debug
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: Reduce AKS spend routes to aks-cost-optimization
+  metadata:
+    skill: aks-cost-optimization
+    type: trigger
+  vars:
+    prompt: My AKS bill is too high, help me rightsize pods and scale down idle nodes
+  assert:
+  - type: equals
+    value: aks-cost-optimization
+- description: Spot node pools for savings routes to aks-cost-optimization
+  metadata:
+    skill: aks-cost-optimization
+    type: trigger
+  vars:
+    prompt: Can I move my batch workloads to spot node pools to save money?
+  assert:
+  - type: equals
+    value: aks-cost-optimization
+- description: GPU/idle-GPU cost routes to aks-gpu-inference, not general cost
+  metadata:
+    skill: aks-cost-optimization
+    type: trigger
+  vars:
+    prompt: My GPU node pool is idle and expensive, how do I scale it to zero?
+  assert:
+  - type: equals
+    value: aks-gpu-inference
+- description: GPU pod Pending on Insufficient nvidia.com/gpu routes to aks-gpu-inference
+  metadata:
+    skill: aks-gpu-inference
+    type: trigger
+  vars:
+    prompt: My pod is stuck Pending with 'Insufficient nvidia.com/gpu' and the GPU
+      node never appears
+  assert:
+  - type: equals
+    value: aks-gpu-inference
+- description: KAITO workspace stuck routes to aks-gpu-inference
+  metadata:
+    skill: aks-gpu-inference
+    type: trigger
+  vars:
+    prompt: My KAITO Workspace has been not-ready for 30 minutes serving a llama model
+  assert:
+  - type: equals
+    value: aks-gpu-inference
+- description: Generic (non-GPU) Pending pod routes to aks-troubleshooting, not the
+    GPU skill
+  metadata:
+    skill: aks-gpu-inference
+    type: trigger
+  vars:
+    prompt: A normal web pod is stuck Pending, no GPU involved
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: A named node-image rejection should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'Node image upgrade fails: NodeImageVersion is not accepted, can only
+      be the current version or ''latest''. Is this a known issue?'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS capacity-form AllocationFailed should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'AKS node-pool upgrade returned AllocationFailed: We do not have sufficient
+      capacity for the requested VM size in this region.'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: VMCannotFitEphemeralOSDisk should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: "My node pool create failed with VMCannotFitEphemeralOSDisk \u2014 what\
+      \ does that error mean and how do I fix it?"
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: LinkedAuthorizationFailed on cluster create should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: AKS cluster creation fails with error code LinkedAuthorizationFailed referencing
+      a linked network resource.
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS vmssCSE exit 50 should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'AKS node provisioning failed with VMExtensionProvisioningError: vmssCSE
+      command terminated with exit status=50 and ERR_OUTBOUND_CONN_FAIL.'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS API-server connectivity CSE exit 51 should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'AKS node provisioning failed because vmssCSE terminated with ExitCode:
+      51.'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS API-server DNS CSE exit 52 should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: My AKS node pool reports VMExtensionError_K8SAPIServerDNSLookupFail while
+      provisioning.
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS SkuNotAvailable should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'AKS node-pool creation returned SkuNotAvailable: the requested size is
+      currently not available in location eastus zones 1 for this subscription.'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS ZonalAllocationFailed should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'AKS node-pool scale failed with code ZonalAllocationFailed: Allocation
+      failed. We do not have sufficient capacity for the requested VM size in this
+      zone.'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS OverconstrainedAllocationRequest should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'AKS node-pool scale failed with OverconstrainedAllocationRequest: VMs
+      with the listed SKU, zone, ephemeral disk, and PPG constraints cannot be allocated.'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: AKS AllocationFailed with its nested message should route to aks-known-issues
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'AKS node-pool create returned AllocationFailed: The VM allocation failed
+      due to an internal error. Please retry later or try deploying to a different
+      location.'
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: 'Boundary: a generic CrashLoopBackOff with no error code must go to
+    aks-troubleshooting, not aks-known-issues'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: "A pod in my cluster is stuck in CrashLoopBackOff \u2014 help me figure\
+      \ out why."
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: 'Boundary: an AKS workload exit 50 without CSE context stays in troubleshooting'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: An init container in my AKS pod exited with status 50. There is no vmssCSE
+      or VM extension failure.
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: 'Boundary: an unrelated script exit 50 must not route to aks-known-issues'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: A custom setup shell script on a standalone Linux VM, unrelated to AKS,
+      exited with status 50.
+  assert:
+  - type: equals
+    value: none
+- description: 'Boundary: a bare VMExtensionProvisioningError needs investigation'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: My AKS deployment reports only VMExtensionProvisioningError with no nested
+      CSE error or exit code. Investigate the cause.
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: 'Boundary: pod DNS failure without a CSE signature stays in aks-troubleshooting'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: Pods in my AKS cluster get SERVFAIL from CoreDNS, but cluster and node
+      provisioning completed without a VM extension error.
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: 'Boundary: Kubernetes FailedScheduling is not an Azure AllocationFailed
+    catalog match'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: 'My AKS pod is Pending with FailedScheduling: 0/3 nodes are available
+      due to Insufficient cpu.'
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: 'Boundary: SkuNotAvailable for a non-AKS VM must not route to an AKS
+    skill'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: Creating a standalone Azure VM returned SkuNotAvailable. This resource
+      is not part of AKS or Kubernetes.
+  assert:
+  - type: equals
+    value: none
+- description: 'Boundary: a bare AllocationFailed without its nested message needs
+    investigation'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: An AKS operation returned only AllocationFailed with no nested Azure message.
+      Investigate what caused it.
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: 'Boundary: an open-ended intermittent-timeout incident must go to aks-troubleshooting,
+    not aks-known-issues'
+  metadata:
+    skill: aks-known-issues
+    type: trigger
+  vars:
+    prompt: We're seeing intermittent connection timeouts from some pods, no specific
+      error, can you investigate?
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: Explicit packet-capture request routes to aks-network-capture
+  metadata:
+    skill: aks-network-capture
+    type: trigger
+  vars:
+    prompt: I need to capture packets on the node hosting my pod to see exactly where
+      the traffic is being dropped
+  assert:
+  - type: equals
+    value: aks-network-capture
+- description: tcpdump / pcap request routes to aks-network-capture
+  metadata:
+    skill: aks-network-capture
+    type: trigger
+  vars:
+    prompt: Can you run a tcpdump on my AKS nodes filtered to port 443 and give me
+      the pcap?
+  assert:
+  - type: equals
+    value: aks-network-capture
+- description: Generic DNS failure routes to aks-troubleshooting, not the capture
+    skill
+  metadata:
+    skill: aks-network-capture
+    type: trigger
+  vars:
+    prompt: Pods can't resolve DNS names, I suspect CoreDNS or an NSG blocking UDP
+      53
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: CrashLoopBackOff should route to aks-troubleshooting
+  metadata:
+    skill: aks-troubleshooting
+    type: trigger
+  vars:
+    prompt: A pod in my cluster is stuck in CrashLoopBackOff
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: Node NotReady should route to aks-troubleshooting
+  metadata:
+    skill: aks-troubleshooting
+    type: trigger
+  vars:
+    prompt: My nodes are showing NotReady status after an upgrade
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: DNS resolution failure should route to aks-troubleshooting (not the
+    capture skill)
+  metadata:
+    skill: aks-troubleshooting
+    type: trigger
+  vars:
+    prompt: Pods can't resolve DNS names, internal and external lookups both failing
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: Non-Kubernetes VM resize should route to no skill
+  metadata:
+    skill: aks-troubleshooting
+    type: trigger
+  vars:
+    prompt: How do I resize my Azure VM that's not part of any Kubernetes cluster?
+  assert:
+  - type: equals
+    value: none
+- description: 'Boundary: an upgrade failure naming NodePoolMcVersionIncompatible
+    must go to aks-known-issues, not aks-troubleshooting'
+  metadata:
+    skill: aks-troubleshooting
+    type: trigger
+  vars:
+    prompt: "My node pool upgrade is blocked with error NodePoolMcVersionIncompatible\
+      \ \u2014 what does that mean?"
+  assert:
+  - type: equals
+    value: aks-known-issues
+- description: 'Boundary: a generic stuck upgrade with no error code stays with aks-troubleshooting'
+  metadata:
+    skill: aks-troubleshooting
+    type: trigger
+  vars:
+    prompt: My AKS cluster upgrade has been stuck for an hour with no error code shown,
+      can you investigate?
+  assert:
+  - type: equals
+    value: aks-troubleshooting
+- description: Route work-evidence-contract
+  metadata:
+    skill: work-evidence-contract
+    type: trigger
+  vars:
+    prompt: Review evidence-handling limits and provenance for our AKS incident response.
+  assert:
+  - type: equals
+    value: work-evidence-contract
+- description: Route work-approved-remediation
+  metadata:
+    skill: work-approved-remediation
+    type: trigger
+  vars:
+    prompt: Prepare the approval and rollback handoff for an already diagnosed AKS
+      change.
+  assert:
+  - type: equals
+    value: work-approved-remediation
+- description: Route work-agent-evaluation
+  metadata:
+    skill: work-agent-evaluation
+    type: trigger
+  vars:
+    prompt: Review whether this AKS specialist evaluation receipt is sufficient for
+      release.
+  assert:
+  - type: equals
+    value: work-agent-evaluation
+providers:
+- id: file://../payload/upstream/evals/providers/router-provider.js

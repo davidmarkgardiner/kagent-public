@@ -1,0 +1,29 @@
+- description: Route work-evidence-contract
+  metadata:
+    skill: work-evidence-contract
+    type: trigger
+  vars:
+    prompt: Review evidence-handling limits and provenance for our AKS incident response.
+  assert:
+  - type: equals
+    value: work-evidence-contract
+- description: Route work-approved-remediation
+  metadata:
+    skill: work-approved-remediation
+    type: trigger
+  vars:
+    prompt: Prepare the approval and rollback handoff for an already diagnosed AKS
+      change.
+  assert:
+  - type: equals
+    value: work-approved-remediation
+- description: Route work-agent-evaluation
+  metadata:
+    skill: work-agent-evaluation
+    type: trigger
+  vars:
+    prompt: Review whether this AKS specialist evaluation receipt is sufficient for
+      release.
+  assert:
+  - type: equals
+    value: work-agent-evaluation

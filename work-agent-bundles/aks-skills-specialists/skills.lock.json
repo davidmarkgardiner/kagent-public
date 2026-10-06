@@ -1,0 +1,140 @@
+{
+  "upstream_url": "https://github.com/Azure/AKS-Skills",
+  "upstream_commit": "20bf35201a79b324d2ca3e00e5c82020ff362024",
+  "kagent_source_commit": "8d44f9a67e66a43bd4a4767891818fd1aceaebaf",
+  "agents": {
+    "aks-incident-specialist": [
+      "aks-troubleshooting",
+      "aks-known-issues",
+      "aks-network-capture",
+      "work-evidence-contract",
+      "work-approved-remediation",
+      "work-agent-evaluation"
+    ],
+    "aks-efficiency-specialist": [
+      "aks-cost-optimization",
+      "aks-gpu-inference",
+      "work-evidence-contract",
+      "work-approved-remediation",
+      "work-agent-evaluation"
+    ],
+    "aks-platform-specialist": [
+      "aks-automatic-readiness",
+      "aks-cluster-setup",
+      "work-evidence-contract",
+      "work-approved-remediation",
+      "work-agent-evaluation"
+    ]
+  },
+  "skills": {
+    "aks-automatic-readiness": {
+      "origin": "Microsoft",
+      "path": "payload/upstream/skills/aks-automatic-readiness",
+      "files": {
+        "SKILL.md": "9fcae13548c875d2d8c56b5b9216ccdbd9208c894148a385ee464a3e17b80460",
+        "references/common-fixes.md": "19cadc46ccbe488c71a5ed5c00ad66b1920d154b52e011a59ab58aceba8b7df2",
+        "references/constraint-spec-v1.yaml": "82794997beeb83f958612d4eda561ad4488070968b85c095c57d8d505cb01be8",
+        "references/mcp-integration.md": "10f5dee2e01133195bee0e51f433d62ad461ea4dfbb9e4daf1b493d771c8391e",
+        "references/migration-guide-summary.md": "fd99d2c3d0c0f6aa2f428cb1921dc2da10eb60dd65b70dfc33feb4fc66507600",
+        "scripts/sanitize-readiness-input.jq": "f9603473551f2af7ddd32daf1eb9c7279614e9515022dbfc2c1be2353edb6594"
+      }
+    },
+    "aks-cluster-setup": {
+      "origin": "Microsoft",
+      "path": "payload/upstream/skills/aks-cluster-setup",
+      "files": {
+        "SKILL.md": "2542e789c78ca7892d152a3e492e37629ddc3b4face4221b35b156db41ed8b52",
+        "references/cli-reference.md": "b3c5588bd3abf50244c984f6ee79cfa4d6d157a9ac488a1cc6bf20060087d7f3"
+      }
+    },
+    "aks-cost-optimization": {
+      "origin": "Microsoft",
+      "path": "payload/upstream/skills/aks-cost-optimization",
+      "files": {
+        "SKILL.md": "5fa57d0d4681e071b81433d8963b6e82936f4c1d8dac7e6b4c0757eaa62896c4",
+        "azure-aks-anomalies.md": "396e588a5d4bbc86144a17cb1b45a8ac0d95ab940e098bde33a064e74e577c6d",
+        "azure-aks-autoscaler.md": "f01b1952d7bc0217e7d1362de764025c4d681b3e4c4a477ba7af695b45a33cca",
+        "azure-aks-cost-addon.md": "97bacb0c461c9f8ada46b39616521018e17d6f51feafc7127478201b3683aabb",
+        "azure-aks-rightsizing.md": "8c9edefed4b07ca3c914732e6fb3b43ff4f43fc93451ad58f169981efd5f4358",
+        "azure-aks-spot.md": "f82c6d41c9da92b51b03ead27d4ef1e8a81021ea9a29fc64842c30a6b39f6a94",
+        "azure-aks-vpa.md": "3dae1c706ebe394f4964b581bd9537fdb7625c3784a03e76bcce52cd7bb80cb6"
+      }
+    },
+    "aks-gpu-inference": {
+      "origin": "Microsoft",
+      "path": "payload/upstream/skills/aks-gpu-inference",
+      "files": {
+        "SKILL.md": "cdfb9caaf115cd7be7795362a296f6e0444487fee222f7d3b87dbd1d22e746b5",
+        "references/gpu-cost-and-scaling.md": "b134092f87ec5a5422512eb080fc5bf4952c48762d215b765306f04e1da71239",
+        "references/gpu-observability.md": "36e3e2cf9a2100cdc0d5caf25f49ac20179da666d29149b6e9f1f05d93dd33d3",
+        "references/gpu-scheduling.md": "66b1e07350bb69bcf29d6ab9a139e0ff852e878338a464cc8f3f76b93222ace5",
+        "references/kaito-workspaces.md": "5bd0d945270e5583201ff4a50c7fee85651af5e77956225d0de73da52b20df2d"
+      }
+    },
+    "aks-known-issues": {
+      "origin": "Microsoft",
+      "path": "payload/upstream/skills/aks-known-issues",
+      "files": {
+        "SKILL.md": "5ea1438388f941ce94662ec730611996ec60a356a17dddd781034d6d9c792c0f",
+        "references/error-code-map.md": "22fd4350d803c8ab6e00f41bc50d03a4f49aef879e6ac99e351c06800d1e0f45"
+      }
+    },
+    "aks-network-capture": {
+      "origin": "Microsoft",
+      "path": "payload/upstream/skills/aks-network-capture",
+      "files": {
+        "SKILL.md": "54766850a5e78c68309a13e07311c706ddbed2b6aa109f76822ce5b0182852d0",
+        "scripts/collect-azure-network-info.sh": "0ca4526d7b8925582740c7563629f120e445f3b5672c458b9ab3a258f3d5dfb9",
+        "scripts/create-capture.sh": "94682d582e8dad209a2b1fa3ec0c8ec9505a01e022f929e1b7f7c785ed69520d",
+        "scripts/generate-test-traffic.sh": "18e1d62cd87055256eb5c8e13cb7f4fd98c637250f37da6bd137bcfa84f21b58",
+        "scripts/retrieve-captures.sh": "85c8b9692fe9a12f56a079481433a47d9b20ef604b5fd40af126011b2ab0d621",
+        "scripts/run-capture.sh": "ce15888b27cff39a7f7a836493b9443acd9b5df83bdf8aa24a00034733dd2a6e",
+        "scripts/setup-capture-configmap.sh": "20208ebd8b93629d8afcf8e1bda774dc9c02e65816678170bb757976e22f5b4f"
+      }
+    },
+    "aks-troubleshooting": {
+      "origin": "Microsoft",
+      "path": "payload/upstream/skills/aks-troubleshooting",
+      "files": {
+        "SKILL.md": "e3af604634f7cd128e6560aa345788270a01ca00dcde4ab2c1af9e340eccf0c8",
+        "general-diagnostics.md": "2b150260174c7e9579ed23c933fdb1a2539801730f95c3a6d7d0173fab2ce6a0",
+        "load-balancer-and-ingress.md": "411fe1e7af9b072011d1cdc34733051cf8c31d6fa59355c0b0a5b2421a5f4681",
+        "network-policy.md": "9931e71d2ed776e5afc789b03096829a0fd4bb2cd06d1f6f3e92ac070bf8d740",
+        "networking.md": "24e22bc885299adfbc9179767639310feaa75d01eb99a7ded2b07cf367083f97",
+        "node-issues.md": "a386b212aa2b02f554661cf5aebb083b4f393c6e324e6fe0eba79be053cf2698",
+        "pod-failures.md": "3a7084d88c78480490d8de8466272c62646b106fd4adfbb674651281d1885e60",
+        "references/aks-mcp.md": "c6846f6295fdf1cfc81b3ce2b0c0bfaa261fe74df76e72e57d8b5ebabd71599c",
+        "references/command-flows.md": "8d9004060d9dd9b8ce24ac9ad888c0a842397ac905a64ff55d24d64e5687c522",
+        "references/inspektor-gadget.md": "88b992732b57b6cbc95bd7e97c619ec9637769f18f5deccf73c52b76e69e3424",
+        "references/report-template.md": "f6f5dd965e0d2770db7cc6258db662044b80fb80dd0eadf0d17eb7c17a91439f",
+        "references/structured-input-modes.md": "eb1d1efe70567b5583d56c155a640ed6d3964befba1e63589d57045ee0640119",
+        "references/symptom-map.md": "44816e2b5f45f6442d65a7f7668348cba185a06b162e0b97c40b2de6e0ede9c2",
+        "scripts/cluster-snapshot.sh": "1560050fafb738080eab962fb560319d156e0d270c462a14c5b65a46bd13cf1b",
+        "scripts/pod-deep-dive.sh": "ff741abdba4b1cf5a0ece80d44c2a50da56a0bdd21e544686cf04660eb69b882",
+        "spot-and-zone-issues.md": "00531f4c15aafa5d89d9d8696d2b83c37611fbf7014600308252ef2382ec0379",
+        "upgrade-operations.md": "b3be65e514f27329a0b44009b1efe928524c958ec24eee956be6f8999096a5b2"
+      }
+    },
+    "work-agent-evaluation": {
+      "origin": "local",
+      "path": "payload/local-skills/work-agent-evaluation",
+      "files": {
+        "SKILL.md": "f560acae68ffe622b2e6a35444e84e7b70890e812df4223301f52e88ba8b3712"
+      }
+    },
+    "work-approved-remediation": {
+      "origin": "local",
+      "path": "payload/local-skills/work-approved-remediation",
+      "files": {
+        "SKILL.md": "40df0fc78b286249196010298eefa676f8f8adfa62225078f108fd33ec2a8056"
+      }
+    },
+    "work-evidence-contract": {
+      "origin": "local",
+      "path": "payload/local-skills/work-evidence-contract",
+      "files": {
+        "SKILL.md": "7b4140b32bd589a80df44886eae67c53c90cb75d1e4161dfeea8276081a468c7"
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+# Unmodified Microsoft public examples and synthetic fixture addresses; upstream
+# content is hash-locked. These exclusions do not permit private work values.
+**/payload/upstream/skills/aks-automatic-readiness/references/constraint-spec-v1.yaml
+**/payload/upstream/skills/aks-network-capture/SKILL.md
+**/payload/upstream/skills/aks-network-capture/scripts/generate-test-traffic.sh
+**/payload/upstream/skills/aks-troubleshooting/references/inspektor-gadget.md
+**/payload/upstream/evals/tests/aks-network-capture/injection.test.sh
+**/payload/upstream/evals/scenarios/aks-network-capture/dns-nsg-block/responses.json
+# npm semver strings containing dotted major/minor values trigger the simplistic private-IP pattern.
+**/payload/upstream/evals/package-lock.json
+# Shared scanner necessarily contains its own detection patterns.
+**/scripts/shared/public-safe-scan.sh

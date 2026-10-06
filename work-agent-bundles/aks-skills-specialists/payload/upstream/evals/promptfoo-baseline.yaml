@@ -1,0 +1,33 @@
+# AKS Skills — Baseline Comparison (Quality Tests Only)
+# Runs quality tests against the bare model (no SKILL.md loaded).
+# Scores are compared against the skill-loaded results from the default eval.
+# Used in CI to report skill value delta in PR comments — NOT a gate.
+#
+# Usage:
+#   npx promptfoo eval -c promptfoo-baseline.yaml
+#   npx promptfoo eval -c promptfoo-baseline.yaml -o baseline-results.json
+
+description: "AKS Skills — Baseline (No Skill)"
+
+providers:
+  - id: file://providers/baseline-provider.js
+    label: "Baseline (No Skill)"
+
+prompts:
+  - "{{prompt}}"
+
+# Quality tests only — trigger tests are not meaningful for baseline comparison.
+# Must mirror the quality tests in promptfooconfig.yaml so the delta is apples-to-apples.
+tests:
+  - file://tests/aks-troubleshooting/quality-tests.yaml
+  - file://tests/aks-gpu-inference/quality-tests.yaml
+  - file://tests/aks-cost-optimization/quality-tests.yaml
+  - file://tests/aks-automatic-readiness/quality-tests.yaml
+  - file://tests/aks-cluster-setup/quality-tests.yaml
+  - file://tests/aks-network-capture/quality-tests.yaml
+  - file://tests/aks-known-issues/quality-tests.yaml
+
+defaultTest:
+  options:
+    provider:
+      id: file://providers/judge-provider.js

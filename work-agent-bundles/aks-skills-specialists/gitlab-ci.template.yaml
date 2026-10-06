@@ -1,0 +1,59 @@
+# Include from the GitLab repository root after replacing the approved CI image.
+# CI image must contain Node 22.22.x, Python 3.12 + PyYAML 6.0.3,
+# Git, Bash, jq, shellcheck and Kyverno CLI 1.14.4. Use an internal digest pin.
+stages: [validate, evaluate]
+variables:
+  AKS_BUNDLE: work-agent-bundles/aks-skills-specialists
+.aks-runner:
+  image: "{{APPROVED_INTERNAL_CI_IMAGE_WITH_SHA256_DIGEST}}"
+  before_script:
+    - cd "$CI_PROJECT_DIR/$AKS_BUNDLE/payload/upstream/evals"
+    - npm ci --ignore-scripts --no-audit --no-fund
+    - cd "$CI_PROJECT_DIR/$AKS_BUNDLE"
+aks-bundle-contract:
+  extends: .aks-runner
+  stage: validate
+  script:
+    - scripts/verify-bundle.sh
+    - scripts/shared/public-safe-scan.sh . --allowlist public-safe.allowlist
+    - shellcheck -S warning scripts/*.sh scripts/shared/*.sh payload/upstream/skills/*/scripts/*.sh
+aks-quality:
+  extends: .aks-runner
+  stage: evaluate
+  when: manual
+  allow_failure: false
+  script:
+    - scripts/evaluate.sh quality
+  artifacts:
+    when: always
+    paths: [work-agent-bundles/aks-skills-specialists/.work/quality-results.json]
+aks-routing:
+  extends: .aks-runner
+  stage: evaluate
+  when: manual
+  allow_failure: false
+  script:
+    - scripts/evaluate.sh routing
+  artifacts:
+    when: always
+    paths: [work-agent-bundles/aks-skills-specialists/.work/routing-results.json]
+aks-baseline:
+  extends: .aks-runner
+  stage: evaluate
+  when: manual
+  allow_failure: true
+  script:
+    - scripts/evaluate.sh baseline
+  artifacts:
+    when: always
+    paths: [work-agent-bundles/aks-skills-specialists/.work/baseline-results.json]
+aks-copilot-mock:
+  extends: .aks-runner
+  stage: evaluate
+  when: manual
+  allow_failure: false
+  script:
+    - cd payload/upstream/evals
+    - npm run eval:mock
+  # Runner requires approved Copilot CLI authentication. This evaluates Copilot,
+  # not the workplace kagent runtime. Never promote kagent from this result alone.

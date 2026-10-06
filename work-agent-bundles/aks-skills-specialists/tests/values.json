@@ -1,0 +1,12 @@
+{
+  "AGENT_NAMESPACE": "aks-skills-test",
+  "GITLAB_SKILLS_REPO_URL": "https://gitlab.com/example/aks-skills.git",
+  "GITLAB_SKILLS_COMMIT": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "GITLAB_SKILLS_REF": "aks-skills-aaaaaaaaaaaa",
+  "GITLAB_BUNDLE_PATH": "work-agent-bundles/aks-skills-specialists",
+  "GITLAB_SKILLS_AUTH_SECRET": "skills-readonly",
+  "MODEL_CONFIG": "model-test",
+  "READONLY_MCP_SERVER": "evidence-test",
+  "READONLY_TOOL_NAME": "read_inventory",
+  "SKILL_CHECK_IMAGE": "registry.example.com/python@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+}
