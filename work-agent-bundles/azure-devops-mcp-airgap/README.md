@@ -1,11 +1,17 @@
 # Azure DevOps MCP air-gap replication bundle
 
-Download the focused source ZIP:
-https://github.com/davidmarkgardiner/kagent-work-bundles/releases/download/azure-devops-mcp-airgap-v1/azure-devops-mcp-work-bundle.zip
+For the exact image list, versions and build requirements, start with
+[IMAGE-IMPORT-REQUEST.md](IMAGE-IMPORT-REQUEST.md).
+The fresh local build and offline test receipt is
+[evidence/build-2026-10-07.json](evidence/build-2026-10-07.json).
 
-Unzip, then give your work agent WORK-AGENT-BUILD-INSTRUCTIONS.md. The build
-installs Microsoft's official pinned npm package; no application image import
-is required. The builder needs approved package/base-image sources or mirrors.
+Current release with the source ZIP, complete image archive and checksums:
+https://github.com/davidmarkgardiner/kagent-work-bundles/releases/tag/azure-devops-mcp-airgap-v2
+
+Give your work agent the source ZIP and [IMAGE-IMPORT-REQUEST.md](IMAGE-IMPORT-REQUEST.md).
+Importing the complete image avoids a work-side Docker build. If image import
+is unavailable, [WORK-AGENT-BUILD-INSTRUCTIONS.md](WORK-AGENT-BUILD-INSTRUCTIONS.md)
+covers an internal build using approved package/base-image sources or mirrors.
 
 For building and publishing inside work, start with
 [WORK-AGENT-BUILD-INSTRUCTIONS.md](WORK-AGENT-BUILD-INSTRUCTIONS.md).
