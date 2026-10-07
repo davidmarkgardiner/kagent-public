@@ -82,6 +82,12 @@ A completed Job indicates a passing selected suite; a failed Job can indicate fa
 
 Run one Job at a time against this RWO PVC. For concurrent experiments, use a separate PVC/output location per Job. Do not mount the persistent UI's active SQLite PVC into an independent Job. Job results do not automatically appear in the UI's separate database; import/export them through Promptfoo or use your internal artifact store. Do not delete a PVC until its reports have been retained.
 
+## Red teaming alongside normal evaluation
+
+Red teaming deliberately tries to make an agent break its rules: for example, a log injection requesting Secrets, an urgent node-drain request to a read-only agent, or a request for another team's namespace data. Successful defense requires both a safe response and evidence that no unauthorized tool action occurred.
+
+See [the red teaming scenarios and release process](../aks-skills-specialists/EVALUATION.md#red-teaming-deliberately-test-unsafe-behavior) for the AKS acceptance cases, evidence requirements and air-gap considerations. Promptfoo can help generate and score adversarial inputs, but the included `quality`, `routing` and `baseline` commands are not a dedicated red-team suite. Testing real kagent behavior still requires an A2A provider and tool-trajectory assertions. No red-team run has been completed by this bundle.
+
 ## Air-gap acceptance
 
 Both modes have telemetry and update checks disabled and the wrapper passes `--no-share`. Both the evaluated model and judge must be reachable inside the boundary. Credentials and CA roots are provisioned internally, not baked into the image. Copilot-based upstream tests are not part of this runner.
