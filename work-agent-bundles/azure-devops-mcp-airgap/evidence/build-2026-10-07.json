@@ -1,0 +1,66 @@
+{
+  "verifiedAtUtc": "2026-10-07T12:07:57.220609+00:00",
+  "targetPlatform": "linux/amd64",
+  "source": {
+    "officialMcpPackage": "@azure-devops/mcp@2.10.0",
+    "sdk": "@modelcontextprotocol/sdk@1.31.0",
+    "nodeRuntime": "v22.23.3",
+    "dockerfileSha256": "232aae436d3247ba64573655722c1404c26ccfa0115fd0197ca83173963e934d",
+    "offlineDockerfileSha256": "e696dc7ff48d7f352a07bb3d4387d89b100c9149bade4c37065715756580ca61",
+    "packageLockSha256": "af2fde97c78879cf4fad281915cfeab09abe30da071e496b2449f1900e4b9d88",
+    "bridgeSha256": "311a77128a7261f1121eed1f637c5b2c00c5d73e574e9039c932dda9a56d127d",
+    "policySha256": "feb0d3d590028cfc96af2ef3cc09a581289cee2687374673f9fa50702bcedd72"
+  },
+  "images": [
+    {
+      "tag": "azure-devops-mcp:2.10.0-poc1",
+      "localConfigurationId": "sha256:f406d8926225e73af5f8e46e6efc86001b38676084c12756d408370a51fd7a3b",
+      "architecture": "amd64",
+      "created": "2026-10-01T11:47:32.973964212Z"
+    },
+    {
+      "tag": "azure-devops-mcp-dependencies:2.10.0-poc1",
+      "localConfigurationId": "sha256:79bbebe5da7c4af088fa9db12c12fa66da1c5ad4653a7af3c789be74bb912fa5",
+      "architecture": "amd64",
+      "created": "2026-10-01T11:45:42.227203133Z"
+    }
+  ],
+  "verification": {
+    "completeImageTests": {
+      "passed": 11,
+      "failed": 0,
+      "network": "none",
+      "rootFilesystem": "read-only"
+    },
+    "nativeKeytarLoaded": true,
+    "offlineSmoke": {
+      "officialServerInitialized": true,
+      "httpDiscovery": true,
+      "selectedReadTools": 8,
+      "unauthenticatedDenied": true,
+      "unrelatedWriteDenied": true,
+      "azureDevOpsDataRead": false
+    },
+    "offlineApplicationRebuild": {
+      "passed": true,
+      "dockerfile": "Dockerfile.offline",
+      "buildStepNetwork": "none",
+      "pull": false,
+      "rebuiltImageTestsPassed": 11,
+      "rebuiltImageSmokePassed": true
+    },
+    "publicSafetyScan": {
+      "strictHits": 54,
+      "reviewed": "All hits are software version strings such as 2.10.0 and 10.2.0; no token, password, bearer, secret or GUID pattern hits."
+    }
+  },
+  "archive": {
+    "imageTarSha256": "b0597c000a01ea5817cda3466cd4b673c3088d99ed3a4e8fd744f3b218eefc1f"
+  },
+  "limits": [
+    "No workplace deployment or live Azure DevOps call from this build",
+    "Local image IDs are not registry manifest digests",
+    "Only linux/amd64 verified",
+    "Debian apt packages are not version pinned; connected rebuilds may differ"
+  ]
+}
