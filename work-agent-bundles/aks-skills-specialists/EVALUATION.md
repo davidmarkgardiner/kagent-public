@@ -2,6 +2,8 @@
 
 Authoritative source: https://github.com/Azure/AKS-Skills/blob/20bf35201a79b324d2ca3e00e5c82020ff362024/evals/README.md
 
+For framework selection, see [Promptfoo versus DeepEval](../promptfoo-kubernetes/PROMPTFOO-VS-DEEPEVAL.md), including DeepTeam, air-gap restrictions and the proposed comparison experiment.
+
 ## What is actually tested
 
 | Layer | Mechanism | What it proves | Upstream release behavior |

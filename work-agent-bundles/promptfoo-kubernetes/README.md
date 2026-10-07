@@ -4,6 +4,10 @@ Two alternatives use the same image. Neither needs a GitLab pipeline. The persis
 
 This bundle extends `../aks-skills-specialists`. It evaluates prompts/models against the mounted skill text. It does not automatically call kagent A2A or consume a kagent ModelConfig; an A2A provider and trajectory assertions remain additional work for end-to-end agent evaluation.
 
+## Choosing an evaluation framework
+
+See [Promptfoo versus DeepEval](PROMPTFOO-VS-DEEPEVAL.md) for the source-led comparison, pros and cons, offline red teaming limits, Kubernetes operating models and recommended adoption process. The recommendation is to retain this Promptfoo runner and pilot DeepEval only where its agent-trace metrics add measurable value.
+
 ## Container choices
 
 For a general Promptfoo UI you can mirror the official prebuilt image, with no source build required:
