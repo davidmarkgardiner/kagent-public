@@ -21,6 +21,10 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 - **Where it fits (orchestration vs execution):** [`ARCHITECTURE-FIT.md`](ARCHITECTURE-FIT.md)
 - Adapting to the work cluster (AKS): [`WORK-CLUSTER-ADAPTATION.md`](WORK-CLUSTER-ADAPTATION.md)
 - **Air-gapped AKS install and verification:** [`AIRGAPPED-AKS-README.md`](AIRGAPPED-AKS-README.md)
+- **AKS 1.35.8 and 1.37.0 preview gVisor lifecycle evidence:**
+  [`AKS-EVAL-WORK-AGENT-HANDOFF.md`](AKS-EVAL-WORK-AGENT-HANDOFF.md).
+- **Work-agent 0.0.9 comparison and repeat-installation sequence:**
+  [`WORK-AGENT-RUNSC-EQUIVALENCE-HANDOFF.md`](WORK-AGENT-RUNSC-EQUIVALENCE-HANDOFF.md).
 - **Question for the Kubernetes and Agent Substrate teams about the public `runsc` download:** [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](RUNSC-AIRGAP-ROADMAP-QUESTION.md)
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
 - **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)
