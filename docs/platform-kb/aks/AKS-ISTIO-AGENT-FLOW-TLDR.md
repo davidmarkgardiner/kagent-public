@@ -5,21 +5,24 @@
 ```mermaid
 flowchart LR
     A[Daily Argo CronWorkflow<br/>check versions] --> B[POST 1: kagent<br/>what changed?]
-    B --> C[Reviewed target<br/>and ARM change]
+    B --> C[Reviewed AKS and Istio pair<br/>and upgrade order]
     C --> D[Argo Workflow<br/>ARM what-if and preflight]
     D --> E[POST 2: kagent<br/>review risks]
-    E --> F[Approved ARM deployment<br/>and Istio canary]
-    F --> G[Fixed health tests]
+    E --> F[Approved AKS ARM upgrade or deployment<br/>and Istio add-on upgrade start]
+    F --> F2[Istio canary namespaces<br/>and sidecar reinjection]
+    F2 --> G[Fixed AKS, mesh and app health tests]
     G --> H[POST 3: kagent<br/>explain results]
     H --> I{Owner + fixed gates}
-    I -->|pass| J[Next wave + docs]
-    I -->|fail / unknown| K[Hold or approved recovery]
+    I -->|pass| J[Istio upgrade complete<br/>next wave + docs]
+    I -->|fail / unknown| K[Hold or approved Istio rollback]
     B -. optional .-> L[kagent → read-only<br/>Kubernetes MCP]
     E -. optional .-> L
     H -. optional .-> L
 ```
 
 **POST target:** `http://{{KAGENT_CONTROLLER}}:8083/api/a2a/{{NAMESPACE}}/{{AGENT}}/` (keep the final `/`). Send an A2A JSON-RPC `message/send` request with the upgrade run ID and bounded, redacted evidence; the text part needs `"kind":"text"`. The existing [A2A helper](../../../scripts/kagent-a2a-invoke.sh) builds the full envelope and handles the response.
+
+**Istio is a real upgrade step.** For a minor revision, the approved workflow checks AKS compatibility, starts the managed add-on upgrade, moves canary workloads to the new revision, restarts them to reinject sidecars, then completes or rolls back after fixed checks. The compatible AKS/Istio pair determines the safe order. [Microsoft's Istio add-on upgrade guide](https://learn.microsoft.com/en-us/azure/aks/istio-upgrade) describes that sequence.
 
 **Agent vs workflow:** Argo POSTs to kagent; a configured agent may then call read-only Kubernetes MCP tools such as `k8s_get_resources` and `k8s_get_events`. Before a *new* cluster exists, give the agent release/request artifacts rather than asking it to inspect that cluster. Argo's approved identity runs ARM/CLI and Istio changes. The agent returns cited advice; fixed tests and the owner decide promotion.
 
