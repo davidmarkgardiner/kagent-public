@@ -1,0 +1,97 @@
+# Suspended fixture-only discovery. It makes no Azure, Kubernetes API, or agent calls.
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: aks-upgrade-discovery-dry-run
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: aks-upgrade-automation-dry-run
+spec:
+  schedules: ["0 7 * * *"]
+  timezone: Etc/UTC
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  workflowSpec:
+    entrypoint: discover
+    serviceAccountName: aks-upgrade-dry-run
+    activeDeadlineSeconds: 300
+    arguments:
+      parameters:
+        - name: source
+          value: fixture
+        - name: cluster
+          value: example-aks
+        - name: region
+          value: example-region
+        - name: currentAks
+          value: 1.34.1
+        - name: offeredAks
+          value: 1.35.2
+        - name: currentIstio
+          value: asm-1-28
+        - name: offeredIstio
+          value: asm-1-29
+    templates:
+      - name: discover
+        outputs:
+          parameters:
+            - name: candidate
+              valueFrom:
+                path: /tmp/candidate.json
+        script:
+          image: python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
+          command: [python]
+          env:
+            - name: SOURCE
+              value: "{{workflow.parameters.source}}"
+            - name: CLUSTER
+              value: "{{workflow.parameters.cluster}}"
+            - name: REGION
+              value: "{{workflow.parameters.region}}"
+            - name: CURRENT_AKS
+              value: "{{workflow.parameters.currentAks}}"
+            - name: OFFERED_AKS
+              value: "{{workflow.parameters.offeredAks}}"
+            - name: CURRENT_ISTIO
+              value: "{{workflow.parameters.currentIstio}}"
+            - name: OFFERED_ISTIO
+              value: "{{workflow.parameters.offeredIstio}}"
+          source: |
+            import json
+            import os
+            import re
+
+            assert os.environ["SOURCE"] == "fixture", "live discovery is not wired"
+
+            def aks_version(name):
+                value = os.environ[name]
+                assert re.fullmatch(r"\d+\.\d+\.\d+", value), name
+                return tuple(map(int, value.split(".")))
+
+            def istio_version(name):
+                value = os.environ[name]
+                match = re.fullmatch(r"asm-(\d+)-(\d+)", value)
+                assert match, name
+                return tuple(map(int, match.groups()))
+
+            candidate = {
+                "schema": "aks-upgrade-discovery-dry-run/v1",
+                "source": "fixture",
+                "cluster": os.environ["CLUSTER"],
+                "region": os.environ["REGION"],
+                "current_aks": os.environ["CURRENT_AKS"],
+                "offered_aks": os.environ["OFFERED_AKS"],
+                "current_istio": os.environ["CURRENT_ISTIO"],
+                "offered_istio": os.environ["OFFERED_ISTIO"],
+                "newer_aks_in_fixture": aks_version("OFFERED_AKS") > aks_version("CURRENT_AKS"),
+                "newer_istio_in_fixture": istio_version("OFFERED_ISTIO") > istio_version("CURRENT_ISTIO"),
+                "regional_availability": "unverified",
+                "aks_istio_compatibility": "unverified",
+                "agent_called": False,
+                "deployment_started": False,
+            }
+            rendered = json.dumps(candidate, sort_keys=True, separators=(",", ":"))
+            with open("/tmp/candidate.json", "w", encoding="utf-8") as output:
+                output.write(rendered)
+            print(rendered)

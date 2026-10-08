@@ -2,6 +2,8 @@
 
 **Status:** design proposal for an ARM-template-operated AKS fleet. It describes insertion points and acceptance evidence; it does not claim a workplace integration is deployed. **Reviewed:** 2026-10-08.
 
+The [suspended dry-run CronWorkflow and upgrade WorkflowTemplate](upgrade-automation-dry-run/README.md) make the proposed scheduling and agent checkpoints reviewable without Azure writes.
+
 ## Recommendation
 
 Keep version discovery, compatibility checks, ARM validation, deployment, rollout order, and numeric health gates in deterministic pipelines and approved workflows. Call read-only kagent specialists at three points: **release-impact review**, **pre-upgrade readiness review**, and **canary/post-upgrade evidence review**. Let an agent draft an operator and customer-facing “what changed” note from those same reviewed findings. The agent's verdict is advice; a pipeline gate uses observed facts and a named owner decides promotion.

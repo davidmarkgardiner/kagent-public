@@ -1,0 +1,245 @@
+# Planning-only workflow. Every agent and deployment checkpoint is recorded as not run.
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: aks-istio-upgrade-dry-run
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: aks-upgrade-automation-dry-run
+spec:
+  entrypoint: plan
+  serviceAccountName: aks-upgrade-dry-run
+  activeDeadlineSeconds: 600
+  arguments:
+    parameters:
+      - name: cluster
+        value: example-aks
+      - name: region
+        value: example-region
+      - name: currentAks
+        value: 1.34.1
+      - name: targetAks
+        value: 1.35.2
+      - name: currentIstio
+        value: asm-1-28
+      - name: targetIstio
+        value: asm-1-29
+      - name: armRef
+        value: fixture-only
+  templates:
+    - name: plan
+      dag:
+        tasks:
+          - name: validate
+            template: validate
+          - name: release-impact-agent
+            dependencies: [validate]
+            template: checkpoint
+            arguments:
+              parameters:
+                - name: stage
+                  value: release-impact
+          - name: arm-preview
+            dependencies: [release-impact-agent]
+            template: action-preview
+            arguments:
+              parameters:
+                - name: stage
+                  value: arm-what-if-and-deployment
+          - name: preflight-agent
+            dependencies: [arm-preview]
+            template: checkpoint
+            arguments:
+              parameters:
+                - name: stage
+                  value: preflight-evidence
+          - name: istio-preview
+            dependencies: [preflight-agent]
+            template: action-preview
+            arguments:
+              parameters:
+                - name: stage
+                  value: istio-revision-canary
+          - name: canary-preview
+            dependencies: [istio-preview]
+            template: action-preview
+            arguments:
+              parameters:
+                - name: stage
+                  value: fixed-canary-tests
+          - name: post-canary-agent
+            dependencies: [canary-preview]
+            template: checkpoint
+            arguments:
+              parameters:
+                - name: stage
+                  value: post-canary-evidence
+          - name: report
+            dependencies: [post-canary-agent]
+            template: report
+            arguments:
+              parameters:
+                - name: releaseCheckpoint
+                  value: "{{tasks.release-impact-agent.outputs.parameters.receipt}}"
+                - name: armPreview
+                  value: "{{tasks.arm-preview.outputs.parameters.receipt}}"
+                - name: preflightCheckpoint
+                  value: "{{tasks.preflight-agent.outputs.parameters.receipt}}"
+                - name: istioPreview
+                  value: "{{tasks.istio-preview.outputs.parameters.receipt}}"
+                - name: canaryPreview
+                  value: "{{tasks.canary-preview.outputs.parameters.receipt}}"
+                - name: postCanaryCheckpoint
+                  value: "{{tasks.post-canary-agent.outputs.parameters.receipt}}"
+
+    - name: validate
+      script:
+        image: python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
+        command: [python]
+        env:
+          - {name: CLUSTER, value: "{{workflow.parameters.cluster}}"}
+          - {name: REGION, value: "{{workflow.parameters.region}}"}
+          - {name: CURRENT_AKS, value: "{{workflow.parameters.currentAks}}"}
+          - {name: TARGET_AKS, value: "{{workflow.parameters.targetAks}}"}
+          - {name: CURRENT_ISTIO, value: "{{workflow.parameters.currentIstio}}"}
+          - {name: TARGET_ISTIO, value: "{{workflow.parameters.targetIstio}}"}
+          - {name: ARM_REF, value: "{{workflow.parameters.armRef}}"}
+        source: |
+          import os
+          import re
+
+          assert re.fullmatch(r"[a-z][a-z0-9-]{2,30}", os.environ["CLUSTER"])
+          assert re.fullmatch(r"[a-z][a-z0-9-]{2,30}", os.environ["REGION"])
+          for name in ("CURRENT_AKS", "TARGET_AKS"):
+              assert re.fullmatch(r"\d+\.\d+\.\d+", os.environ[name]), name
+          for name in ("CURRENT_ISTIO", "TARGET_ISTIO"):
+              assert re.fullmatch(r"asm-\d+-\d+", os.environ[name]), name
+          assert os.environ["ARM_REF"] == "fixture-only", "only fixture input is allowed"
+          print("fixture input valid; compatibility and availability remain unverified")
+
+    - name: checkpoint
+      inputs:
+        parameters:
+          - name: stage
+      outputs:
+        parameters:
+          - name: receipt
+            valueFrom:
+              path: /tmp/receipt.json
+      script:
+        image: python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
+        command: [python]
+        env:
+          - {name: STAGE, value: "{{inputs.parameters.stage}}"}
+          - {name: CLUSTER, value: "{{workflow.parameters.cluster}}"}
+          - {name: CURRENT_AKS, value: "{{workflow.parameters.currentAks}}"}
+          - {name: TARGET_AKS, value: "{{workflow.parameters.targetAks}}"}
+          - {name: CURRENT_ISTIO, value: "{{workflow.parameters.currentIstio}}"}
+          - {name: TARGET_ISTIO, value: "{{workflow.parameters.targetIstio}}"}
+        source: |
+          import json
+          import os
+
+          prompts = {
+              "release-impact": "Cite supported AKS/add-on changes and test implications.",
+              "preflight-evidence": "Review ARM what-if, readiness and missing evidence.",
+              "post-canary-evidence": "Compare observed canary evidence against baseline.",
+          }
+          stage = os.environ["STAGE"]
+          assert stage in prompts
+          receipt = {
+              "stage": stage,
+              "agent_called": False,
+              "status": "not_invoked_dry_run",
+              "proposed_question": prompts[stage],
+              "context": {
+                  "cluster": os.environ["CLUSTER"],
+                  "aks": [os.environ["CURRENT_AKS"], os.environ["TARGET_AKS"]],
+                  "istio": [os.environ["CURRENT_ISTIO"], os.environ["TARGET_ISTIO"]],
+              },
+          }
+          rendered = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
+          with open("/tmp/receipt.json", "w", encoding="utf-8") as output:
+              output.write(rendered)
+          print(rendered)
+
+    - name: action-preview
+      inputs:
+        parameters:
+          - name: stage
+      outputs:
+        parameters:
+          - name: receipt
+            valueFrom:
+              path: /tmp/receipt.json
+      script:
+        image: python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
+        command: [python]
+        env:
+          - {name: STAGE, value: "{{inputs.parameters.stage}}"}
+        source: |
+          import json
+          import os
+
+          stage = os.environ["STAGE"]
+          assert stage in {
+              "arm-what-if-and-deployment",
+              "istio-revision-canary",
+              "fixed-canary-tests",
+          }
+          receipt = {"stage": stage, "status": "not_run_dry_run", "passed": None}
+          rendered = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
+          with open("/tmp/receipt.json", "w", encoding="utf-8") as output:
+              output.write(rendered)
+          print(rendered)
+
+    - name: report
+      inputs:
+        parameters:
+          - name: releaseCheckpoint
+          - name: armPreview
+          - name: preflightCheckpoint
+          - name: istioPreview
+          - name: canaryPreview
+          - name: postCanaryCheckpoint
+      outputs:
+        parameters:
+          - name: summary
+            valueFrom:
+              path: /tmp/summary.json
+      script:
+        image: python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
+        command: [python]
+        env:
+          - {name: RELEASE, value: "{{inputs.parameters.releaseCheckpoint}}"}
+          - {name: ARM, value: "{{inputs.parameters.armPreview}}"}
+          - {name: PREFLIGHT, value: "{{inputs.parameters.preflightCheckpoint}}"}
+          - {name: ISTIO, value: "{{inputs.parameters.istioPreview}}"}
+          - {name: CANARY, value: "{{inputs.parameters.canaryPreview}}"}
+          - {name: POST_CANARY, value: "{{inputs.parameters.postCanaryCheckpoint}}"}
+        source: |
+          import json
+          import os
+
+          receipts = [json.loads(os.environ[name]) for name in (
+              "RELEASE", "ARM", "PREFLIGHT", "ISTIO", "CANARY", "POST_CANARY"
+          )]
+          assert [item["stage"] for item in receipts] == [
+              "release-impact", "arm-what-if-and-deployment", "preflight-evidence",
+              "istio-revision-canary", "fixed-canary-tests", "post-canary-evidence"
+          ]
+          assert all(item["status"].endswith("dry_run") for item in receipts)
+          summary = {
+              "schema": "aks-istio-upgrade-dry-run/v1",
+              "status": "planning_only",
+              "regional_availability": "unverified",
+              "aks_istio_compatibility": "unverified",
+              "agent_calls": 0,
+              "azure_writes": 0,
+              "canary_tests_run": 0,
+              "receipts": receipts,
+          }
+          rendered = json.dumps(summary, sort_keys=True, separators=(",", ":"))
+          with open("/tmp/summary.json", "w", encoding="utf-8") as output:
+              output.write(rendered)
+          print(rendered)
