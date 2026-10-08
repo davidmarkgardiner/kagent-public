@@ -4,6 +4,8 @@
 
 The [suspended dry-run CronWorkflow and upgrade WorkflowTemplate](upgrade-automation-dry-run/README.md) make the proposed scheduling and agent checkpoints reviewable without Azure writes.
 
+For a quick wiring view, see the [agent invocation TL;DR](AKS-ISTIO-AGENT-FLOW-TLDR.md).
+
 ## Recommendation
 
 Keep version discovery, compatibility checks, ARM validation, deployment, rollout order, and numeric health gates in deterministic pipelines and approved workflows. Call read-only kagent specialists at three points: **release-impact review**, **pre-upgrade readiness review**, and **canary/post-upgrade evidence review**. Let an agent draft an operator and customer-facing “what changed” note from those same reviewed findings. The agent's verdict is advice; a pipeline gate uses observed facts and a named owner decides promotion.
