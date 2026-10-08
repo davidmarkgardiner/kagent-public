@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-devops-mcp
+  labels:
+    app.kubernetes.io/name: azure-devops-mcp
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: azure-devops-mcp
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: azure-devops-mcp
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mcp
+          image: {{ .Values.image.ref | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [node, /app/bridge.mjs]
+          workingDir: /app
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          env:
+            - {name: MCP_HOST, value: "0.0.0.0"}
+            - {name: PORT, value: "8091"}
+            - name: ADO_ORG
+              value: {{ .Values.ado.organization | quote }}
+            - {name: ADO_AUTH, value: pat}
+            - {name: ADO_TENANT, value: common}
+            - name: MCP_BRIDGE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bridgeKeySecret.name | quote }}
+                  key: {{ .Values.bridgeKeySecret.key | quote }}
+            - name: PERSONAL_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ado.patSecret.name | quote }}
+                  key: {{ .Values.ado.patSecret.key | quote }}
+            - name: MCP_ALLOWED_HOSTS
+              value: {{ printf "azure-devops-mcp.%s.svc.cluster.local:8091,azure-devops-mcp.%s:8091,azure-devops-mcp:8091" .Release.Namespace .Release.Namespace | quote }}
+            {{- if or .Values.draftPr.enabled .Values.codePush.enabled }}
+            - name: PR_PROJECT
+              value: {{ .Values.draftPr.project | quote }}
+            - name: PR_REPOSITORY
+              value: {{ .Values.draftPr.repositoryId | quote }}
+            - name: PR_SOURCE_REF
+              value: {{ printf "refs/heads/%s" .Values.draftPr.sourceBranch | quote }}
+            - name: PR_TARGET_REF
+              value: {{ printf "refs/heads/%s" .Values.draftPr.targetBranch | quote }}
+            {{- end }}
+            {{- if .Values.draftPr.enabled }}
+            - {name: ENABLE_PR_CREATE, value: "true"}
+            {{- end }}
+            {{- if .Values.codePush.enabled }}
+            - {name: ENABLE_CODE_PUSH, value: "true"}
+            - name: CODE_PATH_PREFIX
+              value: {{ .Values.codePush.pathPrefix | quote }}
+            - name: CODE_BRANCH_PREFIX
+              value: {{ .Values.codePush.branchPrefix | quote }}
+            {{- end }}
+          ports:
+            - {name: mcp, containerPort: 8091}
+          readinessProbe:
+            httpGet: {path: /healthz, port: mcp}
+            initialDelaySeconds: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

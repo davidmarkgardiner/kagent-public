@@ -1,0 +1,54 @@
+# Supply the destination registry manifest digest after building and pushing
+# the runtime image, or after importing the fallback image archive.
+image:
+  ref: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+ado:
+  organization: ""
+  # The PAT value is supplied by an existing Secret, never by chart values.
+  patSecret:
+    name: azure-devops-mcp-pat
+    key: PERSONAL_ACCESS_TOKEN
+
+bridgeKeySecret:
+  name: azure-devops-mcp-bridge-key
+  key: key
+
+resources:
+  requests: {cpu: 50m, memory: 256Mi}
+  limits: {cpu: "1", memory: 768Mi}
+
+remoteMcp:
+  name: azure-devops-scoped
+  timeout: 20s
+
+# Disabled until an exact sandbox project, repository and branch pair are reviewed.
+draftPr:
+  enabled: false
+  project: ""
+  repositoryId: ""
+  sourceBranch: ""
+  targetBranch: ""
+
+# One file add/edit and push at a time, on branches under the reviewed prefix.
+# The work agent must set a reviewed absolute repository path prefix.
+codePush:
+  enabled: false
+  pathPrefix: ""
+  branchPrefix: ""
+
+# Existing agents can reference remoteMcp.name without installing this example.
+exampleAgent:
+  enabled: false
+  name: azure-devops-pr
+  modelConfig: ""
+  resources:
+    requests: {cpu: 50m, memory: 384Mi}
+    limits: {cpu: 500m, memory: 768Mi}
+
+# Set selectors from the actual work cluster labels before enabling.
+networkPolicy:
+  enabled: false
+  ingressFrom: []

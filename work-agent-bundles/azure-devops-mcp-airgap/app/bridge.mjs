@@ -4,10 +4,11 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { connectUpstream } from './upstream.mjs';
 import { authorize, boundedResult, publishedTools } from './policy.mjs';
+import { pushFile, CodePushError } from './code-push.mjs';
 import { fileURLToPath } from 'node:url';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-export function createProtocolServer(upstream, scope) {
+export function createProtocolServer(upstream, scope, { pushFileImpl = pushFile } = {}) {
   const tools = publishedTools(upstream.tools, scope);
   const server = new Server({ name: 'kagent-ado-readonly-poc', version: '0.1.0' }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
@@ -15,13 +16,20 @@ export function createProtocolServer(upstream, scope) {
     try {
       const { name, arguments: args = {} } = request.params;
       authorize(name, args, scope);
+      if (name === 'repo_file_push') {
+        const receipt = await pushFileImpl(scope, args, {
+          organization: process.env.ADO_ORG, encodedPat: process.env.PERSONAL_ACCESS_TOKEN,
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(receipt) }] };
+      }
       const tool = tools.find(t => t.name === name);
       const boundedArgs = tool.inputSchema.properties?.top ? { ...args, top: args.top ?? 50 } : args;
       const result = await upstream.client.callTool({ name, arguments: boundedArgs }, undefined,
         { timeout: 15000, resetTimeoutOnProgress: false });
       return boundedResult(result);
-    } catch {
-      return { isError: true, content: [{ type: 'text', text: 'Call denied or failed. Check policy, credentials, permissions and query scope.' }] };
+    } catch (error) {
+      return { isError: true, content: [{ type: 'text', text: error instanceof CodePushError ? error.message :
+        'Call denied or failed. Check policy, credentials, permissions and query scope.' }] };
     }
   });
   return server;
@@ -69,8 +77,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (catalogOnly) upstream.client.callTool = async () => ({ isError: true, content: [{ type: 'text', text: 'Azure DevOps credential required; this runtime is in catalog-only mode.' }] });
     const bridge = await startBridge({ upstream, port: Number(process.env.PORT ?? 8091),
       host: process.env.MCP_HOST ?? '127.0.0.1', key: process.env.MCP_BRIDGE_KEY,
-      scope: process.env.ENABLE_PR_CREATE === 'true' ? { project: process.env.PR_PROJECT,
-        repository: process.env.PR_REPOSITORY, source: process.env.PR_SOURCE_REF, target: process.env.PR_TARGET_REF } : undefined,
+      scope: process.env.ENABLE_PR_CREATE === 'true' || process.env.ENABLE_CODE_PUSH === 'true' ? {
+        project: process.env.PR_PROJECT, repository: process.env.PR_REPOSITORY,
+        source: process.env.PR_SOURCE_REF, target: process.env.PR_TARGET_REF,
+        prEnabled: process.env.ENABLE_PR_CREATE === 'true',
+        codeEnabled: process.env.ENABLE_CODE_PUSH === 'true',
+        pathPrefix: process.env.CODE_PATH_PREFIX,
+        branchPrefix: process.env.CODE_BRANCH_PREFIX || undefined,
+      } : undefined,
       allowedHosts: (process.env.MCP_ALLOWED_HOSTS ?? '').split(',').filter(Boolean) });
     console.log(`POC listening: ${bridge.url}`);
     console.log(`Azure DevOps mode: ${catalogOnly ? 'catalog-only; no data access' : 'authenticated'}`);

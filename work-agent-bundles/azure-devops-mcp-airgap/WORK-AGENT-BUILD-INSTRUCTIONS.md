@@ -1,15 +1,19 @@
 # Work-agent task: build and publish the Azure DevOps MCP image
 
-Use this source-only bundle to build inside work. No imported application image
-is required. Read AGENTS.md and WORK-START-HERE.md before executing.
+Use the source ZIP to build the current code-workflow image inside work when the
+builder has approved dependency routes. Read AGENTS.md and
+HELM-OCI-WORK-AGENT.md before executing. For a disconnected builder, the image
+tar provides the complete runtime plus a dependencies image that
+`Dockerfile.offline` can use for bridge rebuilds.
 
 ## Copy this task to the work agent
 
 > Build the Azure DevOps MCP image from this extracted bundle and publish it to
 > our nominated internal registry. Use Microsoft's official MCP 2.10.0 package
-> pinned in app/package-lock.json, keeping the included HTTP bridge and draft-PR
-> policy. Determine the approved build host, Linux node architecture, registry
-> path, base image and npm/Debian sources from our existing configuration. Use
+> pinned in app/package-lock.json, keeping the included HTTP bridge, scoped
+> code-push adapter and draft-PR policy. Determine the approved build host,
+> Linux node architecture, registry path, base image and npm/Debian sources from
+> our existing configuration. Use
 > approved internal mirrors when public downloads are blocked. Preserve unrelated
 > work. Never put an Azure DevOps PAT or registry password in source, build args,
 > image layers or logs. Use existing registry authentication.
@@ -22,13 +26,13 @@ is required. Read AGENTS.md and WORK-START-HERE.md before executing.
 > digest, test results, build-source identity and any mirror adaptations. Do not
 > claim live Azure DevOps access based on offline catalog discovery.
 >
-> Prepare secret-free rendered Kubernetes manifests using an existing approved
-> ModelConfig, then server-side dry-run against the nominated cluster when one
-> is supplied. Preserve existing agents and gateway configuration. Do not deploy,
-> install credentials or create work PRs as part of this build/publish task unless
-> separately instructed. Leave deployment and the live draft-PR demo reviewable
-> using WORK-START-HERE.md. If an actual dependency, permission or network route
-> is missing, report the specific missing item; do not substitute a different MCP
+> Package and push the separate Helm OCI chart through our existing work pipeline
+> as described in HELM-OCI-WORK-AGENT.md. Prepare secret-free rendered manifests
+> using an existing approved ModelConfig, then server-side dry-run against the
+> nominated cluster. Preserve existing agents and gateway configuration. Install
+> through the approved delivery flow and run the sandbox PAT branch/read/push/
+> readback trial requested in the handoff. If a dependency, permission or network
+> route is missing, report the specific item; do not substitute a different MCP
 > implementation, floating package version, or disabled TLS verification.
 
 Required work-specific inputs are the internal image repository and approved
@@ -42,7 +46,7 @@ configuration paths outside the public bundle.
 From the extracted bundle directory, substitute the nominated internal registry:
 
 ```bash
-ADO_WORK_IMAGE='{{INTERNAL_REGISTRY}}/azure-devops-mcp:2.10.0-work1'
+ADO_WORK_IMAGE='{{INTERNAL_REGISTRY}}/azure-devops-mcp:2.10.0-code1'
 docker build --platform linux/amd64 -t "$ADO_WORK_IMAGE" .
 docker run --rm --platform linux/amd64 --network none --read-only \
   "$ADO_WORK_IMAGE" node --test
@@ -56,6 +60,28 @@ docker push "$ADO_WORK_IMAGE"
 This is the normal Dockerfile, not Dockerfile.offline: it builds all dependencies
 at work. The offline Dockerfile requires an already-built dependencies image and
 is useful for later adapter-only rebuilds.
+
+For an offline bridge rebuild after importing the matching dependencies image,
+use the reviewed `app/` source from the same code-workflow ZIP:
+
+```bash
+ADO_DEPS_IMAGE='{{INTERNAL_REGISTRY}}/azure-devops-mcp-dependencies@sha256:{{DESTINATION_DEPENDENCIES_DIGEST}}'
+ADO_WORK_IMAGE='{{INTERNAL_REGISTRY}}/azure-devops-mcp:2.10.0-code1'
+docker build --platform linux/amd64 -f Dockerfile.offline \
+  --build-arg DEPENDENCIES_IMAGE="$ADO_DEPS_IMAGE" -t "$ADO_WORK_IMAGE" .
+docker run --rm --platform linux/amd64 --network none --read-only \
+  "$ADO_WORK_IMAGE" node --test
+docker run --rm --platform linux/amd64 --network none --read-only \
+  "$ADO_WORK_IMAGE" node image-smoke.mjs
+docker run --rm --platform linux/amd64 --network none --read-only \
+  "$ADO_WORK_IMAGE" node -e 'require("keytar"); console.log("native keytar loaded")'
+docker push "$ADO_WORK_IMAGE"
+```
+
+The dependencies image is our build product containing Microsoft's npm
+package. It is not an official Microsoft container image. If no adapter change
+is required, import and push the complete runtime image from the archive
+instead of rebuilding it.
 
 For an approved mirrored base image, add:
 
@@ -72,7 +98,8 @@ configuration in both Dockerfile stages. Keep mirror credentials out of image
 layers; use work's existing secret-aware builder. If neither public access nor
 complete mirrors are available, source ZIP alone cannot produce the image.
 
-After pushing, record the digest printed by the registry and use
+After pushing, inspect the image in the destination registry, record its
+manifest digest, and use
 `{{INTERNAL_REGISTRY}}/azure-devops-mcp@sha256:{{IMAGE_DIGEST}}` in private config.
 A Docker local image ID is not the registry manifest digest.
 
