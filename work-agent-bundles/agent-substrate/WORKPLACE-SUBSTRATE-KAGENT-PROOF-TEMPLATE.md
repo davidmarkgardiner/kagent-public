@@ -2,23 +2,30 @@
 
 > **Starting point:** the work agent reports that its full lifecycle test passed. Treat that as a lead. Fill this document from the **actual workplace AKS run** so a reviewer can see what ran, what passed, and what a teammate can repeat. The public AKS runs in this repository are comparison material, not workplace receipts.
 >
-> Copy this file into the approved **private** project or ticket evidence area before filling it in. Do not commit workplace names, URLs, identities, kubeconfigs, Helm values, logs, model responses, or credentials to this public repository. The ticket can attach the completed private document and link to its access-controlled raw receipts.
+> Copy this file into the approved **private** project or ticket evidence area as `SUBSTRATE-KAGENT-EVIDENCE.md` before filling it in. Do not commit workplace names, URLs, identities, kubeconfigs, Helm values, logs, model responses, or credentials to this public repository. The ticket can attach the completed private Markdown and link to its access-controlled raw receipts.
 
 ## Copy this request to the work agent
 
 ```text
 You reported a full Agent Substrate lifecycle pass on our work AKS cluster.
-Please turn that result into a reviewable, private Git-ticket attachment by
-filling in WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md.
+Please deliver three completed Markdown files in our approved private project:
+1. SUBSTRATE-GITLAB-TICKET.md — short, directly pasteable GitLab issue text.
+2. SUBSTRATE-KAGENT-EVIDENCE.md — the completed proof template, with receipt IDs.
+3. SUBSTRATE-REDEPLOY-WALKTHROUGH.md — exact, ordered steps to reproduce on a
+   fresh approved AKS cluster, including checks, expected results, and rollback.
+Use the two companion templates next to this file. Link the three files to one
+another and to the private raw receipts. Do not return only a chat summary.
 
-Start with the exact run that already passed. Locate its raw, timestamped
-receipts; do not replace them with a new run or a summary. State the installed
+First reproduce H01–H07 in HOME-LAB-SUBSTRATE-PROOF-EXAMPLES.md using the exact
+workplace run that already passed. Locate its raw, timestamped receipts; do
+not replace them with a new run or a summary. State the installed
 kagent/Substrate versions, source commits, chart/image digests, AKS node and
 gVisor asset path. Link each claim to a command output, API response, status
 record, log excerpt, trace, or object-store receipt from that same run.
 
 Then, on an approved disposable non-production scope, run only the missing
-checks needed to prove kagent-to-actor invocation, real model/tool access,
+checks needed for claims beyond home-lab parity: kagent-to-actor invocation,
+real model/tool access,
 stateful suspend/restore, sandbox/runtime identity, and the advertised
 capacity/startup properties. If runsc is seeded into ATELET's shared runtime
 volume, prove that path on a fresh disposable node; do not substitute a fetch
@@ -31,11 +38,16 @@ version blindly or alter the existing failing workload to make a test pass.
 For every claim, mark PASS, FAIL, NOT RUN, or NOT SUPPORTED. Explain the
 reason and next action for anything other than PASS. Do not infer an air-gap,
 isolation, model call, state retention, or cost saving from a Ready condition
-or an HTTP 200 agent card. Provide a safe teammate walkthrough and a short
-ticket conclusion that names the precise scope proven.
+or an HTTP 200 agent card. Complete every runbook phase with actual Git paths,
+versions, checksums, commands, expected and observed results, and a rollback.
+If no second-cluster deployment was run, label repeatability DOCUMENTED ONLY.
+Replace every template placeholder in the final three files or mark it NOT RUN
+with a reason. Do not return only a chat summary.
 ```
 
 ## 1. Ticket front sheet
+
+**Required private Markdown package:** use the companion [GitLab ticket template](WORKPLACE-SUBSTRATE-GITLAB-TICKET-TEMPLATE.md) and [redeploy template](WORKPLACE-SUBSTRATE-REDEPLOY-WALKTHROUGH-TEMPLATE.md). In the completed private package, use `SUBSTRATE-GITLAB-TICKET.md`, `SUBSTRATE-KAGENT-EVIDENCE.md`, and `SUBSTRATE-REDEPLOY-WALKTHROUGH.md`. Link the completed [ticket]({{PRIVATE_TICKET_MD_LINK}}) and [walkthrough]({{PRIVATE_WALKTHROUGH_MD_LINK}}) here, and link this completed evidence report from both. GitLab ticket links must point to completed private files. Use fenced text blocks for sanitized command excerpts so David can copy and paste them. Keep raw unredacted artifacts in the approved private evidence store.
 
 | Field | Fill in |
 | --- | --- |
@@ -68,7 +80,19 @@ Explain material differences from the prior [0.0.9 AKS baseline](WORK-AGENT-RUNS
 
 ## 3. Claim-to-proof matrix
 
-Fill `Status`, `Observed`, and `Receipt` for every row. Record a separate run ID when a later test fills a gap in the originally reported run. Read the exact installed-version behavior before invoking lifecycle operations.
+**First: home-lab parity.** Use the [public proof examples](HOME-LAB-SUBSTRATE-PROOF-EXAMPLES.md) to fill H01–H07 below with `PASS` / `FAIL` / `NOT RUN`, observed workplace values, run ID and raw receipt links. This is the exact 0.0.9 AKS lifecycle comparison. Record the deliberate difference between the public lab's internal fetch and the workplace's seeded shared volume. The public lab did not prove a real model/tool call or changed state survival.
+
+| ID | Workplace status | Observed value and run ID | Raw private receipt |
+| --- | --- | --- | --- |
+| H01 — pinned install, node and worker | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+| H02 — agent Ready, template and golden | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+| H03 — exact `runsc` asset and delivery path | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+| H04 — golden restore and agent card | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+| H05 — Full pause/restore and agent card | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+| H06 — Data commit/restore and agent card | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+| H07 — three further fresh actor cycles | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+
+**Then: broader claims.** Fill `Status`, `Observed`, and `Receipt` for every P row below. Record a separate run ID when a later test fills a gap in the originally reported run. Read the exact installed-version behavior before invoking lifecycle operations.
 
 | ID | Claim and minimum observable proof | Status | Observed / run ID | Receipt |
 | --- | --- | --- | --- | --- |
@@ -86,7 +110,7 @@ Fill `Status`, `Observed`, and `Receipt` for every row. Record a separate run ID
 | P12 | **Optional workload paths.** For each claimed Go/Python/BYO declarative agent or `AgentHarness` backend, provide installed-version support evidence and a separate end-to-end invocation/restore receipt. Mark untested paths `NOT RUN` and unavailable paths `NOT SUPPORTED`. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
 | P13 | **Recovery and operations**, if claimed. On disposable scope, show safe response to worker restart or actor relocation, snapshot recovery, error visibility, and cleanup/rollback; record any unavailable recovery mode. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
 
-**Core verdict:** P01–P08 must pass to say “kagent with gVisor Agent Substrate works for this tested agent.” P09–P13 are separate advertised or deployment claims and must not be rolled into that sentence without their own PASS. If model/tool access is deliberately outside scope, say “runtime lifecycle works” and mark P03 `NOT RUN`. For a different backend, adjust P08 and name the exact tested backend. The kagent [concept page](https://kagent.dev/docs/kagent/0.x/concepts/agent-substrate/) (https://kagent.dev/docs/kagent/0.x/concepts/agent-substrate/) lists broader features; the [0.x walkthrough](https://kagent.dev/docs/kagent/0.x/examples/agent-substrate/) (https://kagent.dev/docs/kagent/0.x/examples/agent-substrate/) says Go only in its example, so verify runtime support against the installed build before promising Python/BYO or a harness.
+**Verdict boundary:** H01–H07 passing supports “the workplace reproduced the public 0.0.9 AKS runtime lifecycle,” subject to listed build/node/delivery differences. P01–P08 must also pass to say “kagent with gVisor Agent Substrate works for this tested agent, including a real request and state assertions.” P09–P13 are separate advertised or deployment claims and must not be rolled into that sentence without their own PASS. If model/tool access is outside scope, mark P03 `NOT RUN`. For a different backend, adjust P08 and name the exact tested backend. The kagent [concept page](https://kagent.dev/docs/kagent/0.x/concepts/agent-substrate/) (https://kagent.dev/docs/kagent/0.x/concepts/agent-substrate/) lists broader features; the [0.x walkthrough](https://kagent.dev/docs/kagent/0.x/examples/agent-substrate/) (https://kagent.dev/docs/kagent/0.x/examples/agent-substrate/) says Go only in its example, so verify runtime support against the installed build before promising Python/BYO or a harness.
 
 ## 4. Safe repeatable teammate walkthrough
 

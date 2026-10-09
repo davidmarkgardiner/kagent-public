@@ -27,6 +27,11 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
   [`WORK-AGENT-RUNSC-EQUIVALENCE-HANDOFF.md`](WORK-AGENT-RUNSC-EQUIVALENCE-HANDOFF.md).
 - **Workplace proof request and Git-ticket evidence template:**
   [`WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md`](WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md).
+  Companion [GitLab ticket](WORKPLACE-SUBSTRATE-GITLAB-TICKET-TEMPLATE.md) and
+  [fresh-cluster redeploy walkthrough](WORKPLACE-SUBSTRATE-REDEPLOY-WALKTHROUGH-TEMPLATE.md)
+  templates produce three copy-ready private Markdown files.
+  The [public lab proof examples](HOME-LAB-SUBSTRATE-PROOF-EXAMPLES.md) show the exact
+  baseline to reproduce and the evidence shape, with unproven claims identified.
 - **Question for the Kubernetes and Agent Substrate teams about the public `runsc` download:** [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](RUNSC-AIRGAP-ROADMAP-QUESTION.md)
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
 - **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)
