@@ -70,6 +70,17 @@ Suggested paths through the library:
 
 The first worked example is [Evidence-first triage](01-triage-storyboard.md).
 
+### Publish the chapter collection in SharePoint
+
+Use the [SharePoint publishing guide](sharepoint-publishing-guide.md) to build
+a restricted video library, a journey index and linked chapter pages. The guide
+includes copy-ready text for the five finished onboarding, identity and MCP
+chapters, plus instructions for other authors to add stories.
+
+The five-chapter collection has its own viewing order. Its chapter numbers do
+not replace the longer series plan above. MP4s are transferred separately and
+are not stored in this repository.
+
 ## Review sequence
 
 1. Review this journey and the triage example.
