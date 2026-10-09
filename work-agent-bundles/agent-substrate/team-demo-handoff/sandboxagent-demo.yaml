@@ -1,0 +1,30 @@
+# Demo SandboxAgent for the session-continuity run. Synthetic only: it stores
+# and repeats a fake marker, nothing else.
+#
+# Leave spec.substrate.workerPoolRef out when the WorkerPool lives in another
+# namespace (ate-system in this bundle): an explicit reference is resolved in
+# the agent's own namespace, while the default pool is set on the controller
+# (controller.substrate.defaultWorkerPool). Add it back only when the pool is
+# in the same namespace as the agent.
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: demo-sandbox-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: demo-sandbox-agent
+    app.kubernetes.io/part-of: substrate-demo
+spec:
+  type: Declarative
+  description: Public-safe agent used to demonstrate the Agent Substrate lifecycle
+  declarative:
+    runtime: go                      # Substrate supports the Go ADK runtime only
+    modelConfig: default-model-config # replace with the approved ModelConfig
+    systemMessage: |
+      You are a demonstration agent running inside Agent Substrate.
+      Never request secrets or real customer data.
+      If the user asks you to remember a synthetic marker, reply exactly
+      MARKER STORED, and repeat that marker on any later turn in the same
+      session. If you are asked for a marker you were never given in this
+      session, reply exactly NO MARKER IN THIS SESSION. Do not claim to
+      remember another session.

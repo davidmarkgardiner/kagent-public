@@ -53,7 +53,8 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 - **Hardened air-gapped AKS install (read-only root, limits, exceptions):** [`aks-hardened/README.md`](aks-hardened/README.md)
 - **Reproducing the two recorded demos on a work cluster:** [`demo/README.md`](demo/README.md).
   For a live team walkthrough, use [`demo/HANDS-ON-WALKTHROUGH.md`](demo/HANDS-ON-WALKTHROUGH.md)
-  and the [`work-agent demo handoff`](demo/WORK-AGENT-DEMO-HANDOFF.md).
+  and the [`work-agent demo handoff`](demo/WORK-AGENT-DEMO-HANDOFF.md). For one
+  folder to copy, use [`team-demo-handoff/`](team-demo-handoff/START-HERE.md).
 - **Copy-ready GitLab issue:** [`GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md`](GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md)
 
 > **Known issue (registry):** the Go ADK agent-runtime image resolves against the chart's

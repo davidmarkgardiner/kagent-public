@@ -12,6 +12,8 @@ two actor IDs in the Substrate inventory. Give
 a rehearsed team demo and four private Markdown evidence files. The memory
 canary covers the core session path; the capability scorecard names separate
 proof needed for tool calls, gVisor assets, state modes, capacity and recovery.
+The [`team-demo-handoff`](../team-demo-handoff/START-HERE.md) folder contains
+the walkthrough, scripts, canary YAML and templates as flat files for copying.
 
 | Demo | Shows | Reproduce with |
 |---|---|---|
