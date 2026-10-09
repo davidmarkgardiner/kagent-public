@@ -32,6 +32,19 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
   templates produce three copy-ready private Markdown files.
   The [public lab proof examples](HOME-LAB-SUBSTRATE-PROOF-EXAMPLES.md) show the exact
   baseline to reproduce and the evidence shape, with unproven claims identified.
+- **Read-only live install audit for the 0.0.9/0.10.x path:**
+  [`scripts/audit-substrate-install.sh`](scripts/audit-substrate-install.sh)
+  fails if the required `ate.dev` CRDs are missing and prints the kube context it checked.
+
+  ```bash
+  bash work-agent-bundles/agent-substrate/scripts/audit-substrate-install.sh \
+    --context '{{WORK_KUBE_CONTEXT}}' \
+    --sandboxagent '{{CANARY_NAME}}'
+  ```
+
+  Omit `--sandboxagent` if the canary name is unknown. `INSTALL_CHECK_PASS`
+  verifies current install objects only; the work agent must still attach its
+  timestamped lifecycle receipts.
 - **Question for the Kubernetes and Agent Substrate teams about the public `runsc` download:** [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](RUNSC-AIRGAP-ROADMAP-QUESTION.md)
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
 - **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)

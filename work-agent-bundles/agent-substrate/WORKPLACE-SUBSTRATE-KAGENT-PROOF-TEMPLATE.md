@@ -61,6 +61,8 @@ with a reason. Do not return only a chat summary.
 
 **Evidence rule:** each PASS needs an artifact ID in section 6 from the same run, showing observed values, not just an expected result. Preserve the source command/API route and UTC timestamp. Use `NOT SUPPORTED` only with an installed-version source or schema receipt. If a check is unsafe or unapproved, mark `NOT RUN` and explain. A lifecycle pass can be valid while broader product claims remain `NOT RUN`.
 
+**Current installation cross-check:** run the read-only [0.0.9/0.10.x audit](scripts/audit-substrate-install.sh) with an explicit kube context and retain its output privately as a receipt. If `workerpools.ate.dev`, `actortemplates.ate.dev`, or `sandboxconfigs.ate.dev` is absent on the claimed cluster, mark H01 and P01 `FAIL` for the current installation and reconcile the work agent's run ID, cluster/context and timestamp before accepting its claim. `INSTALL_CHECK_PASS` is not a lifecycle receipt.
+
 ## 2. What is installed and where it runs
 
 | Check | Observed value | Receipt ID |
