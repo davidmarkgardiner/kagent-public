@@ -29,6 +29,7 @@
 | 2 | "what marker did I ask you to remember?" | `<MARKER>` | |
 
 - Same context ID used for both requests:
+- Session-one actor ID (private receipt):
 - `SuspendActor` witness after each request (status 4, new snapshot):
 
 ## Session two (separation)
@@ -38,6 +39,9 @@
 | 1 | ask for the marker | `NO MARKER IN THIS SESSION` | different actor id |
 
 - Session one's actor remained Suspended:
+- Session-two actor ID (private receipt):
+- Evidence connecting each context ID to its actor ID (UI inventory or Substrate log, with timestamp):
+- Distinct actor IDs confirmed (yes/no/unknown):
 
 ## Limitations to keep attached to this receipt
 

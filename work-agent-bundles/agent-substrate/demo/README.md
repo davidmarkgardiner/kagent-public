@@ -4,6 +4,11 @@ Both demos have already been run and recorded in the home lab. This folder is
 the handover: what each one shows, and how to produce the same evidence on a
 work cluster.
 
+For a guided run you can perform yourself, start with
+[`HANDS-ON-WALKTHROUGH.md`](HANDS-ON-WALKTHROUGH.md). It begins with the CRD
+audit, then runs the session canary and asks you to verify the two actor IDs
+in the Substrate inventory.
+
 | Demo | Shows | Reproduce with |
 |---|---|---|
 | **A. Session continuity** — "What Is an Agent Substrate? How It Sits Under kagent" | An agent stores a marker, its actor suspends, a later request in the same session restores the actor and returns the marker, and a second session gets a different actor that never saw it | This folder: [`run-memory-demo.sh`](run-memory-demo.sh) |
@@ -73,9 +78,9 @@ record them; do not restate the home-lab versions as the work result.
 
 Useful options: `--namespace` (default `kagent`), `--ate-namespace` (default
 `ate-system`; use `kagent` when Substrate is installed as a kagent subchart),
-`--endpoint` and `--token` when calls must go through agentgateway rather than
-a port-forward to the controller, `--marker`, and `--keep` to leave the agent
-in place.
+`--endpoint` for an approved endpoint, `--marker`, and `--keep` to leave the
+agent in place. Use the default port-forward for this functional run; keep
+gateway credentials out of shell commands and tickets.
 
 The script applies [`sandboxagent-demo.yaml`](sandboxagent-demo.yaml), waits
 for Ready, then sends three requests and writes a receipt directory containing
@@ -85,7 +90,9 @@ demo agent afterwards unless `--keep` is given, and touches nothing else.
 Expected checks: `R00`–`R02` (pool, agent Ready, ActorTemplate with golden
 snapshot), `P01` marker stored, `S01` suspended, `P02` marker returned in the
 same session, `S02` suspended again, `P03` the second session does not inherit
-the marker, `P04` the two context IDs differ.
+the marker, `P04` the two context IDs differ. Inspect the actor inventory
+separately and record two different actor IDs; context IDs alone do not prove
+that claim.
 
 Then fill in [`RECEIPT-TEMPLATE.md`](RECEIPT-TEMPLATE.md) from that directory.
 

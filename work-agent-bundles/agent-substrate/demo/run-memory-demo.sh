@@ -56,8 +56,24 @@ done
 [[ -n $context ]] || { echo "--context is required" >&2; exit 2; }
 command -v kubectl >/dev/null || { echo "kubectl is required" >&2; exit 2; }
 command -v jq >/dev/null || { echo "jq is required" >&2; exit 2; }
+command -v curl >/dev/null || { echo "curl is required" >&2; exit 2; }
 
 k() { kubectl --context "$context" "$@"; }
+# Fail before writing a canary if the target API is incomplete or the name is
+# already owned by somebody else. The exit trap below may only delete our own.
+for crd in workerpools.ate.dev actortemplates.ate.dev sandboxagents.kagent.dev; do
+  if ! k get crd "$crd" -o name >/dev/null 2>&1; then
+    echo "required CRD unavailable: $crd (missing or access denied); run audit-substrate-install.sh" >&2
+    exit 1
+  fi
+done
+if existing=$(k -n "$namespace" get sandboxagent "$agent" -o name 2>&1); then
+  echo "SandboxAgent $namespace/$agent already exists; choose a unique --agent name (found $existing)" >&2
+  exit 1
+elif [[ $existing != *NotFound* && $existing != *'not found'* ]]; then
+  echo "cannot establish whether SandboxAgent $namespace/$agent exists: $existing" >&2
+  exit 2
+fi
 receipt_dir=${receipt_dir:-"$here/receipts/$(date -u +%Y%m%dT%H%M%SZ)"}
 mkdir -p "$receipt_dir/responses" "$receipt_dir/status"
 results="$receipt_dir/results.tsv"
@@ -86,14 +102,15 @@ sed -e "s/^  name: demo-sandbox-agent$/  name: $agent/" \
     -e "s/modelConfig: default-model-config/modelConfig: $model_config/" \
     "$here/sandboxagent-demo.yaml" > "$receipt_dir/status/sandboxagent-applied.yaml"
 k apply -f "$receipt_dir/status/sandboxagent-applied.yaml" >/dev/null || exit 1
+# shellcheck disable=SC2329 # Called by the EXIT trap.
 cleanup() {
   if [[ $keep == 0 ]]; then
     # Deleting a SandboxAgent runs the kagent.dev/sandbox-agent-substrate-cleanup
     # finalizer, which needs a running controller. Wait for it, so the object is
     # not left Terminating if the controller is scaled down afterwards.
     k -n "$namespace" delete sandboxagent "$agent" --ignore-not-found --wait=false >/dev/null 2>&1
-    local gone=0 i
-    for i in $(seq 1 24); do
+    local gone=0
+    for _ in $(seq 1 24); do
       if [[ -z $(k -n "$namespace" get sandboxagent "$agent" --ignore-not-found --no-headers 2>/dev/null) ]]; then
         gone=1; break
       fi
@@ -159,8 +176,7 @@ suspend_witness() { # label since
   local since=$2
   local log="$receipt_dir/status/$label-lifecycle.jsonl"
   local found=false
-  local attempt
-  for attempt in $(seq 1 12); do
+  for _ in $(seq 1 12); do
     k -n "$ate_namespace" logs "deployment/$ATE_API_DEPLOY" --since-time="$since" > "$log" 2>/dev/null
     found=$(jq -s --arg agent "$agent" 'any(.[];
         .method == "/ateapi.Control/SuspendActor"
@@ -176,7 +192,10 @@ suspend_witness() { # label since
 ATE_API_DEPLOY=$(k -n "$ate_namespace" get deploy -o name 2>/dev/null | grep -m1 'ate-api-server' | sed 's#deployment.apps/##')
 [[ -n $ATE_API_DEPLOY ]] || echo "warning: ate-api deployment not found in $ate_namespace; suspend witnesses will be skipped" >&2
 
-session_one="demo-session-01"; session_two="demo-session-02"
+session_suffix=$(date -u +%Y%m%dT%H%M%SZ)-$$
+session_one="demo-session-01-$session_suffix"; session_two="demo-session-02-$session_suffix"
+printf 'session_one=%s\nsession_two=%s\n' "$session_one" "$session_two" \
+  > "$receipt_dir/status/session-ids.txt"
 
 echo "==> Session one, request one: store the marker"
 code=$(ask S1R1 "$session_one" "Please remember this marker for later in this session: $marker")
@@ -204,12 +223,12 @@ echo "==> Session two: a different session must not inherit the marker"
 code=$(ask S2R1 "$session_two" "What marker did I ask you to remember? If you were not given one in this session, reply exactly NO MARKER IN THIS SESSION.")
 ans=$(answer_of "$receipt_dir/responses/S2R1.body")
 record P03 'second session did not inherit the marker' "$code ${ans:-no-answer}" \
-  "$([[ $code == 200 && $ans != *"$marker"* ]] && echo PASS || echo FAIL)"
+  "$([[ $code == 200 && $ans == 'NO MARKER IN THIS SESSION' ]] && echo PASS || echo FAIL)"
 
 ctx1=$(jq -r '.result.contextId // "missing"' "$receipt_dir/responses/S1R2.body" 2>/dev/null)
 ctx2=$(jq -r '.result.contextId // "missing"' "$receipt_dir/responses/S2R1.body" 2>/dev/null)
 record P04 'the two sessions used different context IDs' "$ctx1 vs $ctx2" \
-  "$([[ $ctx1 != "$ctx2" && $ctx1 != missing ]] && echo PASS || echo FAIL)"
+  "$([[ $ctx1 != "$ctx2" && $ctx1 != missing && $ctx2 != missing ]] && echo PASS || echo FAIL)"
 
 k -n "$namespace" get actortemplate -o json > "$receipt_dir/status/actortemplates-after.json" 2>/dev/null
 echo
