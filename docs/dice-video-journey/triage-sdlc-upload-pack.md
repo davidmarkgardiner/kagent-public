@@ -4,9 +4,12 @@ Prepared 9 October 2026. Two presenter-free, narrated chapters extend the
 existing five-chapter collection. The voice is the approved Daniel narration;
 the story and audio have not been regenerated for this export.
 
-The MP4s are staged in a [GitHub draft release](https://github.com/davidmarkgardiner/kagent-public/releases/tag/untagged-8b45c28bce2027bfbf08).
+The MP4s are staged in the **DICE journey: triage and SDLC upload pack** draft
+on the [GitHub releases page](https://github.com/davidmarkgardiner/kagent-public/releases).
 Only authorised signed-in repository users can access the draft. It is not a
-public download, a SharePoint page or a workplace delivery receipt. Review both
+public download, a SharePoint page or a workplace delivery receipt. GitHub may
+change a draft's direct URL when its target revision changes, so use the stable
+releases page and select the named draft. Review both
 exports with sound before publishing to the selected audience. No employer
 name, email address, tenant or internal endpoint is part of this pack.
 

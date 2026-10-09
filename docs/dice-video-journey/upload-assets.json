@@ -5,7 +5,9 @@
   "release": {
     "tag": "dice-journey-upload-pack-2026-10-09",
     "visibility": "draft; authorised signed-in repository access only",
-    "url": "https://github.com/davidmarkgardiner/kagent-public/releases/tag/untagged-8b45c28bce2027bfbf08"
+    "url": "https://github.com/davidmarkgardiner/kagent-public/releases",
+    "draft_title": "DICE journey: triage and SDLC upload pack",
+    "direct_url_note": "Use the stable releases page; draft direct URLs can change with the target revision"
   },
   "narration": "Existing Daniel narration reused unchanged; no avatar or new voice generation",
   "render": {
