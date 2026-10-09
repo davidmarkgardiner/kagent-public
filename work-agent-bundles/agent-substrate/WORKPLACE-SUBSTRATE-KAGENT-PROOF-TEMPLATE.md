@@ -20,7 +20,9 @@ record, log excerpt, trace, or object-store receipt from that same run.
 Then, on an approved disposable non-production scope, run only the missing
 checks needed to prove kagent-to-actor invocation, real model/tool access,
 stateful suspend/restore, sandbox/runtime identity, and the advertised
-capacity/startup properties. Record exact commands, observed outputs, UTC
+capacity/startup properties. If runsc is seeded into ATELET's shared runtime
+volume, prove that path on a fresh disposable node; do not substitute a fetch
+test for the actual deployment design. Record exact commands, observed outputs, UTC
 times, actor/template/session IDs, and the before/after state. Keep raw
 private output in our approved evidence store. Use the installed version's
 CRD schema and approved GitOps workflow; do not copy commands from another
@@ -55,12 +57,14 @@ ticket conclusion that names the precise scope proven.
 | Flux/Git revision and four chart releases/versions; rendered values reference | `{{VALUE}}` | `E-__` |
 | Running `imageID` digests for kagent controller, Substrate control/data plane, `atelet`, `ateom`, generated agent image | `{{VALUE}}` | `E-__` |
 | `WorkerPool` name, namespace, class, desired/ready replicas, placement and `SandboxConfig` | `{{VALUE}}` | `E-__` |
-| `runsc` or version-specific gVisor asset: configured URL, source, SHA-256, cache path/hash, actual fetch path and node | `{{VALUE}}` | `E-__` |
+| `runsc` or version-specific gVisor asset: configured asset SHA-256, exact bytes at the content-addressed path, seeding or fetch mechanism, mount/permissions, worker `runsc_path` and node | `{{VALUE}}` | `E-__` |
 | Snapshot store type, bucket alias, CA/trust route and object prefix; secret references only | `{{VALUE}}` | `E-__` |
 | kagent agent CR, generated `ActorTemplate` UID/spec, golden snapshot ID/status, actor/session IDs | `{{VALUE}}` | `E-__` |
 | Installed CRD/schema source used to decide supported runtimes and snapshot modes | `{{VALUE}}` | `E-__` |
 
 Explain material differences from the prior [0.0.9 AKS baseline](WORK-AGENT-RUNSC-EQUIVALENCE-HANDOFF.md). A private `-SNAPSHOT` suffix or matching `runsc` hash alone does not establish source, image, or delivery-path equivalence. If the deployed pairing is 1.x, use its own `Agent`/`Harness` schema and asset format; the 0.0.9 `SandboxAgent` commands are not a 1.x test.
+
+**Seeded-volume path:** In [Substrate v0.0.9's asset code](https://github.com/kagent-dev/substrate/blob/v0.0.9/cmd/atelet/sandbox_assets.go) (https://github.com/kagent-dev/substrate/blob/v0.0.9/cmd/atelet/sandbox_assets.go), ATELET uses the content-addressed `runsc-<sha256>` file if it already exists and passes its path to `ateom-gvisor`. A cache hit is checked with `os.Stat`, without rehashing the file. For a seeded deployment, independently record the actual file SHA-256, size, executable permission, mount visibility, and `runsc_path` on the worker node. Prove the seed is repeatable after a new-node or volume-recreation event. Check the exact installed private source for any difference from v0.0.9.
 
 ## 3. Claim-to-proof matrix
 
@@ -76,7 +80,7 @@ Fill `Status`, `Observed`, and `Receipt` for every row. Record a separate run ID
 | P06 | **Data commit/restore retains durable state.** Write a unique value into the approved `durableDir` fixture, commit, restore, and assert exact content and permissions. Resume between Full pause and Data commit if this release requires it. A matching agent card is insufficient. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
 | P07 | **Worker slot is released and reused.** Show actor suspended, slot free, then a second distinct actor served by the same finite pool; count worker pods before/during/after. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
 | P08 | **gVisor isolation is the actual backend.** Show WorkerPool class, `ateom-gvisor`/runtime config, selected node, actual `runsc` asset checksum, actor-to-sandbox mapping, and applicable admission/network boundaries. Configuration alone does not prove containment strength. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
-| P09 | **Internal-only asset and snapshot path**, if claimed. Force an approved cold asset-cache miss on a disposable node; show internal fetch, checksum, snapshot upload/download, and public-egress deny/flow/DNS evidence. An Internet-connected test is not air-gap proof. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
+| P09 | **Internal-only asset and snapshot path**, if claimed. On an approved fresh disposable node, show the actual delivery method: either an internal fetch or a completed seed into ATELET's shared content-addressed volume. Verify file hash, executable permission, worker `runsc_path`, snapshot upload/download, and public-egress deny/flow/DNS evidence. An Internet-connected test is not air-gap proof. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
 | P10 | **Fast restore**, if claimed. Measure at least three cold-golden restores and three idle resumes from client request to first successful response; show every duration and the median, sample size, and baseline pod-start method. No borrowed upstream millisecond claim. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
 | P11 | **Better idle capacity**, if claimed. Measure active/suspended actors, pool pod count and requested/observed CPU/memory at equal workload; show at least two distinct agents reusing fewer pods than a one-pod-per-agent baseline. State concurrency and limits. Do not claim a cost saving without a cost model. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
 | P12 | **Optional workload paths.** For each claimed Go/Python/BYO declarative agent or `AgentHarness` backend, provide installed-version support evidence and a separate end-to-end invocation/restore receipt. Mark untested paths `NOT RUN` and unavailable paths `NOT SUPPORTED`. | `{{STATUS}}` | `{{OBSERVED}}` | `E-__` |
