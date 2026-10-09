@@ -25,6 +25,8 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
   [`AKS-EVAL-WORK-AGENT-HANDOFF.md`](AKS-EVAL-WORK-AGENT-HANDOFF.md).
 - **Work-agent 0.0.9 comparison and repeat-installation sequence:**
   [`WORK-AGENT-RUNSC-EQUIVALENCE-HANDOFF.md`](WORK-AGENT-RUNSC-EQUIVALENCE-HANDOFF.md).
+- **Workplace proof request and Git-ticket evidence template:**
+  [`WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md`](WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md).
 - **Question for the Kubernetes and Agent Substrate teams about the public `runsc` download:** [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](RUNSC-AIRGAP-ROADMAP-QUESTION.md)
 - **Install options (separate releases vs kagent subchart):** [`INSTALL-OPTIONS.md`](INSTALL-OPTIONS.md)
 - **Minimal image list (required vs optional):** [`IMAGES.md`](IMAGES.md)
