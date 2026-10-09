@@ -6,8 +6,12 @@ work cluster.
 
 For a guided run you can perform yourself, start with
 [`HANDS-ON-WALKTHROUGH.md`](HANDS-ON-WALKTHROUGH.md). It begins with the CRD
-audit, then runs the session canary and asks you to verify the two actor IDs
-in the Substrate inventory.
+audit, then runs a presenter-paced session canary and asks you to verify the
+two actor IDs in the Substrate inventory. Give
+[`WORK-AGENT-DEMO-HANDOFF.md`](WORK-AGENT-DEMO-HANDOFF.md) to the work agent for
+a rehearsed team demo and four private Markdown evidence files. The memory
+canary covers the core session path; the capability scorecard names separate
+proof needed for tool calls, gVisor assets, state modes, capacity and recovery.
 
 | Demo | Shows | Reproduce with |
 |---|---|---|
@@ -78,8 +82,9 @@ record them; do not restate the home-lab versions as the work result.
 
 Useful options: `--namespace` (default `kagent`), `--ate-namespace` (default
 `ate-system`; use `kagent` when Substrate is installed as a kagent subchart),
-`--endpoint` for an approved endpoint, `--marker`, and `--keep` to leave the
-agent in place. Use the default port-forward for this functional run; keep
+`--endpoint` for an approved endpoint, `--marker`, `--keep` to leave the agent
+in place, and `--presenter` to pause at each visible beat. Use the default
+port-forward for this functional run; keep
 gateway credentials out of shell commands and tickets.
 
 The script applies [`sandboxagent-demo.yaml`](sandboxagent-demo.yaml), waits
@@ -92,7 +97,8 @@ snapshot), `P01` marker stored, `S01` suspended, `P02` marker returned in the
 same session, `S02` suspended again, `P03` the second session does not inherit
 the marker, `P04` the two context IDs differ. Inspect the actor inventory
 separately and record two different actor IDs; context IDs alone do not prove
-that claim.
+that claim. If the Substrate API deployment is absent, the script now fails
+before creating the canary; failed request or suspend checks stop the sequence.
 
 Then fill in [`RECEIPT-TEMPLATE.md`](RECEIPT-TEMPLATE.md) from that directory.
 

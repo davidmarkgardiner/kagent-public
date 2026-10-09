@@ -21,6 +21,7 @@
 | Deliverable | Private Markdown link | What a teammate gets |
 | --- | --- | --- |
 | Full evidence report | [SUBSTRATE-KAGENT-EVIDENCE.md]({{PRIVATE_EVIDENCE_MD_LINK}}) | P01–P13 verdicts, observed values, artifact IDs, limits |
+| Presenter walkthrough | [SUBSTRATE-TEAM-DEMO.md]({{PRIVATE_DEMO_MD_LINK}}) | Rehearsed scenes, exact UI/commands, pauses, actual observations and cleanup |
 | Fresh-cluster redeploy instructions | [SUBSTRATE-REDEPLOY-WALKTHROUGH.md]({{PRIVATE_WALKTHROUGH_MD_LINK}}) | Pinned inputs, ordered GitOps/seed/canary steps, expected results, rollback |
 | Raw receipt index | [Private evidence store]({{PRIVATE_RECEIPT_INDEX_LINK}}) | Timestamped command output, traces, manifests and SHA-256 checksums |
 
@@ -36,7 +37,7 @@
 
 ## Teammate try-it path
 
-Use the [private redeploy walkthrough]({{PRIVATE_WALKTHROUGH_MD_LINK}}) in an approved non-production scope. Its final canary section gives the exact command or UI/API route, expected response, receipt location, and cleanup. Owner: `{{OWNER_OR_TEAM}}`. Required access/prerequisites: `{{SHORT_LIST}}`.
+Use the [presenter walkthrough]({{PRIVATE_DEMO_MD_LINK}}) for the live team demonstration and the [private redeploy walkthrough]({{PRIVATE_WALKTHROUGH_MD_LINK}}) for another approved non-production cluster. Both must give the exact command or UI/API route, expected response, receipt location, and cleanup. Owner: `{{OWNER_OR_TEAM}}`. Required access/prerequisites: `{{SHORT_LIST}}`.
 
 ## Decision and follow-up
 

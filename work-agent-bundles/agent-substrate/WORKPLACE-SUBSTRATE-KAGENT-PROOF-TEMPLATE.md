@@ -8,12 +8,14 @@
 
 ```text
 You reported a full Agent Substrate lifecycle pass on our work AKS cluster.
-Please deliver three completed Markdown files in our approved private project:
+Please deliver four completed Markdown files in our approved private project:
 1. SUBSTRATE-GITLAB-TICKET.md — short, directly pasteable GitLab issue text.
 2. SUBSTRATE-KAGENT-EVIDENCE.md — the completed proof template, with receipt IDs.
 3. SUBSTRATE-REDEPLOY-WALKTHROUGH.md — exact, ordered steps to reproduce on a
    fresh approved AKS cluster, including checks, expected results, and rollback.
-Use the two companion templates next to this file. Link the three files to one
+4. SUBSTRATE-TEAM-DEMO.md — the presenter-paced script from
+   demo/WORK-AGENT-DEMO-HANDOFF.md, with actual and expected observations.
+Use the companion templates and demo handoff next to this file. Link the four files to one
 another and to the private raw receipts. Do not return only a chat summary.
 
 First reproduce H01–H07 in HOME-LAB-SUBSTRATE-PROOF-EXAMPLES.md using the exact
@@ -41,13 +43,13 @@ isolation, model call, state retention, or cost saving from a Ready condition
 or an HTTP 200 agent card. Complete every runbook phase with actual Git paths,
 versions, checksums, commands, expected and observed results, and a rollback.
 If no second-cluster deployment was run, label repeatability DOCUMENTED ONLY.
-Replace every template placeholder in the final three files or mark it NOT RUN
+Replace every template placeholder in the final four files or mark it NOT RUN
 with a reason. Do not return only a chat summary.
 ```
 
 ## 1. Ticket front sheet
 
-**Required private Markdown package:** use the companion [GitLab ticket template](WORKPLACE-SUBSTRATE-GITLAB-TICKET-TEMPLATE.md) and [redeploy template](WORKPLACE-SUBSTRATE-REDEPLOY-WALKTHROUGH-TEMPLATE.md). In the completed private package, use `SUBSTRATE-GITLAB-TICKET.md`, `SUBSTRATE-KAGENT-EVIDENCE.md`, and `SUBSTRATE-REDEPLOY-WALKTHROUGH.md`. Link the completed [ticket]({{PRIVATE_TICKET_MD_LINK}}) and [walkthrough]({{PRIVATE_WALKTHROUGH_MD_LINK}}) here, and link this completed evidence report from both. GitLab ticket links must point to completed private files. Use fenced text blocks for sanitized command excerpts so David can copy and paste them. Keep raw unredacted artifacts in the approved private evidence store.
+**Required private Markdown package:** use the companion [GitLab ticket template](WORKPLACE-SUBSTRATE-GITLAB-TICKET-TEMPLATE.md), [redeploy template](WORKPLACE-SUBSTRATE-REDEPLOY-WALKTHROUGH-TEMPLATE.md), and [team-demo handoff](demo/WORK-AGENT-DEMO-HANDOFF.md). In the completed private package, use `SUBSTRATE-GITLAB-TICKET.md`, `SUBSTRATE-KAGENT-EVIDENCE.md`, `SUBSTRATE-REDEPLOY-WALKTHROUGH.md`, and `SUBSTRATE-TEAM-DEMO.md`. Link the completed [ticket]({{PRIVATE_TICKET_MD_LINK}}), [demo]({{PRIVATE_DEMO_MD_LINK}}), and [redeploy walkthrough]({{PRIVATE_WALKTHROUGH_MD_LINK}}) here, and link this completed evidence report from all three. GitLab ticket links must point to completed private files. Use fenced text blocks for sanitized command excerpts so David can copy and paste them. Keep raw unredacted artifacts in the approved private evidence store.
 
 | Field | Fill in |
 | --- | --- |

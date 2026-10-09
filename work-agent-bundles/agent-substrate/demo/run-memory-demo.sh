@@ -27,13 +27,14 @@
 #   --marker            marker to store (default ORANGE-FALCON-17)
 #   --receipt-dir       output directory (default ./receipts/<timestamp>)
 #   --keep              leave the SandboxAgent in place afterwards
+#   --presenter         pause at each visible lifecycle beat; requires --keep
 #
 # Requires kubectl and jq.
 set -uo pipefail
 
 context=""; namespace="kagent"; agent="demo-sandbox-agent"
 model_config="default-model-config"; ate_namespace="ate-system"
-endpoint=""; token=""; marker="ORANGE-FALCON-17"; receipt_dir=""; keep=0
+endpoint=""; token=""; marker="ORANGE-FALCON-17"; receipt_dir=""; keep=0; presenter=0
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 while (( $# )); do
@@ -48,6 +49,7 @@ while (( $# )); do
     --marker) marker=$2; shift 2 ;;
     --receipt-dir) receipt_dir=$2; shift 2 ;;
     --keep) keep=1; shift ;;
+    --presenter) presenter=1; shift ;;
     -h|--help) sed -n '2,32p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
@@ -57,6 +59,10 @@ done
 command -v kubectl >/dev/null || { echo "kubectl is required" >&2; exit 2; }
 command -v jq >/dev/null || { echo "jq is required" >&2; exit 2; }
 command -v curl >/dev/null || { echo "curl is required" >&2; exit 2; }
+if (( presenter )); then
+  (( keep )) || { echo "--presenter requires --keep so the actor can be inspected after the run" >&2; exit 2; }
+  [[ -t 0 && -w /dev/tty ]] || { echo "--presenter requires an interactive terminal" >&2; exit 2; }
+fi
 
 k() { kubectl --context "$context" "$@"; }
 # Fail before writing a canary if the target API is incomplete or the name is
@@ -84,6 +90,14 @@ record() { # id check witness result
   printf '%-5s %-46s %s\n' "$4" "$2" "$3"
   [[ $4 == PASS ]] || FAILURES=$((FAILURES + 1))
 }
+pause_for_view() {
+  (( presenter )) || return 0
+  printf '\nPRESENTER PAUSE: %s\nPress Enter to continue... ' "$1" > /dev/tty
+  if ! IFS= read -r _ < /dev/tty; then
+    echo "presenter terminal closed; stopping" >&2
+    exit 1
+  fi
+}
 
 echo "==> Context and runtime"
 k version -o json > "$receipt_dir/status/version.json" 2>/dev/null
@@ -95,6 +109,13 @@ k get workerpool -A -o json > "$receipt_dir/status/workerpools.json" 2>/dev/null
 pool=$(jq -r '.items[0] | "\(.metadata.namespace)/\(.metadata.name) replicas=\(.spec.replicas)"' \
   "$receipt_dir/status/workerpools.json" 2>/dev/null)
 record R00 'WorkerPool present' "${pool:-none}" "$([[ -n ${pool:-} && $pool != null* ]] && echo PASS || echo FAIL)"
+(( FAILURES == 0 )) || { echo "no WorkerPool; stopping before canary creation" >&2; exit 1; }
+ATE_API_DEPLOY=$(k -n "$ate_namespace" get deploy -o name 2>/dev/null | grep -m1 'ate-api-server' | sed 's#deployment.apps/##')
+if [[ -z $ATE_API_DEPLOY ]]; then
+  record S00 'Substrate API lifecycle witness available' "ate-api deployment absent in $ate_namespace" FAIL
+  echo "cannot verify suspension; stopping before canary creation" >&2
+  exit 1
+fi
 
 echo "==> Applying the demo SandboxAgent"
 sed -e "s/^  name: demo-sandbox-agent$/  name: $agent/" \
@@ -140,6 +161,8 @@ tmpl=$(jq -r --arg a "$agent" '[.items[] | select(.metadata.name | startswith($a
   "$receipt_dir/status/actortemplates.json" 2>/dev/null)
 record R02 'ActorTemplate Ready with golden snapshot' "${tmpl:-none}" \
   "$([[ ${tmpl:-} == *"phase=Ready"* && ${tmpl:-} == *"snapshot=present"* ]] && echo PASS || echo FAIL)"
+(( FAILURES == 0 )) || { echo "agent/template not ready; stopping before requests" >&2; exit 1; }
+pause_for_view "Show the new SandboxAgent, generated ActorTemplate, golden snapshot and WorkerPool. No session actor has been requested yet."
 
 # A2A endpoint: default to a port-forward straight to the controller.
 if [[ -z $endpoint ]]; then
@@ -189,9 +212,6 @@ suspend_witness() { # label since
   echo "${found:-false}"
 }
 
-ATE_API_DEPLOY=$(k -n "$ate_namespace" get deploy -o name 2>/dev/null | grep -m1 'ate-api-server' | sed 's#deployment.apps/##')
-[[ -n $ATE_API_DEPLOY ]] || echo "warning: ate-api deployment not found in $ate_namespace; suspend witnesses will be skipped" >&2
-
 session_suffix=$(date -u +%Y%m%dT%H%M%SZ)-$$
 session_one="demo-session-01-$session_suffix"; session_two="demo-session-02-$session_suffix"
 printf 'session_one=%s\nsession_two=%s\n' "$session_one" "$session_two" \
@@ -202,22 +222,24 @@ code=$(ask S1R1 "$session_one" "Please remember this marker for later in this se
 ans=$(answer_of "$receipt_dir/responses/S1R1.body")
 record P01 'session one stored the marker' "$code ${ans:-no-answer}" \
   "$([[ $code == 200 && $ans == *"MARKER STORED"* ]] && echo PASS || echo FAIL)"
-if [[ -n $ATE_API_DEPLOY ]]; then
-  w=$(suspend_witness S1R1 "$(cat "$receipt_dir/status/S1R1.started")")
-  record S01 'actor suspended after request one' "SuspendActor status:4 witness=${w:-false}" \
-    "$([[ ${w:-false} == true ]] && echo PASS || echo FAIL)"
-fi
+(( FAILURES == 0 )) || { echo "marker request failed; stopping" >&2; exit 1; }
+w=$(suspend_witness S1R1 "$(cat "$receipt_dir/status/S1R1.started")")
+record S01 'actor suspended after request one' "SuspendActor status:4 witness=${w:-false}" \
+  "$([[ ${w:-false} == true ]] && echo PASS || echo FAIL)"
+(( FAILURES == 0 )) || { echo "suspension was not witnessed; stopping" >&2; exit 1; }
+pause_for_view "Show Session A's answer, actor ID, Suspended state, snapshot receipt and free worker slot. Record the actor ID."
 
 echo "==> Session one, request two: ask for the marker back"
 code=$(ask S1R2 "$session_one" "What marker did I ask you to remember?")
 ans=$(answer_of "$receipt_dir/responses/S1R2.body")
 record P02 'same session returned the marker after suspension' "$code ${ans:-no-answer}" \
   "$([[ $code == 200 && $ans == *"$marker"* ]] && echo PASS || echo FAIL)"
-if [[ -n $ATE_API_DEPLOY ]]; then
-  w=$(suspend_witness S1R2 "$(cat "$receipt_dir/status/S1R2.started")")
-  record S02 'actor suspended again after request two' "SuspendActor status:4 witness=${w:-false}" \
-    "$([[ ${w:-false} == true ]] && echo PASS || echo FAIL)"
-fi
+(( FAILURES == 0 )) || { echo "same-session return failed; stopping" >&2; exit 1; }
+w=$(suspend_witness S1R2 "$(cat "$receipt_dir/status/S1R2.started")")
+record S02 'actor suspended again after request two' "SuspendActor status:4 witness=${w:-false}" \
+  "$([[ ${w:-false} == true ]] && echo PASS || echo FAIL)"
+(( FAILURES == 0 )) || { echo "second suspension was not witnessed; stopping" >&2; exit 1; }
+pause_for_view "Show the same Session A context and actor ID, restored marker and new Suspended state."
 
 echo "==> Session two: a different session must not inherit the marker"
 code=$(ask S2R1 "$session_two" "What marker did I ask you to remember? If you were not given one in this session, reply exactly NO MARKER IN THIS SESSION.")
@@ -229,6 +251,8 @@ ctx1=$(jq -r '.result.contextId // "missing"' "$receipt_dir/responses/S1R2.body"
 ctx2=$(jq -r '.result.contextId // "missing"' "$receipt_dir/responses/S2R1.body" 2>/dev/null)
 record P04 'the two sessions used different context IDs' "$ctx1 vs $ctx2" \
   "$([[ $ctx1 != "$ctx2" && $ctx1 != missing && $ctx2 != missing ]] && echo PASS || echo FAIL)"
+(( FAILURES == 0 )) || { echo "new-session checks failed; stopping" >&2; exit 1; }
+pause_for_view "Show Session B's exact no-marker answer and its distinct actor ID. Capture the two-actor inventory."
 
 k -n "$namespace" get actortemplate -o json > "$receipt_dir/status/actortemplates-after.json" 2>/dev/null
 echo

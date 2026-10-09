@@ -1,4 +1,4 @@
-# Hands-on proof: one agent, two sessions, two actors
+# Team walkthrough: one agent, two sessions, two actors
 
 This is a canary for the pinned **Substrate 0.0.9 + kagent 0.10.x
 `SandboxAgent`** deployment. It creates one synthetic agent, sends two requests
@@ -11,6 +11,13 @@ uses a `SandboxAgent` and shows its actor inventory under **View → Substrate**
 The [concept guide](https://kagent.dev/docs/kagent/0.x/concepts/agent-substrate/)
 describes the per-session actor and snapshot/restore lifecycle. Follow the
 installed version's actual API if it differs from this pinned deployment.
+
+**What the audience will see:** a declarative agent become Ready, its generated
+template and golden snapshot, a first actor answer and suspend, the same actor
+answer after restoration, then a second actor with separate session history.
+This is the core live demo. The [capability scorecard](#5-capability-scorecard)
+lists the extra features that require their own receipts; one memory exchange
+does not verify every advertised feature or every kagent tool.
 
 ## 1. Name the target and check the installation
 
@@ -44,7 +51,7 @@ Check the approved model route and capacity with the platform owner before
 the canary. The sequence is serial, so one free declarative worker can be
 enough; a busy or harness-occupied pool may need more capacity.
 
-## 2. Create the synthetic agent and run the session sequence
+## 2. Present the synthetic agent and session sequence
 
 The script applies [`sandboxagent-demo.yaml`](sandboxagent-demo.yaml), waits for
 `Ready` and a generated `ActorTemplate` with a golden snapshot, then sends:
@@ -57,7 +64,10 @@ The script applies [`sandboxagent-demo.yaml`](sandboxagent-demo.yaml), waits for
 
 Use a unique agent name and synthetic marker. `--keep` leaves this canary in
 place long enough to inspect it in the UI; the script otherwise deletes it.
-It now refuses to replace an existing agent of the same name.
+It refuses to replace an existing agent of the same name. Before running,
+open the approved kagent UI in a second window, select **View → Substrate**,
+and put the terminal beside it. The `--presenter` option pauses at four
+observable beats. It requires an interactive terminal and `--keep`.
 
 ```sh
 cd work-agent-bundles/agent-substrate/demo
@@ -68,8 +78,20 @@ cd work-agent-bundles/agent-substrate/demo
   --model-config '{{APPROVED_MODELCONFIG}}' \
   --agent 'substrate-memory-canary-{{UNIQUE_SUFFIX}}' \
   --marker 'SYNTHETIC-{{UNIQUE_MARKER}}' \
-  --keep
+  --keep --presenter
 ```
+
+| Pause | Say and show | Write down before pressing Enter |
+| --- | --- | --- |
+| Agent Ready | “The agent definition has reconciled; here is its generated template, golden snapshot and finite WorkerPool.” | `SandboxAgent`/template names, Ready condition, snapshot presence, pool count. |
+| First answer and suspension | “I asked this session to remember a harmless marker. Here is its real response; the actor has now suspended and freed its worker.” | Session A context ID, actor ID, `SuspendActor` success, snapshot receipt, worker slot. |
+| Same-session return | “I am returning to the **same** session. The marker came back and the **same logical actor** suspended again.” | Same context and actor IDs, exact marker, second `SuspendActor` success. |
+| New session | “This is a **different** session and actor. It has no marker from the first one.” | Session B context and actor IDs, exact `NO MARKER IN THIS SESSION`, two distinct IDs. |
+
+The request lines in the terminal are the cue; the raw response and lifecycle
+receipt are the proof. The script issues the requests after you press Enter.
+If a check fails, stop the presentation and show the failure as observed.
+Do not narrate an expected state as if it happened.
 
 Do not put gateway credentials on the command line. The default local
 port-forward goes directly to the kagent controller for this functional
@@ -82,6 +104,8 @@ ActorTemplate status, and lifecycle log samples. `SUBSTRATE_DEMO: PASS` means
 the automated checks passed. A model answer alone is insufficient: the two
 `SuspendActor` witnesses must also be `PASS`. The current script proves
 different context IDs; complete step 3 to prove distinct actor IDs.
+If you want an unattended rehearsal instead, omit `--presenter` and `--keep`;
+the same checks run and the canary is removed automatically.
 
 ## 3. See the two actors yourself
 
@@ -134,8 +158,30 @@ clears. Confirm the canary is gone. Do not delete the WorkerPool, template
 CRDs, Substrate components, or any pre-existing agent as part of this test.
 
 The result establishes a working **declarative SandboxAgent session path**.
+The marker is a session-continuity demonstration; by itself it does not show
+which bytes were retained in process memory versus a durable session store.
 It does not measure density, latency, costs, tenant security, snapshot erasure,
 or the separate `AgentHarness` path. For redeployment on another cluster, use
 the pinned import/install instructions in [`../aks-hardened/README.md`](../aks-hardened/README.md)
 and rerun both the install audit and this canary there; never carry over a
 pass from a different cluster.
+
+## 5. Capability scorecard
+
+Show these as separate stations **only when the work agent has rehearsed them
+on the exact installed version and attached a passing receipt**. The [full
+workplace evidence template](../WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md)
+has the test contract (P01–P13), and the [work-agent demo handoff](WORK-AGENT-DEMO-HANDOFF.md)
+asks for a presenter copy and a GitLab-ready result. `NOT RUN` is an honest
+outcome for a capability outside this demo.
+
+| Capability | Audience-friendly demonstration | Evidence required |
+| --- | --- | --- |
+| Agent creation and kagent integration | Agent Ready → generated template/golden → A2A answer. | P01–P03: matching CR, template, request and actor IDs; real model response. |
+| Suspension, restoration and session separation | The four pauses above. | P04, P07: status transitions, snapshots, same/different actor IDs and pool slot evidence. |
+| Actual gVisor runtime and seeded `runsc` | Show the selected worker and verified runtime asset, including ATELET shared-volume path. | P08–P09: runtime mapping, file hash, executable mount/path, fresh-node seed and private network evidence if air-gap is claimed. |
+| Tool use through kagent | Ask the sandbox agent to call one approved, harmless read-only tool. | P03: tool declaration, routed call ID, tool response and agent answer. The marker agent has no tool and cannot prove this row. |
+| agentgateway front door, if deployed | Repeat an approved request through the configured listener and show its policy decision and routed actor. | Separate gateway receipt; this script's default controller port-forward bypasses that path. The [gateway demo](../../kagent-agentgateway-tenant-isolation/) has its own test matrix. |
+| Full versus Data state | Use separate approved process-state and `durableDir` fixtures. | P05–P06: exact before/after assertions and checkpoint mode; the marker answer alone is insufficient. |
+| Startup and worker efficiency | Compare observed restore times and finite-pool reuse with a stated baseline. | P10–P11: repeated timings, worker counts and workload resources; no borrowed “30x” claim. |
+| Other agent forms and recovery | Demonstrate each installed and approved runtime or harness separately; rehearse a worker recovery on disposable scope. | P12–P13: installed-version support, end-to-end run and recovery receipts. |
