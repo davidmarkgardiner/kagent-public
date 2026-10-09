@@ -8,7 +8,7 @@ The click paths below describe modern SharePoint Online. Your organisation's set
 
 For your first session, follow sections 2, 3 and 4 with the BYOA video only. You should finish with one published page that a selected colleague can open and play. Check that an excluded colleague cannot open the page or its direct video URL.
 
-Then use the same layout for the other four chapters. Section 6 builds the index. Section 7 supplies the text to paste. Section 8 shows how other authors can add stories. Finish with the checks in section 9 before sharing the collection link.
+Then use the same layout for the other chapters. Section 6 builds the index. Section 7 supplies the text to paste. Section 8 shows how other authors can add stories. Finish with the checks in section 9 before sharing the collection link. The [triage and SDLC upload pack](triage-sdlc-upload-pack.md) adds two films and matching post covers; review their exported files before publishing them.
 
 ## 1. The result we are building
 
@@ -21,6 +21,8 @@ DICE journey — index page
   ├─ 03 · Grafana MCP
   ├─ 04 · GitLab MCP
   ├─ 05 · Kubernetes MCP
+  ├─ 06 · Incident triage
+  ├─ 07 · GitLab SDLC workflow
   └─ Contribute a chapter
 
 Each chapter: short introduction → playable video → takeaways
@@ -29,7 +31,7 @@ Each chapter: short introduction → playable video → takeaways
 
 The story is: bring an agent → establish its identity and boundaries → connect observability → preserve findings and proposed changes → inspect the cluster. Readers can follow that path or jump directly to a tool chapter. These are editorial chapter numbers, not deployment steps.
 
-Start with these five finished exports. Triage, the wider SDLC workflow, vector knowledge base and PostgreSQL can join later when their final MP4s are available. Do not add a dead video link or describe an unexported chapter as ready.
+The first five exports were delivered by email. The triage and SDLC exports are supplied separately in the upload pack for final-cut review. Vector knowledge base and PostgreSQL can join later when their final MP4s are available. Do not add a dead video link or describe an unexported chapter as ready.
 
 | Chapter | MP4 attachment | Approx. length | File size, decimal MB |
 |---|---|---:|---:|
@@ -38,6 +40,8 @@ Start with these five finished exports. Triage, the wider SDLC workflow, vector 
 | 03 · Grafana MCP | `dice-journey-grafana-mcp-v1.mp4` | 1:50 | 6.7 |
 | 04 · GitLab MCP | `dice-journey-gitlab-mcp-v1.mp4` | 1:57 | 6.9 |
 | 05 · Kubernetes MCP | `dice-journey-kubernetes-mcp-v1.mp4` | 2:00 | 7.0 |
+| 06 · Incident triage | `dice-journey-triage-v6.mp4` | 2:00 | 8.1 |
+| 07 · GitLab SDLC workflow | `dice-journey-sdlc-gitlab-v1.mp4` | 1:57 | 7.3 |
 
 Lengths are rounded up from the actual files. The films are presenter-free, with narration and presentation visuals. Email transfer is separate from publication: nothing becomes a SharePoint page simply because it was emailed.
 
@@ -72,7 +76,7 @@ Use your organisation's approved classification and content-sharing rules. If ex
 
 ## 3. Save and upload the videos
 
-1. Open each chapter delivery email on your work device.
+1. Open each chapter delivery email on your work device. For chapters 06–07, obtain the MP4s from the upload pack using an approved transfer route; a GitHub draft release requires an authorised signed-in account and is not a public download link.
 2. Save the MP4 attachments and this guide into an approved local folder. Keep the MP4 filenames unchanged so the table above stays accurate.
 3. Open the restricted SharePoint site supplied by the owner.
 4. Go to **Settings → Site contents → New → Document library**. Depending on the site, **New → Document library** may appear directly. Name it **Journey Videos**.
@@ -87,9 +91,9 @@ Optional library columns, added using **+ Add column**:
 
 | Column | Type | Purpose |
 |---|---|---|
-| Chapter order | Number | 1, 2, 3, 4, 5; consistent journey order |
+| Chapter order | Number | 1–7; consistent journey order |
 | Story | Choice | Agent onboarding; Identity and access; Investigation; Delivery |
-| Topic | Choice | BYOA; Entra; agentgateway; Grafana; GitLab; Kubernetes |
+| Topic | Choice | BYOA; Entra; agentgateway; Grafana; GitLab; Kubernetes; Triage; SDLC |
 | Chapter owner | Person | Who maintains the chapter |
 | Summary | Multiple lines of text | One-sentence description from section 7 |
 | Content status | Choice | Draft; Ready for review; Published |
@@ -131,7 +135,7 @@ Recommended layout:
 - A quiet light-grey navigation section: **Previous chapter · All chapters · Next chapter**.
 - The same headings, thumbnail treatment and spacing on every page.
 
-Do not cram five players into one long home page. Use the index for browsing and chapter pages for watching. Give links descriptive titles instead of “click here”. For the last chapter, replace Next with **Suggest the next story**, linking to the contribution page.
+Do not cram all players into one long home page. Use the index for browsing and chapter pages for watching. Give links descriptive titles instead of “click here”. For the last chapter, replace Next with **Suggest the next story**, linking to the contribution page.
 
 Add text summaries and a reviewed transcript or captions when available. Do not label automatically generated captions as reviewed without checking technical names. A copied script can be a useful text alternative, but compare it with the final narration before publishing it as a verbatim transcript.
 
@@ -155,7 +159,7 @@ handoff. Share a question, suggest an improvement, or contribute the next
 story using the same chapter format.
 
 Start with Bring Your Own Agent, then explore identity, Grafana, GitLab
-and Kubernetes.
+and Kubernetes. Continue into incident triage and the GitLab SDLC workflow.
 ```
 
 Suggested tile subtitles:
@@ -167,11 +171,13 @@ Suggested tile subtitles:
 | 03 · Grafana MCP | Turn an alert into focused evidence · 1:50 |
 | 04 · GitLab MCP | Keep findings and proposed changes reviewable · 1:57 |
 | 05 · Kubernetes MCP | Inspect the cluster; keep changes separate · 2:00 |
+| 06 · Incident triage | From signal to an informed SRE · 2:00 |
+| 07 · GitLab SDLC workflow | From issue to a verified change for review · 1:57 |
 | Contribute a chapter | Add the next problem, capability or lesson |
 
 Once chapter pages exist, edit each page's Quick links and insert the actual published page URLs. Use **Copy link → People with existing access** where offered. Never paste localhost, personal file paths or YouTube links into this collection. Keep the index linked in the site's navigation; only make it the site home page if the owner agrees.
 
-## 7. Copy-ready text for the five chapter pages
+## 7. Copy-ready text for the chapter pages
 
 Paste titles into the page title area. Put introductions above the player and the takeaways and question below it. The navigation lines describe the links to create; they are not already functioning links.
 
@@ -289,11 +295,63 @@ Which namespace-scoped read would help your team next, and what must remain outs
 
 **Story connection**
 
-Kubernetes adds current state to Grafana's telemetry and GitLab's durable record. Together, those facts support a human decision. Suggest the next chapter to extend the story.
+Kubernetes adds current state to Grafana's telemetry and GitLab's durable record. Together, those facts support a human decision. Next, connect those capabilities in the incident triage story.
 
-**Navigation:** Previous → 04 · GitLab MCP; All chapters → DICE journey; Next → Contribute a chapter.
+**Navigation:** Previous → 04 · GitLab MCP; All chapters → DICE journey; Next → 06 · Incident triage.
 
 **Suggested metadata:** Story = Investigation; Topic = Kubernetes; related topic = Scoped tools.
+
+### 06 · Incident triage
+
+**Introduction**
+
+Turn an operational warning into an investigation an SRE can act on. Alloy collects the signals, Vector prepares the evidence, Kafka carries it and Argo delivers the incident to an agent. Read-only MCP investigation supplies findings; Argo adds them to a GitLab ticket for human review.
+
+**What this chapter explains**
+
+- The event pipeline delivers incident context, not authority to change the cluster.
+- The agent returns evidence, diagnosis, confidence and recommended next steps; Argo writes the ticket through GitLab REST.
+- Notification points the SRE to the investigation. The SRE decides whether and how to remediate.
+
+**Join the discussion**
+
+What evidence would make an incident ticket useful before you pick it up?
+
+**Story connection**
+
+The tool chapters establish the boundaries. Triage combines signals, scoped investigation and a reviewable record. Next in this collection, see how scoped tools support software delivery. The film also points ahead to the planned PostgreSQL chapter; that chapter is not part of this upload pack.
+
+**Navigation:** Previous → 05 · Kubernetes MCP; All chapters → DICE journey; Next → 07 · GitLab SDLC workflow.
+
+**Suggested metadata:** Story = Investigation; Topic = Triage; related topics = Alloy, Vector, Kafka, Argo, MCP, GitLab.
+
+**Cover:** [From signal to SRE](dice-triage-cover.jpg). Alt text: Alert becomes an investigated ticket, then a human decision.
+
+### 07 · GitLab SDLC workflow
+
+**Introduction**
+
+Move from a clear issue to a verified change that a person can review. A coordinating agent delegates bounded work to specialists. GitLab MCP provides scoped repository and delivery tools; pipeline feedback drives repair before the change is handed over as a draft merge request.
+
+**What this chapter explains**
+
+- Acceptance criteria define the work before specialists make changes.
+- GitLab MCP access is scoped to the relevant project, branch and operations.
+- Checks must pass for the current commit. Human review still owns the decision to merge; this is not deployment authority.
+
+**Join the discussion**
+
+What should an agent-prepared merge request include before you would review it?
+
+**Story connection**
+
+Triage makes the investigation reviewable; SDLC makes the proposed change reviewable. Both retain a human decision at the handoff. The film points ahead to the vector knowledge-base story, which is not yet included as an exported chapter here.
+
+**Navigation:** Previous → 06 · Incident triage; All chapters → DICE journey; Next → Contribute a chapter.
+
+**Suggested metadata:** Story = Delivery; Topic = SDLC; related topics = GitLab, MCP, A2A, Human review.
+
+**Cover:** [From issue to review](dice-sdlc-cover.jpg). Alt text: Issue progresses through a verified code change to a merge request for human review.
 
 Editorial note: these pages explain the chapter content. Do not add claims about measured savings, completed workplace deployments, automatic remediation or live enforcement that are not supported by the actual evidence. Tool names and vendors may be mentioned; employer identities should not be included.
 
@@ -343,7 +401,7 @@ ticket/customer data.
 
 ## 9. Verify before sending the collection link
 
-- [ ] An intended reader opens the published index and all five chapter pages.
+- [ ] An intended reader opens the published index and every published chapter page.
 - [ ] That reader plays each MP4 and can hear the narration.
 - [ ] An excluded colleague, using a genuinely different account, cannot open the index, chapter page or **direct MP4 URL**. A private browser window using the same account is not an excluded-user test.
 - [ ] The owner checks site, page and library permissions plus existing file sharing links. A restrictive new link does not remove earlier access. [Microsoft: manage access](https://support.microsoft.com/en-us/onedrive/sharepoint/manage-sharing-and-permissions-in-onedrive-and-sharepoint)
@@ -376,9 +434,10 @@ Replace the bracketed link with the **published index URL** after the access che
 ```text
 The DICE journey is now available to our selected group: [DICE journey link]
 
-Five short chapters connect agent onboarding, identity and scoped access
-to Grafana, GitLab and Kubernetes. Start at the beginning or jump straight
-to the chapter relevant to your work.
+Seven short chapters connect agent onboarding, identity and scoped access
+to Grafana, GitLab and Kubernetes, then follow incident triage and the
+GitLab SDLC workflow. Start at the beginning or jump straight to the
+chapter relevant to your work.
 
 Each page includes a video, key takeaways and a question for discussion.
 Please add your questions and suggest the next problem or capability we

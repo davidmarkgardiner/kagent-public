@@ -1,8 +1,8 @@
 # DICE video journey
 
-Status: story scaffold for review
+Status: original series scaffold, with a separate seven-chapter upload collection
 
-Prepared: 8 October 2026
+Prepared: 8 October 2026 · Upload collection extended: 9 October 2026
 
 ## Audience promise
 
@@ -13,10 +13,10 @@ The series is aimed at a mixed internal engineering audience. Each module must m
 ## Production contract
 
 - One 1–2 minute MP4 per module, plus one combined journey video.
-- David's approved voice provides narration.
+- Presenter-free DICE chapters use the approved Daniel narration default; the original David-voice plan was superseded after the triage audition.
 - No talking head, avatar or static presenter image in this edition.
 - Use diagrams, readable evidence cards and short demonstrations.
-- Palette: red `#C8102E`, charcoal `#161616`, grey `#E5E7EB` and white `#FFFFFF`.
+- Approved light palette: warm paper `#F4F3EE`, white `#FFFFFF`, ink `#1C1C1C`, grey `#5A5D5C`, sand `#CCCABC` and red `#E60000`.
 - Use DICE and generic platform language in audience-facing copy. Named components such as agentgateway, KMCP, Grafana, GitLab, PostgreSQL, Entra and Agent Substrate are allowed where they explain the implementation.
 - Label evidence as `Recorded demonstration`, `Implementation prepared` or `Integration to verify`.
 - Never present a lab fixture, schema check or design package as a live workplace result.
@@ -74,10 +74,12 @@ The first worked example is [Evidence-first triage](01-triage-storyboard.md).
 
 Use the [SharePoint publishing guide](sharepoint-publishing-guide.md) to build
 a restricted video library, a journey index and linked chapter pages. The guide
-includes copy-ready text for the five finished onboarding, identity and MCP
-chapters, plus instructions for other authors to add stories.
+includes copy-ready text for the five onboarding, identity and MCP chapters,
+plus incident triage and the GitLab SDLC workflow, and instructions for other
+authors to add stories. The [triage and SDLC upload pack](triage-sdlc-upload-pack.md)
+contains matching Higgsfield cover artwork and final-cut review instructions.
 
-The five-chapter collection has its own viewing order. Its chapter numbers do
+The seven-chapter collection has its own viewing order. Its chapter numbers do
 not replace the longer series plan above. MP4s are transferred separately and
 are not stored in this repository.
 

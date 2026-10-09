@@ -1,0 +1,94 @@
+{
+  "prepared_on": "2026-10-09",
+  "scope": "Incident triage and GitLab SDLC workflow exports plus post artwork",
+  "status": "technically verified exports; final sound-on owner review pending",
+  "release": {
+    "tag": "dice-journey-upload-pack-2026-10-09",
+    "visibility": "draft; authorised signed-in repository access only",
+    "url": "https://github.com/davidmarkgardiner/kagent-public/releases/tag/untagged-8b45c28bce2027bfbf08"
+  },
+  "narration": "Existing Daniel narration reused unchanged; no avatar or new voice generation",
+  "render": {
+    "tool": "HyperFrames",
+    "version": "0.8.143",
+    "previous_version": "0.8.142",
+    "quality": "delivery",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "audio_codec": "aac",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "faststart": true
+  },
+  "videos": [
+    {
+      "chapter": 6,
+      "title": "Incident triage",
+      "filename": "dice-journey-triage-v6.mp4",
+      "duration_seconds": 119.4,
+      "size_bytes": 8052441,
+      "sha256": "3aa614c5941477c4aae5ea2d8774c54a8c5e44b414b01e81fe06a2a4fa882fb2",
+      "narration_sha256": "9266c076d8f29850347bc9ad59a15476a00797e7e7723c21885957afa4365634",
+      "root_html_sha256": "c19bae63cc187a4bfb30fe3eb85577d13a66c9b190e17201a079a12b8474b8ba",
+      "composition_tree_sha256": "50d94d67395597e6b895accfb2fdb4ae85da54a49647557083a7eb93f04e3b2a",
+      "full_video_and_audio_decode": "passed",
+      "silence_intervals_over_2_seconds": 0,
+      "mean_volume_db": -24.2,
+      "max_volume_db": -5.1,
+      "composition_checks": "lint, runtime, layout, motion and contrast passed without errors or warnings",
+      "inspected_export_frames": "every major beat and near the end",
+      "final_export_transcription": "not performed",
+      "final_sound_on_owner_review": "pending"
+    },
+    {
+      "chapter": 7,
+      "title": "GitLab SDLC workflow",
+      "filename": "dice-journey-sdlc-gitlab-v1.mp4",
+      "duration_seconds": 116.1,
+      "size_bytes": 7294636,
+      "sha256": "250ae7f2eb5682611355c7f719a33170df3103f208ee6c3c2ff0268b7ea61feb",
+      "narration_sha256": "6277c098383a48294db89025309b842eddd3a08baeba70f16e1c0f46c21a8646",
+      "root_html_sha256": "4703136319b31cc3644d9555c91abda1826b3c337ea75c2f0a74378e2d5a5fff",
+      "composition_tree_sha256": "3e1202963b854f3a7b00abea5d76f20897b615c913d938ebb113358e69300964",
+      "full_video_and_audio_decode": "passed",
+      "silence_intervals_over_2_seconds": 0,
+      "mean_volume_db": -24.2,
+      "max_volume_db": -5.2,
+      "composition_checks": "lint, runtime, layout, motion and contrast passed without errors or warnings",
+      "inspected_export_frames": "every major beat and near the end",
+      "final_export_transcription": "not performed",
+      "final_sound_on_owner_review": "pending"
+    }
+  ],
+  "artwork": {
+    "provider": "Higgsfield",
+    "model": "GPT Image 2",
+    "width": 2688,
+    "height": 1520,
+    "purpose": "Illustrative post covers, not implementation evidence",
+    "files": [
+      {
+        "filename": "dice-triage-cover.jpg",
+        "size_bytes": 478423,
+        "sha256": "74a4e24208a2459e93f7503d62898c722953f5d0fc92a78a9deaf11802b38eb9"
+      },
+      {
+        "filename": "dice-sdlc-cover.jpg",
+        "size_bytes": 518208,
+        "sha256": "8ac31468049f5c4dee7d2963c3b0e4e1017129026d994391cb691b565f8180e0"
+      }
+    ],
+    "original_pngs": "included as draft release assets",
+    "visual_and_privacy_review": "passed; titles legible, no employer branding or identifying data"
+  },
+  "source_revision": "Local compositions, not a Git checkout; source snapshot hashes recorded above",
+  "composition_tree_hash_method": "SHA-256 of newline-joined sorted entries: relative-path + space + file-SHA-256; covers index.html and seven compositions/*.html files",
+  "github_asset_integrity": "Uploaded MP4 and JPG release asset SHA-256 digests match local files",
+  "workplace_transfer": "not performed for these two exports",
+  "sharepoint_publication": "not performed",
+  "youtube_publication": "not performed",
+  "captions": "reviewed export captions not supplied"
+}
