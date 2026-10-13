@@ -111,6 +111,39 @@ credentials, and raw manifests in the approved private evidence store.
 The team demo remains BLOCKED until the fresh three-scene A2A canary passes.
 ```
 
+## Next handoff: recover the running controller source
+
+The second sanitized report confirmed the A/B divergence but has no
+status-write timestamp, private source revision, diff, or regression test.
+Do not repeat the same A/B summary as a root-cause finding. The next useful
+result is source provenance for the running controller image.
+
+### Copy this request to the work agent
+
+```text
+Please trace the running private controller image digest from the failed run
+to its build pipeline and exact source revision. Check the approved GitOps
+image reference, registry image metadata, CI build record, and source
+checkout or archive. Return access-controlled links and a sanitized mapping
+of image digest -> build job -> source repository/revision. If any link is
+unavailable, identify the owner or build record needed to recover it. Do not
+send private source, registry names, raw logs, or credentials by email or
+commit them to the public repository.
+
+Once you have the matching source, show the specific controller code paths
+that generate the golden actor name, issue CreateActor, write
+status.GoldenActorID, handle status-update failures and retries, and issue
+ResumeActor. Identify the exact writer of B or state the remaining missing
+evidence. Add a failing regression test that reproduces CreateActor(A)
+succeeding while GoldenActorID(B) is saved before proposing a fix.
+
+If the source revision cannot be recovered, report SOURCE PROVENANCE BLOCKED
+with the attempted lookup and the smallest next action for its owner. Mark
+the controller root cause and proposed fix UNVERIFIED. Do not build or deploy
+a guessed patch. Keep the team demo BLOCKED until a fresh three-scene A2A
+canary on the reviewed, digest-pinned build passes.
+```
+
 Public reference for the name/UID distinction:
 [`ateapi.proto` at v0.0.9](https://github.com/kagent-dev/substrate/blob/v0.0.9/pkg/proto/ateapipb/ateapi.proto).
 The work agent must verify the actual private build before changing it.
