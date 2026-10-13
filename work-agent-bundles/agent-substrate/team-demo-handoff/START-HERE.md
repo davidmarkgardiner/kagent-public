@@ -19,7 +19,10 @@ files are copied.
    before any further rehearsal. If the work agent confirms different actor
    names in `CreateActor` and `ResumeActor`, send the focused
    [`GOLDEN-ACTOR-ID-MISMATCH-WORK-AGENT-PROMPT.md`](GOLDEN-ACTOR-ID-MISMATCH-WORK-AGENT-PROMPT.md)
-   for the next exchange.
+   for the next exchange. If the reported ate-controller digest matches the
+   public v0.0.9 image, use the focused
+   [`GOLDEN-ACTOR-PUBLIC-IMAGE-STATUS-WRITER-PROMPT.md`](GOLDEN-ACTOR-PUBLIC-IMAGE-STATUS-WRITER-PROMPT.md)
+   to trace the A/B status write.
 3. Run [`audit-substrate-install.sh`](audit-substrate-install.sh) from this
    folder before creating a canary. If required CRDs or components are absent,
    stop and record the failure.
@@ -43,7 +46,7 @@ inputs for the work agent's version-matched redeploy document.
 | Purpose | Files |
 | --- | --- |
 | Presenter and work-agent instructions | `HANDS-ON-WALKTHROUGH.md`, `WORK-AGENT-DEMO-HANDOFF.md` |
-| Golden actor failure triage and follow-up | `GOLDEN-ACTOR-NOT-FOUND-NEXT-STEP.md`, `GOLDEN-ACTOR-ID-MISMATCH-WORK-AGENT-PROMPT.md` |
+| Golden actor failure triage and follow-up | `GOLDEN-ACTOR-NOT-FOUND-NEXT-STEP.md`, `GOLDEN-ACTOR-ID-MISMATCH-WORK-AGENT-PROMPT.md`, `GOLDEN-ACTOR-PUBLIC-IMAGE-STATUS-WRITER-PROMPT.md` |
 | Runnable canary | `audit-substrate-install.sh`, `run-memory-demo.sh`, `sandboxagent-demo.yaml` |
 | Extra read-only installation check | `verify-aks-substrate.sh` |
 | Private Markdown output templates | `RECEIPT-TEMPLATE.md`, `WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md`, `WORKPLACE-SUBSTRATE-GITLAB-TICKET-TEMPLATE.md`, `WORKPLACE-SUBSTRATE-REDEPLOY-WALKTHROUGH-TEMPLATE.md` |
