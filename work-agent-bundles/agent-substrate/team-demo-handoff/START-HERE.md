@@ -22,7 +22,9 @@ files are copied.
    for the next exchange. If the reported ate-controller digest matches the
    public v0.0.9 image, use the focused
    [`GOLDEN-ACTOR-PUBLIC-IMAGE-STATUS-WRITER-PROMPT.md`](GOLDEN-ACTOR-PUBLIC-IMAGE-STATUS-WRITER-PROMPT.md)
-   to trace the A/B status write.
+   to trace the A/B status write. For a home-versus-work AKS comparison before
+   another fix attempt, use
+   [`HOME-VS-WORK-AKS-GOLDEN-CANARY-CROSSCHECK.md`](HOME-VS-WORK-AKS-GOLDEN-CANARY-CROSSCHECK.md).
 3. Run [`audit-substrate-install.sh`](audit-substrate-install.sh) from this
    folder before creating a canary. If required CRDs or components are absent,
    stop and record the failure.
@@ -47,6 +49,7 @@ inputs for the work agent's version-matched redeploy document.
 | --- | --- |
 | Presenter and work-agent instructions | `HANDS-ON-WALKTHROUGH.md`, `WORK-AGENT-DEMO-HANDOFF.md` |
 | Golden actor failure triage and follow-up | `GOLDEN-ACTOR-NOT-FOUND-NEXT-STEP.md`, `GOLDEN-ACTOR-ID-MISMATCH-WORK-AGENT-PROMPT.md`, `GOLDEN-ACTOR-PUBLIC-IMAGE-STATUS-WRITER-PROMPT.md` |
+| AKS home/work comparison | `HOME-VS-WORK-AKS-GOLDEN-CANARY-CROSSCHECK.md` |
 | Runnable canary | `audit-substrate-install.sh`, `run-memory-demo.sh`, `sandboxagent-demo.yaml` |
 | Extra read-only installation check | `verify-aks-substrate.sh` |
 | Private Markdown output templates | `RECEIPT-TEMPLATE.md`, `WORKPLACE-SUBSTRATE-KAGENT-PROOF-TEMPLATE.md`, `WORKPLACE-SUBSTRATE-GITLAB-TICKET-TEMPLATE.md`, `WORKPLACE-SUBSTRATE-REDEPLOY-WALKTHROUGH-TEMPLATE.md` |
