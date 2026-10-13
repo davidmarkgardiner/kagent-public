@@ -147,3 +147,40 @@ canary on the reviewed, digest-pinned build passes.
 Public reference for the name/UID distinction:
 [`ateapi.proto` at v0.0.9](https://github.com/kagent-dev/substrate/blob/v0.0.9/pkg/proto/ateapipb/ateapi.proto).
 The work agent must verify the actual private build before changing it.
+
+## Follow-up after the controller digest was supplied
+
+The supplied `sha256:878a55478c1727e048d38154158aae41aa701149c6660f78696fe682c7495146`
+matches the public `ghcr.io/kagent-dev/kagent/controller:0.10.1` OCI index.
+The public `ghcr.io/kagent-dev/substrate/atecontroller:v0.0.9` OCI index is
+`sha256:dc29e79987fe4177b92c8b30a4fa4f36f3cf1a80937b03a7a8cd3411f98693e5`.
+These are different components. The public golden ActorTemplate phase code is
+in **Substrate ate-controller**. An internal mirror can retain the public
+digest, so the supplied digest does not identify the private ate-controller
+build or prove its source revision.
+
+### Copy this correction to the work agent
+
+```text
+The supplied sha256:878a5547...c7495146 resolves to the public kagent
+controller 0.10.1 image index. Please verify which component owns the
+golden ActorTemplate reconciliation in the installed build. For the failed
+run, identify the actual running Substrate ate-controller container image
+reference and imageID digest, its CPU architecture, and whether each digest
+is an OCI index or a platform-specific manifest. Keep internal registry and
+cluster names in the approved private evidence store; send sanitized
+component-to-digest and receipt links here.
+
+Map the running ate-controller digest to its build job and exact source
+revision. Compare that source's PhaseInitial, GoldenActorID status write,
+retry/status-conflict handling, and PhaseResumeGoldenActor with public
+Substrate v0.0.9. If the running digest is an unmodified public image, say
+so with registry and source evidence. If it is private, recover its matching
+source. Do not treat the kagent controller digest as provenance for
+ate-controller.
+
+Then identify the write that saved B, or report the precise remaining gap.
+Do not implement an idempotency fix or rebuild an image for the wrong
+component. Keep the demo BLOCKED until a reviewed fix and fresh three-scene
+A2A canary pass.
+```
