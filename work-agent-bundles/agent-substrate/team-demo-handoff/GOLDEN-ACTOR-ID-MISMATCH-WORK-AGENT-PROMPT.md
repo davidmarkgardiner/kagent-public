@@ -69,6 +69,48 @@ explicitly. Keep all private artifacts in the approved private evidence
 location and return sanitized links here for our next review.
 ```
 
+## Follow-up after the sanitized A/B handoff
+
+The work agent has now reported `CreateActor(A)` succeeded, status held B,
+and `ResumeActor(B)` returned `NotFound`. The next exchange needs to identify
+the writer of B before treating the proposed idempotency change as the fix.
+In [public v0.0.9 controller code](https://github.com/kagent-dev/substrate/blob/v0.0.9/cmd/atecontroller/internal/controllers/actortemplate_controller.go),
+one generated `actorID` is sent to `CreateActor` and written to status; its
+create response is ignored. The private build may differ.
+
+### Copy this follow-up to the work agent
+
+```text
+Please find the exact write that put B into
+ActorTemplate.status.GoldenActorID. For the same ActorTemplate UID, return a
+UTC timeline of every CreateActor attempt and response, every status write
+and resourceVersion, the controller replica and any restart, and the
+ResumeActor(B) request. Identify the source of each row and link its private
+raw receipt. Mark missing fields MISSING; the preserved ATE API log does not
+by itself establish that no second CreateActor happened.
+
+Check whether GetActor(A) and GetActor(B) succeed using an approved read-only
+path on a fresh disposable reproduction. If the original run has no such
+read receipt, say UNKNOWN for that run. Identify any other writer or status
+patch path, including concurrent reconciles, a stale cached object, and a
+status conflict. Show the first confirmed transition from A to B rather
+than inferring it from the final status.
+
+Identify the running private controller image digest and its matching source
+commit or build provenance. Compare its create/status/resume path with the
+public v0.0.9 controller. If matching source is unavailable, mark the root
+cause and proposed controller fix UNVERIFIED and give the smallest way to
+recover that provenance. Do not deploy a guessed patch.
+
+For this reply, send a concise table with timestamp, ActorTemplate UID,
+controller replica, action, actor name/atespace, resourceVersion, result,
+and receipt link. Then state who wrote B, or the precise missing evidence;
+provide the smallest proposed diff and a failing regression test only once
+that write path is established. Keep internal names, endpoints, logs,
+credentials, and raw manifests in the approved private evidence store.
+The team demo remains BLOCKED until the fresh three-scene A2A canary passes.
+```
+
 Public reference for the name/UID distinction:
 [`ateapi.proto` at v0.0.9](https://github.com/kagent-dev/substrate/blob/v0.0.9/pkg/proto/ateapipb/ateapi.proto).
 The work agent must verify the actual private build before changing it.
