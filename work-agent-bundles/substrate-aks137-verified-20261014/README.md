@@ -1,5 +1,8 @@
 # Verified AKS 1.37 Substrate redeployment bundle
 
+For today's image import, start with [`IMAGE-IMPORT.md`](IMAGE-IMPORT.md).
+It lists all 18 public images and the separately transferred fixture.
+
 **Evidence status:** the personal AKS and isolated Kind demonstration clusters
 were deleted after the recorded 14 October run. The receipts below are
 historical captures from before deletion. This handoff update performs local

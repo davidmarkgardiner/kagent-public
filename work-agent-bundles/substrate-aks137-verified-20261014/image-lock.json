@@ -617,5 +617,287 @@
         "digest": "sha256:2142d777d166e724ca5a7c382fbd27cda3e7fa5cc8c104c034984b92691c513b"
       }
     ]
+  },
+  {
+    "reference": "amazon/aws-cli:2.17.0",
+    "digest": "sha256:643507c10ada7964ca6157b3d799f030b90577643da9955d319a77399ed80d73",
+    "pinned": "amazon/aws-cli:2.17.0@sha256:643507c10ada7964ca6157b3d799f030b90577643da9955d319a77399ed80d73",
+    "aliases": [
+      "amazon/aws-cli:2.17.0@sha256:643507c10ada7964ca6157b3d799f030b90577643da9955d319a77399ed80d73"
+    ],
+    "platforms": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "digest": "sha256:7b7edf789765c22d75e61ad6f307c06950e15357b79ea1749104641ce3a11fec"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "digest": "sha256:5c849527880984df073af10d635a99ae7f6f21f84bcf5f2581ab8c2d759d7e4a"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/agentgateway:50999825cb55",
+    "digest": "sha256:f1907a50b2e74a071da53fcd2008d585b6a63d31b4e1ba3ee46cf22b342cf04b",
+    "pinned": "ghcr.io/kagent-dev/substrate/agentgateway:50999825cb55@sha256:f1907a50b2e74a071da53fcd2008d585b6a63d31b4e1ba3ee46cf22b342cf04b",
+    "aliases": [
+      "ghcr.io/kagent-dev/substrate/agentgateway:50999825cb55@sha256:f1907a50b2e74a071da53fcd2008d585b6a63d31b4e1ba3ee46cf22b342cf04b"
+    ],
+    "platforms": [
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "digest": "sha256:11578f12eea70c67c73ad296e0d5b753d927b13a9f1f580c10bf61c233f695af"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:c65deb452597b109e2c5886dd803947e6a8fc6f25d57f1cecd142cef6cfc30a8"
+      },
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "digest": "sha256:5adaf9028a75eb11b4e68594af914dedc810e26215b86d060345e3510b00b885"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:9bd14c0dbeef7fddc8ca7b8adad4b749d7ea6f6e663a87f2ff9f0b18611f8d72"
+      }
+    ]
+  },
+  {
+    "reference": "postgres:18-alpine",
+    "digest": "sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+    "pinned": "postgres:18-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+    "aliases": [
+      "postgres:18-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15"
+    ],
+    "platforms": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "digest": "sha256:b6a16ed0eb96e2c362811f7eeb951eac8b459e7b40be4149ea5444aa7c65569b"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:d47cbb6b172896421df55c9a7afd3727a92a7ff05a17c5d910175dc7ff11cedf"
+      },
+      {
+        "platform": {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v6"
+        },
+        "digest": "sha256:bf2c57dd1e9192c65374fe57d3ae3a113e04389d2e844acdf784f3dabbe6e427"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:58f5e9bb1288b5481d11f73b1660e454a412ab908e76d650cba988a8af60feca"
+      },
+      {
+        "platform": {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v7"
+        },
+        "digest": "sha256:d87c01d266080e30e1be2f313a8cad6c85bf9cdd8dac272e08399844c1d8f072"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:b344f661fb880b8ebf5a9331c3645db4bc18bd4ad4d17863b4476a6de4f8da8c"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "digest": "sha256:122c9942437efcbbb8d595fc578dee7d26ee1543c2a8634d183adfa4a1e55b4d"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:337172f3d66e8a9298a194cb848d1758e905e3b00d21aec6f1e88e57bf06097b"
+      },
+      {
+        "platform": {
+          "architecture": "386",
+          "os": "linux"
+        },
+        "digest": "sha256:bbf8ecc4093dbbaacfc9d62548ca728d33d6d5a6ad236017b6c611e32b5d7cfb"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:019e6f16dd5ab545499301ff7d12b002b9b4d7d8db6b2ba28f13c3e70c17ad95"
+      },
+      {
+        "platform": {
+          "architecture": "ppc64le",
+          "os": "linux"
+        },
+        "digest": "sha256:69145b64e86b67baa17b129a0be7e9aadf9abb54d636152930f435aab85129f8"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:853ba82693d284e616569bea3d2581ac0d1f01624766965b15b9e7f86b9b9896"
+      },
+      {
+        "platform": {
+          "architecture": "riscv64",
+          "os": "linux"
+        },
+        "digest": "sha256:4788c9760e849c82598428bb23045e9ba6a4aba529994232f4032227c0413493"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:0cb6ec13d0f900e5328ac7c5299833d353de16147c7467fd78f6a5987100b9db"
+      },
+      {
+        "platform": {
+          "architecture": "s390x",
+          "os": "linux"
+        },
+        "digest": "sha256:b12c1eead46b0baceff387df7d8a79423494db35fa9a2e3d326718b5879c1d42"
+      },
+      {
+        "platform": {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        "digest": "sha256:00cf8dfd315ba7e5ec09188e5ac6dc313de573bbe42657d54e0ad3df83d4e888"
+      }
+    ]
+  },
+  {
+    "reference": "registry.k8s.io/pause:3.10.2",
+    "digest": "sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4",
+    "pinned": "registry.k8s.io/pause:3.10.2@sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4",
+    "aliases": [
+      "registry.k8s.io/pause:3.10.2@sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4"
+    ],
+    "platforms": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "digest": "sha256:412c4a7219cb8a299a37337f3d87810c5340095322e15594a1637785adad0f17"
+      },
+      {
+        "platform": {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v7"
+        },
+        "digest": "sha256:d9a531f1352f50510620c8a51571b4a3f7939f8979da0ad41ec6b07fab71b2ac"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "digest": "sha256:a433214620b407678934ebd69690a9ed6066247231eacfba181fab20dbc3dbf1"
+      },
+      {
+        "platform": {
+          "architecture": "ppc64le",
+          "os": "linux"
+        },
+        "digest": "sha256:e501965b1cd4508edec00076839d072a255eec75581116e5b10b39c4770a0250"
+      },
+      {
+        "platform": {
+          "architecture": "s390x",
+          "os": "linux"
+        },
+        "digest": "sha256:1affd10d2fb5ed763de65c963add17bb67cdd5782419c1b55f00d5aa18c76308"
+      },
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "windows",
+          "os.version": "10.0.17763.7919"
+        },
+        "digest": "sha256:d928e7f0cb7c534dc32093263cd45c2aab453fb51cd26a27aafb0e6b6404bd65"
+      },
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "windows",
+          "os.version": "10.0.20348.4294"
+        },
+        "digest": "sha256:fdc4b10480e0e8e97829b075ff7649b4ffadae1c97d35e608212dc526b82d4d0"
+      },
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "windows",
+          "os.version": "10.0.26100.6899"
+        },
+        "digest": "sha256:72f7208ec3dd71bb0bed644d5b5d1d032b10527562032dfcd2152d9c4cdae516"
+      }
+    ]
+  },
+  {
+    "reference": "rustfs/rustfs:1.0.0-beta.3",
+    "digest": "sha256:378642b05b7dcb4849fb77ebe6aca4ced1c3f66e7e504247df95a5c9018d3358",
+    "pinned": "rustfs/rustfs:1.0.0-beta.3@sha256:378642b05b7dcb4849fb77ebe6aca4ced1c3f66e7e504247df95a5c9018d3358",
+    "aliases": [
+      "rustfs/rustfs:1.0.0-beta.3@sha256:378642b05b7dcb4849fb77ebe6aca4ced1c3f66e7e504247df95a5c9018d3358"
+    ],
+    "platforms": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "digest": "sha256:d441111efe3af5bbd6e29eba7cd124f96bb7d49a0612390907f9216d5f970382"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "digest": "sha256:c43b2bfc0c4bf396f48021fd45bec73a409b4d4c91c3238b071a6a2f92780415"
+      }
+    ]
   }
 ]
