@@ -1,0 +1,307 @@
+[
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/ateapi:v0.4.0-alpha1",
+    "indexDigest": "sha256:0758fdb0d9771b3cdc0456f91def2431577bd8b2754760882dd333c74a875d70",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:29557ee2b8011b259bbb118539038a5e7003a2adc2366659eb800c088e6b407c",
+        "configDigest": "sha256:b8a7887dfe52365abef4f4b4a077f7bef099b61766d65619eda99b8d8120e8d1",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "manifestDigest": "sha256:228bd4d9a6699eecaf2560395cb5448c653cf76e24f69100c1717b307dd5ba90",
+        "configDigest": "sha256:53d87ebfaa1700b05439225712f6118e3bca30da153944b25bcfc318c969a931",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/atecontroller:v0.4.0-alpha1",
+    "indexDigest": "sha256:0a5345fac8eaa43e9a92c0009bcabc18abe38097ff36957f5c5c46b408bde20e",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:8242fc44e47c30dbcb3a7be9bbab73b9c82a3b24d3f473f99dc97ad1e96cad1d",
+        "configDigest": "sha256:9eda720da04550a790af5c3cd502987972359415c22a30431ad70c80cf98fc9a",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "manifestDigest": "sha256:e2d243197b79075257175cff6b0bf1da63bd4a9a171e9367044306108e3aa826",
+        "configDigest": "sha256:7e51a5b2423c7dcfc2a10e762d7a4dff43480de68d7e1bcaaed80731d9488a6a",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/atelet:v0.4.0-alpha1",
+    "indexDigest": "sha256:386704f0a947c3c8128dd9c9ecb8b6766dd6b01c970222763b8671b90a957d0a",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:0b9d4384beeb6605449fa52d15cf5b185dfaaa7e129245b16b6ca61a92a1c454",
+        "configDigest": "sha256:5bbf3d5dab1d2c2c244dbbb846196c23a41e99c755b5665beeec5b9563e7c82e",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "manifestDigest": "sha256:c67d60b10b5e2305fe79f344070de4c749f82d41394406c7b8fd032d7d5db8ec",
+        "configDigest": "sha256:d289f0065137bb370b069d4e9f4d78f30ac00fe84107e2235f3595842c8c78be",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/atenet:v0.4.0-alpha1",
+    "indexDigest": "sha256:01d3b9195b4622fd4e1472cdd496bd2d57b38d4dbcddfa41f81516145c1ea1ae",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:3f6e2574e2caf7200fdbb110485be1c72c6c1c24c85c3463ebfc76bced9624eb",
+        "configDigest": "sha256:69fd3b0629b081ef5147dadad529e3cf839575b77d39d85341db365df351f7ae",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "manifestDigest": "sha256:87251514910732979c5f0f6bf0c03ad5ec30495e44ff516319f29d8636b620c8",
+        "configDigest": "sha256:63e3a5802f38c5a9588c7e3633224de604dce684df91a723c402dc80cf4fbef8",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/kubernetes-secrets:v0.4.0-alpha1",
+    "indexDigest": "sha256:dc421a5cd9f0765446aa79e3f11e46c88a6def13bcfd06d3b875a793122dbafd",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:73a0ceac9cb04b3df36f64597d0005b6eb5b218bb24d31a9c2d492f0b7c25ac9",
+        "configDigest": "sha256:0c5e75a55479bf3d1e92ac3200da6f384fd6cb9504ad875ab8ace132985e0447",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "manifestDigest": "sha256:38e9c86713169fe6fe3203d6d0b24e73416cc60a67685e4948e47047e56264f2",
+        "configDigest": "sha256:c5f0173dbf9a809ebde3b0ca24403954d7e159d260711b557284856e3a139b7a",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/podcertcontroller:v0.4.0-alpha1",
+    "indexDigest": "sha256:f8bc68d892f65a19755c80989343e16963f1a3d80221d970a6b6974da803a70e",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:8bc7cd9711c83009fe62ff10255b4122963142197309085a2edb7ad0ebaedc16",
+        "configDigest": "sha256:066c65dc054a0381dabea19ccbbb26127967d7f11933fa7cb7d4db8dd4a7c044",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "manifestDigest": "sha256:a43ce5ac6e835ba3bb38f7e1aba9223959963713cd890363fe7f5ec48d405638",
+        "configDigest": "sha256:8f9f3a1eb9983bf103381c0e488b9fffeaecdaecbca2e548fb7fb506918cb3cd",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/substrate/ateom-gvisor:v0.4.0-alpha1",
+    "indexDigest": "sha256:a1ce5b950724c6167889324df6729ccf8c5b3b2963863f4602c21c17587ba454",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:4f40d5b908dcd59b39d719d47f8606724596dde5c44bd31e22479a388d570377",
+        "configDigest": "sha256:ea27231480952c7e56efce75b7a34e8885af4c20d0e7c174e0f387a627fdb386",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "manifestDigest": "sha256:65a4d38da0080d6c9d12308eb75e226627866d217a4efecb59ab9a257c21815c",
+        "configDigest": "sha256:a7284fe42e00317556ec5f53ded2b46cb91e83a487c60cbdb75daba2fab8fb88",
+        "labels": {},
+        "created": "1970-01-01T00:00:00Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/kagent/controller:1.0.0-alpha8",
+    "indexDigest": "sha256:6ced2268d62f60a3a4347e080d0f33af08a413894845fbfe6b561b1a304764a2",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:e960aaa8b3918459840298e1e770a5a4dfb70aa970d1807df1ef4e46d3f630c3",
+        "configDigest": "sha256:2dfc35a6ad653aa1374a748f11d7522302a928b172bdd09462229f0468f4f2d9",
+        "labels": {
+          "org.opencontainers.image.description": "Kagent app is the UI and apiserver for running agents.",
+          "org.opencontainers.image.source": "https://github.com/kagent-dev/kagent",
+          "org.opencontainers.image.version": "1.0.0-alpha8"
+        },
+        "created": "2026-10-05T14:39:48.615199656Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:c109b5f3aa6fdf27c5d88238eb5584e255a68c27f127bdb7aec962de7de938af",
+        "configDigest": "sha256:0678beb101483a867fb49571d0a06c1b5ff5e0983e79b795f2f5fae57f4e929b",
+        "labels": {
+          "org.opencontainers.image.description": "Kagent app is the UI and apiserver for running agents.",
+          "org.opencontainers.image.source": "https://github.com/kagent-dev/kagent",
+          "org.opencontainers.image.version": "1.0.0-alpha8"
+        },
+        "created": "2026-10-05T14:39:49.957053738Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/kagent/ui:1.0.0-alpha8",
+    "indexDigest": "sha256:bd85849130d8a56fc4011740ce40fe9498a934880334d5890ca06df8ddf1b9e8",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:792430c2dd2003de7cdce94ee47ce4577843a705cdfdb1302c969d50025e1905",
+        "configDigest": "sha256:b1ff7d475d01acadf4d2dbe3b576352559eaaeaeb83050f31135cba845624f42",
+        "labels": {
+          "dev.chainguard.image.title": "wolfi-base",
+          "dev.chainguard.package.main": "",
+          "org.opencontainers.image.authors": "Kagent Creators \ud83e\udd16",
+          "org.opencontainers.image.created": "2026-09-24T16:25:14Z",
+          "org.opencontainers.image.description": "Kagent app is the UI and apiserver for running agents.",
+          "org.opencontainers.image.source": "https://github.com/kagent-dev/kagent",
+          "org.opencontainers.image.title": "wolfi-base",
+          "org.opencontainers.image.url": "https://images.chainguard.dev/directory/image/wolfi-base/overview",
+          "org.opencontainers.image.vendor": "Chainguard",
+          "org.opencontainers.image.version": "1.0.0-alpha8"
+        },
+        "created": "2026-10-05T14:33:33.037432095Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:fc3759bacf85e1b9796b9d90df6dbd3c4444456c1bc9237f334e784d34109b80",
+        "configDigest": "sha256:a9c2d4935ae41a77984e631680d444c08ba749aae6a7b9dcad4d00698b31f772",
+        "labels": {
+          "dev.chainguard.image.title": "wolfi-base",
+          "dev.chainguard.package.main": "",
+          "org.opencontainers.image.authors": "Kagent Creators \ud83e\udd16",
+          "org.opencontainers.image.created": "2026-09-24T16:28:10Z",
+          "org.opencontainers.image.description": "Kagent app is the UI and apiserver for running agents.",
+          "org.opencontainers.image.source": "https://github.com/kagent-dev/kagent",
+          "org.opencontainers.image.title": "wolfi-base",
+          "org.opencontainers.image.url": "https://images.chainguard.dev/directory/image/wolfi-base/overview",
+          "org.opencontainers.image.vendor": "Chainguard",
+          "org.opencontainers.image.version": "1.0.0-alpha8"
+        },
+        "created": "2026-10-05T14:33:33.082643404Z"
+      }
+    ]
+  },
+  {
+    "reference": "ghcr.io/kagent-dev/kagent/golang-adk:1.0.0-alpha8",
+    "indexDigest": "sha256:10ef1350786b5d21bc002ed54833fd0272ea7cd8182a92977686b7bafa7f67d3",
+    "builds": [
+      {
+        "platform": {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:8b4488ad965ae9db648440dfd7d97f363c20226b0d72e41057fe181f2f335c18",
+        "configDigest": "sha256:9846c284fb6428eaaf760fd0d6ff27f6252f2e7391891242c8dd5dcbcb94a7f0",
+        "labels": {
+          "org.opencontainers.image.description": "Kagent app is the UI and apiserver for running agents.",
+          "org.opencontainers.image.source": "https://github.com/kagent-dev/kagent",
+          "org.opencontainers.image.version": "1.0.0-alpha8"
+        },
+        "created": "2026-10-05T14:36:21.733313744Z"
+      },
+      {
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "manifestDigest": "sha256:a504788dbb94d6dc4a1eeb08ed7c0c1ca368da23eb3077474b55fcd80894772c",
+        "configDigest": "sha256:c6c53bea9976cbd60f1eb2a1265d551c6188ff3cc07717a60121603ff2db8660",
+        "labels": {
+          "org.opencontainers.image.description": "Kagent app is the UI and apiserver for running agents.",
+          "org.opencontainers.image.source": "https://github.com/kagent-dev/kagent",
+          "org.opencontainers.image.version": "1.0.0-alpha8"
+        },
+        "created": "2026-10-05T14:36:21.732926707Z"
+      }
+    ]
+  }
+]

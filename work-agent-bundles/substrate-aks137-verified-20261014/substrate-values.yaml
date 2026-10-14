@@ -1,0 +1,5 @@
+# Stock runtime option, used only to pull the synthetic fixture from the
+# disposable in-cluster registry. Production registry credentials are separate.
+atelet:
+  extraArgs:
+    - --localhost-registry-replacement=fixture-registry.substrate-proof.svc:5000

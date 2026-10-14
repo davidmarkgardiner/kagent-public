@@ -1,0 +1,46 @@
+{
+  "target": "aks",
+  "nodeInfo": {
+    "architecture": "amd64",
+    "containerRuntimeVersion": "containerd://2.2.4",
+    "kernelVersion": "6.6.157.1-1.azl3",
+    "kubeProxyVersion": "",
+    "kubeletVersion": "v1.37.0",
+    "operatingSystem": "linux",
+    "osImage": "Microsoft Azure Linux 3.0",
+    "runningInUserNamespace": false
+  },
+  "capacity": {
+    "ate.dev/kvm": "4096",
+    "cpu": "8",
+    "ephemeral-storage": "66971185152",
+    "hugepages-1Gi": "0",
+    "hugepages-2Mi": "0",
+    "memory": "32869344Ki",
+    "pods": "250"
+  },
+  "allocatable": {
+    "ate.dev/kvm": "4096",
+    "cpu": "7820m",
+    "ephemeral-storage": "60274066538",
+    "hugepages-1Gi": "0",
+    "hugepages-2Mi": "0",
+    "memory": "27595744Ki",
+    "pods": "250"
+  },
+  "azure": {
+    "location": "uksouth",
+    "kubernetesVersion": "1.37.0",
+    "tier": "Free",
+    "pool": {
+      "vmSize": "Standard_D8s_v3",
+      "osSku": "AzureLinux",
+      "osType": "Linux",
+      "nodeImageVersion": "AKSAzureLinux-V3gen2-202610.08.0",
+      "count": 1,
+      "osDiskSizeGb": 64,
+      "osDiskType": "Ephemeral",
+      "orchestratorVersion": "1.37.0"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "events": [
+    {
+      "time": "2026-10-14T12:44:02.018647528Z",
+      "level": "INFO",
+      "msg": "gVisor release cache miss; downloading",
+      "url": "gs://gvisor/releases/nightly/2026-09-02/x86_64/gvisor.tar.zstd",
+      "sha256": "d547d81401461fd1c679c5c4fa0a6c2b8ef7dc3c22ce23c9e25dcc4c69cfd06f"
+    },
+    {
+      "time": "2026-10-14T12:44:03.96315091Z",
+      "level": "INFO",
+      "msg": "gVisor release download complete",
+      "url": "gs://gvisor/releases/nightly/2026-09-02/x86_64/gvisor.tar.zstd",
+      "duration": 1944465079
+    },
+    {
+      "time": "2026-10-14T12:44:03.963287718Z",
+      "level": "INFO",
+      "msg": "Extracting gVisor archive",
+      "path": "/var/lib/ate/static-files/gvisor-d547d81401461fd1c679c5c4fa0a6c2b8ef7dc3c22ce23c9e25dcc4c69cfd06f-download-611786521",
+      "url": "gs://gvisor/releases/nightly/2026-09-02/x86_64/gvisor.tar.zstd"
+    },
+    {
+      "time": "2026-10-14T12:44:10.38082437Z",
+      "level": "INFO",
+      "msg": "gVisor archive extraction complete",
+      "url": "gs://gvisor/releases/nightly/2026-09-02/x86_64/gvisor.tar.zstd",
+      "duration": 6417519352
+    },
+    {
+      "time": "2026-10-14T12:44:10.403694396Z",
+      "level": "INFO",
+      "msg": "Sandbox assets prewarmed",
+      "config": "gvisor-default",
+      "assets": 1,
+      "pauseImage": "registry.k8s.io/pause:3.10.2@sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4",
+      "duration": 8385236280
+    },
+    {
+      "time": "2026-10-14T12:48:18.054645187Z",
+      "level": "INFO",
+      "msg": "Sandbox assets prewarmed",
+      "config": "gvisor-default",
+      "assets": 1,
+      "pauseImage": "registry.k8s.io/pause:3.10.2@sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4",
+      "duration": 339429
+    }
+  ],
+  "ateletRunscVersion": "runsc version release-20260824.0-120-g727c8c389c36-dirty\nspec: 1.2.1\n",
+  "workerRunscVersion": "runsc version release-20260824.0-120-g727c8c389c36-dirty\nspec: 1.2.1\n",
+  "independentBinaryAudit": "1a3982cb91714f9c0c7148668d2c40143ee97e238f8a8e7452e410770d34fbe3  /audit/gvisor-d547d81401461fd1c679c5c4fa0a6c2b8ef7dc3c22ce23c9e25dcc4c69cfd06f/runsc\nmode=755 bytes=109183527\n",
+  "coldFetchEvidenceSource": "Original tool output from the first stock atelet pod, preserved before its fixture-registry configuration rollout"
+}

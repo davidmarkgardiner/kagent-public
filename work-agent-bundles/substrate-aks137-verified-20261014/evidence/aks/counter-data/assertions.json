@@ -1,0 +1,4818 @@
+[
+  {
+    "stage": "template-before",
+    "utcStart": "2026-10-14T12:56:54.457062+00:00",
+    "utcEnd": "2026-10-14T12:56:55.153153+00:00",
+    "args": [
+      "get",
+      "actor-template",
+      "proof-counter-data",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 695.6658339986461,
+    "returncode": 0,
+    "template": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:52:35.993883218Z",
+        "name": "proof-counter-data",
+        "uid": "{{ID_69305155}}",
+        "updateTime": "2026-10-14T12:52:39.217784851Z",
+        "version": "3"
+      },
+      "workerSelector": {
+        "matchLabels": {
+          "kagent.dev/worker-pool": "kagent-default"
+        }
+      },
+      "snapshotConfig": {
+        "onCommit": "SNAPSHOT_CONTENT_SCOPE_DATA",
+        "onPause": "SNAPSHOT_CONTENT_SCOPE_DATA",
+        "storageLocation": "gs://ate-snapshots/proof-counter-data/"
+      },
+      "sandboxConfig": {
+        "configName": "gvisor-default",
+        "sandboxClass": "SANDBOX_CLASS_GVISOR"
+      },
+      "resources": {
+        "limits": [
+          {
+            "name": "cpu",
+            "quantity": "1"
+          },
+          {
+            "name": "memory",
+            "quantity": "512Mi"
+          }
+        ]
+      },
+      "containers": [
+        {
+          "name": "counter",
+          "image": "localhost:15014/fixture@sha256:14de92f1e72157f4e4322702a08020ca193c20471ae2021b2e76a806d5a96a67",
+          "command": [
+            "/fixture"
+          ],
+          "wakeupProbe": {
+            "httpGet": {
+              "path": "/readyz",
+              "port": 80
+            },
+            "timeoutSeconds": 30
+          }
+        }
+      ]
+    }
+  },
+  {
+    "stage": "aks-data-01/create",
+    "utcStart": "2026-10-14T12:56:55.155781+00:00",
+    "utcEnd": "2026-10-14T12:56:55.856867+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 701.0237089998554,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-01   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-01/read-created",
+    "utcStart": "2026-10-14T12:56:55.857582+00:00",
+    "utcEnd": "2026-10-14T12:56:56.535444+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 677.8131250030128,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:55.844780320Z",
+        "name": "aks-data-01",
+        "uid": "{{ID_E31F3288}}",
+        "updateTime": "2026-10-14T12:56:55.844780320Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-01/resume-golden",
+    "utcStart": "2026-10-14T12:56:56.538236+00:00",
+    "utcEnd": "2026-10-14T12:56:57.421054+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 882.7779579987691,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-01   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-01/read-running",
+    "utcStart": "2026-10-14T12:56:57.421973+00:00",
+    "utcEnd": "2026-10-14T12:56:58.088234+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 666.2207080007647,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:55.844780320Z",
+        "name": "aks-data-01",
+        "uid": "{{ID_E31F3288}}",
+        "updateTime": "2026-10-14T12:56:57.405974022Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-01/initial",
+    "utcStart": "2026-10-14T12:56:58.090743+00:00",
+    "utcEnd": "2026-10-14T12:56:58.240370+00:00",
+    "actor": "aks-data-01",
+    "httpStatus": 200,
+    "elapsedMs": 148.61908300008508,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-01"
+    }
+  },
+  {
+    "stage": "aks-data-01/pause-data",
+    "utcStart": "2026-10-14T12:56:58.241249+00:00",
+    "utcEnd": "2026-10-14T12:56:59.138063+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 896.7703749985958,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-01   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-01/read-paused",
+    "utcStart": "2026-10-14T12:56:59.138887+00:00",
+    "utcEnd": "2026-10-14T12:56:59.767693+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 628.7704999995185,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:55.844780320Z",
+        "name": "aks-data-01",
+        "uid": "{{ID_E31F3288}}",
+        "updateTime": "2026-10-14T12:56:59.122869490Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_996C0C3C}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-01/resume-paused",
+    "utcStart": "2026-10-14T12:56:59.768612+00:00",
+    "utcEnd": "2026-10-14T12:57:00.587330+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 818.6660000028496,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-01   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-01/read-restored-pause",
+    "utcStart": "2026-10-14T12:57:00.589792+00:00",
+    "utcEnd": "2026-10-14T12:57:01.246367+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 656.5135000018927,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:55.844780320Z",
+        "name": "aks-data-01",
+        "uid": "{{ID_E31F3288}}",
+        "updateTime": "2026-10-14T12:57:00.566235757Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_996C0C3C}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-01/after-pause",
+    "utcStart": "2026-10-14T12:57:01.248025+00:00",
+    "utcEnd": "2026-10-14T12:57:01.341573+00:00",
+    "actor": "aks-data-01",
+    "httpStatus": 200,
+    "elapsedMs": 92.65625000261934,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-01"
+    }
+  },
+  {
+    "stage": "aks-data-01/suspend-data",
+    "utcStart": "2026-10-14T12:57:01.342308+00:00",
+    "utcEnd": "2026-10-14T12:57:02.221610+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 879.2752089975693,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-01   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-01/read-committed",
+    "utcStart": "2026-10-14T12:57:02.222534+00:00",
+    "utcEnd": "2026-10-14T12:57:02.965013+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 742.4377499992261,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:55.844780320Z",
+        "name": "aks-data-01",
+        "uid": "{{ID_E31F3288}}",
+        "updateTime": "2026-10-14T12:57:02.206180322Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_E31F3288}}/snapshots/{{ID_A13E8A29}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-01/resume-committed",
+    "utcStart": "2026-10-14T12:57:02.966691+00:00",
+    "utcEnd": "2026-10-14T12:57:03.798284+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 831.5590419988439,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-01   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-01/read-restored-commit",
+    "utcStart": "2026-10-14T12:57:03.799723+00:00",
+    "utcEnd": "2026-10-14T12:57:04.427353+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 627.5965839995479,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:55.844780320Z",
+        "name": "aks-data-01",
+        "uid": "{{ID_E31F3288}}",
+        "updateTime": "2026-10-14T12:57:03.781086510Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_E31F3288}}/snapshots/{{ID_A13E8A29}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-01/after-commit",
+    "utcStart": "2026-10-14T12:57:04.429113+00:00",
+    "utcEnd": "2026-10-14T12:57:04.526581+00:00",
+    "actor": "aks-data-01",
+    "httpStatus": 200,
+    "elapsedMs": 95.95687500041095,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-01"
+    }
+  },
+  {
+    "stage": "aks-data-01/final-suspend-data",
+    "utcStart": "2026-10-14T12:57:04.528106+00:00",
+    "utcEnd": "2026-10-14T12:57:05.344161+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 815.985291999823,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-01   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-01/read-final",
+    "utcStart": "2026-10-14T12:57:05.348653+00:00",
+    "utcEnd": "2026-10-14T12:57:06.076753+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 728.0225840004277,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:55.844780320Z",
+        "name": "aks-data-01",
+        "uid": "{{ID_E31F3288}}",
+        "updateTime": "2026-10-14T12:57:05.308157536Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_E31F3288}}/snapshots/{{ID_DDADB3E5}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-02/create",
+    "utcStart": "2026-10-14T12:57:06.078414+00:00",
+    "utcEnd": "2026-10-14T12:57:06.815931+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 737.4752499999886,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-02   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-02/read-created",
+    "utcStart": "2026-10-14T12:57:06.817352+00:00",
+    "utcEnd": "2026-10-14T12:57:07.470457+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 653.0651670000225,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:06.801156728Z",
+        "name": "aks-data-02",
+        "uid": "{{ID_7D6B25B6}}",
+        "updateTime": "2026-10-14T12:57:06.801156728Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-02/resume-golden",
+    "utcStart": "2026-10-14T12:57:07.472889+00:00",
+    "utcEnd": "2026-10-14T12:57:08.341659+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 868.7275000011141,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-02   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-02/read-running",
+    "utcStart": "2026-10-14T12:57:08.343201+00:00",
+    "utcEnd": "2026-10-14T12:57:08.962953+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 619.7049999973387,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:06.801156728Z",
+        "name": "aks-data-02",
+        "uid": "{{ID_7D6B25B6}}",
+        "updateTime": "2026-10-14T12:57:08.319259486Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-02/initial",
+    "utcStart": "2026-10-14T12:57:08.964405+00:00",
+    "utcEnd": "2026-10-14T12:57:09.059559+00:00",
+    "actor": "aks-data-02",
+    "httpStatus": 200,
+    "elapsedMs": 94.5640829995682,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-02"
+    }
+  },
+  {
+    "stage": "aks-data-02/pause-data",
+    "utcStart": "2026-10-14T12:57:09.060202+00:00",
+    "utcEnd": "2026-10-14T12:57:09.830712+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 770.4746660019737,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-02   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-02/read-paused",
+    "utcStart": "2026-10-14T12:57:09.832232+00:00",
+    "utcEnd": "2026-10-14T12:57:10.548427+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 716.1487499979557,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:06.801156728Z",
+        "name": "aks-data-02",
+        "uid": "{{ID_7D6B25B6}}",
+        "updateTime": "2026-10-14T12:57:09.814954094Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_7AEF07F5}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-02/resume-paused",
+    "utcStart": "2026-10-14T12:57:10.549958+00:00",
+    "utcEnd": "2026-10-14T12:57:11.411243+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 861.2537919980241,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-02   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-02/read-restored-pause",
+    "utcStart": "2026-10-14T12:57:11.412813+00:00",
+    "utcEnd": "2026-10-14T12:57:12.055747+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 642.8770419988723,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:06.801156728Z",
+        "name": "aks-data-02",
+        "uid": "{{ID_7D6B25B6}}",
+        "updateTime": "2026-10-14T12:57:11.394639263Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_7AEF07F5}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-02/after-pause",
+    "utcStart": "2026-10-14T12:57:12.059119+00:00",
+    "utcEnd": "2026-10-14T12:57:12.155437+00:00",
+    "actor": "aks-data-02",
+    "httpStatus": 200,
+    "elapsedMs": 95.1128750020871,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-02"
+    }
+  },
+  {
+    "stage": "aks-data-02/suspend-data",
+    "utcStart": "2026-10-14T12:57:12.156420+00:00",
+    "utcEnd": "2026-10-14T12:57:12.904099+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 747.6486669984297,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-02   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-02/read-committed",
+    "utcStart": "2026-10-14T12:57:12.905009+00:00",
+    "utcEnd": "2026-10-14T12:57:13.483007+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 577.9677080026886,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:06.801156728Z",
+        "name": "aks-data-02",
+        "uid": "{{ID_7D6B25B6}}",
+        "updateTime": "2026-10-14T12:57:12.889693955Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_7D6B25B6}}/snapshots/{{ID_035ABAB0}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-02/resume-committed",
+    "utcStart": "2026-10-14T12:57:13.484198+00:00",
+    "utcEnd": "2026-10-14T12:57:14.413300+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 929.0712500005611,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-02   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-02/read-restored-commit",
+    "utcStart": "2026-10-14T12:57:14.414563+00:00",
+    "utcEnd": "2026-10-14T12:57:15.051647+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 637.0536249996803,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:06.801156728Z",
+        "name": "aks-data-02",
+        "uid": "{{ID_7D6B25B6}}",
+        "updateTime": "2026-10-14T12:57:14.394960297Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_7D6B25B6}}/snapshots/{{ID_035ABAB0}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-02/after-commit",
+    "utcStart": "2026-10-14T12:57:15.053752+00:00",
+    "utcEnd": "2026-10-14T12:57:15.154005+00:00",
+    "actor": "aks-data-02",
+    "httpStatus": 200,
+    "elapsedMs": 99.6486250005546,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-02"
+    }
+  },
+  {
+    "stage": "aks-data-02/final-suspend-data",
+    "utcStart": "2026-10-14T12:57:15.154938+00:00",
+    "utcEnd": "2026-10-14T12:57:15.918759+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 763.7640419998206,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-02   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-02/read-final",
+    "utcStart": "2026-10-14T12:57:15.920426+00:00",
+    "utcEnd": "2026-10-14T12:57:16.606714+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 686.2506669967843,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:06.801156728Z",
+        "name": "aks-data-02",
+        "uid": "{{ID_7D6B25B6}}",
+        "updateTime": "2026-10-14T12:57:15.891372976Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_7D6B25B6}}/snapshots/{{ID_317220EF}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-03/create",
+    "utcStart": "2026-10-14T12:57:16.608762+00:00",
+    "utcEnd": "2026-10-14T12:57:17.220901+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 612.1015839999018,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-03   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-03/read-created",
+    "utcStart": "2026-10-14T12:57:17.222447+00:00",
+    "utcEnd": "2026-10-14T12:57:17.960726+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 738.2334160029131,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:17.206955282Z",
+        "name": "aks-data-03",
+        "uid": "{{ID_919B682E}}",
+        "updateTime": "2026-10-14T12:57:17.206955282Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-03/resume-golden",
+    "utcStart": "2026-10-14T12:57:17.962894+00:00",
+    "utcEnd": "2026-10-14T12:57:18.919032+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 956.0989160017925,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-03   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-03/read-running",
+    "utcStart": "2026-10-14T12:57:18.920360+00:00",
+    "utcEnd": "2026-10-14T12:57:19.527157+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 606.74716700305,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:17.206955282Z",
+        "name": "aks-data-03",
+        "uid": "{{ID_919B682E}}",
+        "updateTime": "2026-10-14T12:57:18.883848016Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-03/initial",
+    "utcStart": "2026-10-14T12:57:19.529115+00:00",
+    "utcEnd": "2026-10-14T12:57:19.636129+00:00",
+    "actor": "aks-data-03",
+    "httpStatus": 200,
+    "elapsedMs": 106.17058400021051,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-03"
+    }
+  },
+  {
+    "stage": "aks-data-03/pause-data",
+    "utcStart": "2026-10-14T12:57:19.637119+00:00",
+    "utcEnd": "2026-10-14T12:57:20.456057+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 818.9067919993249,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-03   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-03/read-paused",
+    "utcStart": "2026-10-14T12:57:20.457792+00:00",
+    "utcEnd": "2026-10-14T12:57:21.099593+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 641.772791997937,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:17.206955282Z",
+        "name": "aks-data-03",
+        "uid": "{{ID_919B682E}}",
+        "updateTime": "2026-10-14T12:57:20.439401933Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_EAD60435}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-03/resume-paused",
+    "utcStart": "2026-10-14T12:57:21.100745+00:00",
+    "utcEnd": "2026-10-14T12:57:21.996936+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 896.154750000278,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-03   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-03/read-restored-pause",
+    "utcStart": "2026-10-14T12:57:21.998313+00:00",
+    "utcEnd": "2026-10-14T12:57:22.617981+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 619.6337910005241,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:17.206955282Z",
+        "name": "aks-data-03",
+        "uid": "{{ID_919B682E}}",
+        "updateTime": "2026-10-14T12:57:21.980413576Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_EAD60435}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-03/after-pause",
+    "utcStart": "2026-10-14T12:57:22.619755+00:00",
+    "utcEnd": "2026-10-14T12:57:22.714416+00:00",
+    "actor": "aks-data-03",
+    "httpStatus": 200,
+    "elapsedMs": 93.97874999922351,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-03"
+    }
+  },
+  {
+    "stage": "aks-data-03/suspend-data",
+    "utcStart": "2026-10-14T12:57:22.715780+00:00",
+    "utcEnd": "2026-10-14T12:57:23.507914+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 792.1038749991567,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-03   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-03/read-committed",
+    "utcStart": "2026-10-14T12:57:23.509233+00:00",
+    "utcEnd": "2026-10-14T12:57:24.145348+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 636.0728330000711,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:17.206955282Z",
+        "name": "aks-data-03",
+        "uid": "{{ID_919B682E}}",
+        "updateTime": "2026-10-14T12:57:23.491872389Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_919B682E}}/snapshots/{{ID_20FF6552}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-03/resume-committed",
+    "utcStart": "2026-10-14T12:57:24.147291+00:00",
+    "utcEnd": "2026-10-14T12:57:24.962193+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 814.858916997764,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-03   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-03/read-restored-commit",
+    "utcStart": "2026-10-14T12:57:24.964184+00:00",
+    "utcEnd": "2026-10-14T12:57:25.745966+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 781.7162499995902,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:17.206955282Z",
+        "name": "aks-data-03",
+        "uid": "{{ID_919B682E}}",
+        "updateTime": "2026-10-14T12:57:24.944467719Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_919B682E}}/snapshots/{{ID_20FF6552}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-03/after-commit",
+    "utcStart": "2026-10-14T12:57:25.748802+00:00",
+    "utcEnd": "2026-10-14T12:57:25.855596+00:00",
+    "actor": "aks-data-03",
+    "httpStatus": 200,
+    "elapsedMs": 106.17425000236835,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-03"
+    }
+  },
+  {
+    "stage": "aks-data-03/final-suspend-data",
+    "utcStart": "2026-10-14T12:57:25.856656+00:00",
+    "utcEnd": "2026-10-14T12:57:26.652793+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 796.100874998956,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-03   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-03/read-final",
+    "utcStart": "2026-10-14T12:57:26.655347+00:00",
+    "utcEnd": "2026-10-14T12:57:27.274828+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 619.4370000011986,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:17.206955282Z",
+        "name": "aks-data-03",
+        "uid": "{{ID_919B682E}}",
+        "updateTime": "2026-10-14T12:57:26.624986170Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_919B682E}}/snapshots/{{ID_438645BC}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-04/create",
+    "utcStart": "2026-10-14T12:57:27.276784+00:00",
+    "utcEnd": "2026-10-14T12:57:27.905568+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 628.7456249992829,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-04   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-04/read-created",
+    "utcStart": "2026-10-14T12:57:27.907881+00:00",
+    "utcEnd": "2026-10-14T12:57:28.584666+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 676.7407919978723,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:27.889211618Z",
+        "name": "aks-data-04",
+        "uid": "{{ID_1D47D80C}}",
+        "updateTime": "2026-10-14T12:57:27.889211618Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-04/resume-golden",
+    "utcStart": "2026-10-14T12:57:28.587752+00:00",
+    "utcEnd": "2026-10-14T12:57:29.508266+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 920.4501250023895,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-04   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-04/read-running",
+    "utcStart": "2026-10-14T12:57:29.510014+00:00",
+    "utcEnd": "2026-10-14T12:57:30.131885+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 621.8256660031329,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:27.889211618Z",
+        "name": "aks-data-04",
+        "uid": "{{ID_1D47D80C}}",
+        "updateTime": "2026-10-14T12:57:29.488775143Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-04/initial",
+    "utcStart": "2026-10-14T12:57:30.133590+00:00",
+    "utcEnd": "2026-10-14T12:57:30.226087+00:00",
+    "actor": "aks-data-04",
+    "httpStatus": 200,
+    "elapsedMs": 91.65533300256357,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-04"
+    }
+  },
+  {
+    "stage": "aks-data-04/pause-data",
+    "utcStart": "2026-10-14T12:57:30.227347+00:00",
+    "utcEnd": "2026-10-14T12:57:31.026122+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 798.7359590006236,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-04   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-04/read-paused",
+    "utcStart": "2026-10-14T12:57:31.028542+00:00",
+    "utcEnd": "2026-10-14T12:57:31.665449+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 636.8605419993401,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:27.889211618Z",
+        "name": "aks-data-04",
+        "uid": "{{ID_1D47D80C}}",
+        "updateTime": "2026-10-14T12:57:31.008634350Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_0345381A}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-04/resume-paused",
+    "utcStart": "2026-10-14T12:57:31.667625+00:00",
+    "utcEnd": "2026-10-14T12:57:32.507538+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 839.8756670030707,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-04   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-04/read-restored-pause",
+    "utcStart": "2026-10-14T12:57:32.509578+00:00",
+    "utcEnd": "2026-10-14T12:57:33.261320+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 751.709916999971,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:27.889211618Z",
+        "name": "aks-data-04",
+        "uid": "{{ID_1D47D80C}}",
+        "updateTime": "2026-10-14T12:57:32.489196146Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_0345381A}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-04/after-pause",
+    "utcStart": "2026-10-14T12:57:33.262974+00:00",
+    "utcEnd": "2026-10-14T12:57:33.391122+00:00",
+    "actor": "aks-data-04",
+    "httpStatus": 200,
+    "elapsedMs": 127.50645800042548,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-04"
+    }
+  },
+  {
+    "stage": "aks-data-04/suspend-data",
+    "utcStart": "2026-10-14T12:57:33.392489+00:00",
+    "utcEnd": "2026-10-14T12:57:34.198039+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 805.4982920002658,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-04   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-04/read-committed",
+    "utcStart": "2026-10-14T12:57:34.200222+00:00",
+    "utcEnd": "2026-10-14T12:57:34.814086+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 613.8296659992193,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:27.889211618Z",
+        "name": "aks-data-04",
+        "uid": "{{ID_1D47D80C}}",
+        "updateTime": "2026-10-14T12:57:34.181020126Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_1D47D80C}}/snapshots/{{ID_CC167E92}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-04/resume-committed",
+    "utcStart": "2026-10-14T12:57:34.816481+00:00",
+    "utcEnd": "2026-10-14T12:57:35.605646+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 789.1199160003453,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-04   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-04/read-restored-commit",
+    "utcStart": "2026-10-14T12:57:35.607656+00:00",
+    "utcEnd": "2026-10-14T12:57:36.232669+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 624.9707499991928,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:27.889211618Z",
+        "name": "aks-data-04",
+        "uid": "{{ID_1D47D80C}}",
+        "updateTime": "2026-10-14T12:57:35.587338736Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_1D47D80C}}/snapshots/{{ID_CC167E92}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-04/after-commit",
+    "utcStart": "2026-10-14T12:57:36.234926+00:00",
+    "utcEnd": "2026-10-14T12:57:36.331306+00:00",
+    "actor": "aks-data-04",
+    "httpStatus": 200,
+    "elapsedMs": 95.75500000210013,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-04"
+    }
+  },
+  {
+    "stage": "aks-data-04/final-suspend-data",
+    "utcStart": "2026-10-14T12:57:36.332596+00:00",
+    "utcEnd": "2026-10-14T12:57:37.146826+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 814.1899579968594,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-04   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-04/read-final",
+    "utcStart": "2026-10-14T12:57:37.149659+00:00",
+    "utcEnd": "2026-10-14T12:57:37.880476+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-04",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 730.772833001538,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:27.889211618Z",
+        "name": "aks-data-04",
+        "uid": "{{ID_1D47D80C}}",
+        "updateTime": "2026-10-14T12:57:37.110950184Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_1D47D80C}}/snapshots/{{ID_A188C386}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-05/create",
+    "utcStart": "2026-10-14T12:57:37.882667+00:00",
+    "utcEnd": "2026-10-14T12:57:38.515921+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 633.2156249991385,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-05   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-05/read-created",
+    "utcStart": "2026-10-14T12:57:38.518286+00:00",
+    "utcEnd": "2026-10-14T12:57:39.124874+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 606.5535419984371,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:38.500589326Z",
+        "name": "aks-data-05",
+        "uid": "{{ID_6E984EC4}}",
+        "updateTime": "2026-10-14T12:57:38.500589326Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-05/resume-golden",
+    "utcStart": "2026-10-14T12:57:39.127312+00:00",
+    "utcEnd": "2026-10-14T12:57:40.021644+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 894.2710410010477,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-05   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-05/read-running",
+    "utcStart": "2026-10-14T12:57:40.023327+00:00",
+    "utcEnd": "2026-10-14T12:57:40.673339+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 649.962791998405,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:38.500589326Z",
+        "name": "aks-data-05",
+        "uid": "{{ID_6E984EC4}}",
+        "updateTime": "2026-10-14T12:57:40.003398642Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-05/initial",
+    "utcStart": "2026-10-14T12:57:40.675793+00:00",
+    "utcEnd": "2026-10-14T12:57:40.785349+00:00",
+    "actor": "aks-data-05",
+    "httpStatus": 200,
+    "elapsedMs": 108.85675000099582,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-05"
+    }
+  },
+  {
+    "stage": "aks-data-05/pause-data",
+    "utcStart": "2026-10-14T12:57:40.788335+00:00",
+    "utcEnd": "2026-10-14T12:57:41.723868+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 935.4967920007766,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-05   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-05/read-paused",
+    "utcStart": "2026-10-14T12:57:41.726710+00:00",
+    "utcEnd": "2026-10-14T12:57:42.361577+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 634.8091250001744,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:38.500589326Z",
+        "name": "aks-data-05",
+        "uid": "{{ID_6E984EC4}}",
+        "updateTime": "2026-10-14T12:57:41.707291385Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_421CB791}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-05/resume-paused",
+    "utcStart": "2026-10-14T12:57:42.364090+00:00",
+    "utcEnd": "2026-10-14T12:57:43.200041+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 835.9202920000826,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-05   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-05/read-restored-pause",
+    "utcStart": "2026-10-14T12:57:43.201902+00:00",
+    "utcEnd": "2026-10-14T12:57:43.876868+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 674.9260420001519,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:38.500589326Z",
+        "name": "aks-data-05",
+        "uid": "{{ID_6E984EC4}}",
+        "updateTime": "2026-10-14T12:57:43.183124930Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_421CB791}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-05/after-pause",
+    "utcStart": "2026-10-14T12:57:43.879692+00:00",
+    "utcEnd": "2026-10-14T12:57:43.969530+00:00",
+    "actor": "aks-data-05",
+    "httpStatus": 200,
+    "elapsedMs": 88.81558300345205,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-05"
+    }
+  },
+  {
+    "stage": "aks-data-05/suspend-data",
+    "utcStart": "2026-10-14T12:57:43.971530+00:00",
+    "utcEnd": "2026-10-14T12:57:44.837275+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 865.6985410016205,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-05   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-05/read-committed",
+    "utcStart": "2026-10-14T12:57:44.839424+00:00",
+    "utcEnd": "2026-10-14T12:57:45.590793+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 751.3387500002864,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:38.500589326Z",
+        "name": "aks-data-05",
+        "uid": "{{ID_6E984EC4}}",
+        "updateTime": "2026-10-14T12:57:44.801528863Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_6E984EC4}}/snapshots/{{ID_D6DBC83D}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-05/resume-committed",
+    "utcStart": "2026-10-14T12:57:45.592866+00:00",
+    "utcEnd": "2026-10-14T12:57:46.451097+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 858.1858750003448,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-05   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-05/read-restored-commit",
+    "utcStart": "2026-10-14T12:57:46.454753+00:00",
+    "utcEnd": "2026-10-14T12:57:47.084483+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 629.6747080014029,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:38.500589326Z",
+        "name": "aks-data-05",
+        "uid": "{{ID_6E984EC4}}",
+        "updateTime": "2026-10-14T12:57:46.427439711Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_6E984EC4}}/snapshots/{{ID_D6DBC83D}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-05/after-commit",
+    "utcStart": "2026-10-14T12:57:47.086980+00:00",
+    "utcEnd": "2026-10-14T12:57:47.186637+00:00",
+    "actor": "aks-data-05",
+    "httpStatus": 200,
+    "elapsedMs": 94.37179199812817,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-05"
+    }
+  },
+  {
+    "stage": "aks-data-05/final-suspend-data",
+    "utcStart": "2026-10-14T12:57:47.188793+00:00",
+    "utcEnd": "2026-10-14T12:57:47.935409+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 746.5687089970743,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-05   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-05/read-final",
+    "utcStart": "2026-10-14T12:57:47.937203+00:00",
+    "utcEnd": "2026-10-14T12:57:48.637024+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-05",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 699.7855830013577,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:38.500589326Z",
+        "name": "aks-data-05",
+        "uid": "{{ID_6E984EC4}}",
+        "updateTime": "2026-10-14T12:57:47.908838726Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_6E984EC4}}/snapshots/{{ID_57A97F20}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-06/create",
+    "utcStart": "2026-10-14T12:57:48.639207+00:00",
+    "utcEnd": "2026-10-14T12:57:49.292240+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 652.9982079991896,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-06   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-06/read-created",
+    "utcStart": "2026-10-14T12:57:49.294892+00:00",
+    "utcEnd": "2026-10-14T12:57:49.950707+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 655.7720839991816,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:49.277075790Z",
+        "name": "aks-data-06",
+        "uid": "{{ID_A9CA8A5F}}",
+        "updateTime": "2026-10-14T12:57:49.277075790Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-06/resume-golden",
+    "utcStart": "2026-10-14T12:57:49.954133+00:00",
+    "utcEnd": "2026-10-14T12:57:50.845121+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 890.9517920001235,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-06   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-06/read-running",
+    "utcStart": "2026-10-14T12:57:50.847098+00:00",
+    "utcEnd": "2026-10-14T12:57:51.503013+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 655.8717500010971,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:49.277075790Z",
+        "name": "aks-data-06",
+        "uid": "{{ID_A9CA8A5F}}",
+        "updateTime": "2026-10-14T12:57:50.828506069Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-06/initial",
+    "utcStart": "2026-10-14T12:57:51.505323+00:00",
+    "utcEnd": "2026-10-14T12:57:51.604001+00:00",
+    "actor": "aks-data-06",
+    "httpStatus": 200,
+    "elapsedMs": 97.65087500272784,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-06"
+    }
+  },
+  {
+    "stage": "aks-data-06/pause-data",
+    "utcStart": "2026-10-14T12:57:51.605830+00:00",
+    "utcEnd": "2026-10-14T12:57:52.422862+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 816.9867500000692,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-06   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-06/read-paused",
+    "utcStart": "2026-10-14T12:57:52.425158+00:00",
+    "utcEnd": "2026-10-14T12:57:53.048228+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 623.0420409992803,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:49.277075790Z",
+        "name": "aks-data-06",
+        "uid": "{{ID_A9CA8A5F}}",
+        "updateTime": "2026-10-14T12:57:52.404505623Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_3EFD686B}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-06/resume-paused",
+    "utcStart": "2026-10-14T12:57:53.050207+00:00",
+    "utcEnd": "2026-10-14T12:57:53.849948+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 799.7032499988563,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-06   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-06/read-restored-pause",
+    "utcStart": "2026-10-14T12:57:53.852362+00:00",
+    "utcEnd": "2026-10-14T12:57:54.496731+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 644.3358750002517,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:49.277075790Z",
+        "name": "aks-data-06",
+        "uid": "{{ID_A9CA8A5F}}",
+        "updateTime": "2026-10-14T12:57:53.832176488Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_3EFD686B}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-06/after-pause",
+    "utcStart": "2026-10-14T12:57:54.499590+00:00",
+    "utcEnd": "2026-10-14T12:57:54.595042+00:00",
+    "actor": "aks-data-06",
+    "httpStatus": 200,
+    "elapsedMs": 94.67195799879846,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-06"
+    }
+  },
+  {
+    "stage": "aks-data-06/suspend-data",
+    "utcStart": "2026-10-14T12:57:54.597014+00:00",
+    "utcEnd": "2026-10-14T12:57:55.339189+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 742.1422920015175,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-06   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-06/read-committed",
+    "utcStart": "2026-10-14T12:57:55.341201+00:00",
+    "utcEnd": "2026-10-14T12:57:56.062724+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 721.4882919979573,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:49.277075790Z",
+        "name": "aks-data-06",
+        "uid": "{{ID_A9CA8A5F}}",
+        "updateTime": "2026-10-14T12:57:55.323355036Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_A9CA8A5F}}/snapshots/{{ID_92E3605C}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-06/resume-committed",
+    "utcStart": "2026-10-14T12:57:56.065124+00:00",
+    "utcEnd": "2026-10-14T12:57:56.899959+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 834.7964999993565,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-06   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-06/read-restored-commit",
+    "utcStart": "2026-10-14T12:57:56.902300+00:00",
+    "utcEnd": "2026-10-14T12:57:57.578690+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 676.3466249976773,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:49.277075790Z",
+        "name": "aks-data-06",
+        "uid": "{{ID_A9CA8A5F}}",
+        "updateTime": "2026-10-14T12:57:56.882753767Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_A9CA8A5F}}/snapshots/{{ID_92E3605C}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-06/after-commit",
+    "utcStart": "2026-10-14T12:57:57.581770+00:00",
+    "utcEnd": "2026-10-14T12:57:57.674894+00:00",
+    "actor": "aks-data-06",
+    "httpStatus": 200,
+    "elapsedMs": 92.54745799989905,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-06"
+    }
+  },
+  {
+    "stage": "aks-data-06/final-suspend-data",
+    "utcStart": "2026-10-14T12:57:57.676568+00:00",
+    "utcEnd": "2026-10-14T12:57:58.488899+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 812.2779590012215,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-06   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-06/read-final",
+    "utcStart": "2026-10-14T12:57:58.492472+00:00",
+    "utcEnd": "2026-10-14T12:57:59.179223+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-06",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 686.7018329976418,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:49.277075790Z",
+        "name": "aks-data-06",
+        "uid": "{{ID_A9CA8A5F}}",
+        "updateTime": "2026-10-14T12:57:58.460181999Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_A9CA8A5F}}/snapshots/{{ID_E0EEFD51}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-07/create",
+    "utcStart": "2026-10-14T12:57:59.181330+00:00",
+    "utcEnd": "2026-10-14T12:57:59.837391+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 656.0261249978794,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-07   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-07/read-created",
+    "utcStart": "2026-10-14T12:57:59.840245+00:00",
+    "utcEnd": "2026-10-14T12:58:00.626855+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 786.5246669971384,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:59.813167653Z",
+        "name": "aks-data-07",
+        "uid": "{{ID_DE1E59F6}}",
+        "updateTime": "2026-10-14T12:57:59.813167653Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-07/resume-golden",
+    "utcStart": "2026-10-14T12:58:00.631924+00:00",
+    "utcEnd": "2026-10-14T12:58:01.631288+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 999.3039170003613,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-07   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-07/read-running",
+    "utcStart": "2026-10-14T12:58:01.634681+00:00",
+    "utcEnd": "2026-10-14T12:58:02.294238+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 659.5087090026936,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:59.813167653Z",
+        "name": "aks-data-07",
+        "uid": "{{ID_DE1E59F6}}",
+        "updateTime": "2026-10-14T12:58:01.604305987Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-07/initial",
+    "utcStart": "2026-10-14T12:58:02.298160+00:00",
+    "utcEnd": "2026-10-14T12:58:02.391334+00:00",
+    "actor": "aks-data-07",
+    "httpStatus": 200,
+    "elapsedMs": 92.35108400025638,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-07"
+    }
+  },
+  {
+    "stage": "aks-data-07/pause-data",
+    "utcStart": "2026-10-14T12:58:02.393301+00:00",
+    "utcEnd": "2026-10-14T12:58:03.211199+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 817.8669170010835,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-07   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-07/read-paused",
+    "utcStart": "2026-10-14T12:58:03.213502+00:00",
+    "utcEnd": "2026-10-14T12:58:03.962998+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 749.4461249989399,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:59.813167653Z",
+        "name": "aks-data-07",
+        "uid": "{{ID_DE1E59F6}}",
+        "updateTime": "2026-10-14T12:58:03.174987544Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_BFDE3C49}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-07/resume-paused",
+    "utcStart": "2026-10-14T12:58:03.967922+00:00",
+    "utcEnd": "2026-10-14T12:58:04.847597+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 879.6256250025181,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-07   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         5s\n"
+  },
+  {
+    "stage": "aks-data-07/read-restored-pause",
+    "utcStart": "2026-10-14T12:58:04.850113+00:00",
+    "utcEnd": "2026-10-14T12:58:05.490885+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 640.7306670007529,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:59.813167653Z",
+        "name": "aks-data-07",
+        "uid": "{{ID_DE1E59F6}}",
+        "updateTime": "2026-10-14T12:58:04.829518086Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_BFDE3C49}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-07/after-pause",
+    "utcStart": "2026-10-14T12:58:05.493692+00:00",
+    "utcEnd": "2026-10-14T12:58:05.592329+00:00",
+    "actor": "aks-data-07",
+    "httpStatus": 200,
+    "elapsedMs": 97.84183300143923,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-07"
+    }
+  },
+  {
+    "stage": "aks-data-07/suspend-data",
+    "utcStart": "2026-10-14T12:58:05.594421+00:00",
+    "utcEnd": "2026-10-14T12:58:06.350082+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 755.621375003102,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-07   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-07/read-committed",
+    "utcStart": "2026-10-14T12:58:06.353028+00:00",
+    "utcEnd": "2026-10-14T12:58:06.983623+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 630.5535829997098,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:59.813167653Z",
+        "name": "aks-data-07",
+        "uid": "{{ID_DE1E59F6}}",
+        "updateTime": "2026-10-14T12:58:06.330916592Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_DE1E59F6}}/snapshots/{{ID_9903EC44}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-07/resume-committed",
+    "utcStart": "2026-10-14T12:58:06.985914+00:00",
+    "utcEnd": "2026-10-14T12:58:07.866937+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 880.9852080012206,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-07   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        8s\n"
+  },
+  {
+    "stage": "aks-data-07/read-restored-commit",
+    "utcStart": "2026-10-14T12:58:07.869367+00:00",
+    "utcEnd": "2026-10-14T12:58:08.567248+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 697.842582998419,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:59.813167653Z",
+        "name": "aks-data-07",
+        "uid": "{{ID_DE1E59F6}}",
+        "updateTime": "2026-10-14T12:58:07.847008416Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_DE1E59F6}}/snapshots/{{ID_9903EC44}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-07/after-commit",
+    "utcStart": "2026-10-14T12:58:08.570064+00:00",
+    "utcEnd": "2026-10-14T12:58:08.674084+00:00",
+    "actor": "aks-data-07",
+    "httpStatus": 200,
+    "elapsedMs": 103.27491699717939,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-07"
+    }
+  },
+  {
+    "stage": "aks-data-07/final-suspend-data",
+    "utcStart": "2026-10-14T12:58:08.677014+00:00",
+    "utcEnd": "2026-10-14T12:58:09.481375+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 804.2898330022581,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-07   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-07/read-final",
+    "utcStart": "2026-10-14T12:58:09.484652+00:00",
+    "utcEnd": "2026-10-14T12:58:10.125597+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-07",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 640.9011670002656,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:57:59.813167653Z",
+        "name": "aks-data-07",
+        "uid": "{{ID_DE1E59F6}}",
+        "updateTime": "2026-10-14T12:58:09.452550099Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_DE1E59F6}}/snapshots/{{ID_A592DA50}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-08/create",
+    "utcStart": "2026-10-14T12:58:10.128261+00:00",
+    "utcEnd": "2026-10-14T12:58:10.779471+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 651.1746669966669,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-08   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-08/read-created",
+    "utcStart": "2026-10-14T12:58:10.781633+00:00",
+    "utcEnd": "2026-10-14T12:58:11.457794+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 676.1307079977996,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:10.764159027Z",
+        "name": "aks-data-08",
+        "uid": "{{ID_42108C18}}",
+        "updateTime": "2026-10-14T12:58:10.764159027Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-08/resume-golden",
+    "utcStart": "2026-10-14T12:58:11.462106+00:00",
+    "utcEnd": "2026-10-14T12:58:12.445879+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 983.7246669994784,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-08   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-08/read-running",
+    "utcStart": "2026-10-14T12:58:12.448906+00:00",
+    "utcEnd": "2026-10-14T12:58:13.079774+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 630.8314169982623,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:10.764159027Z",
+        "name": "aks-data-08",
+        "uid": "{{ID_42108C18}}",
+        "updateTime": "2026-10-14T12:58:12.423702971Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-08/initial",
+    "utcStart": "2026-10-14T12:58:13.081936+00:00",
+    "utcEnd": "2026-10-14T12:58:13.174854+00:00",
+    "actor": "aks-data-08",
+    "httpStatus": 200,
+    "elapsedMs": 92.37900000152877,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-08"
+    }
+  },
+  {
+    "stage": "aks-data-08/pause-data",
+    "utcStart": "2026-10-14T12:58:13.176376+00:00",
+    "utcEnd": "2026-10-14T12:58:13.954492+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 778.0711670020537,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-08   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-08/read-paused",
+    "utcStart": "2026-10-14T12:58:13.958367+00:00",
+    "utcEnd": "2026-10-14T12:58:14.620803+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 662.3863329987216,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:10.764159027Z",
+        "name": "aks-data-08",
+        "uid": "{{ID_42108C18}}",
+        "updateTime": "2026-10-14T12:58:13.932320391Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_0BE1D087}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-08/resume-paused",
+    "utcStart": "2026-10-14T12:58:14.624543+00:00",
+    "utcEnd": "2026-10-14T12:58:15.546080+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 921.4921669990872,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-08   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-08/read-restored-pause",
+    "utcStart": "2026-10-14T12:58:15.548698+00:00",
+    "utcEnd": "2026-10-14T12:58:16.149883+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 601.1610829991696,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:10.764159027Z",
+        "name": "aks-data-08",
+        "uid": "{{ID_42108C18}}",
+        "updateTime": "2026-10-14T12:58:15.528507438Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_0BE1D087}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-08/after-pause",
+    "utcStart": "2026-10-14T12:58:16.152345+00:00",
+    "utcEnd": "2026-10-14T12:58:16.238610+00:00",
+    "actor": "aks-data-08",
+    "httpStatus": 200,
+    "elapsedMs": 85.76866600196809,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-08"
+    }
+  },
+  {
+    "stage": "aks-data-08/suspend-data",
+    "utcStart": "2026-10-14T12:58:16.240653+00:00",
+    "utcEnd": "2026-10-14T12:58:17.027039+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 786.3438749991474,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-08   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-08/read-committed",
+    "utcStart": "2026-10-14T12:58:17.029188+00:00",
+    "utcEnd": "2026-10-14T12:58:17.691042+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 661.8236249996698,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:10.764159027Z",
+        "name": "aks-data-08",
+        "uid": "{{ID_42108C18}}",
+        "updateTime": "2026-10-14T12:58:17.009842496Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_42108C18}}/snapshots/{{ID_9715DFC1}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-08/resume-committed",
+    "utcStart": "2026-10-14T12:58:17.693800+00:00",
+    "utcEnd": "2026-10-14T12:58:18.528075+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 834.2389999997977,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-08   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-08/read-restored-commit",
+    "utcStart": "2026-10-14T12:58:18.531039+00:00",
+    "utcEnd": "2026-10-14T12:58:19.300330+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 769.2393750003248,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:10.764159027Z",
+        "name": "aks-data-08",
+        "uid": "{{ID_42108C18}}",
+        "updateTime": "2026-10-14T12:58:18.509172420Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_42108C18}}/snapshots/{{ID_9715DFC1}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-08/after-commit",
+    "utcStart": "2026-10-14T12:58:19.306615+00:00",
+    "utcEnd": "2026-10-14T12:58:19.405231+00:00",
+    "actor": "aks-data-08",
+    "httpStatus": 200,
+    "elapsedMs": 97.56516699781059,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-08"
+    }
+  },
+  {
+    "stage": "aks-data-08/final-suspend-data",
+    "utcStart": "2026-10-14T12:58:19.408742+00:00",
+    "utcEnd": "2026-10-14T12:58:20.215302+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 806.4968750004482,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-08   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-08/read-final",
+    "utcStart": "2026-10-14T12:58:20.218311+00:00",
+    "utcEnd": "2026-10-14T12:58:20.850765+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-08",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 632.4180830015393,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:10.764159027Z",
+        "name": "aks-data-08",
+        "uid": "{{ID_42108C18}}",
+        "updateTime": "2026-10-14T12:58:20.184279250Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_42108C18}}/snapshots/{{ID_13C0A6D1}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-09/create",
+    "utcStart": "2026-10-14T12:58:20.853991+00:00",
+    "utcEnd": "2026-10-14T12:58:21.492996+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 638.9740000013262,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-09   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-09/read-created",
+    "utcStart": "2026-10-14T12:58:21.496222+00:00",
+    "utcEnd": "2026-10-14T12:58:22.098749+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 602.4828750014422,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:21.478761885Z",
+        "name": "aks-data-09",
+        "uid": "{{ID_D9D36029}}",
+        "updateTime": "2026-10-14T12:58:21.478761885Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-09/resume-golden",
+    "utcStart": "2026-10-14T12:58:22.101844+00:00",
+    "utcEnd": "2026-10-14T12:58:22.990697+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 888.8087919985992,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-09   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-09/read-running",
+    "utcStart": "2026-10-14T12:58:22.994042+00:00",
+    "utcEnd": "2026-10-14T12:58:23.671952+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 677.8629580003326,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:21.478761885Z",
+        "name": "aks-data-09",
+        "uid": "{{ID_D9D36029}}",
+        "updateTime": "2026-10-14T12:58:22.972057289Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-09/initial",
+    "utcStart": "2026-10-14T12:58:23.675060+00:00",
+    "utcEnd": "2026-10-14T12:58:23.774578+00:00",
+    "actor": "aks-data-09",
+    "httpStatus": 200,
+    "elapsedMs": 98.75362499951734,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-09"
+    }
+  },
+  {
+    "stage": "aks-data-09/pause-data",
+    "utcStart": "2026-10-14T12:58:23.777666+00:00",
+    "utcEnd": "2026-10-14T12:58:24.568672+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 790.9705410020251,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-09   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-09/read-paused",
+    "utcStart": "2026-10-14T12:58:24.571558+00:00",
+    "utcEnd": "2026-10-14T12:58:25.179924+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 608.3205830000225,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:21.478761885Z",
+        "name": "aks-data-09",
+        "uid": "{{ID_D9D36029}}",
+        "updateTime": "2026-10-14T12:58:24.543373794Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_5C4EABB4}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-09/resume-paused",
+    "utcStart": "2026-10-14T12:58:25.183883+00:00",
+    "utcEnd": "2026-10-14T12:58:25.999695+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 815.7757920016593,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-09   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-09/read-restored-pause",
+    "utcStart": "2026-10-14T12:58:26.003835+00:00",
+    "utcEnd": "2026-10-14T12:58:26.677957+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 674.0720829984639,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:21.478761885Z",
+        "name": "aks-data-09",
+        "uid": "{{ID_D9D36029}}",
+        "updateTime": "2026-10-14T12:58:25.975989651Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_5C4EABB4}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-09/after-pause",
+    "utcStart": "2026-10-14T12:58:26.681449+00:00",
+    "utcEnd": "2026-10-14T12:58:26.798559+00:00",
+    "actor": "aks-data-09",
+    "httpStatus": 200,
+    "elapsedMs": 115.99420800121152,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-09"
+    }
+  },
+  {
+    "stage": "aks-data-09/suspend-data",
+    "utcStart": "2026-10-14T12:58:26.801986+00:00",
+    "utcEnd": "2026-10-14T12:58:27.688797+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 886.7667500016978,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-09   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-09/read-committed",
+    "utcStart": "2026-10-14T12:58:27.692452+00:00",
+    "utcEnd": "2026-10-14T12:58:28.351907+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 659.4166249997215,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:21.478761885Z",
+        "name": "aks-data-09",
+        "uid": "{{ID_D9D36029}}",
+        "updateTime": "2026-10-14T12:58:27.669792994Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_D9D36029}}/snapshots/{{ID_608E9620}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-09/resume-committed",
+    "utcStart": "2026-10-14T12:58:28.355948+00:00",
+    "utcEnd": "2026-10-14T12:58:29.142174+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 786.1780830025964,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-09   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-09/read-restored-commit",
+    "utcStart": "2026-10-14T12:58:29.145533+00:00",
+    "utcEnd": "2026-10-14T12:58:29.774381+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 628.7901670002611,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:21.478761885Z",
+        "name": "aks-data-09",
+        "uid": "{{ID_D9D36029}}",
+        "updateTime": "2026-10-14T12:58:29.120741633Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_D9D36029}}/snapshots/{{ID_608E9620}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-09/after-commit",
+    "utcStart": "2026-10-14T12:58:29.778288+00:00",
+    "utcEnd": "2026-10-14T12:58:29.893328+00:00",
+    "actor": "aks-data-09",
+    "httpStatus": 200,
+    "elapsedMs": 114.21462499856716,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-09"
+    }
+  },
+  {
+    "stage": "aks-data-09/final-suspend-data",
+    "utcStart": "2026-10-14T12:58:29.896675+00:00",
+    "utcEnd": "2026-10-14T12:58:30.737569+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 840.8468749985332,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-09   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-09/read-final",
+    "utcStart": "2026-10-14T12:58:30.740404+00:00",
+    "utcEnd": "2026-10-14T12:58:31.483129+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-09",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 742.6937080017524,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:21.478761885Z",
+        "name": "aks-data-09",
+        "uid": "{{ID_D9D36029}}",
+        "updateTime": "2026-10-14T12:58:30.709410647Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_D9D36029}}/snapshots/{{ID_88221DB1}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-10/create",
+    "utcStart": "2026-10-14T12:58:31.486742+00:00",
+    "utcEnd": "2026-10-14T12:58:32.142612+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "--template",
+      "proof-counter-data"
+    ],
+    "elapsedMs": 655.8273330010707,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-10   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-data-10/read-created",
+    "utcStart": "2026-10-14T12:58:32.146120+00:00",
+    "utcEnd": "2026-10-14T12:58:32.787230+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 641.0798329998215,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:32.125205412Z",
+        "name": "aks-data-10",
+        "uid": "{{ID_648CC22F}}",
+        "updateTime": "2026-10-14T12:58:32.125205412Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-10/resume-golden",
+    "utcStart": "2026-10-14T12:58:32.790327+00:00",
+    "utcEnd": "2026-10-14T12:58:33.631857+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 841.4892500004498,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-10   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-data-10/read-running",
+    "utcStart": "2026-10-14T12:58:33.635158+00:00",
+    "utcEnd": "2026-10-14T12:58:34.318631+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 683.3910419991298,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:32.125205412Z",
+        "name": "aks-data-10",
+        "uid": "{{ID_648CC22F}}",
+        "updateTime": "2026-10-14T12:58:33.611579337Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-10/initial",
+    "utcStart": "2026-10-14T12:58:34.325826+00:00",
+    "utcEnd": "2026-10-14T12:58:34.434459+00:00",
+    "actor": "aks-data-10",
+    "httpStatus": 200,
+    "elapsedMs": 107.8622089989949,
+    "response": {
+      "memory": 1,
+      "durable": 1,
+      "marker": "SYNTHETIC-aks-data-10"
+    }
+  },
+  {
+    "stage": "aks-data-10/pause-data",
+    "utcStart": "2026-10-14T12:58:34.437932+00:00",
+    "utcEnd": "2026-10-14T12:58:35.370798+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 932.8300419983862,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-10   kagent/proof-counter-data   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-data-10/read-paused",
+    "utcStart": "2026-10-14T12:58:35.374197+00:00",
+    "utcEnd": "2026-10-14T12:58:35.991633+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 617.3926660012512,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:32.125205412Z",
+        "name": "aks-data-10",
+        "uid": "{{ID_648CC22F}}",
+        "updateTime": "2026-10-14T12:58:35.352346717Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_04F552D0}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-10/resume-paused",
+    "utcStart": "2026-10-14T12:58:35.995119+00:00",
+    "utcEnd": "2026-10-14T12:58:36.823423+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 828.2632079972245,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-10   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-data-10/read-restored-pause",
+    "utcStart": "2026-10-14T12:58:36.827530+00:00",
+    "utcEnd": "2026-10-14T12:58:37.474010+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 646.4119169977494,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:32.125205412Z",
+        "name": "aks-data-10",
+        "uid": "{{ID_648CC22F}}",
+        "updateTime": "2026-10-14T12:58:36.800727503Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/ate-golden/tags/{{ID_59BA1622}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_04F552D0}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-10/after-pause",
+    "utcStart": "2026-10-14T12:58:37.478108+00:00",
+    "utcEnd": "2026-10-14T12:58:37.569583+00:00",
+    "actor": "aks-data-10",
+    "httpStatus": 200,
+    "elapsedMs": 90.66549999988638,
+    "response": {
+      "memory": 1,
+      "durable": 2,
+      "marker": "SYNTHETIC-aks-data-10"
+    }
+  },
+  {
+    "stage": "aks-data-10/suspend-data",
+    "utcStart": "2026-10-14T12:58:37.573190+00:00",
+    "utcEnd": "2026-10-14T12:58:38.430851+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 857.6219999995374,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-10   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-data-10/read-committed",
+    "utcStart": "2026-10-14T12:58:38.433678+00:00",
+    "utcEnd": "2026-10-14T12:58:39.129092+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 695.3853340019123,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:32.125205412Z",
+        "name": "aks-data-10",
+        "uid": "{{ID_648CC22F}}",
+        "updateTime": "2026-10-14T12:58:38.383042031Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_648CC22F}}/snapshots/{{ID_B3911E36}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-data-10/resume-committed",
+    "utcStart": "2026-10-14T12:58:39.133194+00:00",
+    "utcEnd": "2026-10-14T12:58:40.009516+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 876.2904169998365,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-data-10   kagent/proof-counter-data   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        7s\n"
+  },
+  {
+    "stage": "aks-data-10/read-restored-commit",
+    "utcStart": "2026-10-14T12:58:40.013419+00:00",
+    "utcEnd": "2026-10-14T12:58:40.670073+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 656.6020419995766,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:32.125205412Z",
+        "name": "aks-data-10",
+        "uid": "{{ID_648CC22F}}",
+        "updateTime": "2026-10-14T12:58:39.985719748Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_648CC22F}}/snapshots/{{ID_B3911E36}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-data-10/after-commit",
+    "utcStart": "2026-10-14T12:58:40.674549+00:00",
+    "utcEnd": "2026-10-14T12:58:40.785623+00:00",
+    "actor": "aks-data-10",
+    "httpStatus": 200,
+    "elapsedMs": 110.43562499980908,
+    "response": {
+      "memory": 1,
+      "durable": 3,
+      "marker": "SYNTHETIC-aks-data-10"
+    }
+  },
+  {
+    "stage": "aks-data-10/final-suspend-data",
+    "utcStart": "2026-10-14T12:58:40.788228+00:00",
+    "utcEnd": "2026-10-14T12:58:41.599356+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 811.0931669980346,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME          TEMPLATE                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-data-10   kagent/proof-counter-data   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-data-10/read-final",
+    "utcStart": "2026-10-14T12:58:41.602538+00:00",
+    "utcEnd": "2026-10-14T12:58:42.360295+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-data-10",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 757.7186249982333,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:58:32.125205412Z",
+        "name": "aks-data-10",
+        "uid": "{{ID_648CC22F}}",
+        "updateTime": "2026-10-14T12:58:41.570900202Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_69305155}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_648CC22F}}/snapshots/{{ID_89924332}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "template-after",
+    "utcStart": "2026-10-14T12:58:42.365171+00:00",
+    "utcEnd": "2026-10-14T12:58:43.106664+00:00",
+    "args": [
+      "get",
+      "actor-template",
+      "proof-counter-data",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 741.440458001307,
+    "returncode": 0,
+    "template": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:52:35.993883218Z",
+        "name": "proof-counter-data",
+        "uid": "{{ID_69305155}}",
+        "updateTime": "2026-10-14T12:52:39.217784851Z",
+        "version": "3"
+      },
+      "workerSelector": {
+        "matchLabels": {
+          "kagent.dev/worker-pool": "kagent-default"
+        }
+      },
+      "snapshotConfig": {
+        "onCommit": "SNAPSHOT_CONTENT_SCOPE_DATA",
+        "onPause": "SNAPSHOT_CONTENT_SCOPE_DATA",
+        "storageLocation": "gs://ate-snapshots/proof-counter-data/"
+      },
+      "sandboxConfig": {
+        "configName": "gvisor-default",
+        "sandboxClass": "SANDBOX_CLASS_GVISOR"
+      },
+      "resources": {
+        "limits": [
+          {
+            "name": "cpu",
+            "quantity": "1"
+          },
+          {
+            "name": "memory",
+            "quantity": "512Mi"
+          }
+        ]
+      },
+      "containers": [
+        {
+          "name": "counter",
+          "image": "localhost:15014/fixture@sha256:14de92f1e72157f4e4322702a08020ca193c20471ae2021b2e76a806d5a96a67",
+          "command": [
+            "/fixture"
+          ],
+          "wakeupProbe": {
+            "httpGet": {
+              "path": "/readyz",
+              "port": 80
+            },
+            "timeoutSeconds": 30
+          }
+        }
+      ]
+    }
+  }
+]

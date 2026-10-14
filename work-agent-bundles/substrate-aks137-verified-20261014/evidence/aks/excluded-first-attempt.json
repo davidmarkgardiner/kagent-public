@@ -1,0 +1,13 @@
+{
+  "pass": false,
+  "stage": "aks-adk-01/read-paused",
+  "error": "",
+  "createdActors": [
+    {
+      "name": "aks-adk-01",
+      "atespace": "kagent",
+      "uid": "{{ID_E7D243B7}}"
+    }
+  ],
+  "finishedUtc": "2026-10-14T12:52:10.909582+00:00"
+}

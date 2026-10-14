@@ -1,0 +1,19 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: substrate-stock-proof
+  namespace: kagent
+spec:
+  template:
+    modelConfig:
+      name: default-model-config
+    systemPrompt: This is a disposable lifecycle fixture. No model requests are sent in this test.
+  harness:
+    kagent: {}
+    workload:
+      image: ghcr.io/kagent-dev/kagent/golang-adk@sha256:10ef1350786b5d21bc002ed54833fd0272ea7cd8182a92977686b7bafa7f67d3
+    substrate:
+      workerPoolRef:
+        name: kagent-default
+      snapshotPolicy:
+        location: gs://ate-snapshots/substrate-stock-proof/

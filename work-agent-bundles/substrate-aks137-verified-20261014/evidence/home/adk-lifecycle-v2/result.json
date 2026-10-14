@@ -1,0 +1,24 @@
+{
+  "pass": true,
+  "actors": [
+    {
+      "name": "home-adk-v2-01",
+      "atespace": "kagent",
+      "uid": "{{ID_77BEBFF0}}"
+    },
+    {
+      "name": "home-adk-v2-02",
+      "atespace": "kagent",
+      "uid": "{{ID_701A4207}}"
+    },
+    {
+      "name": "home-adk-v2-03",
+      "atespace": "kagent",
+      "uid": "{{ID_C55D3762}}"
+    }
+  ],
+  "workload": "adk",
+  "templateStable": true,
+  "modelCalls": false,
+  "finishedUtc": "2026-10-14T12:55:20.492844+00:00"
+}
