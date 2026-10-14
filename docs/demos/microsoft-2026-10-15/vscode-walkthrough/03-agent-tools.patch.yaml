@@ -1,0 +1,24 @@
+# STEP 03 - Attach tools and select operations
+# SAY: We attach the named MCP endpoint and offer only these read operations to the model.
+# POINT TO: RemoteMCPServer reference and the three toolNames.
+# BOUNDARY: This patches 01-agent.yaml. Gateway policy and downstream RBAC enforce actual
+#   access.
+
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sre-triage
+  namespace: team-sre
+spec:
+  declarative:
+    tools:
+    - type: McpServer
+      mcpServer:
+        apiGroup: kagent.dev
+        kind: RemoteMCPServer
+        name: kubernetes-mcp
+        namespace: team-sre
+        toolNames:
+        - k8s_get_resources
+        - k8s_describe_resource
+        - k8s_get_pod_logs

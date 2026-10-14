@@ -1,0 +1,32 @@
+# Expected assembled Agent after applying steps 02 and 03 locally.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sre-triage
+  namespace: team-sre
+spec:
+  type: Declarative
+  description: Read-only SRE investigation with reviewed skills and selected tools.
+  skills:
+    gitAuthSecretRef:
+      name: skills-git-auth
+    gitRefs:
+    - url: '{{SKILLS_REPOSITORY_URL}}'
+      ref: '{{SKILLS_COMMIT}}'
+      path: docs/demos/microsoft-2026-10-15/vscode-walkthrough/skills/sre-triage
+      name: sre-triage
+  declarative:
+    modelConfig: model-garden
+    systemMessage: Investigate with approved read-only tools. Cite evidence and propose a reviewed
+      change.
+    tools:
+    - type: McpServer
+      mcpServer:
+        apiGroup: kagent.dev
+        kind: RemoteMCPServer
+        name: kubernetes-mcp
+        namespace: team-sre
+        toolNames:
+        - k8s_get_resources
+        - k8s_describe_resource
+        - k8s_get_pod_logs

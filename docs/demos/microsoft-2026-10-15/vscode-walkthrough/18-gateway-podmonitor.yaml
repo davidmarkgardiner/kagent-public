@@ -1,0 +1,28 @@
+# STEP 18 - Collect native gateway metrics
+# SAY: Prometheus scrapes the gateway proxy metrics endpoint.
+# POINT TO: Pod selector, named metrics port, /metrics path and job label.
+# BOUNDARY: Verify actual labels/ports and Prometheus monitor selectors on the deployed
+#   version.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: agentgateway-proxy
+  namespace: platform-gateway
+  labels:
+    release: "{{PROMETHEUS_RELEASE}}"
+spec:
+  namespaceSelector:
+    matchNames: [platform-gateway]
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: agent-gateway
+  podMetricsEndpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    relabelings:
+    - targetLabel: job
+      replacement: agentgateway-demo
+# Verify the actual proxy labels and named metrics port (default 15020).
+# Prometheus must select this PodMonitor; network policy must permit scraping.

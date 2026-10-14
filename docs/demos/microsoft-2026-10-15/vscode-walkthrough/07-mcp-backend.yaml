@@ -1,0 +1,23 @@
+# STEP 07 - Select a specific MCP backend
+# SAY: The gateway forwards to a typed MCP backend for the approved service.
+# POINT TO: FailClosed discovery, target service, port and StreamableHTTP path.
+# BOUNDARY: This backend does not grant Kubernetes resource permissions; the MCP service
+#   account still needs scoped RBAC.
+
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: kubernetes-mcp
+  namespace: team-tools
+spec:
+  mcp:
+    failureMode: FailClosed
+    sessionRouting: Stateful
+    targets:
+    - name: kubernetes-tools
+      static:
+        backendRef:
+          name: kubernetes-mcp
+        port: 8080
+        path: /mcp
+        protocol: StreamableHTTP

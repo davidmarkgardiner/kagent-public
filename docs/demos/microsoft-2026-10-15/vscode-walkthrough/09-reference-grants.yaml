@@ -1,0 +1,35 @@
+# STEP 09 - Permit exact cross-namespace references
+# SAY: The destination owner permits only these typed cross-namespace backend references.
+# POINT TO: from namespace and kind, and each exact target name.
+# BOUNDARY: ReferenceGrant enables configuration references, not end-user or agent
+#   authorization.
+
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-platform-route
+  namespace: team-tools
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: platform-gateway
+  to:
+  - group: agentgateway.dev
+    kind: AgentgatewayBackend
+    name: kubernetes-mcp
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-platform-sre-a2a-route
+  namespace: kagent
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: platform-gateway
+  to:
+  - group: ''
+    kind: Service
+    name: kagent-controller

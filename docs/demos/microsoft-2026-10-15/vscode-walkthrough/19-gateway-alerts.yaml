@@ -1,0 +1,66 @@
+# STEP 19 - Monitor denials, errors, usage and evaluation failures
+# SAY: We alert on missing scrapes, denial activity, failures and token consumption.
+# POINT TO: Native agentgateway_* series; the separate agent-evaluation rule group.
+# BOUNDARY: Thresholds are examples. agent_eval_* comes from the evaluator; missing
+#   telemetry is not zero usage.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: agentgateway-demo
+  namespace: platform-gateway
+  labels:
+    release: "{{PROMETHEUS_RELEASE}}"
+spec:
+  groups:
+  - name: agentgateway-demo
+    rules:
+    - alert: AgentgatewayMetricsMissing
+      expr: absent(up{job="agentgateway-demo"}) or max(up{job="agentgateway-demo"}) == 0
+      for: 5m
+      labels: {severity: critical}
+      annotations:
+        summary: "No healthy agentgateway scrape target"
+    - alert: AgentgatewayAuthorizationDenials
+      expr: sum(increase(agentgateway_requests_total{job="agentgateway-demo",status=~"401|403"}[5m])) > 10
+      for: 2m
+      labels: {severity: warning}
+      annotations:
+        summary: "Gateway 401/403 responses increased; inspect correlated access logs"
+    - alert: AgentgatewayHigh5xxRatio
+      expr: |
+        sum(rate(agentgateway_requests_total{job="agentgateway-demo",status=~"5.."}[5m]))
+        / clamp_min(sum(rate(agentgateway_requests_total{job="agentgateway-demo"}[5m])), 0.001) > 0.05
+        and sum(increase(agentgateway_requests_total{job="agentgateway-demo"}[5m])) >= 20
+      for: 10m
+      labels: {severity: warning}
+      annotations:
+        summary: "Gateway 5xx ratio exceeds 5% with at least 20 requests in five minutes"
+    - alert: AgentgatewayInputTokenBudget
+      expr: |
+        sum by (gen_ai_request_model) (
+          rate(agentgateway_gen_ai_client_token_usage_sum{job="agentgateway-demo",gen_ai_token_type="input"}[5m])
+        ) * 60 > 100000
+      for: 5m
+      labels: {severity: warning}
+      annotations:
+        summary: "Model input usage exceeds 100,000 tokens per minute"
+  - name: agent-evaluation
+    rules:
+    - alert: AgentEvaluationHardFailure
+      expr: agent_eval_hard_failures > 0
+      for: 1m
+      labels: {severity: critical}
+      annotations:
+        summary: "Agent evaluation has a hard failure; block promotion"
+    - alert: AgentEvaluationScoreLow
+      expr: agent_eval_score < 0.85
+      for: 10m
+      labels: {severity: warning}
+      annotations:
+        summary: "Agent evaluation score is below the example threshold"
+# agent_eval_* comes from the separate evaluation metrics publisher, not the
+# gateway PodMonitor. Promotion also checks fresh, complete evidence directly;
+# alerts notify operators and are not themselves an admission/promotion gate.
+# Thresholds are illustrative. Native metric/label names must be checked against
+# the deployed /metrics output. Missing token metrics are missing evidence, not 0.

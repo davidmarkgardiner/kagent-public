@@ -1,0 +1,10 @@
+# Local render only: assemble base + skills + tool selection.
+# It deliberately excludes the other demo resources and the scorer case.
+# Run: kubectl kustomize .
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- 01-agent.yaml
+patches:
+- path: 02-agent-skills.patch.yaml
+- path: 03-agent-tools.patch.yaml

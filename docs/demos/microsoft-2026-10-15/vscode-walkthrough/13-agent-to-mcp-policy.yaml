@@ -1,0 +1,51 @@
+# STEP 13 - Lock down which agent can call which MCP tools
+# SAY: The child Agent ID needs its own token for the MCP API and the read role, then a
+#   listed tool.
+# POINT TO: Separate audience, exact child identity, role and backend.mcp.authorization.
+# BOUNDARY: An A2A token or a sibling child does not satisfy this policy. The MCP
+#   separately checks arguments/resources.
+
+# Validates the Microsoft Entra API access token, whose format is a signed JWT.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: agent-to-kubernetes-mcp
+  namespace: platform-gateway
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: kubernetes-mcp
+  traffic:
+    # 1. Validate the Entra-issued API access token using Microsoft signing keys.
+    jwtAuthentication:
+      mode: Strict
+      providers:
+      - issuer: https://login.microsoftonline.com/{{ENTRA_TENANT_ID}}/v2.0
+        audiences:
+        - '{{MCP_API_CLIENT_ID}}'
+        jwks:
+          remote:
+            backendRef:
+              name: entra-jwks
+              kind: AgentgatewayBackend
+              group: agentgateway.dev
+              port: 443
+            jwksPath: /{{ENTRA_TENANT_ID}}/discovery/v2.0/keys
+    # 2. Require the exact approved identity and API role.
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+        - has(jwt.tid) && jwt.tid == "{{ENTRA_TENANT_ID}}"
+        - has(jwt.azp) && jwt.azp == "{{CHILD_AGENT_ID}}"
+        - has(jwt.oid) && jwt.oid == "{{CHILD_AGENT_ID}}"
+        - has(jwt.roles) && "sre.kubernetes.read" in jwt.roles
+  # 3. Independently enforce the permitted MCP tool operation.
+  backend:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions:
+          - mcp.tool.name in ["k8s_get_resources", "k8s_describe_resource", "k8s_get_pod_logs"]

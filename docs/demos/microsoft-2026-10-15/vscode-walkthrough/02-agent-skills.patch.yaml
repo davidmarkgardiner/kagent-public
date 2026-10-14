@@ -1,0 +1,20 @@
+# STEP 02 - Load our reviewed skills
+# SAY: We fetch reviewed skill files from a pinned Git commit.
+# POINT TO: spec.skills.gitRefs and the matching local skills/sre-triage/SKILL.md.
+# BOUNDARY: This is a Kustomize merge patch for 01-agent.yaml, not another Agent to
+#   deploy.
+
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sre-triage
+  namespace: team-sre
+spec:
+  skills:
+    gitAuthSecretRef:
+      name: skills-git-auth
+    gitRefs:
+    - url: '{{SKILLS_REPOSITORY_URL}}'
+      ref: '{{SKILLS_COMMIT}}'
+      path: docs/demos/microsoft-2026-10-15/vscode-walkthrough/skills/sre-triage
+      name: sre-triage

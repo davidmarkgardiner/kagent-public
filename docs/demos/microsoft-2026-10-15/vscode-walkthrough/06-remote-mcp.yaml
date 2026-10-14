@@ -1,0 +1,22 @@
+# STEP 06 - Register the authenticated MCP connection
+# SAY: The tools resolve to this gateway-facing RemoteMCPServer.
+# POINT TO: HTTPS URL and the Authorization header supplied by the agent token component.
+# BOUNDARY: The token component must obtain the child MCP access token and refresh/reload
+#   it using a version-tested path.
+
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: kubernetes-mcp
+  namespace: team-sre
+spec:
+  url: https://{{MCP_GATEWAY_HOST}}/mcp
+  allowedNamespaces:
+    from: Same
+  description: Gateway-fronted read-only Kubernetes MCP tools
+  headersFrom:
+  - name: Authorization
+    valueFrom:
+      type: Secret
+      name: agent-mcp-runtime-token
+      key: authorization

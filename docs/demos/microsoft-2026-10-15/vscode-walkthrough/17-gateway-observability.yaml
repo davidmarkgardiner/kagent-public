@@ -1,0 +1,40 @@
+# STEP 17 - Audit who called what and trace the run
+# SAY: We add verified identity context to gateway logs and export sampled traces.
+# POINT TO: Caller/child/blueprint attributes and OTLP collector reference.
+# BOUNDARY: Keep high-cardinality IDs in controlled logs/traces, not metric labels. Never
+#   log raw credentials or unrestricted data.
+
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: gateway-observability
+  namespace: platform-gateway
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: agent-gateway
+  frontend:
+    accessLog:
+      attributes:
+        add:
+        - name: identity.client
+          expression: 'jwt != null && has(jwt.azp) ? jwt.azp : "unavailable"'
+        - name: identity.subject
+          expression: 'jwt != null && has(jwt.oid) ? jwt.oid : "unavailable"'
+        - name: identity.blueprint
+          expression: 'jwt != null && has(jwt.xms_par_app_azp) ? jwt.xms_par_app_azp : "unavailable"'
+    tracing:
+      backendRef:
+        group: ""
+        kind: Service
+        name: otel-collector
+        port: 4317
+      protocol: GRPC
+      randomSampling: "0.1"
+      clientSampling: "true"
+# Collector Service is in platform-gateway; alternatively add a reviewed cross-
+# namespace reference and grant. Export to approved Alloy / OTel -> Tempo/Loki.
+# Default access logs retain route/status/latency/trace context for correlation.
+# Identity claims exist only after JWT validation; failures may have no claims.
+# Do not add raw Authorization headers, prompt bodies or tool results to logs.

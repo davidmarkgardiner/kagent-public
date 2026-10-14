@@ -1,0 +1,18 @@
+# STEP 05 - Connect our model garden
+# SAY: The Agent selects this ModelConfig; its base URL points at our gateway model route.
+# POINT TO: model-garden, provider, model, baseUrl and Secret reference.
+# BOUNDARY: Provider credentials behind the gateway are separate from client credentials.
+#   The model route already exists.
+
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: model-garden
+  namespace: team-sre
+spec:
+  provider: OpenAI
+  model: '{{MODEL_DEPLOYMENT}}'
+  apiKeySecret: model-gateway-auth
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: https://{{MODEL_GATEWAY_HOST}}/azure/v1

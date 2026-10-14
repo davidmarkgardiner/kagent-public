@@ -1,0 +1,31 @@
+# STEP 14 - Block direct backend access
+# SAY: Destination ingress permits calls from the named gateway pods.
+# POINT TO: Namespace and pod selectors together, and destination port.
+# BOUNDARY: An enforcing CNI and platform-owned controls are required. NetworkPolicies are
+#   additive; audit all other policies.
+
+# Platform-managed destination ingress; requires an enforcing CNI.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kubernetes-mcp-from-gateway
+  namespace: team-tools
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kubernetes-mcp
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: platform-gateway
+      podSelector:
+        matchLabels:
+          gateway.networking.k8s.io/gateway-name: agent-gateway
+    ports:
+    - protocol: TCP
+      port: 8080
+# NetworkPolicies are additive. Audit all other policies selecting these pods.
+# This controls ingress only; add approved egress, DNS and telemetry paths.
+# If teams can edit these controls, use platform-owned CNI/admission enforcement.

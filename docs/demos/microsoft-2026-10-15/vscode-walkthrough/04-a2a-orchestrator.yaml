@@ -1,0 +1,60 @@
+# STEP 04 - Attach specialist agents with A2A
+# SAY: The SRE chatbot delegates to named specialists and combines their evidence.
+# POINT TO: Agent-type tools, namespace references, and the second Agent
+#   allowedNamespaces.
+# BOUNDARY: Two separate Agent objects. Native Agent-as-tool calls need explicit proxy
+#   routing to pass through the gateway.
+
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sre-chat
+  namespace: team-sre
+spec:
+  type: Declarative
+  description: SRE chatbot delegates investigations to permitted specialists.
+  declarative:
+    modelConfig: model-garden
+    systemMessage: Delegate questions to the relevant permitted specialist. Return one
+      cited answer.
+    tools:
+    - type: Agent
+      agent:
+        apiGroup: kagent.dev
+        kind: Agent
+        name: grafana-evidence
+        namespace: specialists
+    - type: Agent
+      agent:
+        apiGroup: kagent.dev
+        kind: Agent
+        name: data-compliance
+        namespace: specialists
+    - type: Agent
+      agent:
+        apiGroup: kagent.dev
+        kind: Agent
+        name: kubernetes-triage
+        namespace: specialists
+---
+# Minimal destination Agent: illustrates namespace opt-in.
+# ModelConfig/model-garden in specialists and approved Grafana tools are separate
+# prerequisites; this object does not pretend to install that tool integration.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: grafana-evidence
+  namespace: specialists
+spec:
+  type: Declarative
+  description: Grafana evidence specialist with explicit caller namespace opt-in.
+  allowedNamespaces:
+    from: Selector
+    selector:
+      matchLabels:
+        team: sre
+  declarative:
+    modelConfig: model-garden
+    systemMessage: |
+      Return cited observations from approved evidence.
+      Report missing access instead of inventing metrics.

@@ -1,0 +1,30 @@
+# STEP 10 - Trust Microsoft signing keys
+# SAY: We validate Microsoft Entra access tokens using trusted signing keys fetched over
+#   TLS.
+# POINT TO: Public Entra host, port, TLS hostname and system trust store.
+# BOUNDARY: Keys are public; access tokens and application credentials are never
+#   committed.
+
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: entra-jwks
+  namespace: platform-gateway
+spec:
+  static:
+    host: login.microsoftonline.com
+    port: 443
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: entra-jwks
+  namespace: platform-gateway
+spec:
+  targetRefs:
+  - name: entra-jwks
+    kind: AgentgatewayBackend
+    group: agentgateway.dev
+  validation:
+    hostname: login.microsoftonline.com
+    wellKnownCACertificates: System

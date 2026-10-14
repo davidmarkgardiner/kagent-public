@@ -1,0 +1,17 @@
+# STEP 01 - Load our agent
+# SAY: We deploy the agent declaratively as an Agent resource.
+# POINT TO: kind: Agent, metadata.name, modelConfig and systemMessage.
+# BOUNDARY: The next two files extend this same Agent; this base alone has no MCP tools.
+
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: sre-triage
+  namespace: team-sre
+spec:
+  type: Declarative
+  description: Read-only SRE investigation with reviewed skills and selected tools.
+  declarative:
+    modelConfig: model-garden
+    systemMessage: Investigate with approved read-only tools. Cite evidence and propose a reviewed
+      change.

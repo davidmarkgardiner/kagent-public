@@ -1,0 +1,23 @@
+{
+  "folders": [
+    {
+      "name": "01 - YAML walkthrough",
+      "path": "."
+    },
+    {
+      "name": "02 - Visual slides (open to side)",
+      "path": "slides"
+    }
+  ],
+  "settings": {
+    "explorer.sortOrder": "default",
+    "workbench.editor.enablePreview": false,
+    "editor.wordWrap": "on",
+    "editor.minimap.enabled": false,
+    "editor.fontSize": 16,
+    "files.exclude": {
+      "**/__pycache__": true
+    },
+    "workbench.startupEditor": "none"
+  }
+}
