@@ -1,0 +1,49 @@
+# STEP 08 - Add gateway routes
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute  # This route connects incoming MCP requests to the approved backend.
+metadata:
+  name: kubernetes-mcp  # File 13 attaches the child-identity and tool policy to this route.
+  namespace: platform-gateway
+spec:
+  parentRefs:
+  - name: agent-gateway  # We attach to the existing platform-owned HTTPS gateway.
+    sectionName: mcp  # The existing MCP listener carries this traffic.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /mcp  # Requests under this path are matched by the MCP route.
+    backendRefs:
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend  # We select a typed MCP backend, not an arbitrary application endpoint.
+      name: kubernetes-mcp  # This is the backend declared in file 07.
+      namespace: team-tools  # File 09 grants this exact cross-namespace reference; authentication is separate.
+---
+# Named invocation route; discovery/streaming paths need their own tested contract.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: sre-chat-a2a  # File 12 attaches the application-to-agent policy to this named route.
+  namespace: platform-gateway
+spec:
+  parentRefs:
+  - name: agent-gateway
+    sectionName: a2a  # The existing A2A listener carries chatbot invocation traffic.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    filters:
+    - type: URLRewrite  # We rewrite the public invocation path to the controller agent endpoint.
+      urlRewrite:
+        path:
+          type: ReplaceFullPath
+          # This names the exact team-sre/sre-chat agent; discovery/streaming need separate
+          # testing.
+          replaceFullPath: /api/a2a/team-sre/sre-chat/
+    backendRefs:
+    - name: kagent-controller  # The kagent controller receives this authorized named-agent invocation.
+      namespace: kagent  # The destination owner grants this controller reference in file 09.
+      port: 8083  # Verify the controller Service and A2A API port in the installed release.

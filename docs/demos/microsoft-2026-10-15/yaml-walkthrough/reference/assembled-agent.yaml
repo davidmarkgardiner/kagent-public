@@ -1,0 +1,36 @@
+# reference/assembled-agent.yaml
+
+apiVersion: kagent.dev/v1alpha2  # We use the kagent API version supported by these example manifests.
+kind: Agent  # This resource tells kagent to create and manage our SRE triage agent.
+metadata:
+  name: sre-triage  # This is the agent that the skills and tool patches extend in files 02 and 03.
+  namespace: team-sre  # We keep the SRE agent and its local configuration in this team namespace.
+spec:
+  type: Declarative  # We configure this agent declaratively through Kubernetes.
+  # This describes our intended read-only investigation role; permissions enforce it separately.
+  description: Read-only SRE investigation with reviewed skills and selected tools.
+  skills:  # Here we add reusable instructions instead of repeating everything in the prompt.
+    gitAuthSecretRef:
+      name: skills-git-auth  # The runtime fetches private skill sources using this separately managed Secret.
+    gitRefs:
+    - url: '{{SKILLS_REPOSITORY_URL}}'  # This is the approved repository containing our SRE triage skill.
+      ref: '{{SKILLS_COMMIT}}'  # We pin a reviewed commit so skill updates pass through change review.
+      # This directory contains the included skills/sre-triage/SKILL.md within this repository.
+      path: docs/demos/microsoft-2026-10-15/yaml-walkthrough/skills/sre-triage
+      name: sre-triage  # The runtime loads this skill bundle for the SRE triage workflow.
+  declarative:
+    modelConfig: model-garden  # File 05 connects this agent to our gateway model garden.
+    # We ask for evidence and a proposed reviewed change; the prompt does not grant execution rights.
+    systemMessage: Investigate with approved read-only tools. Cite evidence and propose a reviewed
+      change.
+    tools:  # These are the integrations the agent may offer to the model.
+    - type: McpServer  # This integration calls tools over MCP rather than delegating to another agent.
+      mcpServer:
+        apiGroup: kagent.dev
+        kind: RemoteMCPServer  # File 06 registers the actual gateway-facing MCP connection.
+        name: kubernetes-mcp  # We attach the named Kubernetes MCP connection from file 06.
+        namespace: team-sre  # The agent resolves this MCP connection in its own team namespace.
+        toolNames:  # We expose only these reads; file 13 independently enforces the gateway tool list.
+        - k8s_get_resources  # We inspect workload and resource state to establish what is failing.
+        - k8s_describe_resource  # We gather resource details and events to test the diagnosis.
+        - k8s_get_pod_logs  # We collect application logs as evidence, within downstream access limits.

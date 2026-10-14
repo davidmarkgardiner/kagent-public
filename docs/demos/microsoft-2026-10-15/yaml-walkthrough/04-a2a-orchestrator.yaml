@@ -1,0 +1,56 @@
+# STEP 04 - Attach specialist agents with A2A
+
+apiVersion: kagent.dev/v1alpha2
+kind: Agent  # This is a separate orchestration Agent for the SRE conversation.
+metadata:
+  name: sre-chat  # SRE talks to this single chatbot rather than opening every specialist separately.
+  namespace: team-sre
+spec:
+  type: Declarative
+  description: SRE chatbot delegates investigations to permitted specialists.
+  declarative:
+    modelConfig: model-garden  # The chatbot uses the same model-garden connection pattern as the triage agent.
+    # We instruct it to delegate investigations and combine the cited findings.
+    systemMessage: Delegate questions to the relevant permitted specialist. Return one
+      cited answer.
+    tools:  # These tools are named specialist agents; their own tool permissions remain separate.
+    - type: Agent  # An Agent-type tool lets the chatbot delegate a task over A2A.
+      agent:
+        apiGroup: kagent.dev
+        kind: Agent
+        name: grafana-evidence  # This specialist supplies Grafana metrics and application telemetry when configured.
+        namespace: specialists  # The destination lives in the specialist namespace and must allow the caller.
+    - type: Agent
+      agent:
+        apiGroup: kagent.dev
+        kind: Agent
+        name: data-compliance  # This specialist supplies approved data, incident or compliance context.
+        namespace: specialists
+    - type: Agent
+      agent:
+        apiGroup: kagent.dev
+        kind: Agent
+        name: kubernetes-triage  # This specialist supplies Kubernetes runtime evidence for the same investigation.
+        namespace: specialists
+---
+# Minimal destination Agent: illustrates namespace opt-in.
+# ModelConfig/model-garden in specialists and approved Grafana tools are separate
+# prerequisites; this object does not pretend to install that tool integration.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent  # The second document defines a minimal destination agent, not another chatbot.
+metadata:
+  name: grafana-evidence  # This name matches the Grafana specialist reference in the first document.
+  namespace: specialists
+spec:
+  type: Declarative
+  description: Grafana evidence specialist with explicit caller namespace opt-in.
+  allowedNamespaces:  # The destination opts in to permitted cross-namespace Agent references.
+    from: Selector  # We choose caller namespaces by a platform-controlled label.
+    selector:
+      matchLabels:
+        team: sre  # The SRE namespace must carry this label; this is separate from Entra authorization.
+  declarative:
+    modelConfig: model-garden  # This ModelConfig must also exist in the specialists namespace.
+    systemMessage: |  # Actual Grafana tools are a prerequisite; this example must report missing evidence honestly.
+      Return cited observations from approved evidence.
+      Report missing access instead of inventing metrics.

@@ -1,0 +1,21 @@
+# STEP 03 - Attach tools and select operations
+# This merge patch extends 01-agent.yaml; it is not a separate complete Agent.
+
+apiVersion: kagent.dev/v1alpha2
+kind: Agent  # This patch adds tool configuration to the Agent from file 01.
+metadata:
+  name: sre-triage  # We extend the same sre-triage Agent that already received the skills patch.
+  namespace: team-sre
+spec:
+  declarative:
+    tools:  # These are the integrations the agent may offer to the model.
+    - type: McpServer  # This integration calls tools over MCP rather than delegating to another agent.
+      mcpServer:
+        apiGroup: kagent.dev
+        kind: RemoteMCPServer  # File 06 registers the actual gateway-facing MCP connection.
+        name: kubernetes-mcp  # We attach the named Kubernetes MCP connection from file 06.
+        namespace: team-sre  # The agent resolves this MCP connection in its own team namespace.
+        toolNames:  # We expose only these reads; file 13 independently enforces the gateway tool list.
+        - k8s_get_resources  # We inspect workload and resource state to establish what is failing.
+        - k8s_describe_resource  # We gather resource details and events to test the diagnosis.
+        - k8s_get_pod_logs  # We collect application logs as evidence, within downstream access limits.

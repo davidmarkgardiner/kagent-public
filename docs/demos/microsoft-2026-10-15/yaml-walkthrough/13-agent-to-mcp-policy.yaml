@@ -1,0 +1,51 @@
+# STEP 13 - Lock down which agent can call which MCP tools
+
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy  # The gateway applies this policy before forwarding the MCP request.
+metadata:
+  name: agent-to-kubernetes-mcp
+  namespace: platform-gateway
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: kubernetes-mcp  # This binds the checks to the named MCP route from file 08.
+  traffic:
+    # 1. Validate the Entra-issued API access token using Microsoft signing keys.
+    jwtAuthentication:  # We validate the Microsoft Entra MCP access token; JWT is its signed format.
+      mode: Strict  # A missing or invalid access token is rejected rather than treated as anonymous.
+      providers:
+      # Only the configured Entra tenant v2 issuer is trusted here.
+      - issuer: https://login.microsoftonline.com/{{ENTRA_TENANT_ID}}/v2.0
+        audiences:
+        - '{{MCP_API_CLIENT_ID}}'  # The token must be intended for our MCP API, not Microsoft Graph or the other API.
+        jwks:
+          remote:
+            backendRef:
+              name: entra-jwks  # File 10 defines the trusted Microsoft signing-key backend.
+              kind: AgentgatewayBackend
+              group: agentgateway.dev
+              port: 443
+            # We fetch this tenant signing-key set to verify the token signature.
+            jwksPath: /{{ENTRA_TENANT_ID}}/discovery/v2.0/keys
+    # 2. Require the exact approved identity and API role.
+    authorization:
+      action: Require  # Every following identity and role check must pass; these are not OR alternatives.
+      policy:
+        matchExpressions:
+        - has(jwt.tid) && jwt.tid == "{{ENTRA_TENANT_ID}}"  # The verified token must belong to our approved tenant.
+        # This pins the exact child Agent ID client, not everyone with the same issuer.
+        - has(jwt.azp) && jwt.azp == "{{CHILD_AGENT_ID}}"
+        - has(jwt.oid) && jwt.oid == "{{CHILD_AGENT_ID}}"  # This pins the subject principal to the approved child Agent ID.
+        # The child Agent ID must also hold the sre.kubernetes.read API application role.
+        - has(jwt.roles) && "sre.kubernetes.read" in jwt.roles
+  # 3. Independently enforce the permitted MCP tool operation.
+  backend:
+    mcp:
+      authorization:
+        action: Require  # The gateway independently requires a permitted operation on every evaluated tool call.
+        policy:
+          matchExpressions:
+          # Only these Kubernetes reads pass; the MCP separately restricts namespace/resource
+          # arguments.
+          - mcp.tool.name in ["k8s_get_resources", "k8s_describe_resource", "k8s_get_pod_logs"]

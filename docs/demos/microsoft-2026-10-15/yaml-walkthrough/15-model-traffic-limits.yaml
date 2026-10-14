@@ -1,0 +1,24 @@
+# STEP 15 - Bound model traffic
+
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: model-traffic-limits
+  namespace: platform-gateway
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: model-garden  # These limits apply to our existing model-garden HTTPRoute.
+  traffic:
+    timeouts:
+      request: 90s  # We bound one model request, not the entire multi-call investigation.
+    rateLimit:
+      local:  # Each proxy enforces its own limits; this is not a coordinated fleet budget.
+      - requests: 30  # This illustrative limit permits thirty model requests per minute on this proxy route.
+        unit: Minutes  # This is the request-counting window.
+        burst: 5  # We allow a small short-lived request burst above the steady rate.
+      - tokens: 100000  # Completed input/output token use limits later requests; in-flight calls can overshoot.
+        unit: Minutes  # We account for tokens over a one-minute window.
+# Per proxy instance, shared by callers on this route. Not a fleet-wide budget.
+# Token accounting happens on completion and limits subsequent requests.
