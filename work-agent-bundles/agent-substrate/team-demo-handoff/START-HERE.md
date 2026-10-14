@@ -9,6 +9,14 @@ files are copied.
 
 ## Start here
 
+For a short check after yesterday's reported passing test, start with
+[`QUICK-VERIFY-WORK-AGENT-PROMPT.md`](QUICK-VERIFY-WORK-AGENT-PROMPT.md).
+It asks the work agent to complete
+[`QUICK-VERIFY-WALKTHROUGH-TEMPLATE.md`](QUICK-VERIFY-WALKTHROUGH-TEMPLATE.md)
+with the actual environment names and a rehearsed test you can run yourself.
+The template includes example commands for the existing 0.0.9/0.10.x runner
+and identifies the extra actor-correlation checks needed beyond its PASS.
+
 1. Read [`HANDS-ON-WALKTHROUGH.md`](HANDS-ON-WALKTHROUGH.md) and check the exact
    installed version. It has the operator commands and four presenter pauses.
 2. Give [`WORK-AGENT-DEMO-HANDOFF.md`](WORK-AGENT-DEMO-HANDOFF.md) to the work
@@ -47,6 +55,7 @@ inputs for the work agent's version-matched redeploy document.
 
 | Purpose | Files |
 | --- | --- |
+| Quick current verification | `QUICK-VERIFY-WORK-AGENT-PROMPT.md`, `QUICK-VERIFY-WALKTHROUGH-TEMPLATE.md` |
 | Presenter and work-agent instructions | `HANDS-ON-WALKTHROUGH.md`, `WORK-AGENT-DEMO-HANDOFF.md` |
 | Golden actor failure triage and follow-up | `GOLDEN-ACTOR-NOT-FOUND-NEXT-STEP.md`, `GOLDEN-ACTOR-ID-MISMATCH-WORK-AGENT-PROMPT.md`, `GOLDEN-ACTOR-PUBLIC-IMAGE-STATUS-WRITER-PROMPT.md` |
 | AKS home/work comparison | `HOME-VS-WORK-AKS-GOLDEN-CANARY-CROSSCHECK.md` |
