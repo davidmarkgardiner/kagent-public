@@ -1,0 +1,226 @@
+[
+  {
+    "privateReceipt": "evidence/home/platform.json",
+    "privateSha256": "5e088dae8479ce55165adb2b281dcd3079a82a19b0f00d62f6c6e7dfe7d3b218",
+    "publicCopy": "evidence/home/platform.json",
+    "publicSha256": "5e088dae8479ce55165adb2b281dcd3079a82a19b0f00d62f6c6e7dfe7d3b218",
+    "derivedFrom": [
+      {
+        "privateReceipt": "evidence/home/nodes.json",
+        "sha256": "95a475bd9bd13115cfc9077eab8c561a07378829fada95957a78488b20d6fdc9"
+      }
+    ]
+  },
+  {
+    "privateReceipt": "evidence/home/adk-lifecycle-v2/benchmark.json",
+    "privateSha256": "aa79f0cbf136254c9b3a9d3eb859fb69a3d04f04d0269d94c2c7ea39c26bac8c",
+    "publicCopy": "evidence/home/adk-lifecycle-v2/benchmark.json",
+    "publicSha256": "64a9b47234c353d92f55b4f9382b9b25c5f462b104fde363280711b0c9f04bb3"
+  },
+  {
+    "privateReceipt": "evidence/home/adk-lifecycle-v2/result.json",
+    "privateSha256": "8609f5227fdcc713286a29f0d4a5075964a6970460a15e0cc3d5b98defc66ab3",
+    "publicCopy": "evidence/home/adk-lifecycle-v2/result.json",
+    "publicSha256": "3a38d05d024818175f4cdfe6c236266f987fea85b3c7141842d97e03bb0e478b"
+  },
+  {
+    "privateReceipt": "evidence/home/adk-lifecycle-v2/steps.json",
+    "privateSha256": "dd265c0dc7bf57e0e47d5b72d69ba1d5e87936067789618e26fdbb60ffe4675e",
+    "publicCopy": "evidence/home/adk-lifecycle-v2/assertions.json",
+    "publicSha256": "afa414a5cc5ee855481f06d6871fd08a082da938381757618e1adee06ffda4dd"
+  },
+  {
+    "privateReceipt": "evidence/home/counter-full/benchmark.json",
+    "privateSha256": "1655ac6c1e7c63e73cd436a0071e4e61c47bdc483fee8f08a4b4918b7ca99523",
+    "publicCopy": "evidence/home/counter-full/benchmark.json",
+    "publicSha256": "af6331780d77704e9928ff7f03ea97bef324b3732532c35349a8f4a6ebd4ffca"
+  },
+  {
+    "privateReceipt": "evidence/home/counter-full/result.json",
+    "privateSha256": "e94dc0992c2188629d32cdc74b726a7e1accf424049be9b7bd8cae9ae5d75dcf",
+    "publicCopy": "evidence/home/counter-full/result.json",
+    "publicSha256": "b8a7e1a339e2489b368786a450dfae99b639fa7614e67dcfa5cb295863393640"
+  },
+  {
+    "privateReceipt": "evidence/home/counter-full/steps.json",
+    "privateSha256": "00b5638aa857f890ca10c8940008c2d8350699d8e9c9914fb5e33fc9008b1d8e",
+    "publicCopy": "evidence/home/counter-full/assertions.json",
+    "publicSha256": "6078e80f57b98d0fdf4c6c7066d8b51b0f957060ff6912ffb448fb2408f18928"
+  },
+  {
+    "privateReceipt": "evidence/home/counter-data/benchmark.json",
+    "privateSha256": "f00fd41244af8d0396282fbe60b3719da7ecc8d223a88f51482ebc55ffab34fb",
+    "publicCopy": "evidence/home/counter-data/benchmark.json",
+    "publicSha256": "859193a5d1468ece495abd145a0160cfad63410ceb838eb660ce7432123f79c7"
+  },
+  {
+    "privateReceipt": "evidence/home/counter-data/result.json",
+    "privateSha256": "4b735242e634887159c10e65349cd66fc462bd421bc0c293ab9f58a8d5917ceb",
+    "publicCopy": "evidence/home/counter-data/result.json",
+    "publicSha256": "1276f5e5733acc4b9bb742ecf6f375b7d3366028785debd4827c754d24cb860a"
+  },
+  {
+    "privateReceipt": "evidence/home/counter-data/steps.json",
+    "privateSha256": "7d823ce6098f2dcae2ceeef0df212fca3a96031bec9510e85faebb01ee4c0389",
+    "publicCopy": "evidence/home/counter-data/assertions.json",
+    "publicSha256": "3d01c070f8ca267153a94a4968a29cc5554eabc218722796bf2246b7e85e3ca6"
+  },
+  {
+    "privateReceipt": "evidence/home/pods-final.json",
+    "privateSha256": "2f09bebf330a5c6a830825437dbcc0937fedd9933b0f7ba6970188f6ec5146aa",
+    "publicCopy": "evidence/home/image-inventory.json",
+    "publicSha256": "02c38addf8529421067652a4878fe07556cae27ab63d4438c11412dc7cf8de0e"
+  },
+  {
+    "privateReceipt": "evidence/home/runtime-assets.json",
+    "privateSha256": "3a562da1ac9d9ef0f3a27aba1a3aa1da6c9818b252d2a99828f124d5e0bbc010",
+    "publicCopy": "evidence/home/runtime-assets.json",
+    "publicSha256": "3a562da1ac9d9ef0f3a27aba1a3aa1da6c9818b252d2a99828f124d5e0bbc010",
+    "derivedFrom": [
+      {
+        "privateReceipt": "evidence/home/logs/ate-system-atelet-c28sw-atelet.log",
+        "sha256": "a63d0468dd514141e4f277f6b89a7f15c6c649f31d9d78e40a87b3c9e0320a3d"
+      },
+      {
+        "privateReceipt": "evidence/home/runsc-version.txt",
+        "sha256": "db5008802107f7697d3ffe58e6cea2fb39cc1456fe532a75e5d2c62f59a12b60"
+      },
+      {
+        "privateReceipt": "evidence/home/worker-runsc-version.txt",
+        "sha256": "db5008802107f7697d3ffe58e6cea2fb39cc1456fe532a75e5d2c62f59a12b60"
+      },
+      {
+        "privateReceipt": "evidence/home/runsc-binary-audit.txt",
+        "sha256": "2a281553b69b78beb2bcdc1d4069f4ee5c78ce3aa6adaa20832ff6cd4836c2fe"
+      }
+    ]
+  },
+  {
+    "privateReceipt": "evidence/home/actors-final.json",
+    "privateSha256": "b99ccb5ebf0050bed965ed00cb9103218a98f441bbdf4f4057215f331c27fdc4",
+    "publicCopy": "evidence/home/actor-inventory.json",
+    "publicSha256": "088221c394f9b66e48d136573db4aabc45472a86283fad938d870f1ff801c629"
+  },
+  {
+    "privateReceipt": "evidence/aks/platform.json",
+    "privateSha256": "9b277c6dd2262c0872132b5420f11a6b6057eaa579a043533c1baafb6513411c",
+    "publicCopy": "evidence/aks/platform.json",
+    "publicSha256": "9b277c6dd2262c0872132b5420f11a6b6057eaa579a043533c1baafb6513411c",
+    "derivedFrom": [
+      {
+        "privateReceipt": "evidence/aks/nodes.json",
+        "sha256": "e4e126f369fe54808ed183793b5767c28baf19123d7431d6d8691cfc538710ea"
+      },
+      {
+        "privateReceipt": "azure-current.json",
+        "sha256": "504a4f808f07591725cfdf65c79567df0f44c70bdf07bdc788181a31b185d0ca"
+      }
+    ]
+  },
+  {
+    "privateReceipt": "evidence/aks/adk-lifecycle-v2/benchmark.json",
+    "privateSha256": "10994ca291ba1e50a1d3977ad7cd43c9960794bff1dc024452e0ba66f23fce5a",
+    "publicCopy": "evidence/aks/adk-lifecycle-v2/benchmark.json",
+    "publicSha256": "92a6f469d65e4dd443ec920723a8316bd431fa8fdcaf27ac21ac2fc5cf297928"
+  },
+  {
+    "privateReceipt": "evidence/aks/adk-lifecycle-v2/result.json",
+    "privateSha256": "740463a6ae0f41460c8e2b59f7c957777ccabebe3c62652bd1ab6e53c7b04031",
+    "publicCopy": "evidence/aks/adk-lifecycle-v2/result.json",
+    "publicSha256": "9bdf33ca8819bbc345d102664d0923239c01fdb87757753a4bf78732c99c2141"
+  },
+  {
+    "privateReceipt": "evidence/aks/adk-lifecycle-v2/steps.json",
+    "privateSha256": "fe2ef89515279d49fe2229751edd03a97c99c9c5177e8f88921c078e323ffb13",
+    "publicCopy": "evidence/aks/adk-lifecycle-v2/assertions.json",
+    "publicSha256": "5545505d5ccf516369ce41891cda33b2802a2ea5ffcde00452f79bab11376196"
+  },
+  {
+    "privateReceipt": "evidence/aks/counter-full/benchmark.json",
+    "privateSha256": "3714f2d52364e988625285475efb37819f6f1585926513341f9bcb00d5c3b935",
+    "publicCopy": "evidence/aks/counter-full/benchmark.json",
+    "publicSha256": "a321525c87f96aa516ecf27c2c58eba4bd2ba9f1323cdcbd14e9ae32cad3fc36"
+  },
+  {
+    "privateReceipt": "evidence/aks/counter-full/result.json",
+    "privateSha256": "7003dc29219147edb5449bce400f84ac34642844d581a6c57be25d0afcd689e6",
+    "publicCopy": "evidence/aks/counter-full/result.json",
+    "publicSha256": "55aed0784c1b498be878b2210ead2db53ce0b060f83cd43d3017241566f4d741"
+  },
+  {
+    "privateReceipt": "evidence/aks/counter-full/steps.json",
+    "privateSha256": "ebf1443f4f85d26b7a6c668aa0913b77b7ed5ff8d52e49ed1eec5feab22b580d",
+    "publicCopy": "evidence/aks/counter-full/assertions.json",
+    "publicSha256": "559aff9edceff5c5f70c7db8a8f35f607e7015b7ae9457f26810b88ee8fb3585"
+  },
+  {
+    "privateReceipt": "evidence/aks/counter-data/benchmark.json",
+    "privateSha256": "5c0eadf95f3886103754358683f4fc6882b50ab59a1bb349377434f83c12be42",
+    "publicCopy": "evidence/aks/counter-data/benchmark.json",
+    "publicSha256": "227bf6d915259187d443deacc43dc5b364143d52f4372edb82b7bf9ec97a0b56"
+  },
+  {
+    "privateReceipt": "evidence/aks/counter-data/result.json",
+    "privateSha256": "1a1fcb9a72894baa8ec025a362c7ca9fca31bba3b92e5bb7283a61e852e46723",
+    "publicCopy": "evidence/aks/counter-data/result.json",
+    "publicSha256": "8b075703bdf51b109facf4bfe4b4a6c7e58483dcc50dde580294f85fd635c210"
+  },
+  {
+    "privateReceipt": "evidence/aks/counter-data/steps.json",
+    "privateSha256": "de2408eae0ecac4e479b38e5e48104fa47f3308f4d6740aee7b74eec4211e5ce",
+    "publicCopy": "evidence/aks/counter-data/assertions.json",
+    "publicSha256": "a614535d0fab2f5ed8be1eaf955ee093a7534b9e64e9658c246d34f0c7c953c9"
+  },
+  {
+    "privateReceipt": "evidence/aks/pods-final.json",
+    "privateSha256": "88cafe750a4b3fc33689f8af52477e072e00dfddfd7d1a0bc889bd06d7b967a8",
+    "publicCopy": "evidence/aks/image-inventory.json",
+    "publicSha256": "ac44a4d525b720699a409356209bace062049056f0be10fe22bdb206db96dfca"
+  },
+  {
+    "privateReceipt": "evidence/aks/runtime-assets.json",
+    "privateSha256": "6a59b065b98785c0ed54371941e76641d01b82f4d6a4efe164ab3129ae3db60b",
+    "publicCopy": "evidence/aks/runtime-assets.json",
+    "publicSha256": "6a59b065b98785c0ed54371941e76641d01b82f4d6a4efe164ab3129ae3db60b",
+    "derivedFrom": [
+      {
+        "privateReceipt": "evidence/aks/logs/ate-system-atelet-9d5vm-atelet.log",
+        "sha256": "8f05ae8a359b185ae8aeea68fb8faa7ffa327d6420c3c7017ee8fecaebc04925"
+      },
+      {
+        "privateReceipt": "evidence/aks/runsc-version.txt",
+        "sha256": "db5008802107f7697d3ffe58e6cea2fb39cc1456fe532a75e5d2c62f59a12b60"
+      },
+      {
+        "privateReceipt": "evidence/aks/worker-runsc-version.txt",
+        "sha256": "db5008802107f7697d3ffe58e6cea2fb39cc1456fe532a75e5d2c62f59a12b60"
+      },
+      {
+        "privateReceipt": "evidence/aks/runsc-binary-audit.txt",
+        "sha256": "2d0094d4cb9718669c7a8cea1c22a7773ddcc1db9c6eb35689be4e10559c56cf"
+      },
+      {
+        "privateReceipt": "evidence/aks/cold-fetch-tool-receipt.json",
+        "sha256": "ad54d5180107c8b47e9cd1d070fe6fb66840eab42f45905d6e8935c44a4eae83"
+      }
+    ]
+  },
+  {
+    "privateReceipt": "evidence/aks/actors-final.json",
+    "privateSha256": "c7af512614e93e08aa37f97ed60ac7a97962973c39eccf6233b3defa6ba875c2",
+    "publicCopy": "evidence/aks/actor-inventory.json",
+    "publicSha256": "8d19889f6e331e28a549d860c3cd161087a13411c8596a40814d5725ed0b5d45"
+  },
+  {
+    "privateReceipt": "evidence/home/adk-lifecycle/result.json",
+    "privateSha256": "81f82c8e61c4dbfd42269ade05ed66ec784b8b870610045b874b5f3faa358ad1",
+    "publicCopy": "evidence/home/excluded-first-attempt.json",
+    "publicSha256": "7d98fe608f016040bb3e035bc41f07190adacbe1dcf209ec222b80ae6295a078"
+  },
+  {
+    "privateReceipt": "evidence/aks/adk-lifecycle/result.json",
+    "privateSha256": "4ac67366de747ac33c5d5ae3918c6aea2098f36a91c014263e575091f8a920e2",
+    "publicCopy": "evidence/aks/excluded-first-attempt.json",
+    "publicSha256": "8fad38c24a10cd158bf31b416b95179de1e4d73d8d8947b397b6fe29c2bea286"
+  }
+]

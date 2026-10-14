@@ -1,0 +1,36 @@
+{
+  "target": "home",
+  "nodeInfo": {
+    "architecture": "arm64",
+    "containerRuntimeVersion": "containerd://2.3.4",
+    "kernelVersion": "6.10.14-linuxkit",
+    "kubeProxyVersion": "",
+    "kubeletVersion": "v1.37.0",
+    "operatingSystem": "linux",
+    "osImage": "Debian GNU/Linux 13 (trixie)",
+    "runningInUserNamespace": false,
+    "swap": {
+      "capacity": 1073737728
+    }
+  },
+  "capacity": {
+    "cpu": "10",
+    "ephemeral-storage": "977896124416",
+    "hugepages-1Gi": "0",
+    "hugepages-2Mi": "0",
+    "hugepages-32Mi": "0",
+    "hugepages-64Ki": "0",
+    "memory": "16356452Ki",
+    "pods": "110"
+  },
+  "allocatable": {
+    "cpu": "10",
+    "ephemeral-storage": "977896124416",
+    "hugepages-1Gi": "0",
+    "hugepages-2Mi": "0",
+    "hugepages-32Mi": "0",
+    "hugepages-64Ki": "0",
+    "memory": "16356452Ki",
+    "pods": "110"
+  }
+}

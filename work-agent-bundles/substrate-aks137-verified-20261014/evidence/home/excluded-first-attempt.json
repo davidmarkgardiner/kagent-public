@@ -1,0 +1,7 @@
+{
+  "pass": false,
+  "stage": "template-before",
+  "error": "template-before exited 1; see steps.json",
+  "createdActors": [],
+  "finishedUtc": "2026-10-14T12:54:03.588512+00:00"
+}

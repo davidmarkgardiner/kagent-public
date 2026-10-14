@@ -1,0 +1,25 @@
+controller:
+  substrate:
+    enabled: true
+    ateApiEndpoint: dns:///api.ate-system.svc:443
+    atenetRouterURL: http://atenet-router.ate-system.svc:80
+substrateWorkerPool:
+  create: true
+  name: kagent-default
+  replicas: 1
+  sandboxClass: gvisor
+  workerImage: ghcr.io/kagent-dev/substrate/ateom-gvisor@sha256:a1ce5b950724c6167889324df6729ccf8c5b3b2963863f4602c21c17587ba454
+kmcp:
+  enabled: false
+kagent-tools:
+  enabled: false
+grafana-mcp:
+  enabled: false
+substrate:
+  enabled: false
+providers:
+  default: ollama
+  ollama:
+    model: lifecycle-fixture-no-model-calls
+    config:
+      host: http://model-not-configured.invalid:11434

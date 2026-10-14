@@ -1,0 +1,173 @@
+[
+  {
+    "namespace": "ate-system",
+    "pod": "ate-api-server-798b57586d-hkftn",
+    "container": "ate-api-server",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/ateapi@sha256:0758fdb0d9771b3cdc0456f91def2431577bd8b2754760882dd333c74a875d70",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/ateapi@sha256:0758fdb0d9771b3cdc0456f91def2431577bd8b2754760882dd333c74a875d70",
+    "ready": true,
+    "restartCount": 2
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "ate-api-server-798b57586d-svgpn",
+    "container": "ate-api-server",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/ateapi@sha256:0758fdb0d9771b3cdc0456f91def2431577bd8b2754760882dd333c74a875d70",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/ateapi@sha256:0758fdb0d9771b3cdc0456f91def2431577bd8b2754760882dd333c74a875d70",
+    "ready": true,
+    "restartCount": 3
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "ate-controller-57dfc68c4b-t65dr",
+    "container": "ate-controller",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/atecontroller@sha256:0a5345fac8eaa43e9a92c0009bcabc18abe38097ff36957f5c5c46b408bde20e",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/atecontroller@sha256:0a5345fac8eaa43e9a92c0009bcabc18abe38097ff36957f5c5c46b408bde20e",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "atelet-c28sw",
+    "container": "atelet",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/atelet@sha256:386704f0a947c3c8128dd9c9ecb8b6766dd6b01c970222763b8671b90a957d0a",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/atelet@sha256:386704f0a947c3c8128dd9c9ecb8b6766dd6b01c970222763b8671b90a957d0a",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "atenet-egress-5f6778f4b8-9m88p",
+    "container": "agentgateway",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/agentgateway:50999825cb55@sha256:f1907a50b2e74a071da53fcd2008d585b6a63d31b4e1ba3ee46cf22b342cf04b",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/agentgateway@sha256:f1907a50b2e74a071da53fcd2008d585b6a63d31b4e1ba3ee46cf22b342cf04b",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "atenet-egress-5f6778f4b8-9m88p",
+    "container": "ext-proc",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/atenet@sha256:01d3b9195b4622fd4e1472cdd496bd2d57b38d4dbcddfa41f81516145c1ea1ae",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/atenet@sha256:01d3b9195b4622fd4e1472cdd496bd2d57b38d4dbcddfa41f81516145c1ea1ae",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "atenet-router-f45b57457-gvw9m",
+    "container": "atenet-router",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/atenet@sha256:01d3b9195b4622fd4e1472cdd496bd2d57b38d4dbcddfa41f81516145c1ea1ae",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/atenet@sha256:01d3b9195b4622fd4e1472cdd496bd2d57b38d4dbcddfa41f81516145c1ea1ae",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "atenet-router-f45b57457-gvw9m",
+    "container": "agentgateway",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/agentgateway:50999825cb55@sha256:f1907a50b2e74a071da53fcd2008d585b6a63d31b4e1ba3ee46cf22b342cf04b",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/agentgateway@sha256:f1907a50b2e74a071da53fcd2008d585b6a63d31b4e1ba3ee46cf22b342cf04b",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "k8s-credential-provider-7dbdf97b69-2sh6f",
+    "container": "k8s-credential-provider",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/kubernetes-secrets@sha256:dc421a5cd9f0765446aa79e3f11e46c88a6def13bcfd06d3b875a793122dbafd",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/kubernetes-secrets@sha256:dc421a5cd9f0765446aa79e3f11e46c88a6def13bcfd06d3b875a793122dbafd",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "postgres-0",
+    "container": "tls-reloader",
+    "configuredImage": "postgres:18-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+    "observedImageID": "docker.io/library/postgres@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "postgres-0",
+    "container": "postgres",
+    "configuredImage": "postgres:18-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+    "observedImageID": "docker.io/library/postgres@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "rustfs-6c4c677cb6-6c97c",
+    "container": "rustfs",
+    "configuredImage": "rustfs/rustfs:1.0.0-beta.3@sha256:378642b05b7dcb4849fb77ebe6aca4ced1c3f66e7e504247df95a5c9018d3358",
+    "observedImageID": "docker.io/rustfs/rustfs@sha256:378642b05b7dcb4849fb77ebe6aca4ced1c3f66e7e504247df95a5c9018d3358",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "ate-system",
+    "pod": "rustfs-bucket-init-vt78w",
+    "container": "create-bucket",
+    "configuredImage": "amazon/aws-cli:2.17.0@sha256:643507c10ada7964ca6157b3d799f030b90577643da9955d319a77399ed80d73",
+    "observedImageID": "docker.io/amazon/aws-cli@sha256:643507c10ada7964ca6157b3d799f030b90577643da9955d319a77399ed80d73",
+    "ready": false,
+    "restartCount": 0
+  },
+  {
+    "namespace": "kagent",
+    "pod": "kagent-controller-57bc649fcc-vd4qv",
+    "container": "controller",
+    "configuredImage": "ghcr.io/kagent-dev/kagent/controller@sha256:6ced2268d62f60a3a4347e080d0f33af08a413894845fbfe6b561b1a304764a2",
+    "observedImageID": "ghcr.io/kagent-dev/kagent/controller@sha256:6ced2268d62f60a3a4347e080d0f33af08a413894845fbfe6b561b1a304764a2",
+    "ready": true,
+    "restartCount": 3
+  },
+  {
+    "namespace": "kagent",
+    "pod": "kagent-default-6d756444dd-cs46b",
+    "container": "ateom",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/ateom-gvisor@sha256:a1ce5b950724c6167889324df6729ccf8c5b3b2963863f4602c21c17587ba454",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/ateom-gvisor@sha256:a1ce5b950724c6167889324df6729ccf8c5b3b2963863f4602c21c17587ba454",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "kagent",
+    "pod": "kagent-postgresql-7c757949-zm5jq",
+    "container": "postgresql",
+    "configuredImage": "docker.io/library/postgres:18.6-alpine3.23",
+    "observedImageID": "docker.io/library/postgres@sha256:885cf05d376c7cf27afef02073e6bdac3841252537f16e244fd1c1e6a7c99fb1",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "kagent",
+    "pod": "kagent-ui-78b5684bf9-fhlg7",
+    "container": "ui",
+    "configuredImage": "ghcr.io/kagent-dev/kagent/ui@sha256:bd85849130d8a56fc4011740ce40fe9498a934880334d5890ca06df8ddf1b9e8",
+    "observedImageID": "ghcr.io/kagent-dev/kagent/ui@sha256:bd85849130d8a56fc4011740ce40fe9498a934880334d5890ca06df8ddf1b9e8",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "podcertificate-controller-system",
+    "pod": "podcertificate-controller-6bfc7684cc-rfnqq",
+    "container": "controller",
+    "configuredImage": "ghcr.io/kagent-dev/substrate/podcertcontroller@sha256:f8bc68d892f65a19755c80989343e16963f1a3d80221d970a6b6974da803a70e",
+    "observedImageID": "ghcr.io/kagent-dev/substrate/podcertcontroller@sha256:f8bc68d892f65a19755c80989343e16963f1a3d80221d970a6b6974da803a70e",
+    "ready": true,
+    "restartCount": 0
+  },
+  {
+    "namespace": "substrate-proof",
+    "pod": "fixture-registry-5cff4858d7-vqh7t",
+    "container": "registry",
+    "configuredImage": "registry:3",
+    "observedImageID": "docker.io/library/registry@sha256:ddf754342cfc8acc51a56d5d0ab6af06826461864460636d8bd5c546dab2a7b8",
+    "ready": true,
+    "restartCount": 0
+  }
+]

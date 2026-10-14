@@ -1,0 +1,41 @@
+{
+  "archiveSha256": "d547d81401461fd1c679c5c4fa0a6c2b8ef7dc3c22ce23c9e25dcc4c69cfd06f",
+  "files": [
+    {
+      "path": "containerd-shim-runsc-v1",
+      "bytes": 43446778,
+      "mode": "0o755",
+      "sha256": "526fcecdd1d2b77141813b24b7c357a7d4b2d5ab23c27038a8ff3ca9bbb786d2"
+    },
+    {
+      "path": "runsc",
+      "bytes": 109183527,
+      "mode": "0o755",
+      "sha256": "1a3982cb91714f9c0c7148668d2c40143ee97e238f8a8e7452e410770d34fbe3"
+    },
+    {
+      "path": "gvisor-bin/checkpointgofer",
+      "bytes": 68978278,
+      "mode": "0o755",
+      "sha256": "38c0c30b88c6894ea4bd1c23c9d4a3c3e7b2a84a194481fab37b5793b867b806"
+    },
+    {
+      "path": "gvisor-bin/gvisor-sentry-prewarmer",
+      "bytes": 1416,
+      "mode": "0o755",
+      "sha256": "3315d7ad7c2d3751d349e4976fa02da1da6fd7e41746c35622304e5fabe4fce0"
+    },
+    {
+      "path": "gvisor-bin/gvisor_sentry",
+      "bytes": 51706455,
+      "mode": "0o755",
+      "sha256": "f35e0ee80b2c3e797a429a35584d90dafcf2e179de289aa04c420aa914469eac"
+    },
+    {
+      "path": "gvisor-bin/runsc-metric-server",
+      "bytes": 52801958,
+      "mode": "0o755",
+      "sha256": "27210877b5c82431a635fac8951ddeb23ad2423592907310ea2cf7fd43c8880f"
+    }
+  ]
+}

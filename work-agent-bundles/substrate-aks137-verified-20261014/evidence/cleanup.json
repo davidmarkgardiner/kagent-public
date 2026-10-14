@@ -1,0 +1,15 @@
+{
+  "home": {
+    "pass": true,
+    "completedUtc": "2026-10-14T13:08:44.785921+00:00",
+    "dedicatedKindClusterAbsent": true
+  },
+  "azure": {
+    "pass": true,
+    "startedUtc": "2026-10-14T13:08:23.859791+00:00",
+    "completedUtc": "2026-10-14T13:14:31.463607+00:00",
+    "dedicatedGroupAbsent": true,
+    "managedNodeGroupAbsent": true,
+    "checks": 29
+  }
+}
