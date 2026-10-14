@@ -1,8 +1,4 @@
 # STEP 15 - Bound model traffic
-# SAY: We apply a request timeout and local request/token limits to model traffic.
-# POINT TO: timeouts.request, requests/minute and tokens/minute.
-# BOUNDARY: Local limits are per proxy, not a fleet-wide spend cap. Completed token usage
-#   constrains later requests.
 
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
@@ -13,16 +9,16 @@ spec:
   targetRefs:
   - group: gateway.networking.k8s.io
     kind: HTTPRoute
-    name: model-garden
+    name: model-garden  # These limits apply to our existing model-garden HTTPRoute.
   traffic:
     timeouts:
-      request: 90s
+      request: 90s  # We bound one model request, not the entire multi-call investigation.
     rateLimit:
-      local:
-      - requests: 30
-        unit: Minutes
-        burst: 5
-      - tokens: 100000
-        unit: Minutes
+      local:  # Each proxy enforces its own limits; this is not a coordinated fleet budget.
+      - requests: 30  # This illustrative limit permits thirty model requests per minute on this proxy route.
+        unit: Minutes  # This is the request-counting window.
+        burst: 5  # We allow a small short-lived request burst above the steady rate.
+      - tokens: 100000  # Completed input/output token use limits later requests; in-flight calls can overshoot.
+        unit: Minutes  # We account for tokens over a one-minute window.
 # Per proxy instance, shared by callers on this route. Not a fleet-wide budget.
 # Token accounting happens on completion and limits subsequent requests.

@@ -1,17 +1,16 @@
 # STEP 01 - Load our agent
-# SAY: We deploy the agent declaratively as an Agent resource.
-# POINT TO: kind: Agent, metadata.name, modelConfig and systemMessage.
-# BOUNDARY: The next two files extend this same Agent; this base alone has no MCP tools.
 
-apiVersion: kagent.dev/v1alpha2
-kind: Agent
+apiVersion: kagent.dev/v1alpha2  # We use the kagent API version supported by these example manifests.
+kind: Agent  # This resource tells kagent to create and manage our SRE triage agent.
 metadata:
-  name: sre-triage
-  namespace: team-sre
+  name: sre-triage  # This is the agent that the skills and tool patches extend in files 02 and 03.
+  namespace: team-sre  # We keep the SRE agent and its local configuration in this team namespace.
 spec:
-  type: Declarative
+  type: Declarative  # We configure this agent declaratively through Kubernetes.
+  # This describes our intended read-only investigation role; permissions enforce it separately.
   description: Read-only SRE investigation with reviewed skills and selected tools.
   declarative:
-    modelConfig: model-garden
+    modelConfig: model-garden  # File 05 connects this agent to our gateway model garden.
+    # We ask for evidence and a proposed reviewed change; the prompt does not grant execution rights.
     systemMessage: Investigate with approved read-only tools. Cite evidence and propose a reviewed
       change.

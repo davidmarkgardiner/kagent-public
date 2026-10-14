@@ -1,9 +1,4 @@
 # STEP 16 - Apply model data controls
-# SAY: We reject selected PII patterns in requests and mask selected patterns in
-#   responses.
-# POINT TO: backend.ai.promptGuard request and response actions.
-# BOUNDARY: Pattern checks need streaming/false-positive tests. They do not replace
-#   identity, tool or resource authorization.
 
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
@@ -14,19 +9,22 @@ spec:
   targetRefs:
   - group: gateway.networking.k8s.io
     kind: HTTPRoute
-    name: model-garden
+    name: model-garden  # We apply these data checks on the model route used by our Agents.
   backend:
     ai:
       promptGuard:
         request:
         - regex:
+            # We detect selected sensitive-data patterns before sending the prompt to the
+            # provider.
             builtins: [CreditCard, Ssn]
-            action: Reject
+            action: Reject  # Matching request content is rejected rather than sent to the model.
           response:
+            # The caller receives this explanation when the request is blocked.
             message: "Request blocked by the model data policy."
         response:
         - regex:
-            builtins: [CreditCard, Ssn, Email]
-            action: Mask
+            builtins: [CreditCard, Ssn, Email]  # We also check selected sensitive patterns in the model response.
+            action: Mask  # Matching output is masked; test streaming and false positives for this workload.
 # Pattern matching is one data control. Test false positives and streaming.
 # It does not prove resistance to prompt injection or enforce MCP resource scope.

@@ -1,14 +1,7 @@
 # STEP 12 - Lock down which app can invoke which agent
-# SAY: The calling application needs an Entra access token for this A2A API and its
-#   assigned invoke role.
-# POINT TO: Target route, Strict JWT issuer/audience/JWKS, exact caller azp/oid and
-#   Require.
-# BOUNDARY: JWT is the signed format of the Microsoft token, not a second token. All
-#   Require expressions are mandatory.
 
-# Validates the Microsoft Entra API access token, whose format is a signed JWT.
 apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayPolicy
+kind: AgentgatewayPolicy  # The gateway applies this policy before forwarding the A2A request.
 metadata:
   name: application-to-sre-chat
   namespace: platform-gateway
@@ -16,29 +9,34 @@ spec:
   targetRefs:
   - group: gateway.networking.k8s.io
     kind: HTTPRoute
-    name: sre-chat-a2a
+    name: sre-chat-a2a  # This binds the checks to the named A2A route from file 08.
   traffic:
     # 1. Validate the Entra-issued API access token using Microsoft signing keys.
-    jwtAuthentication:
-      mode: Strict
+    jwtAuthentication:  # We validate the Microsoft Entra A2A access token; JWT is its signed format.
+      mode: Strict  # A missing or invalid access token is rejected rather than treated as anonymous.
       providers:
+      # Only the configured Entra tenant v2 issuer is trusted here.
       - issuer: https://login.microsoftonline.com/{{ENTRA_TENANT_ID}}/v2.0
         audiences:
-        - '{{A2A_API_CLIENT_ID}}'
+        - '{{A2A_API_CLIENT_ID}}'  # The token must be intended for our A2A API, not Microsoft Graph or the other API.
         jwks:
           remote:
             backendRef:
-              name: entra-jwks
+              name: entra-jwks  # File 10 defines the trusted Microsoft signing-key backend.
               kind: AgentgatewayBackend
               group: agentgateway.dev
               port: 443
+            # We fetch this tenant signing-key set to verify the token signature.
             jwksPath: /{{ENTRA_TENANT_ID}}/discovery/v2.0/keys
     # 2. Require the exact approved identity and API role.
     authorization:
-      action: Require
+      action: Require  # Every following identity and role check must pass; these are not OR alternatives.
       policy:
         matchExpressions:
-        - has(jwt.tid) && jwt.tid == "{{ENTRA_TENANT_ID}}"
+        - has(jwt.tid) && jwt.tid == "{{ENTRA_TENANT_ID}}"  # The verified token must belong to our approved tenant.
+        # This pins the exact caller application client, not everyone with the same issuer.
         - has(jwt.azp) && jwt.azp == "{{CALLER_UAMI_CLIENT_ID}}"
+        # This pins the subject principal to the approved caller application.
         - has(jwt.oid) && jwt.oid == "{{CALLER_UAMI_PRINCIPAL_ID}}"
+        # The caller application must also hold the sre.chat.invoke API application role.
         - has(jwt.roles) && "sre.chat.invoke" in jwt.roles

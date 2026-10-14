@@ -1,20 +1,18 @@
 # STEP 02 - Load our reviewed skills
-# SAY: We fetch reviewed skill files from a pinned Git commit.
-# POINT TO: spec.skills.gitRefs and the matching local skills/sre-triage/SKILL.md.
-# BOUNDARY: This is a Kustomize merge patch for 01-agent.yaml, not another Agent to
-#   deploy.
+# This merge patch extends 01-agent.yaml; it is not a separate complete Agent.
 
 apiVersion: kagent.dev/v1alpha2
-kind: Agent
+kind: Agent  # This is a merge patch for the existing Agent in file 01.
 metadata:
-  name: sre-triage
+  name: sre-triage  # Matching the name and namespace targets that same SRE triage agent.
   namespace: team-sre
 spec:
-  skills:
+  skills:  # Here we add reusable instructions instead of repeating everything in the prompt.
     gitAuthSecretRef:
-      name: skills-git-auth
+      name: skills-git-auth  # The runtime fetches private skill sources using this separately managed Secret.
     gitRefs:
-    - url: '{{SKILLS_REPOSITORY_URL}}'
-      ref: '{{SKILLS_COMMIT}}'
+    - url: '{{SKILLS_REPOSITORY_URL}}'  # This is the approved repository containing our SRE triage skill.
+      ref: '{{SKILLS_COMMIT}}'  # We pin a reviewed commit so skill updates pass through change review.
+      # This directory contains the included skills/sre-triage/SKILL.md within this repository.
       path: docs/demos/microsoft-2026-10-15/yaml-walkthrough/skills/sre-triage
-      name: sre-triage
+      name: sre-triage  # The runtime loads this skill bundle for the SRE triage workflow.

@@ -1,18 +1,14 @@
 # STEP 11 - Bind the agent token holder to a blueprint
-# SAY: A dedicated Kubernetes identity federates directly to our Entra Agent ID blueprint.
-# POINT TO: ServiceAccount name/namespace and blueprint client ID annotation.
-# BOUNDARY: Entra blueprint, child identity, FIC and role assignments are external setup.
-#   The runtime performs child-token exchange.
 
-# Blueprint and child identity are provisioned separately in Entra / Microsoft Graph.
-# This ServiceAccount belongs to the selected token-acquisition component.
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount  # This Kubernetes identity belongs to the component that acquires child Agent ID tokens.
 metadata:
-  name: sre-agent-token-holder
-  namespace: team-sre
+  name: sre-agent-token-holder  # The Entra federated credential subject must match this ServiceAccount name.
+  namespace: team-sre  # The same namespace must appear in the federated credential subject.
   annotations:
+    # This selects our dedicated blueprint credential boundary, not the inbound caller UAMI.
     azure.workload.identity/client-id: "{{BLUEPRINT_CLIENT_ID}}"
+    # We acquire tokens in the intended Entra tenant for this agent workflow.
     azure.workload.identity/tenant-id: "{{ENTRA_TENANT_ID}}"
 # Its Pod template must use serviceAccountName: sre-agent-token-holder and
 # metadata.labels.azure.workload.identity/use: "true".

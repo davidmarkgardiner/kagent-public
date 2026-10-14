@@ -1,8 +1,4 @@
 # STEP 17 - Audit who called what and trace the run
-# SAY: We add verified identity context to gateway logs and export sampled traces.
-# POINT TO: Caller/child/blueprint attributes and OTLP collector reference.
-# BOUNDARY: Keep high-cardinality IDs in controlled logs/traces, not metric labels. Never
-#   log raw credentials or unrestricted data.
 
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
@@ -12,27 +8,29 @@ metadata:
 spec:
   targetRefs:
   - group: gateway.networking.k8s.io
-    kind: Gateway
-    name: agent-gateway
+    kind: Gateway  # We configure logging and tracing at our shared gateway entry point.
+    name: agent-gateway  # This is the same gateway used by the routes in file 08.
   frontend:
     accessLog:
       attributes:
         add:
-        - name: identity.client
+        - name: identity.client  # We record the verified calling app or child client identity for attribution.
+          # If authentication produced no verified claims, record unavailable rather than trust
+          # a header.
           expression: 'jwt != null && has(jwt.azp) ? jwt.azp : "unavailable"'
-        - name: identity.subject
+        - name: identity.subject  # We record the principal that the access token represents.
           expression: 'jwt != null && has(jwt.oid) ? jwt.oid : "unavailable"'
-        - name: identity.blueprint
+        - name: identity.blueprint  # We record parent blueprint context for audit, not as a blanket authorization grant.
           expression: 'jwt != null && has(jwt.xms_par_app_azp) ? jwt.xms_par_app_azp : "unavailable"'
     tracing:
       backendRef:
         group: ""
         kind: Service
-        name: otel-collector
-        port: 4317
-      protocol: GRPC
-      randomSampling: "0.1"
-      clientSampling: "true"
+        name: otel-collector  # Our approved collector receives gateway traces and forwards them to the tracing store.
+        port: 4317  # This is the collector OTLP gRPC port in the gateway namespace.
+      protocol: GRPC  # We export traces using OTLP over gRPC.
+      randomSampling: "0.1"  # We start traces for ten percent of requests without incoming trace context.
+      clientSampling: "true"  # We follow sampled upstream traces to correlate gateway activity with the agent run.
 # Collector Service is in platform-gateway; alternatively add a reviewed cross-
 # namespace reference and grant. Export to approved Alloy / OTel -> Tempo/Loki.
 # Default access logs retain route/status/latency/trace context for correlation.

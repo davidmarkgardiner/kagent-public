@@ -1,8 +1,4 @@
 # STEP 19 - Monitor denials, errors, usage and evaluation failures
-# SAY: We alert on missing scrapes, denial activity, failures and token consumption.
-# POINT TO: Native agentgateway_* series; the separate agent-evaluation rule group.
-# BOUNDARY: Thresholds are examples. agent_eval_* comes from the evaluator; missing
-#   telemetry is not zero usage.
 
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -10,25 +6,28 @@ metadata:
   name: agentgateway-demo
   namespace: platform-gateway
   labels:
-    release: "{{PROMETHEUS_RELEASE}}"
+    release: "{{PROMETHEUS_RELEASE}}"  # Prometheus must select these rules as well as the monitor in file 18.
 spec:
   groups:
   - name: agentgateway-demo
     rules:
-    - alert: AgentgatewayMetricsMissing
+    - alert: AgentgatewayMetricsMissing  # We need an alert if gateway metrics disappear or every selected scrape is down.
+      # This tests scrape availability; absent telemetry is not evidence of zero traffic.
       expr: absent(up{job="agentgateway-demo"}) or max(up{job="agentgateway-demo"}) == 0
-      for: 5m
+      for: 5m  # We wait five minutes before notifying on a sustained scrape problem.
       labels: {severity: critical}
       annotations:
         summary: "No healthy agentgateway scrape target"
+    # We investigate an increase in authentication or authorization rejection responses.
     - alert: AgentgatewayAuthorizationDenials
+      # More than ten 401/403 responses in five minutes triggers this example signal.
       expr: sum(increase(agentgateway_requests_total{job="agentgateway-demo",status=~"401|403"}[5m])) > 10
-      for: 2m
+      for: 2m  # The condition must persist for two minutes before alerting.
       labels: {severity: warning}
       annotations:
         summary: "Gateway 401/403 responses increased; inspect correlated access logs"
-    - alert: AgentgatewayHigh5xxRatio
-      expr: |
+    - alert: AgentgatewayHigh5xxRatio  # We watch for sustained gateway/upstream failure rather than only successful calls.
+      expr: |  # Require a five-percent 5xx ratio and minimum request volume to avoid low-traffic noise.
         sum(rate(agentgateway_requests_total{job="agentgateway-demo",status=~"5.."}[5m]))
         / clamp_min(sum(rate(agentgateway_requests_total{job="agentgateway-demo"}[5m])), 0.001) > 0.05
         and sum(increase(agentgateway_requests_total{job="agentgateway-demo"}[5m])) >= 20
@@ -36,8 +35,8 @@ spec:
       labels: {severity: warning}
       annotations:
         summary: "Gateway 5xx ratio exceeds 5% with at least 20 requests in five minutes"
-    - alert: AgentgatewayInputTokenBudget
-      expr: |
+    - alert: AgentgatewayInputTokenBudget  # We watch model input consumption for runaway investigation or retry loops.
+      expr: |  # This example alerts above one hundred thousand input tokens per minute per model.
         sum by (gen_ai_request_model) (
           rate(agentgateway_gen_ai_client_token_usage_sum{job="agentgateway-demo",gen_ai_token_type="input"}[5m])
         ) * 60 > 100000
@@ -45,16 +44,17 @@ spec:
       labels: {severity: warning}
       annotations:
         summary: "Model input usage exceeds 100,000 tokens per minute"
-  - name: agent-evaluation
+  - name: agent-evaluation  # These metrics come from our evaluator, separately from native gateway telemetry.
     rules:
     - alert: AgentEvaluationHardFailure
+      # A captured safety hard failure needs attention even when the numeric score is high.
       expr: agent_eval_hard_failures > 0
       for: 1m
       labels: {severity: critical}
       annotations:
         summary: "Agent evaluation has a hard failure; block promotion"
     - alert: AgentEvaluationScoreLow
-      expr: agent_eval_score < 0.85
+      expr: agent_eval_score < 0.85  # We notify when an evaluated result remains below the example quality threshold.
       for: 10m
       labels: {severity: warning}
       annotations:

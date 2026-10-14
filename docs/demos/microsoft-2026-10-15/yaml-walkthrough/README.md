@@ -1,6 +1,6 @@
 # Agent journey: YAML walkthrough
 
-Click each numbered filename below and use the SAY and POINT TO comments at the top of the YAML as presenter notes. This is the speaking order, not a platform deployment sequence. Environment values remain `{{PLACEHOLDER}}` values.
+Click each numbered filename below and read the workflow explanations beside the actual YAML fields as presenter notes. This is the speaking order, not a platform deployment sequence. Environment values remain `{{PLACEHOLDER}}` values.
 
 ## Build the Agent and its capabilities
 
