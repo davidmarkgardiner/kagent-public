@@ -1,5 +1,12 @@
 # Verified AKS 1.37 Substrate redeployment bundle
 
+**Evidence status:** the personal AKS and isolated Kind demonstration clusters
+were deleted after the recorded 14 October run. The receipts below are
+historical captures from before deletion. This handoff update performs local
+artifact/script checks only; it gathers no new cluster evidence and runs no
+live cluster smoke test. The work agent must run the supplied smoke test
+after reinstalling in the bank.
+
 On 14 October 2026, the stock newer gVisor installation passed on a fresh
 personal AKS cluster and an isolated local Kind cluster. Each ran three
 kagent-generated Go ADK actors, ten Full-state counter actors and ten
@@ -15,15 +22,15 @@ receipt capture; see the cleanup receipts under [`evidence/`](evidence/).
 
 ## Start with these files
 
-1. Give [`WORK-AGENT-PROMPT.md`](WORK-AGENT-PROMPT.md) to the work agent. It
-   asks for a controlled clean redeployment and environment comparison,
-   without an ATE controller source fix.
-2. Use [`REDEPLOY.md`](REDEPLOY.md) for the installation and repeatable demo.
-   It includes environment discovery and the test commands.
-3. Compare [`image-lock.json`](image-lock.json),
-   [`chart-lock.json`](chart-lock.json), the values files and the observed
-   [`evidence/aks/platform.json`](evidence/aks/platform.json) before accepting
-   a workplace result.
+1. Import the images and complete [`PREREQUISITES.md`](PREREQUISITES.md),
+   including the attached offline prerequisites payload and its checksums.
+2. Give [`WORK-AGENT-PROMPT.md`](WORK-AGENT-PROMPT.md) and this whole folder
+   to the work agent. Follow [`BANK-REINSTALL.md`](BANK-REINSTALL.md) for the
+   authorized, scoped removal and fresh installation.
+3. Run [`SMOKE-TEST.md`](SMOKE-TEST.md): the five-actor runtime check first,
+   then disconnected-delivery and real-model checks, then benchmarks.
+4. Compare the locks, values and [`evidence/aks/platform.json`](evidence/aks/platform.json).
+   [`REDEPLOY.md`](REDEPLOY.md) retains the original connected lab walkthrough.
 
 Copy this entire folder. Keep the filenames. Check `CHECKSUMS.sha256` after
 transfer with `shasum -a 256 -c CHECKSUMS.sha256` or
@@ -77,7 +84,9 @@ and AMD64/ARM64 image digests are in
 [`fixture-image-lock.json`](fixture-image-lock.json).
 
 The folder supplies configuration, tests and sanitized receipts. Runtime
-images, charts, the gVisor archive, credentials and Kubernetes access remain
-separate deployment inputs. The installed chart defaults download the pinned
+images, operator dependencies, credentials and Kubernetes access remain
+separate deployment inputs. The new bank handoff release includes the pinned
+charts, gVisor archive, fixture, source directory and operator helpers in
+`substrate-prerequisites.tar.gz`; see `PREREQUISITES.md`. The installed chart defaults download the pinned
 gVisor archive from public Google Storage. An isolated workplace must supply
 the same bytes through its approved delivery path and prove that path there.

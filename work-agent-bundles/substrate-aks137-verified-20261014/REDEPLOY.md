@@ -1,5 +1,11 @@
 # Repeat the verified installation and demonstration
 
+For the bank handoff, start with [`PREREQUISITES.md`](PREREQUISITES.md),
+[`BANK-REINSTALL.md`](BANK-REINSTALL.md) and [`SMOKE-TEST.md`](SMOKE-TEST.md).
+This page preserves the connected lab reference. Inside the bank, use
+`prepare.sh --offline` with transferred inputs; do not run its online path
+or download the fixture from GitHub there.
+
 Use a fresh, approved disposable evaluation cluster. These sample installers
 create cluster-wide CRDs, certificate signers and the standard `ate-system`,
 `podcertificate-controller-system` and `kagent` namespaces. They are not a

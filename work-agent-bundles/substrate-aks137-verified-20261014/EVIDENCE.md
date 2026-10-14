@@ -1,5 +1,12 @@
 # Observed evidence and benchmarks
 
+**Evidence status:** the personal AKS and isolated Kind demonstration clusters
+were deleted after the recorded 14 October run. The receipts below are
+historical captures from before deletion. This handoff update performs local
+artifact/script checks only; it gathers no new cluster evidence and runs no
+live cluster smoke test. The work agent must run the supplied smoke test
+after reinstalling in the bank.
+
 Run date: 14 October 2026. These are fresh personal-lab receipts. All runtime
 images were stock public images. The checkout used to build the operator and
 bootstrap helpers was unchanged `kagent-dev/substrate` commit
