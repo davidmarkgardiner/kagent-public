@@ -16,5 +16,5 @@ spec:
     gitRefs:
     - url: '{{SKILLS_REPOSITORY_URL}}'
       ref: '{{SKILLS_COMMIT}}'
-      path: docs/demos/microsoft-2026-10-15/vscode-walkthrough/skills/sre-triage
+      path: docs/demos/microsoft-2026-10-15/yaml-walkthrough/skills/sre-triage
       name: sre-triage
