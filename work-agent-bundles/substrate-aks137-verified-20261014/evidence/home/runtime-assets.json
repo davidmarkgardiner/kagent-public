@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "time": "2026-10-14T12:51:17.969000136Z",
+      "level": "INFO",
+      "msg": "Sandbox assets prewarmed",
+      "config": "gvisor-default",
+      "assets": 1,
+      "pauseImage": "registry.k8s.io/pause:3.10.2@sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4",
+      "duration": 29362542
+    }
+  ],
+  "ateletRunscVersion": "runsc version release-20260824.0-120-g727c8c389c36-dirty\nspec: 1.2.1\n",
+  "workerRunscVersion": "runsc version release-20260824.0-120-g727c8c389c36-dirty\nspec: 1.2.1\n",
+  "independentBinaryAudit": "29c8327f4572dd52cc102a2bd10235a38ccce5404c26f5b13d9598a7aba642e8  /audit/gvisor-a64916f9813ce7e4841a30480a599337f7dda07b421c6bf0123db2212aa7d1df/runsc\nmode=755 bytes=102340738\n"
+}

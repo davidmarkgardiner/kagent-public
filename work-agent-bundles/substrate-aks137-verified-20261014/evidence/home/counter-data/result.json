@@ -1,0 +1,59 @@
+{
+  "pass": true,
+  "actors": [
+    {
+      "name": "home-data-01",
+      "atespace": "kagent",
+      "uid": "{{ID_71BD71A0}}"
+    },
+    {
+      "name": "home-data-02",
+      "atespace": "kagent",
+      "uid": "{{ID_F959B6A5}}"
+    },
+    {
+      "name": "home-data-03",
+      "atespace": "kagent",
+      "uid": "{{ID_61F6DE9E}}"
+    },
+    {
+      "name": "home-data-04",
+      "atespace": "kagent",
+      "uid": "{{ID_2D9772A5}}"
+    },
+    {
+      "name": "home-data-05",
+      "atespace": "kagent",
+      "uid": "{{ID_3C7C155A}}"
+    },
+    {
+      "name": "home-data-06",
+      "atespace": "kagent",
+      "uid": "{{ID_420DD341}}"
+    },
+    {
+      "name": "home-data-07",
+      "atespace": "kagent",
+      "uid": "{{ID_0C2C48BE}}"
+    },
+    {
+      "name": "home-data-08",
+      "atespace": "kagent",
+      "uid": "{{ID_2817C75C}}"
+    },
+    {
+      "name": "home-data-09",
+      "atespace": "kagent",
+      "uid": "{{ID_D556A31D}}"
+    },
+    {
+      "name": "home-data-10",
+      "atespace": "kagent",
+      "uid": "{{ID_61EAF7FC}}"
+    }
+  ],
+  "workload": "counter",
+  "templateStable": true,
+  "modelCalls": false,
+  "finishedUtc": "2026-10-14T12:56:29.746770+00:00"
+}

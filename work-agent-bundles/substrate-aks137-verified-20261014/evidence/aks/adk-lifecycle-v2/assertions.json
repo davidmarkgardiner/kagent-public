@@ -1,0 +1,1894 @@
+[
+  {
+    "stage": "template-before",
+    "utcStart": "2026-10-14T12:53:24.219214+00:00",
+    "utcEnd": "2026-10-14T12:53:25.206878+00:00",
+    "args": [
+      "get",
+      "actor-template",
+      "substrate-stock-proof-1bdf9f1afe5a",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 986.4826249977341,
+    "returncode": 0,
+    "template": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:48:20.163348291Z",
+        "name": "substrate-stock-proof-1bdf9f1afe5a",
+        "uid": "{{ID_128D9B52}}",
+        "updateTime": "2026-10-14T12:48:41.915683898Z",
+        "version": "3"
+      },
+      "workerSelector": {
+        "matchLabels": {
+          "kagent.dev/worker-pool": "kagent-default"
+        }
+      },
+      "snapshotConfig": {
+        "onCommit": "SNAPSHOT_CONTENT_SCOPE_DATA",
+        "onPause": "SNAPSHOT_CONTENT_SCOPE_FULL",
+        "storageLocation": "gs://ate-snapshots/substrate-stock-proof/"
+      },
+      "sandboxConfig": {
+        "configName": "gvisor-default",
+        "sandboxClass": "SANDBOX_CLASS_GVISOR"
+      },
+      "resources": null,
+      "containers": [
+        {
+          "name": "kagent",
+          "image": "ghcr.io/kagent-dev/kagent/golang-adk@sha256:10ef1350786b5d21bc002ed54833fd0272ea7cd8182a92977686b7bafa7f67d3",
+          "command": null,
+          "wakeupProbe": {
+            "httpGet": {
+              "path": "/readyz",
+              "port": 8081
+            },
+            "timeoutSeconds": 30
+          }
+        }
+      ]
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/create",
+    "utcStart": "2026-10-14T12:53:25.208053+00:00",
+    "utcEnd": "2026-10-14T12:53:25.911429+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "--template",
+      "substrate-stock-proof-1bdf9f1afe5a"
+    ],
+    "elapsedMs": 703.3352079997712,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-01   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-adk-v2-01/read-created",
+    "utcStart": "2026-10-14T12:53:25.912393+00:00",
+    "utcEnd": "2026-10-14T12:53:26.560278+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 647.8468339992105,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:25.901044590Z",
+        "name": "aks-adk-v2-01",
+        "uid": "{{ID_D7C83947}}",
+        "updateTime": "2026-10-14T12:53:25.901044590Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/resume-golden",
+    "utcStart": "2026-10-14T12:53:26.561513+00:00",
+    "utcEnd": "2026-10-14T12:53:27.520707+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 959.1387920008856,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-01   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-adk-v2-01/read-running",
+    "utcStart": "2026-10-14T12:53:27.522111+00:00",
+    "utcEnd": "2026-10-14T12:53:28.234047+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 711.8872919963906,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:25.901044590Z",
+        "name": "aks-adk-v2-01",
+        "uid": "{{ID_D7C83947}}",
+        "updateTime": "2026-10-14T12:53:27.503572426Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/initial",
+    "utcStart": "2026-10-14T12:53:28.235844+00:00",
+    "utcEnd": "2026-10-14T12:53:28.366915+00:00",
+    "actor": "aks-adk-v2-01",
+    "httpStatus": 200,
+    "elapsedMs": 130.5023329987307,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/pause-full",
+    "utcStart": "2026-10-14T12:53:28.367391+00:00",
+    "utcEnd": "2026-10-14T12:53:29.146507+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 779.0533340012189,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-01   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-adk-v2-01/read-paused",
+    "utcStart": "2026-10-14T12:53:29.147833+00:00",
+    "utcEnd": "2026-10-14T12:53:29.787789+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 639.918167002179,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:25.901044590Z",
+        "name": "aks-adk-v2-01",
+        "uid": "{{ID_D7C83947}}",
+        "updateTime": "2026-10-14T12:53:29.132489639Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_C7D7DB27}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/resume-paused",
+    "utcStart": "2026-10-14T12:53:29.788898+00:00",
+    "utcEnd": "2026-10-14T12:53:30.649264+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 860.3368340009183,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-01   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-adk-v2-01/read-restored-pause",
+    "utcStart": "2026-10-14T12:53:30.650267+00:00",
+    "utcEnd": "2026-10-14T12:53:31.427963+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 777.6392500018119,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:25.901044590Z",
+        "name": "aks-adk-v2-01",
+        "uid": "{{ID_D7C83947}}",
+        "updateTime": "2026-10-14T12:53:30.636302995Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_C7D7DB27}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/after-pause",
+    "utcStart": "2026-10-14T12:53:31.431447+00:00",
+    "utcEnd": "2026-10-14T12:53:31.539605+00:00",
+    "actor": "aks-adk-v2-01",
+    "httpStatus": 200,
+    "elapsedMs": 106.16945800211397,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/suspend-data",
+    "utcStart": "2026-10-14T12:53:31.541026+00:00",
+    "utcEnd": "2026-10-14T12:53:32.640696+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 1099.6154169988586,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-01   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-adk-v2-01/read-committed",
+    "utcStart": "2026-10-14T12:53:32.641995+00:00",
+    "utcEnd": "2026-10-14T12:53:33.279305+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 637.2644580005726,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:25.901044590Z",
+        "name": "aks-adk-v2-01",
+        "uid": "{{ID_D7C83947}}",
+        "updateTime": "2026-10-14T12:53:32.627755002Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_D7C83947}}/snapshots/{{ID_4C913BF4}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/resume-committed",
+    "utcStart": "2026-10-14T12:53:33.281520+00:00",
+    "utcEnd": "2026-10-14T12:53:34.172719+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 891.1492919978627,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-01   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        8s\n"
+  },
+  {
+    "stage": "aks-adk-v2-01/read-restored-commit",
+    "utcStart": "2026-10-14T12:53:34.174312+00:00",
+    "utcEnd": "2026-10-14T12:53:34.851983+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 677.6280000012775,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:25.901044590Z",
+        "name": "aks-adk-v2-01",
+        "uid": "{{ID_D7C83947}}",
+        "updateTime": "2026-10-14T12:53:34.154941570Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_D7C83947}}/snapshots/{{ID_4C913BF4}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/after-commit",
+    "utcStart": "2026-10-14T12:53:34.855261+00:00",
+    "utcEnd": "2026-10-14T12:53:34.959750+00:00",
+    "actor": "aks-adk-v2-01",
+    "httpStatus": 200,
+    "elapsedMs": 103.62174999681883,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-01/final-suspend-data",
+    "utcStart": "2026-10-14T12:53:34.960666+00:00",
+    "utcEnd": "2026-10-14T12:53:35.839612+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 878.8815420011815,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-01   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    13        9s\n"
+  },
+  {
+    "stage": "aks-adk-v2-01/read-final",
+    "utcStart": "2026-10-14T12:53:35.841233+00:00",
+    "utcEnd": "2026-10-14T12:53:36.419618+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-01",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 578.3421249980165,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:25.901044590Z",
+        "name": "aks-adk-v2-01",
+        "uid": "{{ID_D7C83947}}",
+        "updateTime": "2026-10-14T12:53:35.814666340Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_D7C83947}}/snapshots/{{ID_00DD2776}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/create",
+    "utcStart": "2026-10-14T12:53:36.421650+00:00",
+    "utcEnd": "2026-10-14T12:53:37.097775+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "--template",
+      "substrate-stock-proof-1bdf9f1afe5a"
+    ],
+    "elapsedMs": 676.0554169995885,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-02   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-adk-v2-02/read-created",
+    "utcStart": "2026-10-14T12:53:37.100268+00:00",
+    "utcEnd": "2026-10-14T12:53:37.838742+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 738.4046250008396,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:37.074777107Z",
+        "name": "aks-adk-v2-02",
+        "uid": "{{ID_39255F95}}",
+        "updateTime": "2026-10-14T12:53:37.074777107Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/resume-golden",
+    "utcStart": "2026-10-14T12:53:37.841017+00:00",
+    "utcEnd": "2026-10-14T12:53:38.782685+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 941.6261670012318,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-02   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-adk-v2-02/read-running",
+    "utcStart": "2026-10-14T12:53:38.784625+00:00",
+    "utcEnd": "2026-10-14T12:53:39.487891+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 703.2154999978957,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:37.074777107Z",
+        "name": "aks-adk-v2-02",
+        "uid": "{{ID_39255F95}}",
+        "updateTime": "2026-10-14T12:53:38.766728154Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/initial",
+    "utcStart": "2026-10-14T12:53:39.489362+00:00",
+    "utcEnd": "2026-10-14T12:53:39.595459+00:00",
+    "actor": "aks-adk-v2-02",
+    "httpStatus": 200,
+    "elapsedMs": 105.64824999892153,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/pause-full",
+    "utcStart": "2026-10-14T12:53:39.596081+00:00",
+    "utcEnd": "2026-10-14T12:53:40.404909+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 808.7836249978864,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-02   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-adk-v2-02/read-paused",
+    "utcStart": "2026-10-14T12:53:40.407709+00:00",
+    "utcEnd": "2026-10-14T12:53:41.103831+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 696.0138340000412,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:37.074777107Z",
+        "name": "aks-adk-v2-02",
+        "uid": "{{ID_39255F95}}",
+        "updateTime": "2026-10-14T12:53:40.386887693Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_8F3EC7BE}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/resume-paused",
+    "utcStart": "2026-10-14T12:53:41.105543+00:00",
+    "utcEnd": "2026-10-14T12:53:41.968790+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 863.2010409965005,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-02   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         4s\n"
+  },
+  {
+    "stage": "aks-adk-v2-02/read-restored-pause",
+    "utcStart": "2026-10-14T12:53:41.970383+00:00",
+    "utcEnd": "2026-10-14T12:53:42.773208+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 802.7702079998562,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:37.074777107Z",
+        "name": "aks-adk-v2-02",
+        "uid": "{{ID_39255F95}}",
+        "updateTime": "2026-10-14T12:53:41.952121970Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_8F3EC7BE}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/after-pause",
+    "utcStart": "2026-10-14T12:53:42.776147+00:00",
+    "utcEnd": "2026-10-14T12:53:42.917020+00:00",
+    "actor": "aks-adk-v2-02",
+    "httpStatus": 200,
+    "elapsedMs": 139.2999579984462,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/suspend-data",
+    "utcStart": "2026-10-14T12:53:42.918357+00:00",
+    "utcEnd": "2026-10-14T12:53:43.770936+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 852.5233330001356,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-02   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    9         6s\n"
+  },
+  {
+    "stage": "aks-adk-v2-02/read-committed",
+    "utcStart": "2026-10-14T12:53:43.772964+00:00",
+    "utcEnd": "2026-10-14T12:53:44.480782+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 707.7753330013365,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:37.074777107Z",
+        "name": "aks-adk-v2-02",
+        "uid": "{{ID_39255F95}}",
+        "updateTime": "2026-10-14T12:53:43.753505098Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_39255F95}}/snapshots/{{ID_F3CC7325}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/resume-committed",
+    "utcStart": "2026-10-14T12:53:44.482834+00:00",
+    "utcEnd": "2026-10-14T12:53:45.385939+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 903.0299580008432,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-02   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        8s\n"
+  },
+  {
+    "stage": "aks-adk-v2-02/read-restored-commit",
+    "utcStart": "2026-10-14T12:53:45.388075+00:00",
+    "utcEnd": "2026-10-14T12:53:46.084711+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 696.5807090018643,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:37.074777107Z",
+        "name": "aks-adk-v2-02",
+        "uid": "{{ID_39255F95}}",
+        "updateTime": "2026-10-14T12:53:45.371032675Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_39255F95}}/snapshots/{{ID_F3CC7325}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/after-commit",
+    "utcStart": "2026-10-14T12:53:46.086685+00:00",
+    "utcEnd": "2026-10-14T12:53:46.209381+00:00",
+    "actor": "aks-adk-v2-02",
+    "httpStatus": 200,
+    "elapsedMs": 121.76979200012283,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-02/final-suspend-data",
+    "utcStart": "2026-10-14T12:53:46.211094+00:00",
+    "utcEnd": "2026-10-14T12:53:47.103183+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 892.0530000032159,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-02   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    13        10s\n"
+  },
+  {
+    "stage": "aks-adk-v2-02/read-final",
+    "utcStart": "2026-10-14T12:53:47.104509+00:00",
+    "utcEnd": "2026-10-14T12:53:47.744451+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-02",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 639.9062079981377,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:37.074777107Z",
+        "name": "aks-adk-v2-02",
+        "uid": "{{ID_39255F95}}",
+        "updateTime": "2026-10-14T12:53:47.076767859Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_39255F95}}/snapshots/{{ID_C424EFE5}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/create",
+    "utcStart": "2026-10-14T12:53:47.746663+00:00",
+    "utcEnd": "2026-10-14T12:53:48.404834+00:00",
+    "args": [
+      "create",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "--template",
+      "substrate-stock-proof-1bdf9f1afe5a"
+    ],
+    "elapsedMs": 658.1322079982783,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-03   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    1         0s\n"
+  },
+  {
+    "stage": "aks-adk-v2-03/read-created",
+    "utcStart": "2026-10-14T12:53:48.406686+00:00",
+    "utcEnd": "2026-10-14T12:53:49.122875+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 716.1343330008094,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:48.393799346Z",
+        "name": "aks-adk-v2-03",
+        "uid": "{{ID_C9F233FF}}",
+        "updateTime": "2026-10-14T12:53:48.393799346Z",
+        "version": "1"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/resume-golden",
+    "utcStart": "2026-10-14T12:53:49.128179+00:00",
+    "utcEnd": "2026-10-14T12:53:50.060029+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 931.7639580003743,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-03   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   3         1s\n"
+  },
+  {
+    "stage": "aks-adk-v2-03/read-running",
+    "utcStart": "2026-10-14T12:53:50.062399+00:00",
+    "utcEnd": "2026-10-14T12:53:50.812211+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 749.7577499998442,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:48.393799346Z",
+        "name": "aks-adk-v2-03",
+        "uid": "{{ID_C9F233FF}}",
+        "updateTime": "2026-10-14T12:53:50.045133327Z",
+        "version": "3"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/initial",
+    "utcStart": "2026-10-14T12:53:50.815855+00:00",
+    "utcEnd": "2026-10-14T12:53:50.913373+00:00",
+    "actor": "aks-adk-v2-03",
+    "httpStatus": 200,
+    "elapsedMs": 96.20524999991176,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/pause-full",
+    "utcStart": "2026-10-14T12:53:50.915088+00:00",
+    "utcEnd": "2026-10-14T12:53:51.758746+00:00",
+    "args": [
+      "pause",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 843.6095420001948,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-03   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_PAUSED   <none>                    5         3s\n"
+  },
+  {
+    "stage": "aks-adk-v2-03/read-paused",
+    "utcStart": "2026-10-14T12:53:51.760474+00:00",
+    "utcEnd": "2026-10-14T12:53:52.395380+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 634.8455830011517,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:48.393799346Z",
+        "name": "aks-adk-v2-03",
+        "uid": "{{ID_C9F233FF}}",
+        "updateTime": "2026-10-14T12:53:51.744070994Z",
+        "version": "5"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_B2DA7B32}}"
+        },
+        "state": "ACTOR_STATE_PAUSED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/resume-paused",
+    "utcStart": "2026-10-14T12:53:52.397015+00:00",
+    "utcEnd": "2026-10-14T12:53:53.945471+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 1548.3567920018686,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-03   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   7         5s\n"
+  },
+  {
+    "stage": "aks-adk-v2-03/read-restored-pause",
+    "utcStart": "2026-10-14T12:53:53.961982+00:00",
+    "utcEnd": "2026-10-14T12:53:55.417574+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 1455.499042000156,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:48.393799346Z",
+        "name": "aks-adk-v2-03",
+        "uid": "{{ID_C9F233FF}}",
+        "updateTime": "2026-10-14T12:53:53.895118831Z",
+        "version": "7"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/ate-golden/tags/{{ID_2E875D25}}"
+        },
+        "localSnapshot": {
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "nodeVmsWithLocalSnapshots": [
+            "{{AKS_NODE}}"
+          ],
+          "snapshotName": "{{ID_B2DA7B32}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/after-pause",
+    "utcStart": "2026-10-14T12:53:55.457023+00:00",
+    "utcEnd": "2026-10-14T12:53:55.701226+00:00",
+    "actor": "aks-adk-v2-03",
+    "httpStatus": 200,
+    "elapsedMs": 242.2519169995212,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/suspend-data",
+    "utcStart": "2026-10-14T12:53:55.705906+00:00",
+    "utcEnd": "2026-10-14T12:53:56.840984+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 1135.0039589997323,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-03   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    9         8s\n"
+  },
+  {
+    "stage": "aks-adk-v2-03/read-committed",
+    "utcStart": "2026-10-14T12:53:56.845390+00:00",
+    "utcEnd": "2026-10-14T12:53:57.545055+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 699.5708329995978,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:48.393799346Z",
+        "name": "aks-adk-v2-03",
+        "uid": "{{ID_C9F233FF}}",
+        "updateTime": "2026-10-14T12:53:56.822694167Z",
+        "version": "9"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_C9F233FF}}/snapshots/{{ID_781D86DB}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/resume-committed",
+    "utcStart": "2026-10-14T12:53:57.548749+00:00",
+    "utcEnd": "2026-10-14T12:53:58.525387+00:00",
+    "args": [
+      "resume",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 976.5425409968884,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                 WORKER POD                               WORKER IPS     VERSION   AGE\nkagent     aks-adk-v2-03   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_RUNNING   kagent/kagent-default-6d756444dd-xffv4   {{PRIVATE_IP}}   11        10s\n"
+  },
+  {
+    "stage": "aks-adk-v2-03/read-restored-commit",
+    "utcStart": "2026-10-14T12:53:58.531870+00:00",
+    "utcEnd": "2026-10-14T12:53:59.423289+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 891.3473749998957,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:48.393799346Z",
+        "name": "aks-adk-v2-03",
+        "uid": "{{ID_C9F233FF}}",
+        "updateTime": "2026-10-14T12:53:58.507147665Z",
+        "version": "11"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_C9F233FF}}/snapshots/{{ID_781D86DB}}"
+        },
+        "state": "ACTOR_STATE_RUNNING",
+        "workerAssignment": {
+          "nodeName": "{{AKS_NODE}}",
+          "worker": {
+            "name": "{{ID_265BE402}}"
+          },
+          "workerEpoch": "1",
+          "workerNamespace": "kagent",
+          "workerPod": "kagent-default-6d756444dd-xffv4",
+          "workerPodIps": [
+            "{{PRIVATE_IP}}"
+          ],
+          "workerPodUid": "{{ID_265BE402}}",
+          "workerPool": "kagent-default"
+        }
+      }
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/after-commit",
+    "utcStart": "2026-10-14T12:53:59.427811+00:00",
+    "utcEnd": "2026-10-14T12:53:59.539591+00:00",
+    "actor": "aks-adk-v2-03",
+    "httpStatus": 200,
+    "elapsedMs": 110.94587499974295,
+    "response": {
+      "supportedInterfaces": [
+        {
+          "url": "http://127.0.0.1:80",
+          "protocolBinding": "GRPC",
+          "protocolVersion": "1.0"
+        }
+      ],
+      "capabilities": {
+        "extensions": [
+          {
+            "description": "Human approval and user input",
+            "uri": "https://kagent.dev/extensions/hitl/v1"
+          }
+        ],
+        "pushNotifications": false,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "",
+      "name": "substrate_stock_proof",
+      "skills": [
+        {
+          "description": "This is a disposable lifecycle fixture. No model requests are sent in this test.",
+          "id": "substrate_stock_proof",
+          "name": "model",
+          "tags": [
+            "llm"
+          ]
+        },
+        {
+          "description": "Ask the user one or more questions and wait for their answers before continuing. Use this when you need clarifying information, preferences, or explicit confirmation from the user.",
+          "id": "substrate_stock_proof-ask_user",
+          "name": "ask_user",
+          "tags": [
+            "llm",
+            "tools"
+          ]
+        }
+      ],
+      "version": "v1"
+    }
+  },
+  {
+    "stage": "aks-adk-v2-03/final-suspend-data",
+    "utcStart": "2026-10-14T12:53:59.542723+00:00",
+    "utcEnd": "2026-10-14T12:54:00.506375+00:00",
+    "args": [
+      "suspend",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent"
+    ],
+    "elapsedMs": 961.6403750005702,
+    "returncode": 0,
+    "stdout": "ATESPACE   NAME            TEMPLATE                                    STATE                   WORKER POD   WORKER IPS   VERSION   AGE\nkagent     aks-adk-v2-03   kagent/substrate-stock-proof-1bdf9f1afe5a   ACTOR_STATE_SUSPENDED   <none>                    13        12s\n"
+  },
+  {
+    "stage": "aks-adk-v2-03/read-final",
+    "utcStart": "2026-10-14T12:54:00.520274+00:00",
+    "utcEnd": "2026-10-14T12:54:01.234018+00:00",
+    "args": [
+      "get",
+      "actor",
+      "aks-adk-v2-03",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 713.6820419982541,
+    "returncode": 0,
+    "actor": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:53:48.393799346Z",
+        "name": "aks-adk-v2-03",
+        "uid": "{{ID_C9F233FF}}",
+        "updateTime": "2026-10-14T12:54:00.460972209Z",
+        "version": "13"
+      },
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-1bdf9f1afe5a"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_128D9B52}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_C9F233FF}}/snapshots/{{ID_D980B8FE}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  },
+  {
+    "stage": "template-after",
+    "utcStart": "2026-10-14T12:54:01.246218+00:00",
+    "utcEnd": "2026-10-14T12:54:02.060014+00:00",
+    "args": [
+      "get",
+      "actor-template",
+      "substrate-stock-proof-1bdf9f1afe5a",
+      "-a",
+      "kagent",
+      "-o",
+      "json"
+    ],
+    "elapsedMs": 813.7235829999554,
+    "returncode": 0,
+    "template": {
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:48:20.163348291Z",
+        "name": "substrate-stock-proof-1bdf9f1afe5a",
+        "uid": "{{ID_128D9B52}}",
+        "updateTime": "2026-10-14T12:48:41.915683898Z",
+        "version": "3"
+      },
+      "workerSelector": {
+        "matchLabels": {
+          "kagent.dev/worker-pool": "kagent-default"
+        }
+      },
+      "snapshotConfig": {
+        "onCommit": "SNAPSHOT_CONTENT_SCOPE_DATA",
+        "onPause": "SNAPSHOT_CONTENT_SCOPE_FULL",
+        "storageLocation": "gs://ate-snapshots/substrate-stock-proof/"
+      },
+      "sandboxConfig": {
+        "configName": "gvisor-default",
+        "sandboxClass": "SANDBOX_CLASS_GVISOR"
+      },
+      "resources": null,
+      "containers": [
+        {
+          "name": "kagent",
+          "image": "ghcr.io/kagent-dev/kagent/golang-adk@sha256:10ef1350786b5d21bc002ed54833fd0272ea7cd8182a92977686b7bafa7f67d3",
+          "command": null,
+          "wakeupProbe": {
+            "httpGet": {
+              "path": "/readyz",
+              "port": 8081
+            },
+            "timeoutSeconds": 30
+          }
+        }
+      ]
+    }
+  }
+]

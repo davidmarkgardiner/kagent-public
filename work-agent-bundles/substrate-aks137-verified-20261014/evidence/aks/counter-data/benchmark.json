@@ -1,0 +1,474 @@
+{
+  "measurement": "Mac operator wall time; CLI includes process start, token acquisition, automatic port-forward and network RTT; HTTP uses an existing router port-forward",
+  "actors": 10,
+  "pauseMode": "DATA",
+  "commitMode": "DATA",
+  "summary": [
+    {
+      "operation": "create",
+      "samples": 10,
+      "p50Ms": 652.0864374979283,
+      "p95Ms": 737.4752499999886,
+      "minMs": 612.1015839999018,
+      "maxMs": 737.4752499999886
+    },
+    {
+      "operation": "final-suspend-data",
+      "samples": 10,
+      "p50Ms": 808.7950209992414,
+      "p95Ms": 840.8468749985332,
+      "minMs": 746.5687089970743,
+      "maxMs": 840.8468749985332
+    },
+    {
+      "operation": "http-ready",
+      "samples": 30,
+      "p50Ms": 96.76102099911077,
+      "p95Ms": 127.50645800042548,
+      "minMs": 85.76866600196809,
+      "maxMs": 148.61908300008508
+    },
+    {
+      "operation": "pause-data",
+      "samples": 10,
+      "p50Ms": 817.4268335005763,
+      "p95Ms": 935.4967920007766,
+      "minMs": 770.4746660019737,
+      "maxMs": 935.4967920007766
+    },
+    {
+      "operation": "resume-committed",
+      "samples": 10,
+      "p50Ms": 834.5177499995771,
+      "p95Ms": 929.0712500005611,
+      "minMs": 786.1780830025964,
+      "maxMs": 929.0712500005611
+    },
+    {
+      "operation": "resume-golden",
+      "samples": 10,
+      "p50Ms": 892.6114165005856,
+      "p95Ms": 999.3039170003613,
+      "minMs": 841.4892500004498,
+      "maxMs": 999.3039170003613
+    },
+    {
+      "operation": "resume-paused",
+      "samples": 10,
+      "p50Ms": 837.8979795015766,
+      "p95Ms": 921.4921669990872,
+      "minMs": 799.7032499988563,
+      "maxMs": 921.4921669990872
+    },
+    {
+      "operation": "suspend-data",
+      "samples": 10,
+      "p50Ms": 798.8010834997112,
+      "p95Ms": 886.7667500016978,
+      "minMs": 742.1422920015175,
+      "maxMs": 886.7667500016978
+    }
+  ],
+  "raw": [
+    {
+      "operation": "create",
+      "elapsedMs": 701.0237089998554
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 882.7779579987691
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 148.61908300008508
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 896.7703749985958
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 818.6660000028496
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 92.65625000261934
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 879.2752089975693
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 831.5590419988439
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 95.95687500041095
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 815.985291999823
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 737.4752499999886
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 868.7275000011141
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 94.5640829995682
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 770.4746660019737
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 861.2537919980241
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 95.1128750020871
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 747.6486669984297
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 929.0712500005611
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 99.6486250005546
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 763.7640419998206
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 612.1015839999018
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 956.0989160017925
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 106.17058400021051
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 818.9067919993249
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 896.154750000278
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 93.97874999922351
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 792.1038749991567
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 814.858916997764
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 106.17425000236835
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 796.100874998956
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 628.7456249992829
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 920.4501250023895
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 91.65533300256357
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 798.7359590006236
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 839.8756670030707
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 127.50645800042548
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 805.4982920002658
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 789.1199160003453
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 95.75500000210013
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 814.1899579968594
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 633.2156249991385
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 894.2710410010477
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 108.85675000099582
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 935.4967920007766
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 835.9202920000826
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 88.81558300345205
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 865.6985410016205
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 858.1858750003448
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 94.37179199812817
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 746.5687089970743
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 652.9982079991896
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 890.9517920001235
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 97.65087500272784
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 816.9867500000692
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 799.7032499988563
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 94.67195799879846
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 742.1422920015175
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 834.7964999993565
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 92.54745799989905
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 812.2779590012215
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 656.0261249978794
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 999.3039170003613
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 92.35108400025638
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 817.8669170010835
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 879.6256250025181
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 97.84183300143923
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 755.621375003102
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 880.9852080012206
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 103.27491699717939
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 804.2898330022581
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 651.1746669966669
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 983.7246669994784
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 92.37900000152877
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 778.0711670020537
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 921.4921669990872
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 85.76866600196809
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 786.3438749991474
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 834.2389999997977
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 97.56516699781059
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 806.4968750004482
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 638.9740000013262
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 888.8087919985992
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 98.75362499951734
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 790.9705410020251
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 815.7757920016593
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 115.99420800121152
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 886.7667500016978
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 786.1780830025964
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 114.21462499856716
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 840.8468749985332
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 655.8273330010707
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 841.4892500004498
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 107.8622089989949
+    },
+    {
+      "operation": "pause-data",
+      "elapsedMs": 932.8300419983862
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 828.2632079972245
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 90.66549999988638
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 857.6219999995374
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 876.2904169998365
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 110.43562499980908
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 811.0931669980346
+    }
+  ]
+}

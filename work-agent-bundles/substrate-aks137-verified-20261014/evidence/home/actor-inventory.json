@@ -1,0 +1,510 @@
+{
+  "actors": [
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:54.135057972Z",
+        "name": "home-data-01",
+        "uid": "{{ID_71BD71A0}}",
+        "updateTime": "2026-10-14T12:55:56.005159917Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_71BD71A0}}/snapshots/{{ID_E5A22017}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:56.156391584Z",
+        "name": "home-data-02",
+        "uid": "{{ID_F959B6A5}}",
+        "updateTime": "2026-10-14T12:56:02.159720503Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_F959B6A5}}/snapshots/{{ID_F882AA16}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:02.515217628Z",
+        "name": "home-data-03",
+        "uid": "{{ID_61F6DE9E}}",
+        "updateTime": "2026-10-14T12:56:06.551553380Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_61F6DE9E}}/snapshots/{{ID_40ED4DDF}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:06.741419047Z",
+        "name": "home-data-04",
+        "uid": "{{ID_2D9772A5}}",
+        "updateTime": "2026-10-14T12:56:08.770745923Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_2D9772A5}}/snapshots/{{ID_B266777E}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:09.358624257Z",
+        "name": "home-data-05",
+        "uid": "{{ID_3C7C155A}}",
+        "updateTime": "2026-10-14T12:56:15.602922510Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_3C7C155A}}/snapshots/{{ID_E6D07B7C}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:15.962508427Z",
+        "name": "home-data-06",
+        "uid": "{{ID_420DD341}}",
+        "updateTime": "2026-10-14T12:56:18.383148511Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_420DD341}}/snapshots/{{ID_5E5DFC74}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:18.552222136Z",
+        "name": "home-data-07",
+        "uid": "{{ID_0C2C48BE}}",
+        "updateTime": "2026-10-14T12:56:20.740435595Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_0C2C48BE}}/snapshots/{{ID_4A586159}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:20.927568054Z",
+        "name": "home-data-08",
+        "uid": "{{ID_2817C75C}}",
+        "updateTime": "2026-10-14T12:56:22.991068222Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_2817C75C}}/snapshots/{{ID_8FA85F74}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:23.150915847Z",
+        "name": "home-data-09",
+        "uid": "{{ID_D556A31D}}",
+        "updateTime": "2026-10-14T12:56:25.616512Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_D556A31D}}/snapshots/{{ID_1531BEC4}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-data"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:56:26.107783959Z",
+        "name": "home-data-10",
+        "uid": "{{ID_61EAF7FC}}",
+        "updateTime": "2026-10-14T12:56:29.481446960Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_596695BF}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-data/atespaces/kagent/actors/{{ID_61EAF7FC}}/snapshots/{{ID_661F844B}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:20.798447554Z",
+        "name": "home-full-01",
+        "uid": "{{ID_0A744B94}}",
+        "updateTime": "2026-10-14T12:55:23.399139138Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_0A744B94}}/snapshots/{{ID_91EFDC8E}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:23.705746014Z",
+        "name": "home-full-02",
+        "uid": "{{ID_5A9BAEA3}}",
+        "updateTime": "2026-10-14T12:55:26.227173625Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_5A9BAEA3}}/snapshots/{{ID_94D25594}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:26.418493584Z",
+        "name": "home-full-03",
+        "uid": "{{ID_CE4C92AE}}",
+        "updateTime": "2026-10-14T12:55:30.780596378Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_CE4C92AE}}/snapshots/{{ID_0EBB473A}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:30.999894003Z",
+        "name": "home-full-04",
+        "uid": "{{ID_4F904266}}",
+        "updateTime": "2026-10-14T12:55:34.293280379Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_4F904266}}/snapshots/{{ID_22350E35}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:34.480215046Z",
+        "name": "home-full-05",
+        "uid": "{{ID_DEDDEDEA}}",
+        "updateTime": "2026-10-14T12:55:36.790570672Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_DEDDEDEA}}/snapshots/{{ID_BF3BB382}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:36.972730047Z",
+        "name": "home-full-06",
+        "uid": "{{ID_AC523C9D}}",
+        "updateTime": "2026-10-14T12:55:39.212684798Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_AC523C9D}}/snapshots/{{ID_191801C6}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:39.661400507Z",
+        "name": "home-full-07",
+        "uid": "{{ID_A5CEF0B6}}",
+        "updateTime": "2026-10-14T12:55:44.230860051Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_A5CEF0B6}}/snapshots/{{ID_FB09CBE6}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:44.653234968Z",
+        "name": "home-full-08",
+        "uid": "{{ID_2A2BECCC}}",
+        "updateTime": "2026-10-14T12:55:47.029939177Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_2A2BECCC}}/snapshots/{{ID_1C3D7662}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:47.189917385Z",
+        "name": "home-full-09",
+        "uid": "{{ID_342A5107}}",
+        "updateTime": "2026-10-14T12:55:50.735794262Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_342A5107}}/snapshots/{{ID_25B4F89B}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "proof-counter-full"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:50.915477304Z",
+        "name": "home-full-10",
+        "uid": "{{ID_73196BA8}}",
+        "updateTime": "2026-10-14T12:55:53.554510305Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_D4FB5359}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_FULL",
+          "snapshotUri": "gs://ate-snapshots/proof-counter-full/atespaces/kagent/actors/{{ID_73196BA8}}/snapshots/{{ID_519CEC85}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-d9f477698a09"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:02.320064753Z",
+        "name": "home-adk-v2-01",
+        "uid": "{{ID_77BEBFF0}}",
+        "updateTime": "2026-10-14T12:55:12.206628425Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_6D9029AD}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_77BEBFF0}}/snapshots/{{ID_8B48CEBB}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-d9f477698a09"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:12.677809342Z",
+        "name": "home-adk-v2-02",
+        "uid": "{{ID_701A4207}}",
+        "updateTime": "2026-10-14T12:55:17.141382844Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_6D9029AD}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_701A4207}}/snapshots/{{ID_77DE9E75}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    },
+    {
+      "actorTemplate": {
+        "atespace": "kagent",
+        "name": "substrate-stock-proof-d9f477698a09"
+      },
+      "metadata": {
+        "atespace": "kagent",
+        "createTime": "2026-10-14T12:55:17.314600469Z",
+        "name": "home-adk-v2-03",
+        "uid": "{{ID_C55D3762}}",
+        "updateTime": "2026-10-14T12:55:20.319241095Z",
+        "version": "13"
+      },
+      "status": {
+        "externalSnapshot": {
+          "actorTemplateUid": "{{ID_6D9029AD}}",
+          "contentScope": "SNAPSHOT_CONTENT_SCOPE_DATA",
+          "snapshotUri": "gs://ate-snapshots/substrate-stock-proof/atespaces/kagent/actors/{{ID_C55D3762}}/snapshots/{{ID_A174E90D}}"
+        },
+        "state": "ACTOR_STATE_SUSPENDED"
+      }
+    }
+  ]
+}

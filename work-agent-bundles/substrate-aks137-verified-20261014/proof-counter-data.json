@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "atespace": "kagent",
+    "name": "proof-counter-data"
+  },
+  "workerSelector": {
+    "matchLabels": {
+      "kagent.dev/worker-pool": "kagent-default"
+    }
+  },
+  "containers": [
+    {
+      "name": "counter",
+      "image": "localhost:15014/fixture@sha256:14de92f1e72157f4e4322702a08020ca193c20471ae2021b2e76a806d5a96a67",
+      "command": [
+        "/fixture"
+      ],
+      "volumeMounts": [
+        {
+          "name": "data",
+          "mountPath": "/data"
+        }
+      ],
+      "wakeupProbe": {
+        "httpGet": {
+          "path": "/readyz",
+          "port": 80
+        },
+        "timeoutSeconds": 30
+      }
+    }
+  ],
+  "resources": {
+    "limits": [
+      {
+        "name": "cpu",
+        "quantity": "1"
+      },
+      {
+        "name": "memory",
+        "quantity": "512Mi"
+      }
+    ]
+  },
+  "snapshotConfig": {
+    "onPause": "SNAPSHOT_CONTENT_SCOPE_DATA",
+    "onCommit": "SNAPSHOT_CONTENT_SCOPE_DATA",
+    "storageLocation": "gs://ate-snapshots/proof-counter-data/"
+  },
+  "sandboxConfig": {
+    "sandboxClass": "SANDBOX_CLASS_GVISOR",
+    "configName": "gvisor-default"
+  },
+  "volumes": [
+    {
+      "name": "data",
+      "durableDir": {}
+    }
+  ]
+}

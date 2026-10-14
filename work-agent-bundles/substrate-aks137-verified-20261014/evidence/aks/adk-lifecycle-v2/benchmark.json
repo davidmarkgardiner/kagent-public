@@ -1,0 +1,194 @@
+{
+  "measurement": "Mac operator wall time; CLI includes process start, token acquisition, automatic port-forward and network RTT; HTTP uses an existing router port-forward",
+  "actors": 3,
+  "pauseMode": "FULL",
+  "commitMode": "DATA",
+  "summary": [
+    {
+      "operation": "create",
+      "samples": 3,
+      "p50Ms": 676.0554169995885,
+      "p95Ms": 703.3352079997712,
+      "minMs": 658.1322079982783,
+      "maxMs": 703.3352079997712
+    },
+    {
+      "operation": "final-suspend-data",
+      "samples": 3,
+      "p50Ms": 892.0530000032159,
+      "p95Ms": 961.6403750005702,
+      "minMs": 878.8815420011815,
+      "maxMs": 961.6403750005702
+    },
+    {
+      "operation": "http-ready",
+      "samples": 9,
+      "p50Ms": 110.94587499974295,
+      "p95Ms": 242.2519169995212,
+      "minMs": 96.20524999991176,
+      "maxMs": 242.2519169995212
+    },
+    {
+      "operation": "pause-full",
+      "samples": 3,
+      "p50Ms": 808.7836249978864,
+      "p95Ms": 843.6095420001948,
+      "minMs": 779.0533340012189,
+      "maxMs": 843.6095420001948
+    },
+    {
+      "operation": "resume-committed",
+      "samples": 3,
+      "p50Ms": 903.0299580008432,
+      "p95Ms": 976.5425409968884,
+      "minMs": 891.1492919978627,
+      "maxMs": 976.5425409968884
+    },
+    {
+      "operation": "resume-golden",
+      "samples": 3,
+      "p50Ms": 941.6261670012318,
+      "p95Ms": 959.1387920008856,
+      "minMs": 931.7639580003743,
+      "maxMs": 959.1387920008856
+    },
+    {
+      "operation": "resume-paused",
+      "samples": 3,
+      "p50Ms": 863.2010409965005,
+      "p95Ms": 1548.3567920018686,
+      "minMs": 860.3368340009183,
+      "maxMs": 1548.3567920018686
+    },
+    {
+      "operation": "suspend-data",
+      "samples": 3,
+      "p50Ms": 1099.6154169988586,
+      "p95Ms": 1135.0039589997323,
+      "minMs": 852.5233330001356,
+      "maxMs": 1135.0039589997323
+    }
+  ],
+  "raw": [
+    {
+      "operation": "create",
+      "elapsedMs": 703.3352079997712
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 959.1387920008856
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 130.5023329987307
+    },
+    {
+      "operation": "pause-full",
+      "elapsedMs": 779.0533340012189
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 860.3368340009183
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 106.16945800211397
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 1099.6154169988586
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 891.1492919978627
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 103.62174999681883
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 878.8815420011815
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 676.0554169995885
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 941.6261670012318
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 105.64824999892153
+    },
+    {
+      "operation": "pause-full",
+      "elapsedMs": 808.7836249978864
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 863.2010409965005
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 139.2999579984462
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 852.5233330001356
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 903.0299580008432
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 121.76979200012283
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 892.0530000032159
+    },
+    {
+      "operation": "create",
+      "elapsedMs": 658.1322079982783
+    },
+    {
+      "operation": "resume-golden",
+      "elapsedMs": 931.7639580003743
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 96.20524999991176
+    },
+    {
+      "operation": "pause-full",
+      "elapsedMs": 843.6095420001948
+    },
+    {
+      "operation": "resume-paused",
+      "elapsedMs": 1548.3567920018686
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 242.2519169995212
+    },
+    {
+      "operation": "suspend-data",
+      "elapsedMs": 1135.0039589997323
+    },
+    {
+      "operation": "resume-committed",
+      "elapsedMs": 976.5425409968884
+    },
+    {
+      "operation": "http-ready",
+      "elapsedMs": 110.94587499974295
+    },
+    {
+      "operation": "final-suspend-data",
+      "elapsedMs": 961.6403750005702
+    }
+  ]
+}

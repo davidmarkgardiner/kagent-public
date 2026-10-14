@@ -1,0 +1,7 @@
+/receipts/
+/artifacts/
+/bin/
+/substrate-source/
+/__pycache__/
+/*.kubeconfig
+/fixture/fixture-linux-*

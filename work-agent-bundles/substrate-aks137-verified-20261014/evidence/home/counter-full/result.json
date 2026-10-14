@@ -1,0 +1,59 @@
+{
+  "pass": true,
+  "actors": [
+    {
+      "name": "home-full-01",
+      "atespace": "kagent",
+      "uid": "{{ID_0A744B94}}"
+    },
+    {
+      "name": "home-full-02",
+      "atespace": "kagent",
+      "uid": "{{ID_5A9BAEA3}}"
+    },
+    {
+      "name": "home-full-03",
+      "atespace": "kagent",
+      "uid": "{{ID_CE4C92AE}}"
+    },
+    {
+      "name": "home-full-04",
+      "atespace": "kagent",
+      "uid": "{{ID_4F904266}}"
+    },
+    {
+      "name": "home-full-05",
+      "atespace": "kagent",
+      "uid": "{{ID_DEDDEDEA}}"
+    },
+    {
+      "name": "home-full-06",
+      "atespace": "kagent",
+      "uid": "{{ID_AC523C9D}}"
+    },
+    {
+      "name": "home-full-07",
+      "atespace": "kagent",
+      "uid": "{{ID_A5CEF0B6}}"
+    },
+    {
+      "name": "home-full-08",
+      "atespace": "kagent",
+      "uid": "{{ID_2A2BECCC}}"
+    },
+    {
+      "name": "home-full-09",
+      "atespace": "kagent",
+      "uid": "{{ID_342A5107}}"
+    },
+    {
+      "name": "home-full-10",
+      "atespace": "kagent",
+      "uid": "{{ID_73196BA8}}"
+    }
+  ],
+  "workload": "counter",
+  "templateStable": true,
+  "modelCalls": false,
+  "finishedUtc": "2026-10-14T12:55:53.874029+00:00"
+}
