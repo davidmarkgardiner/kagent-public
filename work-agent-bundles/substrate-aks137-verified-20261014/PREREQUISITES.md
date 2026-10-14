@@ -1,5 +1,8 @@
 # Prerequisites before the bank reinstall
 
+For today's image import, start with [`IMAGE-IMPORT.md`](IMAGE-IMPORT.md).
+It lists all 18 public images and the separately transferred fixture.
+
 Complete this inventory before removing the old evaluation stack. The
 reference is the **personal AMD64 AKS** receipt, not the ARM64 Kind host.
 Use [`evidence/aks/platform.json`](evidence/aks/platform.json) and
