@@ -1,0 +1,71 @@
+{
+  "sourceCommit": "c2e2e130606db615a553421b6352e47f49860870",
+  "helperPlatforms": [
+    "linux-amd64",
+    "darwin-arm64"
+  ],
+  "linuxHelperBuild": {
+    "go": "1.27.0",
+    "cgo": false,
+    "mod": "vendor",
+    "trimpath": true,
+    "buildid": ""
+  },
+  "files": [
+    {
+      "path": "artifacts/fixture.oci.tar",
+      "bytes": 9356800,
+      "sha256": "863c844033d984ed7e3198e90a022a59ecc65f457baa5660c25affec96975f72"
+    },
+    {
+      "path": "artifacts/gvisor-amd64.tar.zstd",
+      "bytes": 128870217,
+      "sha256": "d547d81401461fd1c679c5c4fa0a6c2b8ef7dc3c22ce23c9e25dcc4c69cfd06f"
+    },
+    {
+      "path": "artifacts/helpers/darwin-arm64/ate-setup",
+      "bytes": 86974034,
+      "sha256": "ab76915515821a8ae21caa7fd617ad01fc6bec5e3afe138f0290162a95abc5e0"
+    },
+    {
+      "path": "artifacts/helpers/darwin-arm64/kubectl-ate",
+      "bytes": 73730946,
+      "sha256": "dd0c39a3f65293fa25603c7f5de584432fac472427c1ea703dace4174ddb78f7"
+    },
+    {
+      "path": "artifacts/helpers/linux-amd64/ate-setup",
+      "bytes": 79908617,
+      "sha256": "57e69ccab71680edd9f8ff3e3c6fff3b4a65623a2123e1d084f4cc5c27475af6"
+    },
+    {
+      "path": "artifacts/helpers/linux-amd64/kubectl-ate",
+      "bytes": 74876371,
+      "sha256": "bb98dc9e7f122e68481c4c320025af354306782e844a13a2c0b8a3b2a71c8fcf"
+    },
+    {
+      "path": "artifacts/kagent-1.0.0-alpha8.tgz",
+      "bytes": 163508,
+      "sha256": "4cf903334bee8387353d17c03de739f9ba0344598ba00dddba0bcff6926a094a"
+    },
+    {
+      "path": "artifacts/kagent-crds-1.0.0-alpha8.tgz",
+      "bytes": 67594,
+      "sha256": "578f43adceaa9b8ca82d5ffc0abddc579ce03afcfb70f10dd39154cbdfa42b2a"
+    },
+    {
+      "path": "artifacts/substrate-0.4.0-alpha1.tgz",
+      "bytes": 19996,
+      "sha256": "f4bd9ccc283379d2ba493c2ceaef1d6ac4faa7f19d1837e57e207530eeb60047"
+    },
+    {
+      "path": "artifacts/substrate-crds-0.4.0-alpha1.tgz",
+      "bytes": 7227,
+      "sha256": "53e4960fd7477e2d76815eb7d2c0f5936d2358be49ffc709a5c5f81fe804cfdf"
+    },
+    {
+      "path": "artifacts/substrate-source.tar.gz",
+      "bytes": 24530813,
+      "sha256": "857a8801f1baf8d2070f1de1506bd93431d62fa5e6bd422073f78ef3b8d561ac"
+    }
+  ]
+}
