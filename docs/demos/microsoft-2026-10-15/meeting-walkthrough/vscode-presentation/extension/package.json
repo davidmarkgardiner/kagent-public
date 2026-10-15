@@ -1,0 +1,14 @@
+{
+  "name": "microsoft-meeting-presenter",
+  "displayName": "Microsoft meeting presenter",
+  "description": "Local presentation panel with diagrams on the right and repository YAML on the left.",
+  "version": "0.1.0",
+  "publisher": "local-meeting",
+  "engines": { "vscode": "^1.85.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [{ "command": "microsoftMeeting.open", "title": "Microsoft meeting: Open visual walkthrough" }]
+  },
+  "capabilities": { "untrustedWorkspaces": { "supported": false } }
+}
