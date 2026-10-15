@@ -1,0 +1,19 @@
+{
+  "folders": [
+    { "name": "01 · Annotated YAML", "path": "../../yaml-walkthrough" },
+    { "name": "02 · Visual presentation", "path": "." }
+  ],
+  "settings": {
+    "workbench.startupEditor": "none",
+    "window.zoomLevel": 0,
+    "git.openRepositoryInParentFolders": "never",
+    "workbench.editor.enablePreview": false,
+    "editor.minimap.enabled": false,
+    "editor.fontSize": 15,
+    "editor.wordWrap": "on",
+    "markdown.preview.fontSize": 16,
+    "markdown.preview.scrollEditorWithPreview": false,
+    "markdown.preview.scrollPreviewWithEditor": false,
+    "files.exclude": { "**/__pycache__": true }
+  }
+}

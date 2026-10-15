@@ -1,0 +1,22 @@
+{
+  "01-agent.yaml": "53681418b6af9103217b0e936cceff02c3fff28524cc95974010a147d3568fa9",
+  "02-agent-skills.patch.yaml": "2c3ddd69aff4e96c29a0ca48e76dc2d9afd3b9eedb90fa4994da05eb09c5479d",
+  "03-agent-tools.patch.yaml": "2c0776924bcd23a11f43022e1431944a6cae2c17b1c168f2d69d56f5091d6a2b",
+  "04-a2a-orchestrator.yaml": "54d7328326f54a74b2af215d138944e8c6b03699fd72de9cc96c4023a35128da",
+  "05-model-garden.yaml": "7c90adba6ca7a2ecf8799e40bcdcd0615ed9fc2efd94d93d6896795bf4448bdf",
+  "06-remote-mcp.yaml": "f79e46b2e6da813d6ab307549deadb78e7541aa933ccd19f739ea3b165d95df0",
+  "07-mcp-backend.yaml": "26870c4f8539e54a62130af680a97b05b44dcd9ff024ca710079ae25afa2c8de",
+  "08-http-routes.yaml": "3282c3a77287b83fdcd379f4def7d3e845c7037a49e07101afcaf48f4545fa0e",
+  "09-reference-grants.yaml": "10e8b5a75ff4a2c52250d70e06788b36f0ec7ce47fc888f18301703566ef1df6",
+  "10-entra-jwks.yaml": "245caeebe73ca2e96547e8e87fca7d1abbf44afa87998e11b955fbe706b55b51",
+  "11-blueprint-token-holder.yaml": "45d00be66fe60bbd55dd26b18cfe2ae49e838eb5b00859b254aa9961f9cd100f",
+  "12-application-to-agent-policy.yaml": "5f44b1ed106a5e871f5aeb79e932b725adabc8a97d8d3f0d495329f82e9ae084",
+  "13-agent-to-mcp-policy.yaml": "fc10a789eaa1842f40f50263f61533f85fca5f56b25820cea103d2146ffeef12",
+  "14-mcp-network-boundary.yaml": "49605cabbf9184e410a7fa3861985adcc7bff871e9727ab6c0eb2acc59c4c610",
+  "15-model-traffic-limits.yaml": "31c175ffc2c17c0a0878c33545bc8a7d63b66315b3f8d2aa3ec6c510a4299586",
+  "16-model-content-guards.yaml": "61960aa3a6497b0e53876ed5cd1d5623087fc52eb6e86eb17234298ddb986b72",
+  "17-gateway-observability.yaml": "1701025108528f5de216940971be268cea4ca6c60fa16c1937eba49d57470315",
+  "18-gateway-podmonitor.yaml": "d7ec383d1f51671fa9c410497e094f17dbe64e610e410b2129de06bce68a9887",
+  "19-gateway-alerts.yaml": "82f1c7ba18ba880473ef6944bfe677e1463c628522e81b1ef8993a0b39c39357",
+  "20-agent-evaluation-case.yaml": "79fb381becf813369a348a61a5542d30f8e906e71c3f41e6a8c68c9a2cea2d7d"
+}

@@ -1,0 +1,218 @@
+[
+  {
+    "id": "platform",
+    "title": "Where agents fit in our platform",
+    "phase": "Walkthrough",
+    "status": "Configuration pattern",
+    "diagram": "diagrams/01-platform.svg",
+    "files": [
+      "01-agent.yaml",
+      "04-a2a-orchestrator.yaml",
+      "06-remote-mcp.yaml",
+      "08-http-routes.yaml"
+    ],
+    "sources": [
+      "docs/demos/microsoft-2026-10-15/yaml-walkthrough/README.md"
+    ]
+  },
+  {
+    "id": "anatomy",
+    "title": "This is where the agent works",
+    "phase": "Walkthrough",
+    "status": "Configuration pattern",
+    "diagram": "diagrams/02-anatomy.svg",
+    "files": [
+      "01-agent.yaml",
+      "02-agent-skills.patch.yaml",
+      "03-agent-tools.patch.yaml",
+      "05-model-garden.yaml"
+    ],
+    "sources": [
+      "docs/demos/microsoft-2026-10-15/yaml-walkthrough/kustomization.yaml"
+    ]
+  },
+  {
+    "id": "connections",
+    "title": "This is where we connect the agents",
+    "phase": "Walkthrough",
+    "status": "Configuration pattern",
+    "diagram": "diagrams/03-connections.svg",
+    "files": [
+      "04-a2a-orchestrator.yaml",
+      "06-remote-mcp.yaml",
+      "07-mcp-backend.yaml",
+      "09-reference-grants.yaml"
+    ],
+    "sources": [
+      "docs/demos/microsoft-2026-10-15/yaml-walkthrough/guides/03-sre-orchestration-demo.md"
+    ]
+  },
+  {
+    "id": "knowledge",
+    "title": "Knowledge becomes evidence the agent can cite",
+    "phase": "Walkthrough",
+    "status": "Repository knowledge-base POC",
+    "diagram": "diagrams/04-knowledge.svg",
+    "files": [
+      "02-agent-skills.patch.yaml",
+      "06-remote-mcp.yaml"
+    ],
+    "sources": [
+      "ai-platform/kagent-knowledge-base/README.md",
+      "docs/platform-kb/INDEX.md"
+    ]
+  },
+  {
+    "id": "catalogue",
+    "title": "What the MCP integrations let an agent do",
+    "phase": "Walkthrough",
+    "status": "Repository integrations; individual proof varies",
+    "diagram": "diagrams/05-catalogue.svg",
+    "files": [
+      "03-agent-tools.patch.yaml",
+      "06-remote-mcp.yaml",
+      "07-mcp-backend.yaml",
+      "13-agent-to-mcp-policy.yaml"
+    ],
+    "sources": [
+      "work-agent-bundles/postgres-fastmcp-entra-uami/adapter/server.py",
+      "work-agent-bundles/postgres-fastmcp-entra-uami/WORK-AGENT-TOKEN-EFFICIENCY-HANDOFF.md",
+      "work-agent-bundles/kind-kagent-sdlc-rig/README.md",
+      "docs/demos/microsoft-2026-10-15/meeting-walkthrough/vscode-presentation/REFERENCE-NOTES.md",
+      "docs/ai-grafana/kagent-grafana-mcp-demo.md"
+    ]
+  },
+  {
+    "id": "identity",
+    "title": "Microsoft Entra objects make access accountable",
+    "phase": "Walkthrough",
+    "status": "Configuration pattern",
+    "diagram": "diagrams/06-identity.svg",
+    "files": [
+      "10-entra-jwks.yaml",
+      "11-blueprint-token-holder.yaml",
+      "12-application-to-agent-policy.yaml",
+      "13-agent-to-mcp-policy.yaml",
+      "14-mcp-network-boundary.yaml"
+    ],
+    "sources": [
+      "docs/demos/microsoft-2026-10-15/yaml-walkthrough/guides/01-entra-agent-blueprint-setup.md"
+    ]
+  },
+  {
+    "id": "lgtm",
+    "title": "LGTM shows token usage and agent performance",
+    "phase": "Walkthrough",
+    "status": "Monitoring design \u00b7 verify telemetry attribution on the target",
+    "diagram": "diagrams/07-lgtm.svg",
+    "files": [
+      "17-gateway-observability.yaml",
+      "18-gateway-podmonitor.yaml",
+      "19-gateway-alerts.yaml"
+    ],
+    "sources": [
+      "docs/demos/microsoft-2026-10-15/yaml-walkthrough/guides/02-gateway-security-monitoring-evaluation.md",
+      "observability/agent-evals/FLEET-DASHBOARD.md"
+    ]
+  },
+  {
+    "id": "evaluation",
+    "title": "Evaluation checks whether the agent did the job",
+    "phase": "Walkthrough",
+    "status": "Implemented deterministic scorecard \u00b7 optional semantic evaluation",
+    "diagram": "diagrams/08-evaluation.svg",
+    "files": [
+      "19-gateway-alerts.yaml",
+      "20-agent-evaluation-case.yaml"
+    ],
+    "sources": [
+      "observability/agent-evals/README.md",
+      "observability/agent-evals/LIFECYCLE-EVALUATION.md",
+      "observability/agent-evals/deepeval/README.md"
+    ]
+  },
+  {
+    "id": "policies",
+    "title": "Now show the gateway policies",
+    "phase": "Chrome \u00b7 gateway UI",
+    "status": "Configuration pattern",
+    "diagram": "diagrams/09-policies.svg",
+    "files": [
+      "08-http-routes.yaml",
+      "12-application-to-agent-policy.yaml",
+      "13-agent-to-mcp-policy.yaml",
+      "14-mcp-network-boundary.yaml",
+      "15-model-traffic-limits.yaml",
+      "16-model-content-guards.yaml",
+      "17-gateway-observability.yaml",
+      "18-gateway-podmonitor.yaml",
+      "19-gateway-alerts.yaml",
+      "20-agent-evaluation-case.yaml"
+    ],
+    "sources": [
+      "docs/demos/microsoft-2026-10-15/yaml-walkthrough/guides/02-gateway-security-monitoring-evaluation.md"
+    ]
+  },
+  {
+    "id": "triage",
+    "title": "From telemetry to an accountable incident",
+    "phase": "Visual presentation",
+    "status": "Recorded evidence-first lab path",
+    "diagram": "diagrams/10-triage.svg",
+    "files": [
+      "01-agent.yaml",
+      "03-agent-tools.patch.yaml",
+      "04-a2a-orchestrator.yaml"
+    ],
+    "sources": [
+      "work-agent-bundles/evidence-first-worker-triage/next-phase-end-to-end/evidence/phase5-value.md",
+      "docs/observability/dual-source-kafka-triage-routing.md"
+    ]
+  },
+  {
+    "id": "workflow",
+    "title": "Build agents into the delivery workflow",
+    "phase": "Visual presentation",
+    "status": "Workflow pattern; implementation varies",
+    "diagram": "diagrams/11-workflow.svg",
+    "files": [],
+    "sources": [
+      "work-agent-bundles/kind-kagent-sdlc-rig/README.md"
+    ]
+  },
+  {
+    "id": "durable",
+    "title": "An event starts a durable piece of work",
+    "phase": "Visual presentation",
+    "status": "PoC direction \u00b7 broader event sources proposed",
+    "diagram": "diagrams/12-durable.svg",
+    "files": [],
+    "sources": [
+      "work-agent-bundles/agent-substrate/README.md"
+    ]
+  },
+  {
+    "id": "board",
+    "title": "The human comes back to completed work",
+    "phase": "Visual presentation",
+    "status": "Conceptual UI board \u00b7 no live task state",
+    "diagram": "diagrams/13-board.svg",
+    "files": [],
+    "sources": [
+      "work-agent-bundles/agent-substrate/README.md"
+    ]
+  },
+  {
+    "id": "lens",
+    "title": "The SRE lens brings the evidence together",
+    "phase": "Chrome \u00b7 SRE Lens",
+    "status": "Prepared live prompts \u00b7 environment not rehearsed",
+    "diagram": "diagrams/14-lens.svg",
+    "files": [
+      "04-a2a-orchestrator.yaml"
+    ],
+    "sources": [
+      "docs/demos/microsoft-2026-10-15/yaml-walkthrough/guides/03-sre-orchestration-demo.md"
+    ]
+  }
+]
