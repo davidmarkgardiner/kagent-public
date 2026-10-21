@@ -58,5 +58,7 @@ The decision is to sponsor the temporary engineering-cluster exception or provid
 
 ## Supporting guidance
 
+- [Alternative option with a dedicated engineering management group](engineering-management-group-option.md)
+- [Teams message presenting both options](engineering-policy-blocker-teams-message.md)
 - [Existing Azure Policy exception guidance](azure-policy-exceptions.md)
 - [Kyverno policies in the platform](../../infra/byo-kagent/kyverno-policies/)
