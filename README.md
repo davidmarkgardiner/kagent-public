@@ -145,7 +145,7 @@ examples/           Quickstart and sample payloads
 | Deploy LitmusChaos and watch kagent triage chaos events | [`chaos/litmus/WORK-INSTALL.md`](chaos/litmus/WORK-INSTALL.md) |
 | Create a custom kagent tool | [`docs/kagent-custom-tools/`](docs/kagent-custom-tools/README.md) |
 | Prepare Azure Policy exceptions for kagent/agentgateway | [`docs/security/azure-policy-exceptions.md`](docs/security/azure-policy-exceptions.md) |
-| Request a temporary engineering-cluster policy exception for Substrate | [`docs/security/dev-engineering-policy-exception.md`](docs/security/dev-engineering-policy-exception.md) |
+| Unblock delivery with delegated policy control on engineering clusters | [`docs/security/dev-engineering-policy-exception.md`](docs/security/dev-engineering-policy-exception.md) |
 | Run the Agentgateway MVP demo set | [`DEMOS.md#2-agentgateway-mvp-control-plane-demo-set`](DEMOS.md#2-agentgateway-mvp-control-plane-demo-set) |
 | Add a HITL approval gate for remediation | [`platform/teams-hitl/`](platform/teams-hitl/README.md) |
 | Bring Your Own Agent to the platform | [`infra/byo-kagent/`](infra/byo-kagent/README.md) |

@@ -1,56 +1,62 @@
-# Temporary policy exception for dev and engineering clusters
+# Policy control that enables engineering delivery
 
 Updated 21 October 2026.
 
 ## Decision requested
 
-Approve a temporary exception to the current ICV and SDLC policy change process for the dev and engineering AKS clusters owned by our team. Ask the policy owners to temporarily exempt those clusters from the specific Azure Policy rules blocking the kagent Agent Substrate evaluation, with equivalent baseline controls enforced locally through Kyverno and separately approved exceptions for the runtime privileges Substrate requires.
+Approve a temporary operating model that lets the engineering team deliver on the dev and engineering AKS clusters it owns. Sponsor an exception to the current ICV and SDLC policy change process, and authorise the policy owners to lift the central Azure Policy workload enforcement covered by that exception. Maintain the agreed Kubernetes baseline locally through Kyverno, with delegated authority to update it through reviewed GitOps changes.
 
-Give the engineering team delegated authority to maintain those scoped Kubernetes policies through reviewed GitOps changes while the central process is resolved. Record the affected clusters, policy definitions, accountable owners and expiry in the exception. Restore central enforcement as soon as the required changes have completed the process and have been validated.
+The scope must be an explicitly approved list of team-owned dev and engineering clusters. Give the arrangement an accountable owner, an expiry and a route back to central enforcement once the central process can support engineering delivery. If this approach cannot be approved, agree an alternative with a named owner and a turnaround that meets our delivery needs.
 
-## Current delivery impact
+## The recurring delivery problem
 
-The delivery position reported on 21 October is that the policy change we need is not expected to be available before the end of the year, with delivery after Christmas indicated. This adds roughly two months or more to a dependency needed for near-term milestones and deliverables.
+The delivery position reported on 21 October is that a policy change needed soon is not expected to be available before the end of the year, with delivery after Christmas indicated. That adds roughly two months or more to a dependency affecting near-term milestones and deliverables.
 
-This is a recurring problem. Small namespace or policy amendments pass through multiple approval layers and processes. When approvals do not arrive in time, requests can expire or return to the beginning of the process. The engineering effort can be minutes while the elapsed delivery time becomes weeks or months.
+The particular feature is incidental. The same constraint can block any proof of concept, namespace change, platform capability or engineering deliverable that needs a policy amendment. Small technical changes repeatedly enter multiple approval layers and processes. When approvals do not arrive in time, requests can expire or return to the beginning. A change that takes minutes to implement can take weeks or months to obtain.
 
-Our engineering clusters exist to test proofs of concept quickly, establish whether a capability works and feed the results into delivery decisions. Applying the same change path used for production to routine engineering policy amendments prevents that feedback loop. The repeated delays consume engineering time, disrupt commitments and damage team morale.
+Our engineering clusters exist to support rapid experimentation, validation and delivery. We need to establish quickly whether an approach works, adapt it and move forward. The current constraints prevent that feedback loop and make delivery dates dependent on an approval queue we cannot control.
 
-The immediate consequence is that we cannot evaluate and showcase Agent Substrate, a central feature of our planned kagent release demonstration. Substrate provides the runtime behind kagent SandboxAgents, including agent isolation, suspension and restoration from snapshots. Its potential benefits include lower idle resource use and greater agent density; these need to be demonstrated on our intended environment. Without the policy change, that part of the showcase and its associated milestones remain blocked.
+These are dependencies within our own team or pod. We need a working internal arrangement that enables the team to deliver its commitments without repeatedly blocking itself. The current pattern disrupts milestones, consumes engineering time and damages morale. Resolving one request will leave the next deliverable exposed to the same problem.
 
-## Scope and accountability
+## A workable operating model
 
-The exception should cover only an explicitly approved list of team-owned dev and engineering clusters. Production clusters and other teams' clusters remain under their existing controls. Within the approved clusters:
+Delegate Kubernetes workload-policy management for the approved engineering clusters to a named engineering owner. Agree the baseline and the boundaries once, then allow routine changes within those boundaries through pull request review, automated policy tests and Flux reconciliation. Reserve escalation for changes outside the agreed boundary or changes that require explicit risk acceptance.
 
-- Identify the exact blocking Azure Policy assignments and definitions; use the smallest supported exemption scope and keep unrelated Azure controls applied.
-- Map each affected baseline control to a reviewed Kyverno policy, including its scope, enforcement behaviour, reporting and owner.
-- Delegate routine changes within this approved boundary to the engineering team through pull request review, automated policy tests and Flux reconciliation.
-- Maintain an audit trail and monthly reviews, with an explicit expiry of `{{EXCEPTION_EXPIRY_DATE}}`. Any extension or expansion requires a recorded decision.
+Keep production clusters, other teams' clusters and unrelated Azure resource controls under their existing arrangements. For the approved engineering scope:
 
-The objection raised is that changing enforcement in this way is incompatible with the current ICV and SDLC process. We therefore need management sponsorship and approval from the accountable control owners for a documented temporary exception, including authority for the policy owners to implement it. The exception must change the approval path as well as the enforcement configuration; moving to Kyverno while retaining the same approval queue would leave the delivery problem unresolved.
+- Record which central workload-policy assignments and definitions are being replaced and map their control intent to the locally enforced Kyverno baseline.
+- Give the engineering owner authority to maintain those policies within the approved scope, with a clear review and deployment path.
+- Preserve version history, approval evidence, enforcement results, monitoring and rollback capability.
+- Handle exceptional workload requirements through a bounded, recorded risk decision with an owner and review date.
+- Set an explicit expiry of `{{EXCEPTION_EXPIRY_DATE}}` and review the arrangement monthly while the central process is resolved.
 
-## Security conditions for the exception
+Moving enforcement to Kyverno must come with delegated decision authority. Retaining the same approval queue would retain the delivery bottleneck.
 
-Preserving the policy intent is an acceptance condition that we must prove. Equivalent policy text alone does not demonstrate equivalent protection. Before central enforcement is relaxed, test both allowed and denied workloads, exception boundaries, reporting, resistance to unauthorised policy changes and behaviour when the policy engine is unavailable.
+## Governance and security
 
-Substrate also needs a bounded runtime exception. The pinned AKS evaluation uses a gVisor worker with elevated privileges for checkpoint and restore. That is a change to the permitted workload privileges and needs explicit risk acceptance, even when Kyverno replaces the surrounding baseline controls. Restrict it to approved Substrate namespaces and worker identities on a dedicated, isolated node pool, with approved images, least-privilege credentials, controlled egress and retained audit evidence. Keep ordinary workloads subject to the baseline.
+The objection raised is that this arrangement is incompatible with the current ICV and SDLC process. Management sponsorship and approval from the accountable control owners are therefore needed for a documented temporary exception, including authority for the policy owners to implement it.
 
-Microsoft documents a **Mitigated** Azure Policy exemption category for cases where another method meets the policy intent, and a **Waiver** category for temporarily accepted non-compliance. Select the category per affected control: an equivalent Kyverno baseline may support mitigation, while a privileged-runtime exception requires its own assessment. Record the scope and expiry using the supported Azure mechanisms:
+Preserving the baseline control intent is an acceptance condition. Before central enforcement is relaxed, test allowed and denied workloads, exception boundaries, reporting, protection against unauthorised policy changes and behaviour when the policy engine is unavailable. Any intentional relaxation of a control needs its own risk decision; changing policy engines does not establish security equivalence by itself.
+
+Azure Policy supports a **Mitigated** exemption category where another method meets the policy intent, and a **Waiver** category where non-compliance is temporarily accepted. Select the appropriate category for each affected control and use the supported scope and expiry mechanisms:
 
 https://learn.microsoft.com/en-us/azure/governance/policy/concepts/exemption-structure
 
 ## Implementation and return to central enforcement
 
-1. Obtain the sponsored ICV and SDLC exception and control-owner approval. Record the approved cluster list, policy definitions, delegated authority, runtime exceptions, owners and expiry.
-2. Deploy and test the replacement Kyverno controls through GitOps. Capture the allow and deny results and review the remaining runtime risks before changing Azure enforcement.
-3. Have the authorised policy owners apply the approved Azure exemptions. Prove Substrate execution, suspension and restoration on the engineering environment, alongside the policy denial tests. Policy relief clears one dependency; kernel support, mirrored assets, identity, networking and storage must also pass.
-4. Continue the central change requests in parallel. Review the temporary arrangement monthly and retain the ability to stop the evaluation and restore enforcement if controls fail.
-5. Once the central changes are available, test that they permit the approved Substrate workload and preserve the required denials. Re-enable central enforcement, remove temporary exemptions and retire overlapping local rules in a controlled order. At expiry, close the exception or obtain an explicit extension before it lapses.
+1. Agree the exception, approved cluster scope, affected policies, delegated authority, owners and expiry.
+2. Deploy and test the replacement baseline through GitOps before the authorised policy owners lift the corresponding central enforcement.
+3. Continue engineering delivery within the approved boundaries, retain evidence and review the arrangement monthly. Continue the central process improvements and change requests in parallel.
+4. Restore central enforcement once the required policies are available and the central operating model has an agreed, workable turnaround for routine engineering changes. Validate the transition, remove temporary exemptions and retire overlapping local rules in a controlled order.
+5. At expiry, close the exception or obtain an explicit extension before it lapses. Restore enforcement earlier if the replacement controls fail.
 
-The management decision is whether to sponsor this bounded arrangement now, so the team can evaluate Substrate and deliver the kagent showcase while completing the central process over the coming months. If the exception is declined, the dependent milestones and showcase scope need to be replanned against the policy team's delivery date.
+## Outcome required
 
-## Supporting implementation material
+We need an operating model that lets us deliver our commitments reliably. A workable alternative must provide a named decision owner, delegated authority for routine engineering changes, an agreed turnaround aligned to delivery needs and escalation when approvals stall. Missed approvals must trigger escalation rather than repeatedly resetting the request.
 
-- [Agent Substrate AKS evaluation and acceptance criteria](../../work-agent-bundles/agent-substrate/GITLAB-ISSUE-AIRGAPPED-AKS-EVALUATION.md)
-- [Agent Substrate air-gapped AKS runbook](../../work-agent-bundles/agent-substrate/AIRGAPPED-AKS-README.md)
+The decision is to sponsor the temporary engineering-cluster exception or provide an alternative that meets those requirements. If neither can be delivered, the affected milestones and deliverables need to be formally replanned and ownership of that delivery impact made explicit.
+
+## Supporting guidance
+
 - [Existing Azure Policy exception guidance](azure-policy-exceptions.md)
+- [Kyverno policies in the platform](../../infra/byo-kagent/kyverno-policies/)
