@@ -40,6 +40,7 @@ VISUAL.html      - lightweight stakeholder/SRE workflow visual
 
 | Bundle | Capability | Primary outcome |
 |---|---|---|
+| `cluster-security-review/` | Evidence-backed local cluster security configuration review | Self-contained Agent, work-agent start prompt, guarded operator helpers and offline fixtures; excludes `at*` namespaces and records evidence and coverage gaps without remediation |
 | `radar-topology-mcp/` | In-cluster Kubernetes relationship UI and MCP | Installs Radar 1.15.0 with selected inventory reads, a two-tool kagent Agent, Flux/Helm delivery, and explicit knowledge integration gaps |
 | `agent-runtime-lifecycle/` | Kagent chat, Argo/DeepEval, pod, actor, and harness lifecycles | Explains normal Deployment-backed agents, Argo and Job caller pods, DeepEval suites, Substrate-backed `SandboxAgent` sessions, and OpenClaw or Hermes `AgentHarness` behavior |
 | `kubernetes-mcp-multicluster/` | One Kubernetes MCP across approved AKS/Kubernetes contexts | Builds an immutable multi-context kubeconfig, deploys the read-only MCP server, and proves direct kagent plus agentgateway routing without one Agent per cluster |
