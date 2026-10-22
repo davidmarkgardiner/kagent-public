@@ -145,6 +145,7 @@ examples/           Quickstart and sample payloads
 | Deploy LitmusChaos and watch kagent triage chaos events | [`chaos/litmus/WORK-INSTALL.md`](chaos/litmus/WORK-INSTALL.md) |
 | Create a custom kagent tool | [`docs/kagent-custom-tools/`](docs/kagent-custom-tools/README.md) |
 | Prepare Azure Policy exceptions for kagent/agentgateway | [`docs/security/azure-policy-exceptions.md`](docs/security/azure-policy-exceptions.md) |
+| Respond to the critical PHP vulnerabilities on AKS | [Prioritised response and hardening plan](docs/security/aks-php-prioritised-action-plan.md) |
 | Review engineering policy options and the management escalation | [Temporary exception](docs/security/dev-engineering-policy-exception.md), [engineering management group](docs/security/engineering-management-group-option.md), [Teams message](docs/security/engineering-policy-blocker-teams-message.md) |
 | Run the Agentgateway MVP demo set | [`DEMOS.md#2-agentgateway-mvp-control-plane-demo-set`](DEMOS.md#2-agentgateway-mvp-control-plane-demo-set) |
 | Add a HITL approval gate for remediation | [`platform/teams-hitl/`](platform/teams-hitl/README.md) |
