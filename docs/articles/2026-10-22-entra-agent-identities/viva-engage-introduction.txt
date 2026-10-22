@@ -1,0 +1,9 @@
+I’ve written up how we’re approaching identity between applications, AI agents and MCP tools with Microsoft Entra ID, kagent and agentgateway.
+
+There are two separate permission checks: which application may invoke an agent, and which tools that agent may use under its own identity.
+
+The article explains where federation can remove static client secrets, why token renewal matters, and the allow/deny tests we still need to prove. It distinguishes the design from the current examples and earlier pilot.
+
+I’d be interested in lessons from anyone integrating workload identity with clients that need to renew access tokens automatically.
+
+Full article: {{INTERNAL_ARTICLE_URL}}
