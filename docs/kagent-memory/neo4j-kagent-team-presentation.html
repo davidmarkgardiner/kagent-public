@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>Neo4j + kagent | Team discussion</title>
+  <style>
+    :root{--ink:#172b34;--muted:#52666e;--paper:#f8f6ef;--white:#fff;--line:#d7dedb;--teal:#006c67;--mint:#d9eee8;--coral:#cb654b;--sand:#eee5d3;--gold:#c68b30;--shadow:0 20px 70px rgba(23,43,52,.10)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#e9e7df;color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:var(--teal)}a:focus-visible,button:focus-visible{outline:3px solid var(--coral);outline-offset:3px}.deck{max-width:1600px;margin:auto}.slide{min-height:100svh;padding:clamp(24px,4.3vw,72px);display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid #c9d2ce;background:var(--paper);scroll-snap-align:start;position:relative;overflow:hidden}.slide:nth-child(even){background:#f1f5f1}.slide>*{max-width:1320px;width:100%;margin-left:auto;margin-right:auto}.slide-header{display:flex;align-items:center;gap:12px;margin-bottom:clamp(24px,4vh,48px);font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}.slide-header:before{content:"";display:block;width:28px;height:4px;background:var(--coral)}.eyebrow{font:700 12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}h1,h2,h3,p{margin-top:0}h1,h2{font-family:Georgia,"Times New Roman",serif;font-weight:500;letter-spacing:-.035em;line-height:1.08}h1{font-size:clamp(50px,7vw,112px);max-width:1100px;margin-bottom:34px}h2{font-size:clamp(38px,5vw,76px);max-width:1060px;margin-bottom:32px}h3{font-size:clamp(20px,2.1vw,31px);line-height:1.15;margin-bottom:12px}p,li{font-size:clamp(17px,1.5vw,24px);line-height:1.45}.lede{font-size:clamp(22px,2.4vw,36px);line-height:1.35;max-width:1030px;color:#36505a}.small{font-size:15px;line-height:1.45;color:var(--muted)}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.accent{color:var(--teal)}.coral{color:var(--coral)}.grid{display:grid;gap:22px}.two{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:clamp(22px,2.4vw,36px);box-shadow:var(--shadow)}.card p:last-child,.card ul:last-child{margin-bottom:0}.card.compact{padding:22px}.card.teal{background:var(--teal);color:#fff;border-color:var(--teal)}.card.teal p,.card.teal .small{color:#def4ef}.card.sand{background:var(--sand)}.card.mint{background:var(--mint)}.number{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--coral);letter-spacing:.08em;margin-bottom:15px}.tag{display:inline-block;font:700 11px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em;padding:6px 9px;border-radius:5px;background:var(--mint);color:var(--teal)}.tag.warn{background:#f5dfd6;color:#8c3e2d}.tag.neutral{background:#e7e9e5;color:#52666e}.strip{border-left:5px solid var(--coral);padding:16px 24px;background:#fffaf2;margin-top:24px}.strip p{margin:0}.slide-no{position:absolute;right:clamp(24px,4.3vw,72px);bottom:26px;font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#83918d}.diagram{width:100%;height:auto;display:block}.hero-layout{display:grid;grid-template-columns:1.4fr .6fr;gap:50px;align-items:center}.hero-aside{border-top:5px solid var(--coral);padding:22px 0;color:var(--muted)}.hero-aside strong{display:block;color:var(--ink);font-size:23px;margin-bottom:8px}.flow{display:flex;gap:12px;align-items:stretch;margin:18px 0 28px}.flow .step{flex:1;background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}.flow .arrow{align-self:center;color:var(--coral);font-size:28px;flex:0}.flow .step strong{display:block;font-size:19px;margin-bottom:7px}.flow .step span{display:block;font-size:15px;line-height:1.4;color:var(--muted)}.result{font-size:clamp(18px,1.6vw,25px);line-height:1.35}.result strong{color:var(--teal)}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}th,td{text-align:left;vertical-align:top;padding:17px 19px;border-bottom:1px solid var(--line);font-size:clamp(15px,1.2vw,19px);line-height:1.36}th{background:#e0ebe5;font-size:13px;text-transform:uppercase;letter-spacing:.08em}tr:last-child td{border-bottom:0}.checklist{list-style:none;padding:0;margin:0}.checklist li{padding:13px 0 13px 36px;border-bottom:1px solid var(--line);position:relative}.checklist li:before{content:"✓";position:absolute;left:0;color:var(--teal);font-weight:800}.checklist li:last-child{border:0}.footer-notes{margin-top:26px;font-size:14px;color:var(--muted)}.source-list{list-style:none;margin:0;padding:0}.source-list li{font-size:17px;border-bottom:1px solid var(--line);padding:11px 0;overflow-wrap:anywhere}.source-list li:last-child{border:0}.source-list a{text-decoration-thickness:1px;text-underline-offset:3px}.nav{position:fixed;z-index:10;left:50%;transform:translateX(-50%);bottom:14px;background:rgba(23,43,52,.93);color:white;border-radius:999px;padding:8px 10px;display:flex;align-items:center;gap:8px;box-shadow:0 9px 25px rgba(0,0,0,.2)}.nav button{appearance:none;border:0;background:#31515a;color:white;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:18px}.nav button:hover{background:var(--teal)}.nav span{min-width:52px;text-align:center;font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace}.bar{position:fixed;left:0;top:0;height:4px;width:0;background:var(--coral);z-index:20;transition:width .15s}.note{font-size:16px;line-height:1.45;color:var(--muted)}.source-foot{font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:#71837e;margin-top:16px}.opening-mark{width:84px;height:84px;border-radius:19px;background:var(--teal);color:#fff;display:grid;place-items:center;font:700 31px Georgia,serif;transform:rotate(-8deg);margin-bottom:30px}.opening-mark span{transform:rotate(8deg)}
+    @media(max-width:850px){.slide{min-height:100svh;padding:28px 22px 70px}.hero-layout,.two,.three{grid-template-columns:1fr}.hero-aside{display:none}.flow{flex-direction:column}.flow .arrow{transform:rotate(90deg);align-self:center}.card{box-shadow:none}.slide-no{right:22px;bottom:18px}.nav{bottom:9px}.diagram{max-height:340px}.hide-mobile{display:none}}
+    @media(max-width:500px){h1{font-size:49px}h2{font-size:39px}.slide{justify-content:flex-start}.slide-header{margin-top:28px}table{display:block;overflow-x:auto}th,td{min-width:155px}p,li{font-size:17px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.bar{transition:none}}
+    @media print{body{background:#fff}.slide{height:190mm;min-height:0;break-after:page;border:0;padding:14mm;box-shadow:none}.nav,.bar{display:none}.slide-no{bottom:8mm;right:14mm}.card,table{box-shadow:none}a{color:var(--ink)}}
+  </style>
+</head>
+<body>
+  <div class="bar" id="bar" aria-hidden="true"></div>
+  <main class="deck">
+    <section class="slide" id="s1" aria-label="Opening">
+      <div class="hero-layout">
+        <div><div class="opening-mark" aria-hidden="true"><span>N</span></div><div class="eyebrow">Platform engineering · team discussion · 30 September 2026</div><h1>Give our agents a <em class="accent">map.</em></h1><p class="lede">Neo4j graph memory for kagent: what it is, where it helps, what our Kubernetes lab proved, and the integration we recommend.</p></div>
+        <aside class="hero-aside"><strong>Decision in one sentence</strong>Adopt a narrow, read-only graph context source for incident triage. Keep live cluster state authoritative and make the graph optional.</aside>
+      </div><span class="slide-no">01 / 10</span>
+    </section>
+
+    <section class="slide" id="s2" aria-label="What Neo4j is">
+      <div class="slide-header">01 · The idea</div><h2>Neo4j stores <em class="accent">relationships</em> as first-class data.</h2>
+      <div class="grid two"><div class="card"><h3>Nodes</h3><p>Services, workloads, incidents, changes and runbooks each have a stable identity and useful properties.</p><span class="tag">Example · demo/inventory</span></div><div class="card"><h3>Directed links</h3><p>Explicit edges say <span class="mono">DEPENDS_ON</span>, <span class="mono">ORIGINATED_AT</span> or <span class="mono">RESOLVED_USING</span>. Queries follow these paths in either direction.</p><span class="tag">Example · checkout → catalog → inventory</span></div></div>
+      <div class="strip"><p>For our team, the valuable question is: <strong>“If inventory has a problem, who depends on it, and what happened before?”</strong></p></div><div class="source-foot">Source: Neo4j official graph database and Cypher documentation; links on slide 10.</div><span class="slide-no">02 / 10</span>
+    </section>
+
+    <section class="slide" id="s3" aria-label="Demo graph">
+      <div class="slide-header">02 · The demo graph</div><h2>Follow the <em class="accent">path</em>, then open the history.</h2>
+      <svg class="diagram" viewBox="0 0 1100 340" role="img" aria-label="Checkout depends on catalog, which depends on inventory. A resolved incident originated at inventory, linked to a rolled-back change and a superseded runbook with a current successor.">
+        <defs><marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#006c67"/></marker><marker id="arr2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#cb654b"/></marker></defs>
+        <path d="M246 108H409M626 108H781" stroke="#006c67" stroke-width="4" marker-end="url(#arr)"/><text x="285" y="88" fill="#52666e" font-size="17">depends on</text><text x="655" y="88" fill="#52666e" font-size="17">depends on</text>
+        <rect x="30" y="55" width="212" height="107" rx="18" fill="#d9eee8"/><text x="55" y="100" font-size="26" fill="#172b34">checkout</text><text x="55" y="130" font-size="16" fill="#52666e">Service</text>
+        <rect x="411" y="55" width="212" height="107" rx="18" fill="#d9eee8"/><text x="436" y="100" font-size="26" fill="#172b34">catalog</text><text x="436" y="130" font-size="16" fill="#52666e">Service</text>
+        <rect x="785" y="55" width="260" height="107" rx="18" fill="#006c67"/><text x="810" y="100" font-size="26" fill="#fff">inventory</text><text x="810" y="130" font-size="16" fill="#d9eee8">Service · live alert</text>
+        <path d="M913 164V221" stroke="#cb654b" stroke-width="4" marker-end="url(#arr2)"/><text x="935" y="201" font-size="17" fill="#52666e">origin of</text>
+        <rect x="784" y="227" width="263" height="79" rx="15" fill="#f5dfd6"/><text x="808" y="258" font-size="20" fill="#172b34">incident-001</text><text x="808" y="285" font-size="16" fill="#715b53">resolved · historical</text>
+        <path d="M781 267H650" stroke="#cb654b" stroke-width="4" marker-end="url(#arr2)"/><rect x="401" y="226" width="245" height="80" rx="15" fill="#eee5d3"/><text x="426" y="258" font-size="20" fill="#172b34">change-042</text><text x="426" y="285" font-size="16" fill="#715b53">rolled back</text>
+        <path d="M399 267H269" stroke="#cb654b" stroke-width="4" marker-end="url(#arr2)"/><rect x="30" y="226" width="235" height="80" rx="15" fill="#fff" stroke="#d7dedb"/><text x="52" y="258" font-size="19" fill="#172b34">runbook v1 → v2</text><text x="52" y="285" font-size="16" fill="#52666e">superseded → current</text>
+      </svg>
+      <p class="note">The graph records relationships and history. A dependency edge indicates possible impact; it is not a live health check for checkout or catalog.</p><span class="slide-no">03 / 10</span>
+    </section>
+
+    <section class="slide" id="s4" aria-label="How it integrates">
+      <div class="slide-header">03 · Integration</div><h2>Two sources. <em class="accent">One grounded answer.</em></h2>
+      <div class="flow"><div class="step"><strong>1 · Live signal</strong><span>Kubernetes API says what is happening to a workload now.</span></div><div class="arrow" aria-hidden="true">→</div><div class="step"><strong>2 · Graph context</strong><span>Neo4j supplies dependency paths and curated historical links.</span></div><div class="arrow" aria-hidden="true">→</div><div class="step"><strong>3 · Bounded tools</strong><span>Fixed, read-only MCP queries pass through agentgateway.</span></div><div class="arrow" aria-hidden="true">→</div><div class="step"><strong>4 · kagent response</strong><span>The agent separates observed state, potential impact and past incidents.</span></div></div>
+      <div class="grid two"><div class="card mint"><h3>Authoritative now</h3><p>Kubernetes readiness, scheduling, events, metrics and logs. Recheck at answer time.</p></div><div class="card sand"><h3>Curated memory</h3><p>Service dependencies, incident lessons, ownership and Git runbook references. Track provenance and freshness.</p></div></div>
+      <p class="footer-notes">Graph writes belong to a controlled curation workflow. Triage agents get read tools only; execution permissions stay with governed workflows.</p><span class="slide-no">04 / 10</span>
+    </section>
+
+    <section class="slide" id="s5" aria-label="The test">
+      <div class="slide-header">04 · The lab test</div><h2>Same alert. Same model. <em class="accent">Different context.</em></h2>
+      <p class="lede">We deliberately made a synthetic <span class="mono">demo-inventory</span> pod unschedulable in a local kind cluster, then asked two Kimi-backed kagent agents the same question.</p>
+      <div class="grid two"><div class="card"><span class="tag neutral">Kubernetes only</span><h3>0/1 Ready. Pod Pending.</h3><p>Correctly identified the scheduling failure. Could not verify downstream services, a related prior incident or the current runbook.</p><p class="small">It also speculated about a Neo4j dependency from a namespace name. That inference was unsupported.</p></div><div class="card teal"><span class="tag">Kubernetes + Neo4j</span><h3>Same live fault, richer context.</h3><p>Named <strong>catalog</strong> and <strong>checkout</strong> as potential dependents, plus the resolved incident and current successor runbook.</p><p class="small">It said the old cache change did not explain this new scheduling fault.</p></div></div>
+      <p class="source-foot">Synthetic local POC, 29 September 2026. Both answers were completed A2A turns; runtime and gateway logs showed the tool calls.</p><span class="slide-no">05 / 10</span>
+    </section>
+
+    <section class="slide" id="s6" aria-label="Verified benefits">
+      <div class="slide-header">05 · What we verified</div><h2>The graph adds <em class="accent">specific</em> triage context.</h2>
+      <div class="grid three"><div class="card compact"><div class="number">01 · Potential blast radius</div><h3>Reverse dependency lookup</h3><p>From inventory, the tool returned catalog directly and checkout via catalog, with paths rather than a guessed list.</p><span class="tag">Observed in lab</span></div><div class="card compact"><div class="number">02 · Incident recall</div><h3>Linked history</h3><p>The agent found a resolved incident, rolled-back change and the runbook used at the time.</p><span class="tag">Observed in lab</span></div><div class="card compact"><div class="number">03 · Currency</div><h3>Supersession matters</h3><p>It distinguished the old runbook from its current successor, avoiding an outdated reference.</p><span class="tag">Observed in lab</span></div></div>
+      <div class="strip"><p>After we removed the synthetic scheduling constraint, the agent reported <strong>1/1 Ready</strong> while keeping the same graph facts historical. This verifies separation of live state from stored context.</p></div><span class="slide-no">06 / 10</span>
+    </section>
+
+    <section class="slide" id="s7" aria-label="Limits of proof">
+      <div class="slide-header">06 · Evidence boundary</div><h2>Useful context is proven. <em class="coral">Operational uplift is not.</em></h2>
+      <table><thead><tr><th>What the POC established</th><th>What it has not established</th></tr></thead><tbody>
+        <tr><td>kagent can combine live Kubernetes status with bounded Neo4j reads through agentgateway.</td><td>Faster incident resolution, lower MTTR or better decisions in a real on-call shift.</td></tr>
+        <tr><td>Stored paths correctly identified potential catalog and checkout impact.</td><td>That catalog or checkout were actually unhealthy; only inventory was observed live.</td></tr>
+        <tr><td>Historical links, ambiguity, empty results and a backend outage were handled without inventing graph IDs.</td><td>A production ingestion pipeline, provenance policy, backup/restore, high availability or access model.</td></tr>
+        <tr><td>One bounded synthetic scenario produced a stronger answer than Kubernetes-only.</td><td>That Neo4j beats relational tables and recursive queries on cost or quality.</td></tr>
+      </tbody></table>
+      <p class="footer-notes">The first run missed dependents because a tool walked the edge in the wrong direction. We fixed the reverse query and reran the same question. This is a useful reminder to test the actual question, not just tool availability.</p><span class="slide-no">07 / 10</span>
+    </section>
+
+    <section class="slide" id="s8" aria-label="Costs and guardrails">
+      <div class="slide-header">07 · Engineering trade-off</div><h2>A graph is valuable only if we <em class="accent">keep it trustworthy.</em></h2>
+      <div class="grid two"><div class="card"><h3>What we would operate</h3><ul class="checklist"><li>Another stateful database, with backup and recovery</li><li>Curated ingestion from service inventory, incidents and Git</li><li>Stable IDs, edge direction, provenance and expiry</li><li>Monitoring for missing or stale relationships</li></ul></div><div class="card"><h3>What we would constrain</h3><ul class="checklist"><li>Fixed, parameterised, bounded MCP read tools</li><li>No arbitrary Cypher or graph writes for triage agents</li><li>Live Kubernetes checks before current-state claims</li><li>Graceful answers when Neo4j is unavailable</li></ul></div></div>
+      <p class="footer-notes">The lab used Neo4j Community Edition and a fixed facade. Its database principal was not a production read-only authorization boundary; production security needs a separate design and validation.</p><span class="slide-no">08 / 10</span>
+    </section>
+
+    <section class="slide" id="s9" aria-label="Recommendation">
+      <div class="slide-header">08 · Recommendation</div><h2>Integrate narrowly. <em class="accent">Prove value in a canary.</em></h2>
+      <div class="grid two"><div class="card teal"><h3>Proposed scope</h3><p>Opt-in read-only graph context for incident triage: service dependents, relevant historical incidents and current runbook references.</p><p>No platform-wide dependency and no agent graph-write capability.</p></div><div class="card"><h3>Before broader use</h3><ol><li>Populate relationships from authoritative sources with provenance and expiry.</li><li>Test real incident questions against the current PostgreSQL relationship design.</li><li>Measure answer correctness, time saved, stale-data rate and operational cost.</li></ol></div></div>
+      <div class="strip"><p><strong>Decision for the team:</strong> approve a bounded integration path, with the graph optional and live Kubernetes evidence authoritative.</p></div><span class="slide-no">09 / 10</span>
+    </section>
+
+    <section class="slide" id="s10" aria-label="Discussion and sources">
+      <div class="slide-header">09 · Discussion</div><h2>Where would this help <em class="accent">our on-call team</em> first?</h2>
+      <div class="grid two"><div class="card"><h3>Questions to settle</h3><ol><li>Which service and incident sources are authoritative enough to ingest?</li><li>Which incident class needs multi-hop impact analysis most?</li><li>What would count as a useful improvement in a canary?</li></ol></div><div class="card"><h3>Source notes</h3><ul class="source-list"><li><a href="https://neo4j.com/docs/getting-started/graph-database/">Neo4j: graph database concepts</a></li><li><a href="https://neo4j.com/docs/getting-started/cypher/">Neo4j: Cypher and directed relationships</a></li><li><a href="https://neo4j.com/docs/operations-manual/current/kubernetes/">Neo4j: Kubernetes operations</a></li><li>Local synthetic POC: kagent + agentgateway + Neo4j, 29 September 2026</li></ul></div></div>
+      <p class="footer-notes">Presentation mode: use ← and → or the bottom controls. Scroll normally on mobile. Print to PDF from the browser if needed.</p><span class="slide-no">10 / 10</span>
+    </section>
+  </main>
+  <nav class="nav" aria-label="Presentation navigation"><button id="prev" type="button" aria-label="Previous slide">←</button><span id="count" aria-live="polite">1 / 10</span><button id="next" type="button" aria-label="Next slide">→</button></nav>
+  <script>
+    (()=>{
+      const slides=[...document.querySelectorAll('.slide')];
+      const count=document.getElementById('count');
+      const bar=document.getElementById('bar');
+      let active=0;
+      const update=()=>{
+        const center=innerHeight/2;
+        const index=slides.findIndex(slide=>{
+          const box=slide.getBoundingClientRect();
+          return box.top<=center&&box.bottom>center;
+        });
+        if(index<0)return;
+        active=index;
+        count.textContent=`${active+1} / ${slides.length}`;
+        bar.style.width=`${(active+1)/slides.length*100}%`;
+      };
+      const jump=n=>slides[Math.max(0,Math.min(slides.length-1,n))].scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+      document.getElementById('prev').addEventListener('click',()=>jump(active-1));
+      document.getElementById('next').addEventListener('click',()=>jump(active+1));
+      addEventListener('keydown',e=>{
+        if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();jump(active+1)}
+        if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();jump(active-1)}
+      });
+      addEventListener('scroll',update,{passive:true});
+      addEventListener('resize',update);
+      update();
+    })();
+  </script>
+</body>
+</html>
