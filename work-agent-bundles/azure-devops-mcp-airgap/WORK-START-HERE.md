@@ -9,6 +9,8 @@ agentgateway, a model, or broad execution permissions.
 The lab created a real draft PR and independently checked the diff. Work-side
 connectivity, installed CRDs, image policy and end-to-end behavior must be
 verified separately. See `evidence/lab-pr-create.json` and `evidence/build.json`.
+For a Flux OCI artifact instead of direct manifest application, follow
+[`OCI-FLUX-DEPLOYMENT.md`](OCI-FLUX-DEPLOYMENT.md).
 
 ## Which isolation model do you have?
 

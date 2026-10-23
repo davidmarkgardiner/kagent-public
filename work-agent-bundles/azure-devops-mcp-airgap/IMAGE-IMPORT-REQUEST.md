@@ -46,6 +46,11 @@ the actual publish/import receipt. The `localImageId` fields in
 [evidence/build.json](evidence/build.json) are Docker configuration IDs, not
 registry pull digests. Do not use them as destination manifest digests.
 
+If work deploys through Flux, use
+[OCI-FLUX-DEPLOYMENT.md](OCI-FLUX-DEPLOYMENT.md) after image import. Flux pulls a
+separate manifest OCI artifact that references this complete runtime image by
+its internal registry digest; the dependencies image remains optional.
+
 ## Software versions and non-image dependencies
 
 | Component | Pinned version or source |
