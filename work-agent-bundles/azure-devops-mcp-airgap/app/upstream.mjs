@@ -24,7 +24,7 @@ export async function connectUpstream({ catalogOnly = false } = {}) {
   transport.stderr?.on('data', () => {});
   const client = new Client({ name: 'kagent-ado-poc', version: '0.1.0' });
   try {
-    await client.connect(transport, { timeout: 20000 });
+    await client.connect(transport, { timeout: 60000 });
     const tools = [];
     let cursor;
     do {
