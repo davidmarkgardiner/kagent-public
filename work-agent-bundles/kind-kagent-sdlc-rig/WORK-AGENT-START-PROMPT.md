@@ -31,7 +31,7 @@ target/project that cannot be resolved, or a required external entitlement.
 Group any such blockers into one concise request with the failed check and the
 smallest remedy. Do not ask the user to supply values you can discover or decide.
 
-Read README.md, WORK-CLUSTER-RUNBOOK.md, REVIEW-TASKS.md,
+Read MORNING-INSTALL.md, README.md, WORK-CLUSTER-RUNBOOK.md, REVIEW-TASKS.md,
 work-profile.example.json, HOMELAB-REFERENCE.md and evidence/RUN-2026-10-01.md first. Read
 LIVE-DEMO-RUNBOOK.md and open BOARD-POLLING-PRESENTATION.html before preparing
 a stakeholder demonstration. The rig assets
@@ -63,7 +63,11 @@ project first. Using it securely, verify the authenticated identity and project,
 create one fresh, narrowly scoped demo parent with a unique run marker but no
 intake labels, then read it back by IID and verify its title/body/marker. Prove
 the relevant GitLab MCP create/read calls too; direct REST success alone does
-not prove MCP wiring. Retain this issue for all subsequent checkpoints. Do not
+not prove MCP wiring. Retain this issue for all subsequent checkpoints. If the rig MCP does not yet
+exist, first provision only its namespace, Secret reference, constrained MCP and
+RemoteMCPServer using section 2; keep intake suspended and complete the remaining
+Agent/poller wiring at checkpoint 2. Do not require an uninstalled MCP to pass
+this checkpoint. Do not
 invoke the planner or alter candidate repository code yet. Record project,
 identity, Secret reference, issue IID/URL and actual create/read outcomes, never
 the token. Resolve issue/MCP access before troubleshooting downstream agents.
