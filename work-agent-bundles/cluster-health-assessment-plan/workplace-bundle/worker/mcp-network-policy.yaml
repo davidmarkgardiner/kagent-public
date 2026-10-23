@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cluster-health-aks-mcp
+  namespace: "{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: "{{AKS_MCP_INSTANCE_LABEL}}"
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "{{KAGENT_NAMESPACE}}"
+          podSelector:
+            matchLabels:
+              kagent: cluster-health-investigator
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "{{KAGENT_NAMESPACE}}"
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kagent
+              app.kubernetes.io/component: controller
+      ports:
+        - {protocol: TCP, port: 38000}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock: {cidr: "{{KUBERNETES_API_CIDR}}"}
+      ports: [{protocol: TCP, port: 443}]
