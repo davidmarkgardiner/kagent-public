@@ -84,6 +84,7 @@ examples/           Quickstart and sample payloads
 |---|---|
 | See every showcase demo in one place | [`DEMOS.md`](DEMOS.md) |
 | Compare Google AX and Agent Sessions with kagent and Agent Substrate | [`Agent runtime comparison and integration reference`](docs/google-ax-kagent-comparison/README.md) |
+| Take the Sessions and AX POCs into a dev-pod or air-gapped evaluation | [`Workplace guide`](work-agent-bundles/agent-runtime-workplace-guide/README.md) · [`Sessions POC`](work-agent-bundles/agent-sessions-poc/README.md) · [`AX POC`](work-agent-bundles/google-ax-poc/README.md) |
 | Use the Kagent v2 work-agent bundle catalogue | [`work-agent-bundles/`](work-agent-bundles/README.md) |
 | Start the work Entra Agent ID request | [Human checklist](work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-HUMAN-CHECKLIST.md) · [Request 1: caller UAMI](work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-REQUEST-1-CALLER-UAMI-A2A.md) · [Request 2: agent blueprint](work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-REQUEST-2-AGENT-BLUEPRINT-MCP.md) · [Combined reference](work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WORK-FORM-BLUEPRINT-ACTION-REQUEST.md) · [Who-can-call-what diagram](work-agent-bundles/kagent-agentgateway-tenant-isolation/poc/azure-agent-id/WHO-CAN-CALL-WHAT.html) |
 | Share the Agent Substrate air-gap roadmap question | [`RUNSC-AIRGAP-ROADMAP-QUESTION.md`](work-agent-bundles/agent-substrate/RUNSC-AIRGAP-ROADMAP-QUESTION.md) |
