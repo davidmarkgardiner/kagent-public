@@ -107,4 +107,4 @@ Agent as a confused deputy.
 - [Platform MCP catalogue](../02-PLATFORM-MCP-CATALOG.md)
 - [Full security and delivery design](APPLICATION-TEAM-ONBOARDING-PLAN.md)
 - [Independent review](APPLICATION-TEAM-ONBOARDING-PLAN-REVIEW.md)
-- [Authentication mechanics](../../../platform/agentgateway/AUTHENTICATION.md)
+- [Authentication mechanics](https://github.com/davidmarkgardiner/kagent-public/blob/main/platform/agentgateway/AUTHENTICATION.md)

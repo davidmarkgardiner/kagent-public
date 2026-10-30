@@ -1,0 +1,37 @@
+# Presentation example. Caller auth and API-side resource authorization are prerequisites.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: team-incident-api
+  namespace: platform-gateway
+spec:
+  parentRefs:
+  - name: agent-gateway
+    sectionName: api # Requires an existing HTTPS listener with this name.
+  rules:
+  - matches:
+    - method: GET # This rule offers only the selected read method.
+      path:
+        type: PathPrefix
+        value: /v1/incidents # The API still authorizes each requested incident.
+    backendRefs:
+    - name: incident-api # An existing private Service. Its workload is not installed here.
+      namespace: team-tools
+      port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-platform-incident-api
+  namespace: team-tools # The destination owner permits this configuration reference.
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: platform-gateway
+  to:
+  - group: ''
+    kind: Service
+    name: incident-api # The grant permits this Service, not every Service in the namespace.
+# No MCP conversion occurs. This remains an HTTP API.
+# The grant does not authenticate callers or provide backend network isolation.

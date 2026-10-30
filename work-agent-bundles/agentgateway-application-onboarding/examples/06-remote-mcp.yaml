@@ -1,0 +1,18 @@
+# STEP 06 - Register the authenticated MCP connection
+
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer  # This registers the MCP connection selected by the tool patch in file 03.
+metadata:
+  name: kubernetes-mcp  # The tool attachment resolves this exact connection name.
+  namespace: team-sre
+spec:
+  url: https://{{MCP_GATEWAY_HOST}}/mcp  # Agent tool calls enter the gateway MCP route defined in file 08.
+  allowedNamespaces:
+    from: Same  # This connection is offered only to Agents in the same namespace.
+  description: Gateway-fronted read-only Kubernetes MCP tools
+  headersFrom:  # The token component supplies the agent-to-MCP request credential privately.
+  - name: Authorization  # We send the Entra-issued MCP access token in the Authorization header.
+    valueFrom:
+      type: Secret  # The header value comes from a Secret rather than being embedded in the manifest.
+      name: agent-mcp-runtime-token  # The token component must populate this Secret and use a tested refresh/reload path.
+      key: authorization  # This field stores the complete header value; the YAML never contains a real token.

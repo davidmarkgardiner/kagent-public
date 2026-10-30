@@ -1,8 +1,12 @@
 # Bring your LLMs, MCP servers, and APIs to agentgateway
 
 Allow 10 minutes. Use this as a YAML-first companion to the
-[Microsoft agent walkthrough](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/README.md)
-and the [tenant-isolation architecture](../kagent-agentgateway-tenant-isolation/ARCHITECTURE.md).
+[Microsoft agent walkthrough](https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/demos/microsoft-2026-10-15/yaml-walkthrough/README.md)
+and the [tenant-isolation architecture](https://github.com/davidmarkgardiner/kagent-public/blob/main/work-agent-bundles/kagent-agentgateway-tenant-isolation/ARCHITECTURE.md).
+All configuration links below resolve inside this folder. The two background
+links above are optional online references. Start with the [configuration index](examples/README.md)
+for prerequisites and the boundary between routing and authorization.
+
 The examples explain an onboarding proposal. They do not establish a working
 integration in the incoming team's environment.
 
@@ -36,8 +40,8 @@ method are prerequisites for every integration.
 
 ## 2. Bring a model endpoint, two minutes
 
-Open the annotated [ModelConfig](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/05-model-garden.yaml),
-then the [provider backend and route examples](../../platform/agentgateway/backend-openai-compatible-external-models.yaml).
+Open the annotated [ModelConfig](examples/05-model-garden.yaml),
+then the [provider backend and route examples](examples/00-model-backend-route.yaml).
 Read the fields as a request journey, not as an apply sequence.
 
 ```text
@@ -62,8 +66,8 @@ authorizes named consumers for the approved model. It provides the consumer
 with a gateway URL, model name, authentication method, and limits. The consumer
 does not receive the provider credential.
 
-Show [traffic limits](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/15-model-traffic-limits.yaml)
-and [metrics collection](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/18-gateway-podmonitor.yaml).
+Show [traffic limits](examples/15-model-traffic-limits.yaml)
+and [metrics collection](examples/18-gateway-podmonitor.yaml).
 These examples require target-version checks. Their local rate limits apply
 per proxy replica. A monetary budget needs a separately verified control.
 
@@ -77,9 +81,9 @@ custom providers. Choose the shape supported by the installed release.
 
 ## 3. Bring an MCP server, two minutes
 
-Open the annotated [MCP backend](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/07-mcp-backend.yaml),
-[HTTPRoute](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/08-http-routes.yaml),
-and [RemoteMCPServer](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/06-remote-mcp.yaml).
+Open the annotated [MCP backend](examples/07-mcp-backend.yaml),
+[HTTPRoute](examples/08-http-routes.yaml),
+and [RemoteMCPServer](examples/06-remote-mcp.yaml).
 
 ```text
 agent MCP client -> gateway MCP URL
@@ -120,7 +124,8 @@ First decide how the consumer uses the API.
 | An application calls REST directly | HTTPRoute to the approved HTTP backend | Method/path contract, schemas, TLS, auth, and resource permissions |
 | An agent discovers and calls tools | MCP facade over selected API operations | Reviewed operation inventory plus an MCP adapter or supported OpenAPI conversion |
 
-For direct HTTP, an illustrative request is `GET /v1/incidents/DEMO-001`.
+For direct HTTP, open [the method-restricted API route](examples/21-http-api-route.yaml).
+An illustrative request is `GET /v1/incidents/DEMO-001`.
 Publish only the approved method/path contract and keep API-side resource
 authorization. HTTP routing does not turn REST into MCP. The official
 [HTTP quickstart](https://agentgateway.dev/docs/kubernetes/latest/documentation/quickstart/non-agentic-http/)
@@ -141,8 +146,7 @@ exact read-only subset. Include pagination, error behavior, timeouts, and
 result-size limits. Do not expose the entire API by default or accept arbitrary
 destination URLs from tool arguments.
 
-Open the existing [OpenAPI schema gate](../../platform/agentgateway/DEMO-SCHEMA-GATE.md)
-and [Argo backend warning](../../platform/agentgateway/backend-argo-openapi-mcp.yaml).
+Open the local [OpenAPI compatibility note](reference/OPENAPI-COMPATIBILITY.md).
 The recorded 14 May 2026 cluster rejected `mcp.targets[].openapi`. That is
 historical evidence for that installation, not a current check of this team's
 cluster. The official [standalone OpenAPI example](https://agentgateway.dev/docs/standalone/latest/integrations/mcp/servers/openapi/)
@@ -155,10 +159,10 @@ page or a successful REST response does not prove an MCP integration.
 
 ## 5. Connect this to agent isolation, two minutes
 
-Open [the child-agent MCP policy](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/13-agent-to-mcp-policy.yaml)
-and [the network boundary](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/14-mcp-network-boundary.yaml).
+Open [the child-agent MCP policy](examples/13-agent-to-mcp-policy.yaml)
+and [the network boundary](examples/14-mcp-network-boundary.yaml).
 For application-to-agent traffic, also show the
-[separate A2A policy](../../docs/demos/microsoft-2026-10-15/yaml-walkthrough/12-application-to-agent-policy.yaml).
+[separate A2A policy](examples/12-application-to-agent-policy.yaml).
 
 Say: "The route selects the destination. Verified identity and policy decide
 who may invoke it. Backend permissions decide what the invocation can access."

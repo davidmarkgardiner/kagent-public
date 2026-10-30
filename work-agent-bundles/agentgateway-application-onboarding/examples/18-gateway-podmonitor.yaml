@@ -1,0 +1,25 @@
+# STEP 18 - Collect native gateway metrics
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: agentgateway-proxy
+  namespace: platform-gateway
+  labels:
+    release: "{{PROMETHEUS_RELEASE}}"  # Prometheus must select this monitor using the configured release label.
+spec:
+  namespaceSelector:
+    matchNames: [platform-gateway]  # We scrape gateway proxy pods in the platform gateway namespace.
+  selector:
+    matchLabels:
+      # We select the exact gateway used for our agent and MCP traffic.
+      gateway.networking.k8s.io/gateway-name: agent-gateway
+  podMetricsEndpoints:
+  - port: metrics  # The deployed pod must expose this named metrics port, normally TCP 15020.
+    path: /metrics  # This is the native gateway metrics endpoint, not an assumed Envoy endpoint.
+    interval: 30s  # We collect a sample every thirty seconds for trends and alerts.
+    relabelings:
+    - targetLabel: job
+      replacement: agentgateway-demo  # File 19 uses this job label to select the gateway time series.
+# Verify the actual proxy labels and named metrics port (default 15020).
+# Prometheus must select this PodMonitor; network policy must permit scraping.

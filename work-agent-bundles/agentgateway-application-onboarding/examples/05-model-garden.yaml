@@ -1,0 +1,15 @@
+# STEP 05 - Connect our model garden
+
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig  # This resource configures the model client used by our Agents.
+metadata:
+  name: model-garden  # This is the modelConfig name selected in files 01 and 04.
+  namespace: team-sre
+spec:
+  provider: OpenAI  # We use an OpenAI-compatible client API to reach the gateway.
+  model: '{{MODEL_DEPLOYMENT}}'  # The approved deployment or model is selected here, behind the model route.
+  apiKeySecret: model-gateway-auth  # This is a Secret name for client-to-gateway credentials, not a credential value.
+  apiKeySecretKey: api-key  # This is the field name inside that Secret, not the downstream provider key.
+  openAI:
+    # Model requests go through our gateway; the provider route/backend is already configured.
+    baseUrl: https://{{MODEL_GATEWAY_HOST}}/team/v1
