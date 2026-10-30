@@ -4,6 +4,16 @@
 
 This is an architectural recommendation based on upstream sources checked on 30 October 2026. It is not a finding from our workplace cluster or a measured comparison of engineering cost.
 
+## Visual comparison
+
+![Colour-coded comparison of Agent Sandbox and Agent Substrate. Blue marks overlap, green marks a Substrate integration advantage, purple marks Sandbox-specific Kubernetes interfaces, amber marks extra integration or limitations, and grey marks a different approach or work neither platform replaces.](assets/agent-sandbox-vs-substrate-comparison.svg)
+
+[Open the full-size colour chart](assets/agent-sandbox-vs-substrate-comparison.svg).
+
+Green means an integrated advantage for the stated requirement, not an overall winner. Purple identifies Kubernetes interfaces that Agent Sandbox provides directly: per-environment Sandbox and Claim resources, and Pod runtime selection through `RuntimeClass`. Substrate uses its own actor API and backend contract instead. These differences can favour Agent Sandbox when existing Kubernetes tooling is the priority. [Agent Sandbox interfaces](https://github.com/kubernetes-sigs/agent-sandbox), [Substrate resource model](https://github.com/agent-substrate/substrate/blob/main/docs/concepts/architecture.md#api-resource-models)
+
+The blue areas overlap in outcome, although their implementations differ. Amber includes the GKE-specific snapshot integration and automatic resume listed on Agent Sandbox's roadmap. It does not mean the capability is impossible. [Snapshot integration](https://github.com/kubernetes-sigs/agent-sandbox/blob/main/clients/python/agentic-sandbox-client/k8s_agent_sandbox/gke_extensions/snapshots/README.md), [Roadmap](https://github.com/kubernetes-sigs/agent-sandbox/blob/main/roadmap.md)
+
 ## Is the reasoning sound?
 
 | Starting view | Assessment |
@@ -50,6 +60,8 @@ The baseline here is an ordinary hardened Pod without a sandbox runtime or a sep
 | Lifecycle and capacity | Application-specific session management. | Templates, claims, stable identity, persistent storage, and warm pools. | Actor lifecycle, reusable worker pools, snapshots, and routing that resumes agents. |
 | State across a pause | Recreated processes need external state. | Base suspension retains persistent volumes and recreates the Pod. RAM requires a snapshot integration. | Saves and restores memory and filesystem state through supported snapshot modes. |
 | Identity and credentials | Configure service accounts, secret handling, and gateways. | Compose platform identity and credential services around the sandbox. | Integrates actor identity and policy-controlled credential injection outside the agent sandbox. |
+| Native Kubernetes API per environment | Pod or workload resources. | Sandbox, Template, and Claim CRDs use Kubernetes RBAC and tooling. | Actors use the Substrate API; worker infrastructure uses Kubernetes CRDs. |
+| Runtime integration | Configure an installed Pod runtime through `RuntimeClass`. | Select an installed runtime through the Pod template. | Select a supported actor backend. Changing a Pod's `RuntimeClass` alone is insufficient. |
 | Tool permissions and approvals | Enforce at the backend. | Still enforce at the backend. | Still enforce at the backend. |
 | Operating effort | Maintain existing application controls. | Add controllers, runtime configuration, templates, storage, and policy. | Also operate the actor control plane, state store, snapshot storage, supervisors, and network mediation. |
 

@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1350" viewBox="0 0 1280 1350" role="img" aria-labelledby="title desc">
+<title id="title">Agent Sandbox versus Agent Substrate: overlap, advantages and trade-offs</title>
+<desc id="desc">Blue shows overlapping capabilities. Green shows an integrated Substrate advantage. Purple shows Sandbox-specific Kubernetes interfaces. Amber needs extra integration or has limits. Grey indicates a different approach or work neither platform replaces. These are architectural judgments, not runtime test results.</desc>
+<rect width="1280" height="1350" fill="#ffffff"/>
+<g font-family="Arial, Helvetica, sans-serif" fill="#172230">
+<text x="32" y="49" font-size="34" font-weight="700" fill="#172230">Agent Sandbox vs Agent Substrate</text>
+<text x="32" y="82" font-size="20" font-weight="400" fill="#172230">Where they overlap, where each fits, and what still needs separate controls.</text>
+<rect x="32" y="111" width="103" height="36" rx="7" fill="#e8f1fd"/>
+<text x="45" y="135" font-size="16" font-weight="700" fill="#184f90">Overlap</text>
+<rect x="145" y="111" width="211" height="36" rx="7" fill="#e6f4ea"/>
+<text x="158" y="135" font-size="16" font-weight="700" fill="#186238">Substrate advantage</text>
+<rect x="366" y="111" width="211" height="36" rx="7" fill="#f0eafb"/>
+<text x="379" y="135" font-size="16" font-weight="700" fill="#603a93">Sandbox integration</text>
+<rect x="587" y="111" width="256" height="36" rx="7" fill="#fff3d6"/>
+<text x="600" y="135" font-size="16" font-weight="700" fill="#805600">Conditional / extra work</text>
+<rect x="853" y="111" width="211" height="36" rx="7" fill="#f0f2f5"/>
+<text x="866" y="135" font-size="16" font-weight="700" fill="#465260">Different / neither</text>
+<text x="32" y="184" font-size="17" font-weight="400" fill="#172230">Colours show fit for a requirement. They are not an overall score or a claim of exclusivity.</text>
+<rect x="32" y="211" width="1216" height="58" rx="8" fill="#172230"/>
+<text x="50" y="248" font-size="17" font-weight="700" fill="#ffffff">CAPABILITY</text>
+<text x="340" y="248" font-size="17" font-weight="700" fill="#ffffff">KUBERNETES AGENT SANDBOX</text>
+<text x="804" y="248" font-size="17" font-weight="700" fill="#ffffff">AGENT SUBSTRATE</text>
+<rect x="32" y="278" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="317" font-size="19" font-weight="700" fill="#172230">Host isolation</text>
+<rect x="320" y="278" width="464" height="93" rx="6" fill="#e8f1fd"/>
+<text x="339" y="302" font-size="12" font-weight="700" fill="#184f90">OVERLAP</text>
+<text x="339" y="328" font-size="18" font-weight="400" fill="#172230">gVisor or Kata via RuntimeClass.</text>
+<text x="339" y="351" font-size="18" font-weight="400" fill="#172230">Must be installed and enforced.</text>
+<rect x="784" y="278" width="464" height="93" rx="6" fill="#e8f1fd"/>
+<text x="803" y="302" font-size="12" font-weight="700" fill="#184f90">OVERLAP</text>
+<text x="803" y="328" font-size="18" font-weight="400" fill="#172230">gVisor or microVM sandbox.</text>
+<text x="803" y="351" font-size="18" font-weight="400" fill="#172230">Not inherently stronger isolation.</text>
+<rect x="32" y="379" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="418" font-size="19" font-weight="700" fill="#172230">Warm capacity</text>
+<rect x="320" y="379" width="464" height="93" rx="6" fill="#e8f1fd"/>
+<text x="339" y="403" font-size="12" font-weight="700" fill="#184f90">OVERLAP</text>
+<text x="339" y="429" font-size="18" font-weight="400" fill="#172230">Pre-warmed sandboxes</text>
+<text x="339" y="452" font-size="18" font-weight="400" fill="#172230">allocated through claims.</text>
+<rect x="784" y="379" width="464" height="93" rx="6" fill="#e8f1fd"/>
+<text x="803" y="403" font-size="12" font-weight="700" fill="#184f90">OVERLAP</text>
+<text x="803" y="429" font-size="18" font-weight="400" fill="#172230">Prepared workers restore agents.</text>
+<text x="803" y="452" font-size="18" font-weight="400" fill="#172230">Capacity is reused between actors.</text>
+<rect x="32" y="480" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="519" font-size="19" font-weight="700" fill="#172230">Persistent workspace</text>
+<rect x="320" y="480" width="464" height="93" rx="6" fill="#e8f1fd"/>
+<text x="339" y="504" font-size="12" font-weight="700" fill="#184f90">OVERLAP</text>
+<text x="339" y="530" font-size="18" font-weight="400" fill="#172230">Persistent volumes survive</text>
+<text x="339" y="553" font-size="18" font-weight="400" fill="#172230">Pod suspension and recreation.</text>
+<rect x="784" y="480" width="464" height="93" rx="6" fill="#e8f1fd"/>
+<text x="803" y="504" font-size="12" font-weight="700" fill="#184f90">OVERLAP</text>
+<text x="803" y="530" font-size="18" font-weight="400" fill="#172230">Filesystem state is retained</text>
+<text x="803" y="553" font-size="18" font-weight="400" fill="#172230">through supported snapshots.</text>
+<rect x="32" y="581" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="620" font-size="19" font-weight="700" fill="#172230">Memory across</text>
+<text x="50" y="645" font-size="19" font-weight="700" fill="#172230">suspend / resume</text>
+<rect x="320" y="581" width="464" height="93" rx="6" fill="#fff3d6"/>
+<text x="339" y="605" font-size="12" font-weight="700" fill="#805600">EXTRA INTEGRATION</text>
+<text x="339" y="631" font-size="18" font-weight="400" fill="#172230">GKE snapshot extension exists.</text>
+<text x="339" y="654" font-size="18" font-weight="400" fill="#172230">Not a portable AKS base feature.</text>
+<rect x="784" y="581" width="464" height="93" rx="6" fill="#e6f4ea"/>
+<text x="803" y="605" font-size="12" font-weight="700" fill="#186238">SUBSTRATE ADVANTAGE</text>
+<text x="803" y="631" font-size="18" font-weight="400" fill="#172230">Memory checkpoint and restore</text>
+<text x="803" y="654" font-size="18" font-weight="400" fill="#172230">are part of the actor model.</text>
+<rect x="32" y="682" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="721" font-size="19" font-weight="700" fill="#172230">Resume on traffic</text>
+<text x="50" y="746" font-size="19" font-weight="700" fill="#172230">and reuse workers</text>
+<rect x="320" y="682" width="464" height="93" rx="6" fill="#fff3d6"/>
+<text x="339" y="706" font-size="12" font-weight="700" fill="#805600">PLANNED / BACKEND DEPENDENT</text>
+<text x="339" y="732" font-size="18" font-weight="400" fill="#172230">Base lifecycle recreates a Pod.</text>
+<text x="339" y="755" font-size="18" font-weight="400" fill="#172230">Automatic resume is on roadmap.</text>
+<rect x="784" y="682" width="464" height="93" rx="6" fill="#e6f4ea"/>
+<text x="803" y="706" font-size="12" font-weight="700" fill="#186238">SUBSTRATE ADVANTAGE</text>
+<text x="803" y="732" font-size="18" font-weight="400" fill="#172230">Actor-aware router resumes</text>
+<text x="803" y="755" font-size="18" font-weight="400" fill="#172230">saved state on available workers.</text>
+<rect x="32" y="783" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="822" font-size="19" font-weight="700" fill="#172230">Actor identity and</text>
+<text x="50" y="847" font-size="19" font-weight="700" fill="#172230">credential handling</text>
+<rect x="320" y="783" width="464" height="93" rx="6" fill="#fff3d6"/>
+<text x="339" y="807" font-size="12" font-weight="700" fill="#805600">COMPOSE EXTERNALLY</text>
+<text x="339" y="833" font-size="18" font-weight="400" fill="#172230">Add identity and credential</text>
+<text x="339" y="856" font-size="18" font-weight="400" fill="#172230">services around the sandbox.</text>
+<rect x="784" y="783" width="464" height="93" rx="6" fill="#e6f4ea"/>
+<text x="803" y="807" font-size="12" font-weight="700" fill="#186238">SUBSTRATE ADVANTAGE</text>
+<text x="803" y="833" font-size="18" font-weight="400" fill="#172230">Integrated actor identity and</text>
+<text x="803" y="856" font-size="18" font-weight="400" fill="#172230">out-of-sandbox credential injection.</text>
+<rect x="32" y="884" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="923" font-size="19" font-weight="700" fill="#172230">Kubernetes API</text>
+<text x="50" y="948" font-size="19" font-weight="700" fill="#172230">for each environment</text>
+<rect x="320" y="884" width="464" height="93" rx="6" fill="#f0eafb"/>
+<text x="339" y="908" font-size="12" font-weight="700" fill="#603a93">SANDBOX-SPECIFIC INTERFACE</text>
+<text x="339" y="934" font-size="18" font-weight="400" fill="#172230">Sandbox, Template and Claim CRDs.</text>
+<text x="339" y="957" font-size="18" font-weight="400" fill="#172230">Use Kubernetes RBAC and tooling.</text>
+<rect x="784" y="884" width="464" height="93" rx="6" fill="#f0f2f5"/>
+<text x="803" y="908" font-size="12" font-weight="700" fill="#465260">DIFFERENT API MODEL</text>
+<text x="803" y="934" font-size="18" font-weight="400" fill="#172230">Actors use the Substrate API.</text>
+<text x="803" y="957" font-size="18" font-weight="400" fill="#172230">Worker infrastructure uses CRDs.</text>
+<rect x="32" y="985" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="1024" font-size="19" font-weight="700" fill="#172230">Use Kubernetes</text>
+<text x="50" y="1049" font-size="19" font-weight="700" fill="#172230">RuntimeClass directly</text>
+<rect x="320" y="985" width="464" height="93" rx="6" fill="#f0eafb"/>
+<text x="339" y="1009" font-size="12" font-weight="700" fill="#603a93">SANDBOX-SPECIFIC INTEGRATION</text>
+<text x="339" y="1035" font-size="18" font-weight="400" fill="#172230">Select the installed Pod runtime</text>
+<text x="339" y="1058" font-size="18" font-weight="400" fill="#172230">through the Pod template.</text>
+<rect x="784" y="985" width="464" height="93" rx="6" fill="#f0f2f5"/>
+<text x="803" y="1009" font-size="12" font-weight="700" fill="#465260">DIFFERENT RUNTIME CONTRACT</text>
+<text x="803" y="1035" font-size="18" font-weight="400" fill="#172230">Select a supported actor backend.</text>
+<text x="803" y="1058" font-size="18" font-weight="400" fill="#172230">Not a RuntimeClass-only switch.</text>
+<rect x="32" y="1086" width="280" height="93" rx="6" fill="#f8f9fb"/>
+<text x="50" y="1125" font-size="19" font-weight="700" fill="#172230">Prevent misuse of</text>
+<text x="50" y="1150" font-size="19" font-weight="700" fill="#172230">an allowed tool</text>
+<rect x="320" y="1086" width="464" height="93" rx="6" fill="#f0f2f5"/>
+<text x="339" y="1110" font-size="12" font-weight="700" fill="#465260">NEITHER SOLVES THIS ALONE</text>
+<text x="339" y="1136" font-size="18" font-weight="400" fill="#172230">Backend permissions, validation</text>
+<text x="339" y="1159" font-size="18" font-weight="400" fill="#172230">and approval are still required.</text>
+<rect x="784" y="1086" width="464" height="93" rx="6" fill="#f0f2f5"/>
+<text x="803" y="1110" font-size="12" font-weight="700" fill="#465260">NEITHER SOLVES THIS ALONE</text>
+<text x="803" y="1136" font-size="18" font-weight="400" fill="#172230">Backend permissions, validation</text>
+<text x="803" y="1159" font-size="18" font-weight="400" fill="#172230">and approval are still required.</text>
+<text x="32" y="1229" font-size="18" font-weight="700" fill="#172230">Sandbox strengths are Kubernetes-native interfaces, not capabilities that cannot be built elsewhere.</text>
+<text x="32" y="1263" font-size="18" font-weight="400" fill="#172230">Substrate has more integrated stateful execution services; it also has more infrastructure to operate.</text>
+<text x="32" y="1300" font-size="16" font-weight="400" fill="#172230">Source-based comparison, 30 October 2026. Verify the installed version, runtime and security configuration.</text>
+<text x="32" y="1327" font-size="16" font-weight="400" fill="#172230">Primary sources and full qualifications are linked in the accompanying comparison sheet.</text>
+</g>
+</svg>
