@@ -1,0 +1,68 @@
+# Meeting intake data only. This is not a CRD and must not be applied.
+# Select one kind and complete its section. Omit the other kind-specific sections.
+schemaVersion: agentgateway-byo-intake/v1alpha1
+request:
+  name: "{{REQUEST_NAME}}"
+  kind: "{{llm-provider OR mcp-server OR http-api}}"
+  state: needs-information
+  useCase: "{{FIRST_READ_ONLY_USE_CASE}}"
+  owners:
+    team: "{{TEAM_SERVICE_OWNER}}"
+    platform: "{{PLATFORM_AGENTGATEWAY_OWNER}}"
+    data: "{{DATA_OWNER}}"
+    security: "{{SECURITY_REVIEWER}}"
+    cost: "{{BILLING_OWNER}}"
+  consumers:
+    identities:
+      - "{{APPROVED_CALLER_IDENTITY}}"
+    namespace: "{{CONSUMER_NAMESPACE}}"
+    clientRuntime: "{{APPLICATION_SDK_OR_AGENT_RUNTIME}}"
+    callerAuthentication: "{{GATEWAY_AUDIENCE_AND_ROLE_OR_APPROVED_AUTH_METHOD}}"
+    tokenRefreshOwner: "{{CLIENT_TOKEN_REFRESH_OWNER}}"
+  backend:
+    endpoint: "{{PRIVATE_BACKEND_ENDPOINT}}"
+    release: "{{IMMUTABLE_IMAGE_DIGEST_OR_PROVIDER_API_VERSION}}"
+    source: "{{SOURCE_REPOSITORY_OR_PROVIDER_DOCUMENTATION}}"
+    tlsAndConnectivity: "{{DNS_CA_PRIVATE_CONNECTIVITY_CONTRACT}}"
+    authentication: "{{BACKEND_IDENTITY_AND_AUDIENCE_OR_CREDENTIAL_REFERENCE}}"
+    credentialRotationOwner: "{{BACKEND_CREDENTIAL_OWNER}}"
+    resourceScope: "{{ENFORCED_TENANT_DATA_OR_RESOURCE_SCOPE}}"
+    directAccessRestriction: "{{NETWORK_AND_BACKEND_AUTHORIZATION_CONTROL}}"
+  llmProvider:
+    models:
+      - "{{APPROVED_MODEL_OR_DEPLOYMENT}}"
+    apiFormatsAndPaths: "{{EXACT_APIS_AND_PATHS}}"
+    region: "{{MODEL_REGION}}"
+    contextAndOutputLimits: "{{MODEL_LIMITS}}"
+    streamingAndToolCalling: "{{REQUIRED_FEATURES_AND_PROOF}}"
+    quotaAndBilling: "{{PROVIDER_QUOTA_AND_BILLING_CONTRACT}}"
+  mcpServer:
+    transportAndPath: "{{MCP_TRANSPORT_AND_PATH}}"
+    sessionBehavior: "{{STATELESS_OR_STATEFUL_CONTRACT}}"
+    toolInventory: "{{VERSIONED_TOOL_INVENTORY_REFERENCE}}"
+    approvedTools:
+      - "{{EXACT_CLIENT_VISIBLE_TOOL_NAME}}"
+    writeCapable: false
+    resultLimitsAndRedaction: "{{ROWS_BYTES_TIMEOUT_AND_REDACTION}}"
+  httpApi:
+    exposure: "{{direct-http OR mcp-facade}}"
+    openapiReference: "{{VERSIONED_OPENAPI_REFERENCE_OR_NOT_AVAILABLE}}"
+    approvedOperations:
+      - "{{METHOD_PATH_AND_OPERATION_ID}}"
+    authorizationAndResultLimits: "{{RESOURCE_AUTH_PAGINATION_BYTES_TIMEOUT}}"
+    mcpFacadeDecision: "{{NOT_REQUIRED_OR_NATIVE_SCHEMA_RUNTIME_PROOF_OR_ADAPTER}}"
+  controls:
+    classification: "{{DATA_CLASSIFICATION}}"
+    payloadLoggingApproved: false
+    rateConcurrencyTimeout: "{{REVIEWED_TRAFFIC_LIMITS}}"
+    revocationOwner: "{{IMMEDIATE_REVOKE_OWNER}}"
+    reviewAndExpiry: "{{ACCESS_REVIEW_AND_EXPIRY_DATE}}"
+    rollback: "{{GITOPS_ROLLBACK_AND_BACKEND_REVOCATION_PLAN}}"
+  acceptance:
+    targetGatewayVersion: "{{INSTALLED_VERSION}}"
+    schemaEvidence: "{{TARGET_CRD_AND_DRY_RUN_RECEIPT}}"
+    allowDenyAndBypassEvidence: "{{SANITIZED_RECEIPT_REFERENCE}}"
+    refreshReloadAndAuditEvidence: "{{SANITIZED_RECEIPT_REFERENCE}}"
+    unresolvedDependencies:
+      - "{{DEPENDENCY_AND_OWNER_OR_NONE}}"
+    platformDecision: pending

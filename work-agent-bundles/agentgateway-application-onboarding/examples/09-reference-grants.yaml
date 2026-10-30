@@ -1,0 +1,31 @@
+# STEP 09 - Permit exact cross-namespace references
+
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-platform-route
+  namespace: team-tools  # The owner grants access from the namespace containing the MCP backend.
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute  # Only this kind of route may make the cross-namespace reference.
+    namespace: platform-gateway  # Only routes from our platform gateway namespace are eligible.
+  to:
+  - group: agentgateway.dev
+    kind: AgentgatewayBackend  # This limits the permitted target type to the MCP backend.
+    name: kubernetes-mcp  # We allow the exact named MCP backend, not every backend in the namespace.
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-platform-sre-a2a-route
+  namespace: kagent  # The owner grants access from the namespace containing the kagent controller Service.
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute  # Only this kind of route may make the cross-namespace reference.
+    namespace: platform-gateway  # Only routes from our platform gateway namespace are eligible.
+  to:
+  - group: ''
+    kind: Service  # This limits the permitted target type to the kagent controller Service.
+    name: kagent-controller  # We allow the exact named kagent controller Service, not every backend in the namespace.

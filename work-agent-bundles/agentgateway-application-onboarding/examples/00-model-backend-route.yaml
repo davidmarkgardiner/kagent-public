@@ -1,0 +1,46 @@
+# Presentation example. Requires installed-version review and caller authorization.
+# The Secret is provisioned privately. This file contains only its reference.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: team-model
+  namespace: platform-gateway
+spec:
+  ai:
+    provider:
+      openai:
+        model: '{{MODEL_DEPLOYMENT}}' # Match the model served by this approved provider.
+      host: '{{MODEL_PROVIDER_HOST}}' # Host only. DNS, TLS, and connectivity are prerequisites.
+      port: 443
+  policies:
+    auth:
+      secretRef:
+        name: team-model-provider-auth # Gateway-to-provider credential. Not the caller credential.
+    tls: {} # Validate upstream TLS using the release's configured trust behavior.
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: model-garden # File 15 attaches illustrative model limits to this exact route.
+  namespace: platform-gateway
+spec:
+  parentRefs:
+  - name: agent-gateway
+    sectionName: model # Requires an existing HTTPS listener with this name.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /team/v1 # File 05 uses this gateway base URL.
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /v1 # Assumes the provider serves /v1/chat/completions.
+    backendRefs:
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend
+      name: team-model
+# This route does not authorize callers or constrain every request-body model.
+# Attach reviewed caller identity/model policy before publishing the endpoint.

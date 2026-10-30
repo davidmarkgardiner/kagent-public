@@ -151,7 +151,7 @@ The documented Microsoft Graph application permissions are
 requires a supported Entra administrator role. This is a Phase 1 prerequisite
 owned by `{{ENTRA_APPLICATION_ADMIN_OWNER}}`, not an application-team task.
 
-Use [AUTHENTICATION.md](../../../platform/agentgateway/AUTHENTICATION.md) as the repository source for the
+Use [AUTHENTICATION.md](https://github.com/davidmarkgardiner/kagent-public/blob/main/platform/agentgateway/AUTHENTICATION.md) as the repository source for the
 JWT/OIDC policy mechanics. This plan defines the ownership and isolation model;
 it does not replace that implementation guide.
 
@@ -676,11 +676,11 @@ Proposed and not yet proven at work:
 
 ## References
 
-- [Agent authentication with agentgateway](../../../platform/agentgateway/AUTHENTICATION.md)
-- [Agentgateway MCP tool auth and discovery](../../../docs/agentgateway-mcp-tool-auth/README.md)
-- [Custom kagent tools](../../../docs/kagent-custom-tools/README.md)
-- [Multi-namespace kagent](../../../docs/architecture/MULTI-NAMESPACE-AGENT-AS-A-SERVICE.md)
-- [BYO agent boundaries](../../../docs/agentic-delivery-factory/byo-agent-harness-boundaries/README.md)
+- [Agent authentication with agentgateway](https://github.com/davidmarkgardiner/kagent-public/blob/main/platform/agentgateway/AUTHENTICATION.md)
+- [Agentgateway MCP tool auth and discovery](https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/agentgateway-mcp-tool-auth/README.md)
+- [Custom kagent tools](https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/kagent-custom-tools/README.md)
+- [Multi-namespace kagent](https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/architecture/MULTI-NAMESPACE-AGENT-AS-A-SERVICE.md)
+- [BYO agent boundaries](https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/agentic-delivery-factory/byo-agent-harness-boundaries/README.md)
 - [Official agentgateway JWT service authentication](https://agentgateway.dev/docs/kubernetes/main/mcp/mcp-access/)
 - [Official agentgateway API reference](https://agentgateway.dev/docs/kubernetes/latest/reference/api/)
 - [Official agentgateway MCP tool access](https://agentgateway.dev/docs/kubernetes/main/mcp/tool-access/)

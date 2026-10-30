@@ -4,6 +4,20 @@ Status: customer walkthrough and onboarding-mechanism proof. This bundle does
 not deploy an application, grant Azure access, or claim that proposal manifests
 are active in a target cluster.
 
+## Copy this folder
+
+Copy `work-agent-bundles/agentgateway-application-onboarding/` as a unit.
+The walkthrough, [commented YAML examples](examples/README.md), intake forms,
+worked application scenario, and acceptance checklist are all inside it.
+Open `04-BYO-INTEGRATIONS-WALKTHROUGH.md` for the 10-minute team meeting.
+
+All relative Markdown links stay within this folder. Optional online references
+use full HTTPS links. Existing services, controllers, identities, credential
+values, and target-environment checks remain prerequisites. This is a portable
+walkthrough and adaptation bundle, not an automatic platform installer.
+
+[Validation](VALIDATION.md) records the relocated-folder check and proof limits.
+
 ## Purpose
 
 Use this one folder to:
@@ -22,6 +36,12 @@ agentic cluster. An external cluster or non-Kubernetes caller is an exception
 lane with separate ingress, network and identity discovery.
 
 ## Start here
+
+For a 10-minute meeting with a team bringing its own services, use
+[Bring your LLMs, MCP servers, and APIs](04-BYO-INTEGRATIONS-WALKTHROUGH.md).
+It follows the Microsoft YAML walkthrough and includes a
+[BYO integration intake](templates/byo-integration-request.yaml).
+This supplier review is separate from the initial application-consumer POC.
 
 1. Present [the customer walkthrough](00-CUSTOMER-WALKTHROUGH.md).
 2. Use [the capability status](01-CAPABILITY-STATUS.md) to answer “what is
@@ -70,6 +90,8 @@ application's agent/tool loop.
 | `01-CAPABILITY-STATUS.md` | Honest configured/proven/proposed inventory |
 | `02-PLATFORM-MCP-CATALOG.md` | MCP choices and promotion criteria |
 | `03-CUSTOMER-INTERVIEW.md` | Reusable discovery questionnaire |
+| `04-BYO-INTEGRATIONS-WALKTHROUGH.md` | Short LLM, MCP, and API supplier walkthrough |
+| `examples/` | Local commented model, MCP, API, identity, network, and metrics YAML |
 | `scenarios/` | Worked onboarding cases |
 | `templates/` | Blank onboarding request contract |
 | `records/` | Completed sanitized example request |
