@@ -10,7 +10,7 @@ This diagram shows the responsibilities of the execution layer. The arrows descr
 
 ```mermaid
 flowchart TB
-    A["Agent applications<br/>kagent, Google AX, or custom agents"]
+    A["Agent applications<br/>kagent, Google AX, or Agent Sessions"]
     S["Agent Substrate<br/>Shared execution layer on Kubernetes"]
     A --> S
     S --> SEC["SECURITY<br/>Isolate agents<br/>Control access<br/>Keep credentials outside agent code"]
@@ -49,7 +49,9 @@ This combines the security and snapshot capabilities described in the [Substrate
 
 ## Why platforms are adding this layer
 
-Google AX explicitly uses Agent Substrate for sandboxed task execution. Microsoft Foundry hosted sessions use a similar pattern of isolated sessions, persisted files, and released idle compute. Microsoft's documentation does not establish that it uses Agent Substrate. [Google AX](https://github.com/google/ax), [Microsoft hosted sessions](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/manage-hosted-sessions)
+Google AX explicitly uses Agent Substrate for sandboxed task execution. Microsoft's open-source Agent Sessions reference implementation also supports Agent Substrate as a compute backend. Its documentation reports tests on real Substrate covering replay, memory snapshot and restore, and independent forks of saved sessions. [Google AX](https://github.com/google/ax), [Agent Sessions integration and tests](https://github.com/agent-primitives/sessions/blob/main/docs/substrate-conformance.md)
+
+The Agent Sessions repository carries Microsoft Corporation's copyright. Substrate is a pluggable backend rather than a requirement for every session. This evidence concerns the open-source implementation, not the infrastructure behind Foundry hosted sessions. [Microsoft copyright](https://github.com/agent-primitives/sessions/blob/main/LICENSE), [Agent Sessions overview](https://github.com/agent-primitives/sessions)
 
 These examples support a common direction: make agent execution a shared platform responsibility, so each application team does not have to build its own isolation and session lifecycle.
 
