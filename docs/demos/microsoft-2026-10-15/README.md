@@ -1,5 +1,9 @@
 # Microsoft meeting, 15 October 2026
 
+For an incoming team bringing its own LLM, MCP server, or API, use the
+[10-minute gateway onboarding walkthrough](../../../work-agent-bundles/agentgateway-application-onboarding/04-BYO-INTEGRATIONS-WALKTHROUGH.md).
+It reuses the annotated YAML and connects backend onboarding to agent isolation.
+
 Start with the [VS Code presentation guide](meeting-walkthrough/vscode-presentation/README.md). It opens the annotated YAML on the left and the clickable visual presentation on the right. The Markdown companion contains the same diagrams and expandable commented source.
 
 The 14-slide route covers agent configuration, MCP and A2A, knowledge retrieval, Microsoft Entra identity, agentgateway policies, LGTM monitoring, evaluation, triage, delivery workflows, the durable-agent PoC and SRE Lens. Only the existing gateway UI and SRE Lens use Chrome.

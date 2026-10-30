@@ -23,6 +23,12 @@ lane with separate ingress, network and identity discovery.
 
 ## Start here
 
+For a 10-minute meeting with a team bringing its own services, use
+[Bring your LLMs, MCP servers, and APIs](04-BYO-INTEGRATIONS-WALKTHROUGH.md).
+It follows the Microsoft YAML walkthrough and includes a
+[BYO integration intake](templates/byo-integration-request.yaml).
+This supplier review is separate from the initial application-consumer POC.
+
 1. Present [the customer walkthrough](00-CUSTOMER-WALKTHROUGH.md).
 2. Use [the capability status](01-CAPABILITY-STATUS.md) to answer “what is
    already configured?” without turning repository YAML into a deployment
@@ -70,6 +76,7 @@ application's agent/tool loop.
 | `01-CAPABILITY-STATUS.md` | Honest configured/proven/proposed inventory |
 | `02-PLATFORM-MCP-CATALOG.md` | MCP choices and promotion criteria |
 | `03-CUSTOMER-INTERVIEW.md` | Reusable discovery questionnaire |
+| `04-BYO-INTEGRATIONS-WALKTHROUGH.md` | Short LLM, MCP, and API supplier walkthrough |
 | `scenarios/` | Worked onboarding cases |
 | `templates/` | Blank onboarding request contract |
 | `records/` | Completed sanitized example request |
