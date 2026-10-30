@@ -60,7 +60,7 @@
 <rect x="784" y="581" width="464" height="93" rx="6" fill="#e6f4ea"/>
 <text x="803" y="605" font-size="12" font-weight="700" fill="#186238">SUBSTRATE ADVANTAGE</text>
 <text x="803" y="631" font-size="18" font-weight="400" fill="#172230">Memory checkpoint and restore</text>
-<text x="803" y="654" font-size="18" font-weight="400" fill="#172230">are part of the actor model.</text>
+<text x="803" y="654" font-size="18" font-weight="400" fill="#172230">use supported MEMORY snapshots.</text>
 <rect x="32" y="682" width="280" height="93" rx="6" fill="#f8f9fb"/>
 <text x="50" y="721" font-size="19" font-weight="700" fill="#172230">Resume on traffic</text>
 <text x="50" y="746" font-size="19" font-weight="700" fill="#172230">and reuse workers</text>
@@ -81,8 +81,8 @@
 <text x="339" y="856" font-size="18" font-weight="400" fill="#172230">services around the sandbox.</text>
 <rect x="784" y="783" width="464" height="93" rx="6" fill="#e6f4ea"/>
 <text x="803" y="807" font-size="12" font-weight="700" fill="#186238">SUBSTRATE ADVANTAGE</text>
-<text x="803" y="833" font-size="18" font-weight="400" fill="#172230">Integrated actor identity and</text>
-<text x="803" y="856" font-size="18" font-weight="400" fill="#172230">out-of-sandbox credential injection.</text>
+<text x="803" y="833" font-size="18" font-weight="400" fill="#172230">Actor identity; credential injection.</text>
+<text x="803" y="856" font-size="18" font-weight="400" fill="#172230">Configure provider, policy and trust.</text>
 <rect x="32" y="884" width="280" height="93" rx="6" fill="#f8f9fb"/>
 <text x="50" y="923" font-size="19" font-weight="700" fill="#172230">Kubernetes API</text>
 <text x="50" y="948" font-size="19" font-weight="700" fill="#172230">for each environment</text>
@@ -118,7 +118,7 @@
 <text x="803" y="1159" font-size="18" font-weight="400" fill="#172230">and approval are still required.</text>
 <text x="32" y="1229" font-size="18" font-weight="700" fill="#172230">Sandbox strengths are Kubernetes-native interfaces, not capabilities that cannot be built elsewhere.</text>
 <text x="32" y="1263" font-size="18" font-weight="400" fill="#172230">Substrate has more integrated stateful execution services; it also has more infrastructure to operate.</text>
-<text x="32" y="1300" font-size="16" font-weight="400" fill="#172230">Source-based comparison, 30 October 2026. Verify the installed version, runtime and security configuration.</text>
-<text x="32" y="1327" font-size="16" font-weight="400" fill="#172230">Primary sources and full qualifications are linked in the accompanying comparison sheet.</text>
+<text x="32" y="1300" font-size="16" font-weight="400" fill="#172230">Source review: 30 October 2026, 12:21 UTC. Exact upstream commits are recorded in the comparison sheet.</text>
+<text x="32" y="1327" font-size="16" font-weight="400" fill="#172230">Integrated does not mean configured out of the box. See the sheet for prerequisites and implementation gaps.</text>
 </g>
 </svg>

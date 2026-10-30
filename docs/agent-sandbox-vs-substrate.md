@@ -2,7 +2,9 @@
 
 **Recommendation: prioritise Substrate if our target needs stateful agent execution, while tightening tool permissions now. Defer a separate Agent Sandbox deployment unless it meets an immediate requirement.**
 
-This is an architectural recommendation based on upstream sources checked on 30 October 2026. It is not a finding from our workplace cluster or a measured comparison of engineering cost.
+Source review refreshed on **30 October 2026 at 12:21 UTC**, against the upstream `main` revisions recorded [below](#source-review). This is an architectural recommendation, not a finding from our workplace cluster or a measured comparison of engineering cost.
+
+**Substrate is a broader integrated runtime, not a drop-in superset of Agent Sandbox.** Its memory snapshots, identity, and credential injection still depend on the selected runtime and configuration. "Credential isolation and injection" describes keeping reusable secrets outside agent code and snapshots; it does not imply that credentials or external operations become durable automatically.
 
 ## Visual comparison
 
@@ -10,7 +12,7 @@ This is an architectural recommendation based on upstream sources checked on 30 
 
 [Open the full-size colour chart](assets/agent-sandbox-vs-substrate-comparison.svg).
 
-Green means an integrated advantage for the stated requirement, not an overall winner. Purple identifies Kubernetes interfaces that Agent Sandbox provides directly: per-environment Sandbox and Claim resources, and Pod runtime selection through `RuntimeClass`. Substrate uses its own actor API and backend contract instead. These differences can favour Agent Sandbox when existing Kubernetes tooling is the priority. [Agent Sandbox interfaces](https://github.com/kubernetes-sigs/agent-sandbox), [Substrate resource model](https://github.com/agent-substrate/substrate/blob/main/docs/concepts/architecture.md#api-resource-models)
+Green means an integrated advantage for the stated requirement, not an overall winner or a feature already configured for our environment. Purple identifies Kubernetes interfaces that Agent Sandbox provides directly: per-environment Sandbox and Claim resources, and Pod runtime selection through `RuntimeClass`. Substrate uses its own actor API and backend contract instead. These differences can favour Agent Sandbox when existing Kubernetes tooling is the priority. [Agent Sandbox interfaces](https://github.com/kubernetes-sigs/agent-sandbox), [Substrate resource model](https://github.com/agent-substrate/substrate/blob/main/docs/concepts/architecture.md#api-resource-models)
 
 The blue areas overlap in outcome, although their implementations differ. Amber includes the GKE-specific snapshot integration and automatic resume listed on Agent Sandbox's roadmap. It does not mean the capability is impossible. [Snapshot integration](https://github.com/kubernetes-sigs/agent-sandbox/blob/main/clients/python/agentic-sandbox-client/k8s_agent_sandbox/gke_extensions/snapshots/README.md), [Roadmap](https://github.com/kubernetes-sigs/agent-sandbox/blob/main/roadmap.md)
 
@@ -58,8 +60,8 @@ The baseline here is an ordinary hardened Pod without a sandbox runtime or a sep
 | Main responsibility | Run application containers. | Manage isolated, persistent singleton environments. | Run logical, stateful agents on reusable workers. |
 | Host isolation | Shared host kernel under a conventional runtime. | Select gVisor or Kata through an installed and enforced `RuntimeClass`. | Requires supported gVisor or microVM sandboxes. |
 | Lifecycle and capacity | Application-specific session management. | Templates, claims, stable identity, persistent storage, and warm pools. | Actor lifecycle, reusable worker pools, snapshots, and routing that resumes agents. |
-| State across a pause | Recreated processes need external state. | Base suspension retains persistent volumes and recreates the Pod. RAM requires a snapshot integration. | Saves and restores memory and filesystem state through supported snapshot modes. |
-| Identity and credentials | Configure service accounts, secret handling, and gateways. | Compose platform identity and credential services around the sandbox. | Integrates actor identity and policy-controlled credential injection outside the agent sandbox. |
+| State across a pause | Recreated processes need external state. | Base suspension retains persistent volumes and recreates the Pod. RAM requires a snapshot integration. | `MEMORY` snapshots preserve RAM and filesystem state. Lower-fidelity modes restore files without process memory. |
+| Identity and credentials | Configure service accounts, secret handling, and gateways. | Compose platform identity and credential services around the sandbox. | Integrates actor identity and credential injection outside the agent sandbox. Configure the provider, policies, and HTTPS trust. |
 | Native Kubernetes API per environment | Pod or workload resources. | Sandbox, Template, and Claim CRDs use Kubernetes RBAC and tooling. | Actors use the Substrate API; worker infrastructure uses Kubernetes CRDs. |
 | Runtime integration | Configure an installed Pod runtime through `RuntimeClass`. | Select an installed runtime through the Pod template. | Select a supported actor backend. Changing a Pod's `RuntimeClass` alone is insufficient. |
 | Tool permissions and approvals | Enforce at the backend. | Still enforce at the backend. | Still enforce at the backend. |
@@ -75,7 +77,7 @@ With the same correctly configured sandbox runtime, we should not assume Substra
 
 ## Where Microsoft's and Google's implementations fit
 
-Google AX orchestrates tasks on Substrate. Microsoft's open-source Agent Sessions supports Substrate as a pluggable backend and adds durable session records, replay, and forks. These are application and session layers above compute; their full capabilities should not be attributed to the underlying sandbox alone. [Google AX](https://github.com/google/ax), [Agent Sessions](https://github.com/agent-primitives/sessions), [Substrate integration tests](https://github.com/agent-primitives/sessions/blob/main/docs/substrate-conformance.md)
+Google AX orchestrates tasks on Substrate. Microsoft's open-source Agent Sessions supports Substrate as a pluggable backend and adds durable session records, replay, and forks. These are application and session layers above compute; their full capabilities should not be attributed to the underlying sandbox alone. Its reference daemon also documents missing authentication, authorisation, and transport security, so a runtime integration is not evidence of a complete production service. [Google AX](https://github.com/google/ax), [Agent Sessions status](https://github.com/agent-primitives/sessions#status), [Substrate integration tests](https://github.com/agent-primitives/sessions/blob/main/docs/substrate-conformance.md)
 
 ## Recommended investment
 
@@ -88,3 +90,20 @@ If untrusted code execution is needed before Substrate is available, provide app
 Substrate remains pre-1.0. Its security documentation marks some controls, including comprehensive quotas and parts of tenant isolation and cleanup, as unfinished. Saved state is not a guarantee of zero data loss, exactly-once external actions, or complete disaster recovery. These limits belong in the evaluation. [Implementation status](https://github.com/agent-substrate/substrate/blob/main/docs/security/security.md)
 
 **The defensible position is to avoid duplicate platform work while retaining both tool authorisation and execution isolation. Substrate is a broader target, not a replacement for least privilege.**
+
+## Source review
+
+The refresh checked documentation and relevant implementation at these `main` commits. These are source snapshots, not the versions installed at work or a recommendation to deploy unreleased code.
+
+| Project | Reviewed source revision |
+|---|---|
+| Kubernetes Agent Sandbox | [`ecc7a6cf2e2f`](https://github.com/kubernetes-sigs/agent-sandbox/tree/ecc7a6cf2e2fc4363afeb4ac2da960401efd4a72) |
+| Agent Substrate | [`5e22427892da`](https://github.com/agent-substrate/substrate/tree/5e22427892da74723a8be31983da81f96bdafea9) |
+| Microsoft-copyrighted Agent Sessions | [`19881714673f`](https://github.com/agent-primitives/sessions/tree/19881714673feb8a58d633c0baa7e79409a7abec) |
+| Google AX | [`7c0d85b7bde2`](https://github.com/google/ax/tree/7c0d85b7bde239aab049dad23ecdba86fca8a4be) |
+
+The Agent Sandbox controller still deletes its Pod in `Suspended` mode. Its roadmap lists automatic idle and traffic-driven resume as planned. The separate GKE snapshot extension documents memory restoration. [Controller implementation](https://github.com/kubernetes-sigs/agent-sandbox/blob/ecc7a6cf2e2fc4363afeb4ac2da960401efd4a72/controllers/sandbox_controller.go#L1736), [Roadmap](https://github.com/kubernetes-sigs/agent-sandbox/blob/ecc7a6cf2e2fc4363afeb4ac2da960401efd4a72/roadmap.md), [GKE extension](https://github.com/kubernetes-sigs/agent-sandbox/blob/ecc7a6cf2e2fc4363afeb4ac2da960401efd4a72/clients/python/agentic-sandbox-client/k8s_agent_sandbox/gke_extensions/snapshots/README.md)
+
+Substrate's ingress implementation calls `ResumeActor`; its credential guide requires policy and provider configuration. Its security status table still marks some protections as future or in progress. The architecture document itself also flags aspirational content, so it is not used alone as proof of implementation. [Ingress implementation](https://github.com/agent-substrate/substrate/blob/5e22427892da74723a8be31983da81f96bdafea9/cmd/atenet/internal/router/ingress/resumer.go), [Credential guide](https://github.com/agent-substrate/substrate/blob/5e22427892da74723a8be31983da81f96bdafea9/docs/guides/egress-credential-injection.md), [Security status](https://github.com/agent-substrate/substrate/blob/5e22427892da74723a8be31983da81f96bdafea9/docs/security/security.md)
+
+This refresh did not rerun upstream conformance tests, benchmark either platform, or test our cluster. Recheck the recorded revisions when upstream capabilities or our deployment change.
