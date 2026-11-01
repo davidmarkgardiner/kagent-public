@@ -1,0 +1,352 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: aks-istio-ingress
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: aks-istio-egress
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: aks-istio-system
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: alloy
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: gatekeeper-system
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: kyverno
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: logging
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: xxx-system
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: uk8s-config
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: uk8s-core
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: external-dns
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: external-secrets
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: informer
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: kro-system
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: platform-test-app
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: xxx-issuer-system
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: agentic-triage-proof
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-health-investigator-read
+  namespace: aks-platform-triage-smoke
+  labels:
+    app.kubernetes.io/part-of: cluster-health-assessment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-health-investigator-namespace-read
+subjects:
+- kind: ServiceAccount
+  name: '{{AKS_MCP_SERVICE_ACCOUNT_NAME}}'
+  namespace: '{{AKS_MCP_SERVICE_ACCOUNT_NAMESPACE}}'
