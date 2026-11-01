@@ -15,7 +15,7 @@ bridge or generated-test execution gate.
 1. Discover the exact sandbox project and approved GitLab URL. Create a project
    runner through GitLab's current UI/API (`POST /user/runners`), with an installer
    identity authorized to create runners. The rig's Developer project token is
-   not assumed to have this permission. Set project_type, the target project ID,
+   not assumed to have this permission. Set `runner_type=project_type`, `project_id` to the target project ID,
    locked=true, run_untagged=true and maximum_timeout=600. Accepting untagged jobs
    is appropriate only for this dedicated sandbox; workplace jobs may require tags.
 2. Securely provision the returned runner authentication token into Secret
@@ -50,4 +50,5 @@ workplace isolation policy before admitting untrusted projects or forks. Avoid
 sharing the namespace with platform credentials.
 
 Official references: [chart configuration](https://docs.gitlab.com/runner/install/kubernetes_helm_chart_configuration/),
-[new runner creation](https://docs.gitlab.com/ci/runners/new_creation_workflow/).
+[new runner creation](https://docs.gitlab.com/ci/runners/new_creation_workflow/),
+and [runner creation API](https://docs.gitlab.com/api/users/#create-a-runner-linked-to-a-user).
