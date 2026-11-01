@@ -1,0 +1,67 @@
+{
+  "observedAtUtc": "2026-10-07T13:07:43Z",
+  "scope": "Disposable local kind/Flux lab with synthetic credentials and a private test registry; no workplace deployment",
+  "platform": {
+    "cluster": "kind-ado-flux-oci",
+    "kubernetes": "v1.35.0",
+    "nodeArchitecture": "arm64",
+    "fluxCli": "v2.9.6",
+    "controllers": ["source-controller", "kustomize-controller"]
+  },
+  "image": {
+    "releasedArchive": "azure-devops-mcp-airgap-v2",
+    "releasedRuntimeArchitecture": "linux/amd64",
+    "releasedRuntimeOnArm64Kind": "Image pull failed with no match for platform; this archive is not multi-arch",
+    "labRuntime": "Separate linux/arm64 build from the same Dockerfile and application source; not the released image",
+    "labRuntimeRegistryDigest": "sha256:67a7036294b18fe7d00af67d7baea5e38361ab0177f67d06eb335a4b8dda221d",
+    "arm64BuildVerification": {
+      "offlineTestsPassed": 11,
+      "nativeKeytarLoaded": true,
+      "offlineImageSmokePassed": true
+    }
+  },
+  "artifact": {
+    "runtimeOnlyManifestDigest": "sha256:2218db1a271e5eeae0c0728c352d1a438ef7e4f68f49ff460429f6a422b2cfa7",
+    "fullReadOnlyManifestDigest": "sha256:9f8356a531f400140c4c70afef93612121a08cd65726db0d3e4679b6d9a44b79",
+    "fullArtifactPullRoundTrip": "Byte-for-byte directory comparison passed",
+    "fullReadOnlyResources": ["Deployment", "Service", "NetworkPolicy", "RemoteMCPServer", "Agent"],
+    "fullReadOnlyAgent": "repo_pull_request_write omitted",
+    "draftPrOptIn": "The separate --allow-draft-pr render includes repo_pull_request_write; it was not deployed"
+  },
+  "gitopsChain": {
+    "localGitCommit": "366db240e4105daf1a96d1fac26ae5ff0705c905",
+    "gitRepository": "Ready=True; fetched the local Git commit",
+    "parentKustomization": "Ready=True at the Git commit; inventory contains the OCIRepository and child Kustomization",
+    "ociRepository": "Ready=True at the runtime-only manifest digest",
+    "childKustomization": "Ready=True at the same OCI digest; inventory contains Deployment, Service and NetworkPolicy",
+    "deployment": "1/1 Ready; one Pod Running with zero restarts",
+    "healthz": "HTTP 200 with body ok",
+    "unauthenticatedMcpPost": "HTTP 401",
+    "authenticatedProtocol": {
+      "initializeHttp": 200,
+      "protocolVersion": "2025-03-26",
+      "listToolsHttp": 200,
+      "readToolsListed": 8,
+      "draftPrWriteExposed": false
+    }
+  },
+  "validation": {
+    "pythonCompile": "passed",
+    "shellSyntax": "passed",
+    "kustomizeBuildFullAndRuntimeOnly": "passed",
+    "serverDryRunFullAgainstExistingKagentCrds": "Five objects passed earlier in the session; a later repeat was unavailable because the external lab cluster had no route to its API",
+    "gitDiffCheck": "passed",
+    "renderModesAndDigestValidation": "Five full resources, three runtime resources, read-only default, explicit draft-PR opt-in, digest pin and invalid-digest rejection passed",
+    "localDocumentationLinks": "passed",
+    "sourceArchiveIncludesFluxFilesAndEvidence": "passed",
+    "publicSafetyStrictScan": "zero hits across bundle",
+    "gitleaksNoGitScan": "no leaks found",
+    "detectSecretsScan": "13 unverified high-entropy hits reviewed: 12 existing build hashes and one new local Git commit SHA; no credential"
+  },
+  "limits": [
+    "The live Flux reconcile deployed only three runtime resources to kind; the two kagent custom resources were rendered, OCI-round-tripped and server-dry-run against a different lab cluster",
+    "The arm64 lab image differs from the published amd64 archive; no multi-architecture runtime image was published",
+    "Synthetic credentials prove startup and MCP discovery, not Azure DevOps data access, PAT scopes, draft PR creation or work network reachability",
+    "The local Git repository, registry and insecure HTTP flag are isolated lab fixtures, not a workplace configuration"
+  ]
+}
