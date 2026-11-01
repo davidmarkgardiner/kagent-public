@@ -1,0 +1,31 @@
+{{- if not (regexMatch "^[^[:space:]]+@sha256:[0-9a-f]{64}$" .Values.image.ref) -}}
+{{- fail "image.ref must be an internal registry image reference pinned by a 64-character sha256 manifest digest" -}}
+{{- end -}}
+{{- if not (regexMatch "^[a-zA-Z0-9_-]+$" .Values.ado.organization) -}}
+{{- fail "ado.organization must be the Azure DevOps Services organization slug" -}}
+{{- end -}}
+{{- if or .Values.draftPr.enabled .Values.codePush.enabled -}}
+{{- if or (empty .Values.draftPr.project) (empty .Values.draftPr.repositoryId) (empty .Values.draftPr.sourceBranch) (empty .Values.draftPr.targetBranch) -}}
+{{- fail "scoped code/PR tools require draftPr.project, repositoryId, sourceBranch and targetBranch" -}}
+{{- end -}}
+{{- if or (hasPrefix "refs/" .Values.draftPr.sourceBranch) (hasPrefix "refs/" .Values.draftPr.targetBranch) (eq .Values.draftPr.sourceBranch .Values.draftPr.targetBranch) -}}
+{{- fail "draftPr branches must be distinct names without refs/ prefix" -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.codePush.enabled -}}
+{{- if or (not (regexMatch "^/[A-Za-z0-9._/-]*$" .Values.codePush.pathPrefix)) (contains ".." .Values.codePush.pathPrefix) (contains "//" .Values.codePush.pathPrefix) -}}
+{{- fail "codePush.pathPrefix must be a reviewed absolute repository path prefix" -}}
+{{- end -}}
+{{- if or (not (regexMatch "^[A-Za-z0-9][A-Za-z0-9._/-]*/$" .Values.codePush.branchPrefix)) (contains ".." .Values.codePush.branchPrefix) (contains "//" .Values.codePush.branchPrefix) -}}
+{{- fail "codePush.branchPrefix must be a reviewed prefix ending in /, such as agent/" -}}
+{{- end -}}
+{{- if or (not (hasPrefix .Values.codePush.branchPrefix .Values.draftPr.sourceBranch)) (eq .Values.codePush.branchPrefix .Values.draftPr.sourceBranch) -}}
+{{- fail "draftPr.sourceBranch must be an example branch under codePush.branchPrefix" -}}
+{{- end -}}
+{{- end -}}
+{{- if and .Values.exampleAgent.enabled (empty .Values.exampleAgent.modelConfig) -}}
+{{- fail "exampleAgent.modelConfig must name an existing approved ModelConfig" -}}
+{{- end -}}
+{{- if and .Values.networkPolicy.enabled (empty .Values.networkPolicy.ingressFrom) -}}
+{{- fail "networkPolicy.ingressFrom must contain reviewed namespace/pod selectors when enabled" -}}
+{{- end -}}

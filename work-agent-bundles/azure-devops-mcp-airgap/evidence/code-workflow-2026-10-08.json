@@ -1,0 +1,26 @@
+{
+  "verifiedAtUtc": "2026-10-08T11:33:41.964782+00:00",
+  "upstream": "@azure-devops/mcp@2.10.0",
+  "platform": "linux/amd64",
+  "runtimeImageTag": "azure-devops-mcp:2.10.0-code1",
+  "runtimeLocalImageId": "sha256:455deb17488512cf3d81786ca84cef3c05d5707e845c7abf08c8af342848708b",
+  "archiveSha256": "04737cc672006cdf0838a2c1cc83a14c423c5a2b6bcc44579a3cfaa6d2c1e390",
+  "chartVersion": "0.2.0",
+  "chartPackageSha256": "d0630bc3eb98861d0637e539c33413882202da5ae27f42cc81b4823873a20918",
+  "verification": {
+    "offlineNodeTestsPassed": 14,
+    "offlineNodeTestsFailed": 0,
+    "nativeKeytarLoaded": true,
+    "upstreamReadCatalogTools": 8,
+    "upstreamCodeWorkflowCatalogTools": 13,
+    "helmLint": true,
+    "helmPackage": true,
+    "helmReadAndWriteTemplateChecks": true
+  },
+  "limits": [
+    "No live Azure DevOps code push performed",
+    "No workplace registry push or cluster installation performed",
+    "Destination registry image and chart manifest digests are not local image IDs or archive hashes",
+    "Only linux/amd64 tested"
+  ]
+}

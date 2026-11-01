@@ -1,0 +1,19 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: {{ .Values.remoteMcp.name | quote }}
+  labels:
+    app.kubernetes.io/part-of: azure-devops-mcp-work-bundle
+spec:
+  description: {{ ternary "Azure DevOps read and scoped Git workflow tools" "Azure DevOps read tools" (or .Values.codePush.enabled .Values.draftPr.enabled) | quote }}
+  protocol: STREAMABLE_HTTP
+  url: {{ printf "http://azure-devops-mcp.%s.svc.cluster.local:8091/mcp" .Release.Namespace | quote }}
+  timeout: {{ .Values.remoteMcp.timeout | quote }}
+  allowedNamespaces:
+    from: Same
+  headersFrom:
+    - name: X-MCP-Key
+      valueFrom:
+        type: Secret
+        name: {{ .Values.bridgeKeySecret.name | quote }}
+        key: {{ .Values.bridgeKeySecret.key | quote }}

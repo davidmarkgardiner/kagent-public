@@ -1,0 +1,19 @@
+# Copy to a private work path and replace each {{PLACEHOLDER}} before rendering.
+# Never put the PAT or bridge key in Helm values.
+image:
+  ref: "{{INTERNAL_REGISTRY}}/azure-devops-mcp@sha256:{{RUNTIME_MANIFEST_DIGEST}}"
+ado:
+  organization: "{{ADO_ORGANIZATION}}"
+draftPr:
+  enabled: true
+  project: "{{ADO_PROJECT}}"
+  repositoryId: "{{ADO_REPOSITORY_ID}}"
+  sourceBranch: "{{SOURCE_BRANCH}}"
+  targetBranch: "{{TARGET_BRANCH}}"
+codePush:
+  enabled: true
+  pathPrefix: "{{REVIEWED_PATH_PREFIX}}"
+  branchPrefix: "{{REVIEWED_BRANCH_PREFIX}}"
+exampleAgent:
+  enabled: true
+  modelConfig: "{{EXISTING_APPROVED_MODEL_CONFIG}}"
