@@ -2,6 +2,8 @@
 
 Prepared 3 November 2026 for security and core application delivery reviewers.
 
+Related [security-context README](agent-substrate-security-context-README.md) records read-only filesystem, privilege escalation, root user, profile, sidecar, and host-mount findings. Baseline restrictions apply to both `kagent` and `ate-system`, with exceptions limited to approved runtime containers.
+
 ## Summary
 
 Agent Substrate is the execution layer used by kagent to start, isolate, suspend, and resume agent workloads. Its gVisor worker runs a sandbox runtime inside a Kubernetes container. The runtime needs elevated Linux permissions to construct that sandbox and manage its filesystems and resource groups.
