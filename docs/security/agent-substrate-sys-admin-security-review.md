@@ -14,6 +14,40 @@ The capability belongs to the **sandbox infrastructure container**. A model requ
 
 The proposed security position is a bounded runtime exception, supported by restricted deployment access, peer review, and an additional Kyverno allowlist. Approval must identify the actual installed version and workload. A blanket namespace exemption would permit more than this requirement.
 
+## Policy scope by namespace
+
+This is the **proposed policy target for the reviewed Substrate `v0.6.0-alpha3` configuration**, using the saved lab identities. It is not a workplace deployment or an approved exception list. Confirm workplace versions, identities, and image digests before applying it.
+
+The colors describe the proposed decision, not current compliance or deployed enforcement.
+
+| Color and label | Meaning |
+| --- | --- |
+| 🟩 Baseline | Apply the restriction in both namespaces. |
+| 🟧 Runtime allowance | Keep the policy and permit only the named runtime container's reviewed deviation. Approval is still required. |
+| 🟨 Review needed | A saved setting is unset or compatibility is unproven. Harden it or justify a specific exception before Enforce. |
+| 🟥 Deny | Reject the broader permission or namespace-wide exemption. |
+
+| Policy required in both namespaces | Baseline behavior | `kagent` scope | `ate-system` scope |
+| --- | --- | --- | --- |
+| `require-drop-all` | Every container explicitly sets `capabilities.drop: [ALL]`. | 🟩 Baseline, including the Substrate worker. | 🟩 Baseline, including `atelet` and objectstore sidecars. |
+| `allow-capability-additions` | Only `NET_BIND_SERVICE` may be added under the supplied baseline. | 🟧 Only `Deployment/kagent-default`, container `worker`, may use the reviewed worker capability allowlist below. Ordinary containers retain the baseline. | 🟧 Only `DaemonSet/atelet`, container `atelet`, may add `DAC_OVERRIDE`. Its objectstore sidecar adds no capabilities. No `SYS_ADMIN` allowance is established here for this version. |
+| `deny-escalation` | Every container sets `allowPrivilegeEscalation: false`. | 🟧 The approved `worker` needs an escalation allowance because it holds `SYS_ADMIN`. Controller, UI, and ordinary containers retain `false`. | 🟨 `atelet`, objectstore sidecars, and several control-plane containers leave it unset. Target `false`; compatibility or a specific exception must be established. Do not allow escalation across the namespace. |
+| `deny-privileged` | Require `privileged: false`, or its default. | 🟩 Keep `privileged: false` on the newer worker. 🟥 Deny `privileged: true`. | 🟩 No full-privileged requirement in the saved newer `atelet` configuration. 🟥 Deny `privileged: true`. |
+| `deny-host-namespaces` | Deny `hostNetwork`, `hostPID`, and `hostIPC`. | 🟩 Baseline. No exception evidenced. | 🟩 Baseline. No exception evidenced. |
+| `deny-hostpath` | Deny hostPath except exact reviewed runtime volumes and mounts. | 🟧 The approved worker Pod may declare and mount `/var/lib/ate`, writable with `HostToContainer` propagation. | 🟧 The `atelet` Pod needs exact node volumes. The main container mounts `/var/lib/ate`, `/var/lib/kubelet/plugins`, and `/var/lib/kubelet/device-plugins` writable, and `/dev` read-only at `/host/dev`. Its objectstore sidecar mounts only `/var/lib/ate` from those host paths. |
+| Read-only root filesystem, additional control | Require `readOnlyRootFilesystem: true`, with separately approved writable volumes. | 🟩 Controller and UI already request it. 🟨 Worker leaves it unset; test compatibility or justify an exception. | 🟩 Credential provider already requests it. 🟨 `atelet`, sidecars, and several other components leave it unset; review each container. |
+| Non-root execution, additional control | Require `runAsNonRoot: true`. | 🟧 The approved worker runs as UID/GID 0. Ordinary containers retain the non-root target. | 🟧 `atelet` and its objectstore sidecar run as UID/GID 0. 🟨 Other unset non-root settings need their own review. |
+| Seccomp and AppArmor, additional controls | Require approved restrictive profiles; use `RuntimeDefault` where supported and compatible. | 🟧 Only the approved worker uses the reviewed `Unconfined` profiles. Ordinary containers retain restrictive profiles. | 🟨 `atelet` and several control-plane components leave profiles unset. Verify defaults and compatibility; no namespace-wide `Unconfined` allowance. |
+| Sysctl allowlist, additional control | Permit only approved sysctls and values. | 🟩 No worker-specific sysctl allowance evidenced. | 🟨 Review `atenet-egress` with `net.ipv4.ip_unprivileged_port_start=0` against the actual policy. This is a separate gateway setting, not a worker exception. |
+
+The six named rules above exist in the lab policy [`lab-runtime-permissions`](../../work-agent-bundles/kyverno-runtime-permissions-lab/policies/audit.json). Read-only root filesystem, non-root, profile, and sysctl controls are **additional proposed controls**, not rules already supplied by that policy. The lab kept both namespaces in **Audit**. The target is reviewed Enforce coverage with tested runtime allowances; no such rollout is claimed here.
+
+The worker capability allowlist is `NET_ADMIN`, `SYS_ADMIN`, `SYS_CHROOT`, `SYS_PTRACE`, `SETUID`, `SETGID`, `SETPCAP`, `DAC_OVERRIDE`, `FOWNER`, `CHOWN`, `MKNOD`, `NET_RAW`, and `SETFCAP`, with `drop: [ALL]`. It applies only to the approved worker container, not every Pod in `kagent`. Additional worker pools need separate scope approval. Runtime allowances must also match the reviewed service account and immutable image digest.
+
+**Privilege escalation and full privileged mode are different settings.** In the newer worker, `SYS_ADMIN` requires an escalation allowance while `privileged: false` stays enforced. In the older `v0.0.9` path, both the worker and `atelet` requested `privileged: true`; that needs a separate version-specific decision for both namespaces. Do not apply the newer matrix to that older installation unchanged. See the [Kubernetes escalation semantics](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+
+🟥 Do not exclude all of `kagent` or `ate-system`, permit arbitrary capability additions, or treat a shared service account or caller-supplied label as sufficient authorization. The operating controls remain restricted core-team deployment and peer review. The policy, its exceptions, and namespace security labels also need restricted ownership.
+
 ## Which component and namespace require it?
 
 The following identities were recovered from the saved Kubernetes Pod and Deployment inventory collected on **1 November 2026 at approximately 11:35 UTC**. This is historical native home-lab evidence, using kagent `1.0.0-alpha17` and Substrate `v0.6.0-alpha3`. It is not an inspection of the workplace cluster.
