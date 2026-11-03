@@ -6,9 +6,9 @@ Related [security-context README](agent-substrate-security-context-README.md) re
 
 ## Summary
 
-The current request is to exclude **`kagent` and `ate-system` from two specific Microsoft Azure policies** so the existing kagent/Substrate manifests can be deployed. The two policies concern allowed capabilities and a read-only root filesystem.
+The delivery owner has clarified that Substrate will run in its **own separate engineering cluster**, away from production and unrelated workloads. This is the intended deployment boundary, not a claim that workplace isolation has already been verified. The initial requested target is engineering only; stakeholder approval remains pending.
 
-The existing workplace model, as described by the delivery owner, uses namespace exclusions. This document therefore requests namespace exclusions for each policy. Workload details explain why each namespace needs the exclusion; they are not selectors that make the Azure exclusion apply only to those containers.
+The current central Azure assignment design uses namespace exclusions that may affect every cluster inheriting the assignment. The proposal is to exclude `kagent` and `ate-system` from **two Azure policies only**, while Kyverno restores the corresponding restrictions on every affected cluster. Only the engineering cluster receives reviewed Substrate allowances. Broad Azure assignment scope is a characteristic of this proposed operating model, not an inherent requirement of Azure Policy.
 
 Other policies remain unchanged. If another policy rejects the next deployment, capture that denial and address that policy separately.
 
@@ -28,11 +28,45 @@ kagent
 ate-system
 ```
 
-Both reviewed Microsoft definitions expose `excludedNamespaces`. The policy owner must merge these names into the effective exclusion list, preserving existing exclusions. If assigned through an initiative, scope the change to these two definitions; do not use a shared initiative parameter that would also exempt the namespaces from unrelated policies.
+Both reviewed Microsoft definitions expose `excludedNamespaces`. After the Kyverno protection below is verified on every affected cluster, the policy owner can merge these names into the effective exclusion lists, preserving existing exclusions. If assigned through an initiative, scope the change to these two definitions; do not use a shared initiative parameter that would also exempt the namespaces from unrelated policies.
 
 The public definitions reviewed were versions **6.2.0** and **6.3.0**, respectively, from Microsoft's [AKS policy reference](https://learn.microsoft.com/en-us/azure/aks/policy-reference). The source links above pin the reviewed definitions. The catalog is not an inventory of the policies actually assigned at work. Workplace assignment versions, parameter values, and denial records have not been inspected here.
 
 🟩 **All other policy settings stay unchanged for this phase.** This includes any separate capability policies. No additional exclusion is requested unless a subsequent deployment denial identifies it as necessary.
+
+## Cluster-specific enforcement with Kyverno
+
+The Azure namespace exclusion removes a check; it does not grant a Kubernetes or Azure role. The effective permission must be narrowed again through protected, cluster-local admission policy.
+
+| Cluster and workload | Central Azure treatment for these two policies | Required Kyverno outcome |
+| --- | --- | --- |
+| Approved separate engineering cluster, reviewed Substrate workloads in `kagent` and `ate-system` | 🟧 Namespace exclusions may apply. | 🟧 Permit only the reviewed runtime identities, images, capability sets, and filesystem deviations. |
+| Approved engineering cluster, all other workloads | Preserve applicable Azure controls; the two excluded namespaces have the documented Azure gap. | 🟩 Enforce the baseline. An engineering cluster is not a blanket allowance for every Pod. |
+| Production and every other affected cluster, including any namespaces also named `kagent` or `ate-system` | 🟧 The same namespace exclusions may be inherited. | 🟥 Deny the Substrate capability/filesystem deviations. 🟩 Keep the baseline in Enforce; install no engineering allowance. |
+
+Here, red means deny the exceptional request. It does not mean deny ordinary compliant kagent workloads. The exact Azure assignment scope and cluster inventory still need confirmation.
+
+### How to make the cluster restriction reliable
+
+A Kyverno `ClusterPolicy` governs the cluster where it is installed; it is not a fleet-wide controller. Deploy a common baseline through the protected GitOps configuration for **every cluster whose Azure coverage changes**. Render the Substrate allowance only into the explicitly approved engineering cluster's configuration, identified by the platform's managed cluster inventory. Do not decide approval from a Pod/namespace label or a ConfigMap that workload deployers can edit.
+
+The baseline must reproduce the two actual Azure controls, including configured allowed capabilities and required capability drops, the read-only root-filesystem check, and existing approved scope. It must cover the Azure-excluded namespaces, main/init/ephemeral containers, controller-created Pods, and relevant update paths. Confirm Kyverno filters, webhook selectors, and existing-violation behavior do not create bypasses.
+
+On engineering, a narrowly matched allowance must retain bounded validation. A generic namespace exemption or a PolicyException that skips a capability rule without a replacement check could allow arbitrary capabilities. Require the approved workload/container, service account, immutable image digest, and exact allowed additions. Scope filesystem deviations to reviewed runtime containers. Other Pods in both namespaces keep the baseline.
+
+[Kyverno validation](https://kyverno.io/docs/policy-types/cluster-policy/validate/) distinguishes blocking Enforce mode from reporting-only Audit mode. [Policy exceptions](https://kyverno.io/docs/guides/exceptions/) need separate scope and ownership controls. Use the syntax supported by the installed version. This document supplies the design; it does not claim a tested policy bundle or Azure-equivalence proof.
+
+Policy administrators must restrict changes to cluster enrollment, GitOps overlays, Kyverno policies/exceptions, webhook configuration, namespace filters, and the identities that can alter them. Peer review by the core delivery team remains part of the operating model. Neither that process nor a workload label substitutes for admission enforcement.
+
+### Roll out without a fleet-wide protection gap
+
+1. Inventory every cluster affected by the central assignment, the two effective definitions/parameters, and existing approved exclusions. Unknown or unprotected clusters are unresolved rollout gaps.
+2. Deliver and verify the Kyverno baseline in **Enforce** on each affected cluster. Configure and verify fail-closed webhook behavior for the covered requests, compatible availability settings, and ongoing drift reporting. A Kyverno installation or an Audit report alone is insufficient.
+3. Deliver the bounded engineering-only allowance through its protected cluster overlay. Test both permitted runtime shapes and rejected deviations. Prove negative results originate from Kyverno; an Azure or PSA rejection alone does not prove the replacement control works.
+4. Obtain stakeholder approval, then make the two central Azure exclusion changes. Re-test the permitted engineering workloads and denied requests elsewhere after the Azure checks are removed from those namespaces. If coverage fails, restore the Azure exclusion settings rather than leave an affected cluster unprotected.
+5. Require the same baseline before onboarding new clusters that inherit these exclusions. Do not copy the engineering allowance to another cluster without a separate approval. Retain evidence and alerts for missing, weakened, stale, or bypassed enforcement.
+
+The current lab results are not this fleet proof. Workplace Kyverno versions, policies, failure behavior, cluster enrollment, engineering exceptions, and runtime isolation remain unverified. No cluster or Azure assignment was changed by this document.
 
 ## Which components explain the exclusions?
 
@@ -66,61 +100,40 @@ A namespace exclusion removes that Azure policy's check for all matching workloa
 
 The worker executes agent code through gVisor, which provides an isolation boundary described in the [gVisor security introduction](https://gvisor.dev/docs/architecture_guide/intro/). This does not remove trust in the outer worker or its node access. The [Substrate security document](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/docs/security.md) also records unfinished protections; they are not claimed as workplace controls here.
 
-A separate Kyverno allowlist can be proposed as a compensating control for these namespace-wide exclusions. It could constrain workload identities, image digests, capabilities, filesystem settings, and placement. It has not been deployed or validated here. The containment proposal below changes no Azure exemption scope and deploys no controls.
+Kyverno is the proposed compensating enforcement layer for the central exclusions. The engineering-only allowance and baseline on every other affected cluster are required parts of this design. They have not been deployed or validated here. The Azure request remains limited to the two named policies.
 
 ## Responding to the production-risk concern
 
-The concern is valid. A broad Linux capability increases infrastructure risk, and an agent with production-changing tools can make a damaging request even while its sandbox works correctly. These risks need separate controls.
+The proposed boundary is a **separate engineering cluster**, not a node pool sharing production's Kubernetes control plane. A runtime compromise could still expose that engineering cluster's nodes, workloads, runtime state, snapshots, and credentials. Cross-system impact then depends on reachable services, identities, or additional vulnerabilities. Separate clusters reduce the shared-cluster exposure; they do not automatically remove production network paths or production-authorized tool credentials.
 
-| Risk | Potential impact | Control that addresses it |
+`SYS_ADMIN` is a Linux runtime capability, not a Kubernetes role or an Azure production-management role. An agent can also make a damaging authorized tool call without escaping its sandbox. Runtime containment and tool authorization therefore need separate evidence.
+
+| Boundary | Proposed protection in the engineering rollout | Evidence needed before claiming protection |
 | --- | --- | --- |
-| Sandbox or runtime compromise | An attacker may reach worker/node state, co-located workloads, mounted credentials, or shared runtime sockets. Further movement depends on reachable services, identities, and vulnerabilities. | Dedicated runtime nodes, enforced placement, restricted node and workload identities, external network controls, and a separate cluster where stronger isolation is needed. |
-| Incorrect production tool operation | A permitted but wrong MCP/tool request can change production without any sandbox escape. | No production write authority in the pilot. Enforce tool permissions at the service/API, and reserve future changes for a separate approved executor. |
+| Cluster separation | Run Substrate only in the approved separate engineering cluster. Keep production and unrelated workloads out of it. Install no Substrate allowance on other clusters. | Managed cluster inventory, GitOps enrollment and rendered policy differences, workload inventory, and negative admission tests on other affected clusters. |
+| Runtime placement | Restrict workers and `atelet` to the engineering runtime nodes. A Substrate WorkerPool groups worker Pods; it does not itself create an AKS node-pool boundary. Use hard placement and taints where nodes are reserved within engineering. | Actual worker and `atelet` placement after replacement/scale-out; inventory remaining platform DaemonSets and their credentials. |
+| Identities and production operations | Review runtime, node/kubelet, controller, gateway, and tool identities separately. Give pilot tools only approved read-only access. Do not put production-changing credentials in the engineering runtime. Future writes require a separate approved executor. | Effective Kubernetes/Azure permissions and tool-server authorization tests, including synthetic denied write requests that bypass the normal agent UI. |
+| Network access | Restrict both Pod and node-originated traffic to approved dependencies. Independently block unapproved production and metadata-credential paths, preserving required platform traffic. | Positive dependency tests and negative connectivity tests covering actor, outer worker, and node paths using the actual CNI, routing, and external network controls. |
+| Maintenance and response | Pin approved runtime images/assets, patch nodes, restrict administration, bound resources, monitor policy drift and API/tool activity, and provide stop/revoke/quarantine procedures. | Digests, patch/access records, redacted audit samples, an expiry/review date, and a tested incident-response procedure. |
 
-`SYS_ADMIN` is a Linux capability used by the runtime. It is not a Kubernetes role or an Azure production-management role. That distinction explains the request; it does not remove the risk of the elevated runtime.
+The reviewed [WorkerPool template](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/pkg/api/v1alpha1/workerpool_types.go#L29-L102) supports optional selectors and affinity. The [atelet base manifest](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/manifests/ate-install/atelet.yaml#L109-L153) has no node selector. Its [ClusterRole](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/manifests/ate-install/atelet.yaml#L24-L65) includes cluster-wide Pod reads. These source facts require placement and identity verification; they are not evidence of the workplace configuration.
 
-### A WorkerPool does not automatically isolate AKS nodes
-
-A Substrate WorkerPool groups worker Pods. It is different from an AKS node pool, which groups node VMs. In the reviewed version, [node selectors and required node affinity are optional WorkerPool template fields](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/pkg/api/v1alpha1/workerpool_types.go#L29-L102). The [builder starts with no node selector or affinity](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/cmd/atecontroller/internal/controllers/workerpool_apply.go#L546-L575) when a template is absent.
-
-The [atelet DaemonSet](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/manifests/ate-install/atelet.yaml#L109-L153) must cover worker nodes. Its reviewed base manifest has tolerations but no node selector, so it can run beyond the intended runtime pool unless explicitly restricted. Confining workers alone is insufficient.
-
-Hard placement limits where these Pods execute. It does not confine their API permissions or network reach. For example, the reviewed [atelet ClusterRole](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/manifests/ate-install/atelet.yaml#L24-L65) includes cluster-wide Pod reads. That is not production write permission, but it demonstrates why hosting-node placement and authorization are separate boundaries.
-
-Dedicated nodes reduce exposure to other application workloads. They do not guarantee that a compromise stays on those nodes. Kubernetes explicitly identifies [lateral movement through shared services despite node isolation](https://kubernetes.io/docs/concepts/security/multi-tenancy/#node-isolation). The reviewed Substrate security document also marks node-level blast-radius containment as unfinished. Its [shared writable socket implementation](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/internal/nodepath/nodepath.go#L41-L57) records a remaining local-state risk. No exploit was reproduced in this review.
-
-### Proposed containment for stakeholder approval
-
-**These are proposed approval conditions, not verified workplace protections.** The recommended first step is a time-limited non-production evaluation, preferably in a separate cluster without production credentials or production write access. If the evaluation shares a production cluster, stakeholders must explicitly accept the remaining shared-cluster risk.
-
-| Boundary | Proposed protection | Evidence needed before claiming protection |
-| --- | --- | --- |
-| Runtime node placement | Use a dedicated AKS **user** node pool. Require a hard node selector or required affinity on every worker pool and on `atelet`, including its sidecars. Keep production applications off these nodes. Inventory necessary platform DaemonSets and their credentials. | Rendered settings and actual Pod-to-node inventory, including after worker replacement and scale-out. Confirm no `atelet` remains on unrelated nodes. |
-| Scheduling and admission | Combine a dedicated-node taint with required placement. Restrict who can change WorkerPools, scheduling fields, node labels, tolerations, and direct node binding. A proposed admission allowlist must restrict elevated containers and approved images inside both Azure-excluded namespaces. | Negative admission tests for an unauthorized workload using the dedicated pool, an elevated Pod targeting another pool, and an unapproved image or capability addition. Allow required platform controllers without a broad bypass. |
-| Kubernetes and Azure identities | Review runtime, node/kubelet, controller, gateway, tool, and workload identities separately. Grant only required resource/action scopes. Avoid production secrets or production-authorized MCP services on runtime nodes. Do not assume a new node pool has isolated cloud permissions. | Effective RBAC and Azure role assignments, credential locations, and authorization tests for actual service accounts. Cluster-scoped platform permissions remain a documented residual risk. |
-| Network access | Use default-deny Pod traffic with explicit dependencies. Independently restrict node-originated access to production endpoints and metadata credentials using supported network controls outside the potentially compromised worker. Preserve required AKS/control-plane traffic. | Negative connectivity tests from the actor, outer worker, and representative node-originated path. Verify the actual CNI, routing, firewall, and subnet enforcement. Pod NetworkPolicies alone are not proof against a compromised node. |
-| Production operations | Give the pilot only approved read-only tools, backed by read-only service identities. Do not rely on an agent prompt saying it will not write. Future writes require a separate executor and server-enforced approval tied to the exact operation and target. | Tool/API authorization denies writes, including direct calls that bypass the agent's normal UI. Verify the real tool server's identity, not just the agent's Kubernetes service account. Use synthetic targets for destructive-operation denial tests. |
-| Node and runtime maintenance | Pin approved runtime images and sandbox assets, maintain node/kernel patches, restrict node administration, and set resource budgets. | Image/asset digests, node-image and patch records, admin access inventory, and observed resource limits. |
-| Detection and response | Record runtime lifecycle, API/tool calls, and policy decisions with sensitive data redacted. Provide a tested way to stop invocations, revoke credentials, quarantine nodes, and rebuild the runtime pool after suspected compromise. | Audit samples, alert ownership, expiry/review date, and a shutdown/revocation exercise. Removing an Azure exclusion alone does not terminate existing Pods or revoke credentials. |
-
-The [Kubernetes dedicated-node guidance](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#example-use-cases) requires affinity in addition to tolerations when workloads must stay on dedicated nodes. Microsoft's [AKS node-pool guidance](https://learn.microsoft.com/en-us/azure/aks/use-system-pools) distinguishes user pools from the critical system pool. [Kubernetes RBAC guidance](https://kubernetes.io/docs/concepts/security/rbac-good-practices/) and [AKS managed-identity guidance](https://learn.microsoft.com/en-us/azure/aks/managed-identity-overview) support separate permission reviews. [NetworkPolicy limitations](https://kubernetes.io/docs/concepts/services-networking/network-policies/#what-you-cant-do-with-network-policies-at-least-not-yet) explain why Pod policy is only one layer.
-
-The shared-cluster residual risk remains. If that risk is unacceptable to the production platform owner, move the evaluation to a separate cluster with separately bounded identities and networking before approval. A separate cluster still needs those identity and network controls to protect other systems.
+[Kubernetes node-isolation guidance](https://kubernetes.io/docs/concepts/security/multi-tenancy/#node-isolation) explains the residual shared-cluster risk avoided by choosing a separate cluster. [NetworkPolicy limitations](https://kubernetes.io/docs/concepts/services-networking/network-policies/#what-you-cant-do-with-network-policies-at-least-not-yet) explain why Pod policy alone does not establish containment after node compromise. The reviewed Substrate security document marks node-level containment as unfinished, and its [shared socket implementation](https://github.com/kagent-dev/substrate/blob/e2fc0fa9f77ab5fc09eb01b43ccd74bd84c67c71/internal/nodepath/nodepath.go#L41-L57) records a local-state risk. No exploit was reproduced here.
 
 ### Draft response to the approver
 
-> Thank you for raising this. We agree that approval should include the owners of the affected platform and production services, with security, IAM, and network stakeholders as appropriate.
+> We agree that the relevant stakeholders should approve the deployment boundary and controls. Substrate is intended to run in its own separate engineering cluster, away from production and unrelated workloads. The requested Linux capability belongs to its sandbox runtime; it does not itself assign kagent Kubernetes cluster-admin or an Azure production-management role.
 >
-> The technical requirement is a Linux capability on the Substrate runtime container that constructs the agent sandbox. It does not itself assign kagent Kubernetes cluster-admin or an Azure production-management role. Our current Azure mechanism is broader, however, because the two policy exclusions cover the named namespaces. We propose restricted admission and deployment ownership to constrain what can use those exclusions.
+> Our central Azure assignment design may apply the two namespace exclusions across multiple clusters. We propose to restore both restrictions through Kyverno in Enforce mode on every affected cluster, with a bounded runtime allowance deployed only to the approved engineering cluster. Production and other clusters would receive no Substrate allowance, even if they contain namespaces with the same names. The Kyverno baseline must be verified before the central exclusions change.
 >
-> We propose a time-limited non-production pilot with workers and atelet confined to dedicated nodes, reviewed identities and network paths, and read-only tools with no production write authority. We will provide placement evidence and negative authorization/connectivity tests before treating these as implemented protections. Any future production-changing action would need a separate approved executor.
+> We will provide fleet coverage, engineering-only configuration, admission-denial evidence, runtime placement, identity and network tests, monitoring, and rollback arrangements for stakeholder review. Engineering tools will have no production application write authority in the initial rollout; any future production changes require separate authorization and execution controls.
 >
-> Dedicated nodes reduce exposure but do not guarantee containment within a shared cluster. If that remaining risk is unacceptable, we propose a separate evaluation cluster. We are seeking agreement on these bounded conditions and the evidence required for approval, rather than asserting that the capability is risk-free.
+> This is a proposal for a bounded engineering deployment with evidence, expiry, and accountable owners. It is not a claim that broad capabilities are risk-free, or that cluster separation alone protects every connected production system.
 
-This is a draft for the delivery owner to share. No stakeholder has been contacted, and no approval is claimed. Record the actual platform, security, IAM/network, and affected service owners' decisions before proceeding. The Azure exemption request remains limited to allowed capabilities and read-only root filesystem for `kagent` and `ate-system`.
+This is a draft for the delivery owner to share. No stakeholder has been contacted and no approval is claimed. Record the actual platform, security, IAM/network, and affected service owners' decisions. The Azure exemption request remains limited to allowed capabilities and read-only root filesystem for `kagent` and `ate-system`.
 
 ## Complete this two-policy request
 
 The policy owner needs the actual assignment or initiative-member reference for each named definition, its current parameters and exclusions, and the matching workplace workload/version evidence. Record the request owner, review date, and approval through the existing process.
 
-After an approved exclusion change, retry the intended deployment and retain its result. A new denial becomes the evidence for a separate follow-up. These two exclusions do not establish that every remaining policy will pass or that the runtime is ready for workplace use.
+Require verified Kyverno coverage across the affected fleet before the central change, and verify engineering-only runtime admission afterwards. Retry the intended engineering deployment and retain its result. A new denial becomes evidence for a separate follow-up. These two exclusions do not establish that every remaining policy will pass or that the runtime is ready for workplace use.
