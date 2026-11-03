@@ -47,3 +47,20 @@ The requested filesystem exclusion is for deploying the existing manifests. Whet
 Microsoft's [AKS policy reference](https://learn.microsoft.com/en-us/azure/aks/policy-reference) is a catalog, not the workplace assignment inventory. The policy owner must confirm the two actual assignments or initiative members, effective parameters, existing exclusions, and deployed Substrate version. Namespace placement can differ from the lab.
 
 The core delivery team's restricted deployment access and peer-review process remain the operating controls described in the main review. No Azure exclusion or Kyverno policy was applied by this documentation update. After approved changes to these two policies, retry deployment and use any new denial as the basis for the next narrowly scoped request.
+
+## Evidence for a bounded runtime node pool
+
+The [main review now includes breakout analysis, proposed controls, and a draft stakeholder response](agent-substrate-sys-admin-security-review.md#responding-to-the-production-risk-concern). The two-policy exclusion table above is unchanged.
+
+A Substrate WorkerPool is a pool of worker Pods, not an AKS node pool. The reviewed worker template supports optional node selectors and required affinity. The base `atelet` DaemonSet has no node selector. Dedicated placement is therefore a configuration and verification requirement, not an automatic consequence of using Substrate.
+
+Before describing the deployment as contained, obtain these workplace checks. They are proposed evidence requirements; none was performed on the workplace cluster for this document.
+
+1. Verify rendered WorkerPools, generated worker Pods, `atelet`, and its sidecars use the approved runtime nodes. Check actual placement after replacement and scale-out, including the absence of `atelet` on unrelated nodes.
+2. Combine taints with hard placement. Test that unrelated Pods cannot enter the pool and runtime Pods cannot target other pools. Restrict scheduling overrides, direct node binding, node labels, and the use of the namespace exclusions. Inventory platform DaemonSets that still run there.
+3. Review node, runtime, controller, gateway, and MCP/tool credentials and effective permissions separately. A workload's hosting node does not restrict its API authorization. Keep production application workloads and production-authorized credentials off runtime nodes.
+4. Prove required network paths work and prohibited production paths fail. Cover actor traffic, the outer worker, and node-originated traffic. Pod NetworkPolicies are not a sufficient claim of containment after node compromise.
+5. Prove the actual tool/API service identity denies production writes. An incorrect authorized tool call needs no sandbox escape. Enforce any future write approval at a separate executor, independently of the model and its prompts.
+6. Record stakeholder decisions, an expiry, monitoring ownership, and a tested stop/revoke/quarantine procedure. Prefer a separate non-production cluster if the shared-cluster risk is unacceptable.
+
+The existing restriction to the core delivery team and peer review helps control deployment. It does not establish the placement, network, or production-authorization checks above. The defensible claim is reduced and verified exposure under an agreed pilot, with shared-cluster residual risk stated explicitly.
