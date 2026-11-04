@@ -15,6 +15,8 @@ Primary themes:
 
 Do not add secrets, private hostnames, private cluster IPs, subscription IDs, tenant IDs, internal URLs, or real tokens. Use `{{PLACEHOLDER}}` values for environment-specific details.
 
+Do not identify the user's employer in public artifacts, review text, documentation, examples, commit messages, or repository metadata. Use generic terms such as 'the bank' or 'the organisation'.
+
 ## First Files To Read
 
 - `README.md` for repository layout and quick navigation.
