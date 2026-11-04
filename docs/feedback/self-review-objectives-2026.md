@@ -91,3 +91,29 @@ The following material supports the subject matter and progress behind the objec
 My focus during 2026 has been to develop practical expertise in AI and translate that learning into patterns the bank can assess and adopt. I have worked across agent frameworks and harnesses, secure model and tool access, Kubernetes runtime isolation, observability, evaluation and token efficiency. I have developed prototypes, technical assessments and reusable handovers for SRE triage, software delivery and governed data access, and explored compliance and vulnerability use cases. This has helped build an evidence base for architecture and investment decisions and identify the controls, operational ownership and validation needed for wider adoption.
 
 When completing the review, add the applicable workplace delivery records, stakeholder feedback and measured outcomes to the relevant objective. Do not mark an objective achieved solely because the associated repository folder exists. Any proposed counts or dates above are new targets, not historical commitments or achieved metrics.
+
+## Evaluation questionnaire
+
+### 1. Strengths and achievements
+
+My core contribution this year has been to translate emerging AI capabilities into practical engineering approaches that the organisation can assess and adopt. I have developed technical assessments, prototypes and reusable implementation handovers covering SRE triage, software delivery, governed data access and agent infrastructure.
+
+I evaluated agent frameworks and harnesses, including the progression from HolmesGPT towards kagent, and investigated how agents connect to models, tools and existing systems. This work provided concrete demonstrations and architectural guidance, helping clarify suitable use cases, integration requirements and technical limitations.
+
+Security, reliability and efficiency have been central to my approach. I investigated agent identity, access controls, isolation, observability, evaluation and human approval, alongside Agent Substrate and durable execution patterns. I also developed safeguards for database responses and model context consumption, providing a practical foundation for controlling data exposure and token usage.
+
+Through collaboration with Microsoft and internal stakeholders, technical demonstrations and documented handovers, I have helped make this learning accessible and reusable. The impact has been a stronger evidence base for technology decisions and clearer implementation paths for further adoption.
+
+### 2. Development areas
+
+My next priority is to turn the breadth of this work into a smaller number of clearly prioritised, supported implementations. I can increase my impact by agreeing business outcomes, ownership, acceptance criteria and adoption plans earlier with stakeholders.
+
+I also want to strengthen measurement. Establishing baselines for investigation time, manual effort, answer quality, reliability and cost will help demonstrate which approaches deliver meaningful value and where further improvement is needed.
+
+Alongside technical delivery, I want to develop my leadership and communication skills: making recommendations more concise, sharing knowledge more systematically and involving colleagues earlier. This will help build wider capability and prepare me to lead an AI forward-deployed engineering team.
+
+### 3. Behaviours
+
+- **Accountability with integrity:** I have taken ownership of unfamiliar technical problems and followed investigations through into documented findings, demonstrations and implementation guidance. I have been transparent about failures, limitations and outstanding validation, distinguishing prototype results from workplace readiness. Going forward, I can strengthen this through clearer milestones, earlier escalation and more consistent reporting against agreed outcomes.
+- **Collaboration:** I have worked with Microsoft and internal stakeholders to explore practical requirements and communicate technical findings. My reusable documentation and handovers provide a basis for others to build on the work. Going forward, I will involve intended users and operational owners earlier, seek structured feedback and create more opportunities for joint delivery.
+- **Innovation:** I have actively explored new frameworks, agent architectures, tools and runtime approaches, using practical testing to challenge assumptions and refine recommendations. I have applied that learning across engineering, operations and governed data use cases. Going forward, I will connect experimentation more closely to prioritised business problems and use measurable results to decide what to scale, improve or stop.
