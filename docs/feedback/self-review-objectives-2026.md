@@ -6,7 +6,47 @@ These objectives are being documented retrospectively. They describe the intende
 
 Category definitions: **Short term:** less than 1 year; **Medium term:** 1 to 3 years; **Long term:** over 3 years. The proposed completion dates fall within these horizons from the preparation date.
 
-## Objectives
+## Performance objectives for 2026
+
+These three delivery objectives are intended for the Performance tab, alongside the organisation's existing behaviours, people and risk objectives. The six objectives in the Development section below cover learning and career progression. The outcome metrics here are proposed assessment criteria, not claims of achieved results or targets previously agreed at the start of the year.
+
+### Deliver AI-assisted engineering and SRE workflows
+
+**Category:** Cloud focus
+
+**Objective description:** Design, build and evaluate practical AI-assisted workflows for incident triage and software delivery, integrated with the existing cloud platform and engineering tools. Produce repeatable demonstrations and implementation handovers that help stakeholders assess how AI can improve delivery speed, operational effectiveness and service quality.
+
+**Outcome metrics:**
+
+- Demonstrate two documented end-to-end proofs of concept: one for SRE triage and one for software delivery support.
+- For each workflow, assess correctness, elapsed time and manual steps on agreed representative cases, comparing with an available manual baseline and identifying any measurement gaps.
+- Complete a stakeholder review and record an adopt, improve or stop decision, with the evidence, limitations and next owner documented.
+
+### Establish secure and controlled agent operation
+
+**Category:** Risk
+
+**Objective description:** Define and validate the controls needed for agents to access models, tools and systems safely. Cover identity, authorisation, least privilege, isolation, human approval, auditability and evaluation so that practical AI use cases can be assessed against clear security and operational requirements.
+
+**Outcome metrics:**
+
+- Produce one reviewed control baseline and reusable reference configuration for agent access and operation.
+- Pass all agreed permitted-access, denied-access and approval-bypass test cases before pilot acceptance; document and resolve any critical failures.
+- Provide traceable evaluation results and audit evidence for the agreed pilot scenarios, with residual risks, limitations and accountable owners recorded.
+
+### Enable governed AI access to operational and compliance data
+
+**Category:** Job set specific
+
+**Objective description:** Develop and evaluate controlled, read-only AI access to approved operational or compliance data. Provide useful, evidence-based answers while enforcing data permissions and response limits, helping teams assess how AI can support investigation, reporting and informed decisions without unnecessary data exposure or token consumption.
+
+**Outcome metrics:**
+
+- Deliver one documented data-access reference implementation and demonstrate at least one agreed operational or compliance question using approved or synthetic data.
+- Pass agreed tests for answer correctness, read-only access, response limits and truncation behaviour, with results traceable to the source evidence.
+- Record response sizes and, where available, client-visible token consumption and time to answer; identify the expected benefit and remaining adoption requirements with the relevant stakeholder. Claim savings only when supported by a measured comparison.
+
+## Development objectives
 
 | Objective name | Objective description | Target completion date | Category |
 | --- | --- | --- | --- |
