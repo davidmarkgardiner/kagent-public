@@ -17,6 +17,8 @@ Both captured the full actor lifecycle: boot → gVisor checkpoint → suspend-t
 
 - Upstream docs: https://kagent.dev/docs/kagent/examples/agent-substrate
 - Upstream repo: https://github.com/agent-substrate/substrate
+- **Runtime permissions, blast radius, and engineering-cluster safeguards:**
+  [`../../docs/security/agent-substrate-blast-radius-README.md`](../../docs/security/agent-substrate-blast-radius-README.md).
 - Deep architecture write-up: [`DEEP-DIVE.md`](DEEP-DIVE.md)
 - **Where it fits (orchestration vs execution):** [`ARCHITECTURE-FIT.md`](ARCHITECTURE-FIT.md)
 - Adapting to the work cluster (AKS): [`WORK-CLUSTER-ADAPTATION.md`](WORK-CLUSTER-ADAPTATION.md)
@@ -73,7 +75,7 @@ Classic kagent                    Substrate kagent
 | **Cold start** | New pod schedule + image pull + boot | Restore from golden snapshot (~ms) |
 | **State across idle** | Lost unless externalised | RAM **and** filesystem preserved via snapshot |
 | **Isolation** | Container (shared kernel) | gVisor sandbox (user-space kernel) |
-| **Blast radius** | Namespace RBAC | gVisor + per-actor network policy |
+| **Blast radius** | Depends on workload identity, host integration, and reachable services. | gVisor isolates the actor. Outer-worker and node risk also require admission, placement, identity, storage, and network controls. See the security README above. |
 
 Net: you can host a **large fleet of rarely-active agents** (per-team, per-tenant,
 per-customer, on-call helpers) for a fraction of the standing footprint, with stronger
