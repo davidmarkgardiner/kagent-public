@@ -20,6 +20,7 @@ This index is the first stop for the platform knowledge-base agent. It maps user
 | User intent | Primary document | Notes |
 |---|---|---|
 | Understand this POC | `docs/platform-kb/platform/kagent-docs-rag.md` | doc2vec, querydoc MCP, kagent Agent wiring, stale-doc feedback split |
+| Review AKS platform maturity questions | [Independent review, 10 November 2026](aks/platform-maturity-independent-review-2026-11-10.md) | Official networking, access, federation, and webhook findings; internal owner questions and evidence requirements |
 
 ## Kagent Triage V2 Agent Guidance
 
