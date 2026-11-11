@@ -202,3 +202,9 @@ Run that command from a clean `kagent-public` checkout; the script deliberately
 lives only in the source repository. It publishes the committed subtree to the
 sister repository's `main` branch. Do not make independent edits in the sister
 repository; the next source sync will overwrite them.
+
+## DICE agent lifecycle recording and design
+
+Use [dice-agent-lifecycle-demo](dice-agent-lifecycle-demo/README.md) for a terminal-first workplace demonstration. It includes a protected `ask_agent` helper, a read-aloud script, deployment and native tool-verification commands, Grafana/OTel guidance, copied DICE slide decks, a Solution Concept Design, an ADR and printable authentication/evaluation diagrams.
+
+Start the workplace agent with [WORK-AGENT-PROMPT.md](dice-agent-lifecycle-demo/WORK-AGENT-PROMPT.md). The bundle keeps proposed architecture and receiving-system acceptance separate.
