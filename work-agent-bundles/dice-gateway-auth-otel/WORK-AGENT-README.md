@@ -54,6 +54,8 @@ Run two consecutive permitted main-Agent requests in separate task contexts. Rec
 - Backend completion/result digest and an independent permitted resource read-back where available.
 - Grafana datasource/query/time-range references, annotation IDs, privacy checks, and unavailable fields.
 
+Use a bounded live read against an approved target when available. Identify synthetic fixtures, cached results, and live backend reads separately in the walkthrough and receipts.
+
 Prefer propagated context through both Gateway hops. If the main runtime emits separate traces, prove their relationship using explicit span links or an exact execution identifier shared by the native tool response and backend record. A matching Agent name, approximate timestamp, or requested `traceparent` is insufficient. The second request must not be associated with the first request's retained context.
 
 Compare the backend audit before and after denied requests while the demo is idle. Confirm that denied caller traces contain no Agent execution, and denied MCP calls contain no backend execution. Distinguish Gateway admission, MCP method authorisation, and backend resource permissions.
