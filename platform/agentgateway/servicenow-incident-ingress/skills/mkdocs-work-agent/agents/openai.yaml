@@ -1,0 +1,4 @@
+interface:
+  display_name: "MkDocs Documentation"
+  short_description: "Build and validate portable MkDocs documentation"
+  default_prompt: "Use $mkdocs-work-agent to create or update MkDocs documentation from these project sources."

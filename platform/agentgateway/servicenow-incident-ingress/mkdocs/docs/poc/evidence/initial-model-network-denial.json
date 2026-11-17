@@ -1,0 +1,57 @@
+{
+  "jsonrpc": "2.0",
+  "id": "invoke-49813-1794915880",
+  "result": {
+    "kind": "task",
+    "id": "{{LAB_UUID_11}}",
+    "contextId": "incident-pass-through-20261117",
+    "history": [
+      {
+        "kind": "message",
+        "messageId": "a2a-pass-through-20261117",
+        "contextId": "incident-pass-through-20261117",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"sys_id\": \"synthetic-record-001\", \"number\": \"INC-POC-20261117\", \"priority\": \"2\", \"short_description\": \"Synthetic checkout API latency\", \"description\": \"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\", \"nonce\": \"A2A_PASS_THROUGH_20261117\"}"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "kind": "message",
+        "messageId": "a2a-pass-through-20261117",
+        "contextId": "incident-pass-through-20261117",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"sys_id\": \"synthetic-record-001\", \"number\": \"INC-POC-20261117\", \"priority\": \"2\", \"short_description\": \"Synthetic checkout API latency\", \"description\": \"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\", \"nonce\": \"A2A_PASS_THROUGH_20261117\"}"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "metadata": {
+      "adk_app_name": "classic_agents__NS__incident_ingress_poc",
+      "adk_session_id": "incident-pass-through-20261117",
+      "adk_user_id": "{{LAB_USER}}"
+    },
+    "status": {
+      "message": {
+        "kind": "message",
+        "messageId": "{{LAB_UUID_12}}",
+        "contextId": "incident-pass-through-20261117",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "OpenAI chat completion request failed: Post \"http://{{MODEL_SERVICE_DNS}}:8081/v1/chat/completions\": dial tcp {{LAB_ADDRESS}}:8081: connect: connection refused"
+          }
+        ],
+        "role": "agent",
+        "taskId": "{{LAB_UUID_11}}"
+      },
+      "state": "failed",
+      "timestamp": "2026-11-17T11:44:41.701045059Z"
+    }
+  }
+}

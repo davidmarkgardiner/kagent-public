@@ -16,6 +16,14 @@ The proof used synthetic input and a loopback port-forward, with no Argo install
 ServiceNow itself, production authentication/TLS, and asynchronous incident
 lifecycle handling remain untested. The temporary test resources were removed.
 
+## Documentation formats
+
+- [MkDocs project and preview instructions](mkdocs/README.md): navigation, search,
+  downloadable examples and the same recorded proof and evidence boundaries.
+- [Reusable work-agent skill](skills/mkdocs-work-agent/SKILL.md): create and
+  maintain future documentation in this MkDocs format. Copy the complete skill
+  folder, including its starter assets, to the work agent's skill directory.
+
 ## Start here: work-agent handoff for AKS Istio
 
 **For the easiest workplace setup, give the work agent the entire

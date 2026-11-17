@@ -1,0 +1,22 @@
+site_name: Project Documentation
+docs_dir: docs
+site_dir: site
+use_directory_urls: false
+theme:
+  name: mkdocs
+  highlightjs: false
+nav:
+  - Overview: index.md
+plugins:
+  - search
+markdown_extensions:
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+validation:
+  nav:
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn

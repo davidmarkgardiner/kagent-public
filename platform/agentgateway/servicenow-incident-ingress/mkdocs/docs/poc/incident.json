@@ -1,0 +1,8 @@
+{
+  "sys_id": "synthetic-record-001",
+  "number": "INC-POC-20261117",
+  "priority": "2",
+  "short_description": "Synthetic checkout API latency",
+  "description": "Synthetic only. Summary contains \"quotes\" and a newline.\nNo production data.",
+  "nonce": "RAW_JSON_A2A_20261117"
+}

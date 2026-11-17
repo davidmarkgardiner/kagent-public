@@ -1,0 +1,22 @@
+{
+  "jsonrpc": "2.0",
+  "id": "a2a-pass-through-20261117-2",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "kind": "message",
+      "messageId": "a2a-pass-through-20261117-2",
+      "contextId": "incident-pass-through-20261117-2",
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "{\"sys_id\": \"synthetic-record-001\", \"number\": \"INC-POC-20261117\", \"priority\": \"2\", \"short_description\": \"Synthetic checkout API latency\", \"description\": \"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\", \"nonce\": \"A2A_PASS_THROUGH_20261117\"}"
+        }
+      ]
+    },
+    "configuration": {
+      "blocking": true
+    }
+  }
+}

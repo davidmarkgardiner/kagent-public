@@ -1,0 +1,85 @@
+{
+  "jsonrpc": "2.0",
+  "id": "invoke-52124-1794915922",
+  "result": {
+    "kind": "task",
+    "id": "{{LAB_UUID_1}}",
+    "artifacts": [
+      {
+        "artifactId": "{{LAB_UUID_3}}",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"proof\": \"AGENT_RECEIVED_INCIDENT_JSON\", \"incident_number\": \"INC-POC-20261117\", \"priority\": \"2\", \"short_description\": \"Synthetic checkout API latency\", \"description\": \"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\", \"nonce\": \"A2A_PASS_THROUGH_20261117\", \"assessment\": \"Synthetic incident intake received and echoed back verbatim; no live checks or remediation were performed.\"}"
+          }
+        ]
+      }
+    ],
+    "contextId": "incident-pass-through-20261117-2",
+    "history": [
+      {
+        "kind": "message",
+        "messageId": "a2a-pass-through-20261117-2",
+        "contextId": "incident-pass-through-20261117-2",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"sys_id\": \"synthetic-record-001\", \"number\": \"INC-POC-20261117\", \"priority\": \"2\", \"short_description\": \"Synthetic checkout API latency\", \"description\": \"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\", \"nonce\": \"A2A_PASS_THROUGH_20261117\"}"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "kind": "message",
+        "messageId": "a2a-pass-through-20261117-2",
+        "contextId": "incident-pass-through-20261117-2",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"sys_id\": \"synthetic-record-001\", \"number\": \"INC-POC-20261117\", \"priority\": \"2\", \"short_description\": \"Synthetic checkout API latency\", \"description\": \"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\", \"nonce\": \"A2A_PASS_THROUGH_20261117\"}"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "kind": "message",
+        "messageId": "{{LAB_UUID_4}}",
+        "contextId": "incident-pass-through-20261117-2",
+        "metadata": {
+          "adk_app_name": "classic_agents__NS__incident_ingress_poc",
+          "adk_author": "incident_ingress_poc",
+          "adk_invocation_id": "e-{{LAB_UUID_5}}",
+          "adk_session_id": "incident-pass-through-20261117-2",
+          "adk_usage_metadata": {
+            "candidatesTokenCount": 112,
+            "promptTokenCount": 602
+          },
+          "adk_user_id": "{{LAB_USER}}"
+        },
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"proof\": \"AGENT_RECEIVED_INCIDENT_JSON\", \"incident_number\": \"INC-POC-20261117\", \"priority\": \"2\", \"short_description\": \"Synthetic checkout API latency\", \"description\": \"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\", \"nonce\": \"A2A_PASS_THROUGH_20261117\", \"assessment\": \"Synthetic incident intake received and echoed back verbatim; no live checks or remediation were performed.\"}"
+          }
+        ],
+        "role": "agent",
+        "taskId": "{{LAB_UUID_1}}"
+      }
+    ],
+    "metadata": {
+      "adk_app_name": "classic_agents__NS__incident_ingress_poc",
+      "adk_author": "incident_ingress_poc",
+      "adk_invocation_id": "e-{{LAB_UUID_5}}",
+      "adk_session_id": "incident-pass-through-20261117-2",
+      "adk_usage_metadata": {
+        "candidatesTokenCount": 112,
+        "promptTokenCount": 602
+      },
+      "adk_user_id": "{{LAB_USER}}"
+    },
+    "status": {
+      "state": "completed",
+      "timestamp": "2026-11-17T11:45:23.902223435Z"
+    }
+  }
+}
