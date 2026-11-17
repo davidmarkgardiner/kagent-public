@@ -1,13 +1,13 @@
 # ServiceNow incident intake through agentgateway
 
-ServiceNow can send an incident to a kagent agent through agentgateway without
-Argo Events or Argo Workflows. The smallest design is a ServiceNow outbound REST
-action that constructs an A2A request and calls a dedicated gateway route.
+ServiceNow can send raw incident JSON through the AKS Istio ingress and a
+VirtualService to agentgateway. A gateway transformation policy constructs the
+A2A request and forwards it to the selected kagent agent. This path needs neither
+Argo nor a custom webhook receiver service.
 
-If the sender must retain its existing incident JSON, the payload can instead be
-mapped by a compatible gateway transformation policy, Azure Logic Apps, or n8n.
-These options avoid hosting a custom webhook receiver application, although each
-still needs integration configuration and a tested payload contract.
+This is the selected replication approach below. Sending a pre-wrapped A2A
+request from ServiceNow, or using Logic Apps/n8n for additional lifecycle handling,
+remains an alternative.
 
 **Status:** a [live Proxmox proof of concept](poc/README.md) passed on 17 November
 2026. Agentgateway 1.7.0 transformed raw incident JSON into A2A and a regular
@@ -16,12 +16,167 @@ The proof used synthetic input and a loopback port-forward, with no Argo install
 ServiceNow itself, production authentication/TLS, and asynchronous incident
 lifecycle handling remain untested. The temporary test resources were removed.
 
+## Start here: work-agent handoff for AKS Istio
+
+Give the work agent this README and the entire [poc folder](poc/). The selected
+workplace path is:
+
+```mermaid
+flowchart TD
+    SN[ServiceNow outbound HTTPS POST: raw incident JSON] --> IG[AKS Istio ingress gateway: existing HTTPS listener]
+    IG --> VS[Istio VirtualService: match hostname and incident path]
+    VS --> GS[agentgateway Kubernetes Service and listener]
+    GS --> HR[agentgateway HTTPRoute: match POST and incident path]
+    HR --> TP[AgentgatewayPolicy: JSON to A2A message/send]
+    TP --> KC[Approved kagent A2A entry point]
+    KC --> AG[Selected agent]
+```
+
+The Istio ingress gateway serves the HTTPS endpoint. The VirtualService routes
+the matching hostname/path to the agentgateway Service. It does not construct
+the A2A body. Agentgateway performs that conversion and forwards the request to
+the fixed agent target. A response returns through the same chain; an initial
+HTTP acknowledgement is not necessarily a completed agent task.
+
+### Task to give the work agent
+
+```text
+Replicate the proved raw incident JSON -> agentgateway -> kagent A2A path
+behind our existing AKS Istio add-on ingress, using this README and poc/.
+
+First inspect the installed versions, resources, permissions and delivery flow.
+Reuse the approved agent, runtime, model/MCP wiring, ingress certificate and
+caller-authentication pattern. Adapt only the incident route, payload mapping,
+and the exact grants/network access required for this caller-to-agent path.
+
+Do not run the lab run.sh against the workplace cluster. Its namespaces,
+controller name, model gateway and cleanup are specific to the Proxmox lab.
+Do not introduce Argo, a custom receiver service, a new model provider, or a
+gateway/runtime upgrade as part of this task. If the installed version cannot
+support the mapping, report the exact gap before proposing a separate change.
+
+Preserve existing approval/authorisation enforcement. If an existing agent
+facade is the enforced entry point, route through it; do not bypass it by
+exposing a controller or runtime directly. Follow the workplace repository's
+normal authorisation and GitOps/delivery process for any live change.
+
+Produce a reviewed parameter mapping, minimal manifests/configuration diff,
+validation results, rollback instructions, and target-specific receipts.
+Prove a synthetic HTTPS request through Istio and agentgateway reaches the
+intended agent and returns a terminal A2A outcome. Then validate the real
+ServiceNow sender separately when that integration is available and authorised.
+```
+
+### Discover and map the target before editing
+
+Use the explicit workplace kubeconfig/context and its approved read-only tooling.
+Identify the existing Istio Gateway, VirtualServices, agentgateway Gateway and
+Service, HTTPRoutes/policies, approved agent endpoint, and relevant network and
+authentication policies. Record the actual runtime image versions and installed
+CRD fields, particularly `AgentgatewayPolicy.spec.traffic.transformation`.
+
+| Setting | Workplace value to resolve |
+|---|---|
+| External URL | `https://{{GATEWAY_HOST}}/incidents/triage/`; DNS must resolve to the intended existing Istio ingress. |
+| Istio Gateway reference | `{{ISTIO_GATEWAY_NAMESPACE}}/{{ISTIO_GATEWAY_NAME}}`; its HTTPS server must accept this hostname and certificate. |
+| VirtualService namespace | `{{VIRTUALSERVICE_NAMESPACE}}`; preserve existing ownership and other routes. |
+| Agentgateway destination | `{{AGENTGATEWAY_SERVICE}}.{{AGENTGATEWAY_NAMESPACE}}.svc.cluster.local` and actual `{{AGENTGATEWAY_SERVICE_PORT}}`. |
+| Agentgateway Gateway/listener | Existing `{{AGENTGATEWAY_GATEWAY}}` and `{{AGENTGATEWAY_LISTENER}}`; confirm allowedRoutes and hostname matching. |
+| Agent target | Approved entry-point Service, namespace, port, and A2A path for the selected agent. |
+| Body policy | Port the proved `json(request.body)` / `toJson(...)` mapping to the installed schema. |
+| Caller identity | Existing approved ServiceNow/application authentication and agent-invocation authorisation. |
+
+The placeholders in this table are environment-owned resource names and settings,
+not new resources to install blindly. Confirm the Service port: the public HTTPS
+port, Service port and gateway listener/container port can differ.
+
+### Istio route shape
+
+This is an illustrative fragment to merge into the owning VirtualService or
+render through the existing delivery configuration. It assumes TLS terminates
+at the existing Istio ingress. Check the served Istio API version before use.
+
+```yaml
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: incident-agent-ingress
+  namespace: "{{VIRTUALSERVICE_NAMESPACE}}"
+spec:
+  hosts:
+    - "{{GATEWAY_HOST}}"
+  gateways:
+    - "{{ISTIO_GATEWAY_NAMESPACE}}/{{ISTIO_GATEWAY_NAME}}"
+  http:
+    - name: incident-triage
+      match:
+        - uri:
+            exact: /incidents/triage/
+          method:
+            exact: POST
+      route:
+        - destination:
+            host: "{{AGENTGATEWAY_SERVICE}}.{{AGENTGATEWAY_NAMESPACE}}.svc.cluster.local"
+            port:
+              number: {{AGENTGATEWAY_SERVICE_PORT}}
+      retries:
+        attempts: 0
+```
+
+Preserve `/incidents/triage/` through Istio so the agentgateway HTTPRoute can
+match it. The agentgateway route then rewrites to the approved A2A endpoint,
+as shown in [the tested manifests](poc/resources.yaml). Avoid competing
+VirtualServices for the same host/path and retain matching Host/authority rules.
+
+The repo's older [VirtualService example](../istio-virtualservice.yaml) matches
+model paths only and configures automatic retries. It is background context,
+not the incident-submission template. A retried submission can start duplicate
+agent work; define durable idempotency and uncertain-submission handling before
+enabling retries. Also inspect inherited gateway/client retry settings.
+
+Distinguish the Istio `networking.istio.io/Gateway` at the edge from the
+`gateway.networking.k8s.io/Gateway` owned by agentgateway. This design does not
+require using Kubernetes Gateway API to configure the AKS Istio ingress itself.
+See Microsoft's [AKS Istio ingress guide](https://learn.microsoft.com/en-us/azure/aks/istio-deploy-ingress),
+[secure ingress guide](https://learn.microsoft.com/en-us/azure/aks/istio-secure-gateway),
+and Istio's [VirtualService reference](https://istio.io/latest/docs/reference/config/networking/virtual-service/).
+
+### Workplace acceptance and rollback
+
+1. Validate the rendered Istio route, gateway HTTPRoute and body policy against
+   the target schemas. Confirm current-generation route references and policy
+   attachment. Preserve existing mTLS/network policies; allow only the required
+   ingress-to-gateway and gateway-to-agent hops.
+2. Send one synthetic JSON payload through the actual HTTPS hostname from an
+   approved caller location. Capture request/time correlation, Istio routing,
+   gateway route selection, agent receipt, and terminal A2A state. Reuse the
+   quoted/newline fixture to verify safe JSON serialization.
+3. Confirm missing/invalid credentials and a caller without the invocation role
+   are denied, using the organisation's actual authentication scheme. Verify
+   that denial occurs before agent execution. Do not expose unrelated controller
+   APIs or a wildcard agent namespace route.
+4. Exercise malformed/missing fields and an unknown path. The lab returned 503
+   for malformed JSON; resolve the client-error contract before production use.
+   Align ServiceNow, Istio and agentgateway timeouts with the chosen synchronous
+   or asynchronous completion contract. Do not blindly replay timed-out work.
+5. Rehearse rollback of only this change through the existing delivery flow:
+   restore the prior owning VirtualService configuration and remove only the
+   added incident route/policy and exact grant/network deltas. Preserve shared
+   Gateways, certificates, secrets, model routes and the existing agent.
+6. When ServiceNow is available, verify its configured incident-created action
+   reaches this URL with the agreed fields and identity. Capture its delivery
+   result separately from the synthetic client test and any later write-back.
+
+The existing PoC proves the gateway-to-agent mapping on the recorded lab versions.
+It does not prove the AKS ingress, workplace identity or ServiceNow integration.
+Keep these evidence levels distinct in the work agent's final receipt.
+
 ## Choose an approach
 
 | Approach | Where incident JSON becomes an agent request | Choose it when |
 |---|---|---|
-| **ServiceNow → agentgateway → agent** | ServiceNow outbound REST action | You control the outgoing body and want the fewest components. Start here. |
-| ServiceNow → agentgateway transformation → agent | Gateway request-body policy | You need a small fixed mapping and the installed gateway supports it. |
+| ServiceNow → agentgateway → agent | ServiceNow outbound REST action | You already construct the A2A body in the sender. |
+| **ServiceNow → agentgateway transformation → agent** | Gateway request-body policy | Selected approach: raw incident JSON, using the proved mapping on a compatible gateway. |
 | ServiceNow → Azure Logic Apps → agentgateway → agent | Logic Apps workflow actions | You want managed Azure integration, branching, and completion handling. |
 | ServiceNow → n8n → agentgateway → agent | Webhook, field mapping, and HTTP Request nodes | You want visual integration configuration and a self-hosted option. |
 | ServiceNow → Argo Events → Workflow → agentgateway → agent | Workflow caller | You need Kubernetes-native orchestration or already operate this path. |
@@ -41,7 +196,8 @@ need to be reachable from the public internet if a private connection is availab
 
 ```mermaid
 flowchart LR
-    SN[ServiceNow outbound REST action] -->|A2A request with incident fields| GW[agentgateway listener and HTTPRoute]
+    SN[ServiceNow raw incident JSON] --> IS[Istio ingress and VirtualService]
+    IS --> GW[agentgateway listener, HTTPRoute and body policy]
     GW --> KC[kagent controller A2A endpoint]
     KC --> AG[Selected read-only triage agent]
 ```
