@@ -19,6 +19,89 @@ templates are locally checked, not a completed AKS or ServiceNow deployment.
 See [validation details](VALIDATION.md) for the nine offline checks and exact
 upstream schema references. The target cluster still needs server validation.
 
+## Entra authentication and application roles at Istio
+
+The AKS Istio ingress can validate an Entra access token and enforce the required
+API application role before forwarding the incident to agentgateway. Entra owns
+the role definition, assignment and token issuance; Istio enforces the claims in
+the signed token. This is application-role authorisation, distinct from Azure
+resource RBAC roles.
+
+| Component | Responsibility |
+|---|---|
+| Entra ID | Define the agent API's application role, assign it to the approved caller service principal/managed identity, and issue access tokens for that API. |
+| ServiceNow / caller | Obtain an access token using the approved application identity and send it with the HTTPS incident request. |
+| Istio ingress gateway | Validate the JWT and require the caller's assigned application role for this host, path and method. |
+| VirtualService | Route the authorised request to agentgateway; it does not itself authenticate the caller. |
+| agentgateway | Apply its existing policies, wrap JSON as A2A and forward to the approved agent entry point. |
+
+The authenticated path is:
+
+```text
+ServiceNow obtains an Entra access token for the agent API
+  → HTTPS POST with the token
+  → Istio validates JWT and checks the required application role
+  → VirtualService → agentgateway JSON-to-A2A policy → selected agent
+```
+
+Configure these two Istio resources, or reuse the equivalent existing controls:
+
+- **RequestAuthentication:** configure the actual Entra issuer, signing-key
+  discovery/JWKS endpoint and intended API audience. Istio checks the signature,
+  issuer, audience and token lifetime. Use the issuer/audience appropriate to the
+  token version; do not assume a token for Microsoft Graph or Azure management
+  is valid for this agent API.
+- **AuthorizationPolicy:** require an authenticated caller and a validated
+  `request.auth.claims[roles]` value matching the permitted application role for
+  `POST /incidents/triage/` on the selected hostname. `Agent.Invoke` is an example
+  role value only; use the actual role defined for the API. Apply any additional
+  caller-identity restriction required by the existing security design.
+
+**RequestAuthentication alone normally permits a request with no token.** The
+authorization policy must also reject missing credentials and callers without
+the required role. For an app-only sender, Entra application permissions appear
+in `roles`; a delegated user's `scp` permissions are a separate token contract.
+
+The work agent must discover the managed add-on revision, served security APIs,
+ingress namespace/pod selector and all applicable policies. Scope the incident
+rule to its hostname, path and method. On a shared ingress, review policy merging:
+another broad ALLOW can admit a request that fails a newly added role-specific
+ALLOW. Preserve unrelated routes and ensure the effective policy rejects the
+unauthorised incident request. Adding JWT validation to shared ingress pods can
+also affect invalid-token traffic on other routes; review existing issuer rules.
+
+Use the original caller token downstream only if the existing design requires
+it. Istio's original-token forwarding is an explicit setting, not an assumption.
+Do not trust client-supplied role headers in place of verified JWT claims, and
+keep agentgateway/the agent unreachable through an unprotected alternate path.
+The caller's invocation permission does not grant the agent access to model or
+MCP APIs; those retain their separate credentials and permissions.
+
+Before claiming Entra enforcement, capture target evidence for:
+
+1. A valid token with the intended audience, required role and allowed caller:
+   request reaches the selected agent and completes.
+2. No token, an invalid/expired token, or a token for another audience: request
+   is rejected before agent execution.
+3. A valid token without the required role, and a disallowed caller where caller
+   identity is restricted: request is rejected before agent execution.
+
+Correlate ingress/gateway logs with the agent task records to distinguish denial
+from a request that ran and merely returned an error. Do not publish tokens or
+private claims as evidence.
+
+**Current package boundary:** the four rendered YAML files configure routing,
+payload conversion and the Service reference grant. They do not yet generate
+RequestAuthentication or AuthorizationPolicy. The work agent must reuse or add
+the target-specific Entra/Istio controls through the existing delivery process;
+do not expose the incident path anonymously while waiting for them. The Proxmox
+proof and the nine helper tests did not test Entra authentication or role denial.
+
+References: [Entra app roles](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps),
+[Istio RequestAuthentication](https://istio.io/latest/docs/reference/config/security/request_authentication/),
+[JWT role authorization](https://istio.io/latest/docs/tasks/security/authorization/authz-jwt/),
+and [Istio policy evaluation](https://istio.io/latest/docs/reference/config/security/authorization-policy/).
+
 ## Files to use
 
 | File | Purpose |
@@ -158,6 +241,10 @@ PoC behind our existing AKS Istio ingress and agentgateway. Discover and fill
 values.json, render the YAML, preserve existing ownership/authentication and the
 approved agent entry point, and deliver only the reviewed route/policy/grant
 delta through our existing process. Do not run the Proxmox lab scripts on AKS.
+For the Entra-protected endpoint, reuse or add the target-specific Istio JWT
+validation and application-role enforcement described above; the four rendered
+files do not configure these security policies. Verify missing-token and wrong-
+role denial before claiming the endpoint is protected.
 Do not introduce Argo, new credentials, a new provider, or a custom receiver.
 Prove one synthetic HTTPS request reaches the selected agent over A2A, record
 the terminal result and markers, and provide the rollback and evidence receipts.

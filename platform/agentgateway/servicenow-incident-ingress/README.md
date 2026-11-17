@@ -24,13 +24,21 @@ file, a Python-only renderer, synthetic JSON and a one-request verifier. The wor
 agent fills the existing resource names, renders the files and delivers the
 reviewed delta through the workplace's normal process.
 
+For an Entra-protected endpoint, read the
+[Istio JWT and application-role handoff](aks/README.md#entra-authentication-and-application-roles-at-istio).
+Entra assigns the caller's API role and issues its token; Istio validates the
+token and enforces the role before VirtualService routing to agentgateway.
+This needs both RequestAuthentication and effective AuthorizationPolicy controls.
+The four routing/mapping templates do not generate those security policies, and
+the existing Proxmox proof did not test Entra enforcement.
+
 The [poc folder](poc/) preserves the separately tested Proxmox manifests and
 evidence. Its deployment/cleanup script is lab-specific. The selected workplace
 path is:
 
 ```mermaid
 flowchart TD
-    SN[ServiceNow outbound HTTPS POST: raw incident JSON] --> IG[AKS Istio ingress gateway: existing HTTPS listener]
+    SN[ServiceNow outbound HTTPS POST: raw incident JSON and Entra token] --> IG[AKS Istio ingress gateway: HTTPS and JWT/role enforcement]
     IG --> VS[Istio VirtualService: match hostname and incident path]
     VS --> GS[agentgateway Kubernetes Service and listener]
     GS --> HR[agentgateway HTTPRoute: match POST and incident path]
