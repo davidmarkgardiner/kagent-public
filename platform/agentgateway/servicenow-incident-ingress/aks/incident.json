@@ -1,0 +1,9 @@
+{
+  "sys_id": "synthetic-record-aks-poc",
+  "number": "INC-POC-AKS-001",
+  "priority": "3",
+  "short_description": "Synthetic JSON intake proof only",
+  "description": "Synthetic input with \"quotes\" and a newline.\nNo production incident.",
+  "nonce": "AKS_JSON_A2A_POC",
+  "poc_instruction": "This is an intake verification request. Do not use tools or change anything. Return the incident number and nonce in your answer."
+}

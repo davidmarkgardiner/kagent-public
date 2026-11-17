@@ -1,0 +1,35 @@
+# Same request-body mapping as the live gateway 1.7.0 lab proof.
+# This does not establish caller authentication or durable idempotency.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{POLICY_NAME}}
+  namespace: {{GATEWAY_NAMESPACE}}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ROUTE_NAME}}
+  traffic:
+    timeouts:
+      request: {{GATEWAY_TIMEOUT}}
+    transformation:
+      request:
+        metadata:
+          incident: json(request.body)
+          invocationId: uuid()
+        body: >-
+          toJson({
+            "jsonrpc": "2.0",
+            "id": metadata.invocationId,
+            "method": "message/send",
+            "params": {
+              "message": {
+                "kind": "message",
+                "messageId": metadata.invocationId,
+                "role": "user",
+                "parts": [{"kind": "text", "text": toJson(metadata.incident)}]
+              },
+              "configuration": {"blocking": true}
+            }
+          })

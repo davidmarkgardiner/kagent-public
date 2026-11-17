@@ -1,0 +1,27 @@
+# Render first. Merge this incident rule into the owning VirtualService if needed.
+# Uses the existing Istio HTTPS Gateway; preserves the raw incident request path.
+apiVersion: {{VIRTUALSERVICE_API_VERSION}}
+kind: VirtualService
+metadata:
+  name: {{VIRTUALSERVICE_NAME}}
+  namespace: {{VIRTUALSERVICE_NAMESPACE}}
+spec:
+  hosts:
+    - {{INGRESS_HOST}}
+  gateways:
+    - {{ISTIO_GATEWAY_REF}}
+  http:
+    - name: incident-triage
+      match:
+        - uri:
+            exact: /incidents/triage/
+          method:
+            exact: POST
+      route:
+        - destination:
+            host: {{GATEWAY_SERVICE_DNS}}
+            port:
+              number: {{GATEWAY_SERVICE_PORT}}
+      timeout: {{ISTIO_TIMEOUT}}
+      retries:
+        attempts: 0

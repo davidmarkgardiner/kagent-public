@@ -1,0 +1,16 @@
+# Rendered only for a cross-namespace Service backend.
+# Authorises this route namespace to reference only the named Service.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: {{GRANT_NAME}}
+  namespace: {{BACKEND_NAMESPACE}}
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: {{GATEWAY_NAMESPACE}}
+  to:
+    - group: ""
+      kind: Service
+      name: {{BACKEND_SERVICE_NAME}}

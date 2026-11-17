@@ -1,0 +1,29 @@
+# Render first. Binds to the EXISTING agentgateway Gateway and listener.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ROUTE_NAME}}
+  namespace: {{GATEWAY_NAMESPACE}}
+spec:
+  parentRefs:
+    - name: {{GATEWAY_NAME}}
+      namespace: {{GATEWAY_NAMESPACE}}
+      sectionName: {{GATEWAY_LISTENER}}
+  hostnames:
+    - {{INGRESS_HOST}}
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /incidents/triage/
+          method: POST
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: {{BACKEND_A2A_PATH}}
+      backendRefs:
+        - name: {{BACKEND_SERVICE_NAME}}
+          namespace: {{BACKEND_NAMESPACE}}
+          port: {{BACKEND_SERVICE_PORT}}

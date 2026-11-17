@@ -18,8 +18,15 @@ lifecycle handling remain untested. The temporary test resources were removed.
 
 ## Start here: work-agent handoff for AKS Istio
 
-Give the work agent this README and the entire [poc folder](poc/). The selected
-workplace path is:
+**For the easiest workplace setup, give the work agent the entire
+[AKS starter folder](aks/README.md).** It includes four YAML templates, one values
+file, a Python-only renderer, synthetic JSON and a one-request verifier. The work
+agent fills the existing resource names, renders the files and delivers the
+reviewed delta through the workplace's normal process.
+
+The [poc folder](poc/) preserves the separately tested Proxmox manifests and
+evidence. Its deployment/cleanup script is lab-specific. The selected workplace
+path is:
 
 ```mermaid
 flowchart TD
