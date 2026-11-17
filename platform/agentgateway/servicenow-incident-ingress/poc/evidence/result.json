@@ -1,0 +1,193 @@
+{
+  "started_utc": "2026-11-17T11:45:22.355260+00:00",
+  "context": "kind-kagent-alpha17",
+  "sender": "Python client on Proxmox VM through loopback kubectl port-forward",
+  "tests": [
+    {
+      "name": "a2a-pass-through",
+      "passed": true,
+      "task_state": "completed",
+      "agent_output": {
+        "proof": "AGENT_RECEIVED_INCIDENT_JSON",
+        "incident_number": "INC-POC-20261117",
+        "priority": "2",
+        "short_description": "Synthetic checkout API latency",
+        "description": "Synthetic only. Summary contains \"quotes\" and a newline.\nNo production data.",
+        "nonce": "A2A_PASS_THROUGH_20261117",
+        "assessment": "Synthetic incident intake received and echoed back verbatim; no live checks or remediation were performed."
+      },
+      "task_id": "{{LAB_UUID_1}}"
+    },
+    {
+      "name": "raw-json-transformed-to-a2a",
+      "http_status": 200,
+      "elapsed_seconds": 1.377,
+      "passed": true,
+      "task_state": "completed",
+      "agent_output": {
+        "proof": "AGENT_RECEIVED_INCIDENT_JSON",
+        "incident_number": "INC-POC-20261117",
+        "priority": "2",
+        "short_description": "Synthetic checkout API latency",
+        "description": "Synthetic only. Summary contains \"quotes\" and a newline.\nNo production data.",
+        "nonce": "RAW_JSON_A2A_20261117",
+        "assessment": "This is a synthetic incident record received for intake verification only; no live checks were performed and no remediation was taken."
+      },
+      "task_id": "{{LAB_UUID_2}}"
+    },
+    {
+      "name": "malformed-json",
+      "http_status": 503,
+      "response": "internal error",
+      "passed": true
+    },
+    {
+      "name": "unknown-route",
+      "http_status": 404,
+      "response": "route not found",
+      "passed": true
+    }
+  ],
+  "agent": {
+    "api_version": "kagent.dev/v1alpha2",
+    "name": "incident-ingress-poc",
+    "runtime": "go",
+    "tools": [],
+    "conditions": [
+      {
+        "lastTransitionTime": "2026-11-17T11:44:19Z",
+        "message": "Agent configuration accepted",
+        "observedGeneration": 1,
+        "reason": "Reconciled",
+        "status": "True",
+        "type": "Accepted"
+      },
+      {
+        "lastTransitionTime": "2026-11-17T11:44:20Z",
+        "message": "Deployment is ready",
+        "observedGeneration": 1,
+        "reason": "DeploymentReady",
+        "status": "True",
+        "type": "Ready"
+      }
+    ]
+  },
+  "images": {
+    "gateway": "cr.agentgateway.dev/agentgateway:v1.7.0@sha256:60216aafb03d37f94e952ff3d51d2f630a65b10ecaebdc0a864882f92610c45b",
+    "kagent_controller": "ghcr.io/kagent-dev/kagent/controller:0.10.4"
+  },
+  "argo_api_resources": [],
+  "httproutes": [
+    {
+      "name": "incident-a2a",
+      "generation": 2,
+      "status": {
+        "parents": [
+          {
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-11-17T11:41:56Z",
+                "message": "",
+                "observedGeneration": 2,
+                "reason": "Accepted",
+                "status": "True",
+                "type": "Accepted"
+              },
+              {
+                "lastTransitionTime": "2026-11-17T11:41:56Z",
+                "message": "",
+                "observedGeneration": 2,
+                "reason": "ResolvedRefs",
+                "status": "True",
+                "type": "ResolvedRefs"
+              }
+            ],
+            "controllerName": "agentgateway.dev/agentgateway",
+            "parentRef": {
+              "group": "gateway.networking.k8s.io",
+              "kind": "Gateway",
+              "name": "incident-ingress-poc",
+              "namespace": "incident-ingress-poc",
+              "sectionName": "http"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "incident-json",
+      "generation": 1,
+      "status": {
+        "parents": [
+          {
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-11-17T11:41:56Z",
+                "message": "",
+                "observedGeneration": 1,
+                "reason": "Accepted",
+                "status": "True",
+                "type": "Accepted"
+              },
+              {
+                "lastTransitionTime": "2026-11-17T11:41:56Z",
+                "message": "",
+                "observedGeneration": 1,
+                "reason": "ResolvedRefs",
+                "status": "True",
+                "type": "ResolvedRefs"
+              }
+            ],
+            "controllerName": "agentgateway.dev/agentgateway",
+            "parentRef": {
+              "group": "gateway.networking.k8s.io",
+              "kind": "Gateway",
+              "name": "incident-ingress-poc",
+              "namespace": "incident-ingress-poc",
+              "sectionName": "http"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "agentgatewaypolicies": [
+    {
+      "name": "incident-json-to-a2a",
+      "generation": 1,
+      "status": {
+        "ancestors": [
+          {
+            "ancestorRef": {
+              "group": "gateway.networking.k8s.io",
+              "kind": "Gateway",
+              "name": "incident-ingress-poc",
+              "namespace": "incident-ingress-poc"
+            },
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-11-17T11:41:56Z",
+                "message": "Policy accepted",
+                "observedGeneration": 1,
+                "reason": "Valid",
+                "status": "True",
+                "type": "Accepted"
+              },
+              {
+                "lastTransitionTime": "2026-11-17T11:41:56Z",
+                "message": "Attached to all targets",
+                "observedGeneration": 1,
+                "reason": "Attached",
+                "status": "True",
+                "type": "Attached"
+              }
+            ],
+            "controllerName": "agentgateway.dev/agentgateway"
+          }
+        ]
+      }
+    }
+  ],
+  "passed": true,
+  "finished_utc": "2026-11-17T11:45:25.310607+00:00"
+}

@@ -1,0 +1,17 @@
+{
+  "verified_utc": "2026-11-17T11:48:21.924870+00:00",
+  "checks": {
+    "poc_namespace_absent": true,
+    "agent_absent": true,
+    "agent_deployment_absent": true,
+    "service_account_absent": true,
+    "model_network_rule_absent": true,
+    "reference_grant_absent": true,
+    "existing_controller_ready": true,
+    "coredns_ready": true
+  },
+  "passed": true,
+  "vm_left_running": true,
+  "node_resolver_corrected_for_lab": true,
+  "durable_host_docker_dns_fix_made": false
+}

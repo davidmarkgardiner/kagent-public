@@ -9,9 +9,12 @@ mapped by a compatible gateway transformation policy, Azure Logic Apps, or n8n.
 These options avoid hosting a custom webhook receiver application, although each
 still needs integration configuration and a tested payload contract.
 
-**Status:** architecture and configuration guide, reviewed against upstream docs
-on 17 November 2026. No ServiceNow integration, gateway transformation, deployment,
-or end-to-end incident delivery was tested as part of this document.
+**Status:** a [live Proxmox proof of concept](poc/README.md) passed on 17 November
+2026. Agentgateway 1.7.0 transformed raw incident JSON into A2A and a regular
+kagent 0.10.4 Go agent returned a completed task with the exact incident fields.
+The proof used synthetic input and a loopback port-forward, with no Argo installed.
+ServiceNow itself, production authentication/TLS, and asynchronous incident
+lifecycle handling remain untested. The temporary test resources were removed.
 
 ## Choose an approach
 
@@ -137,9 +140,11 @@ gateway/control-plane versions, CRD schema, request-body access and buffering,
 and transformation policy order before choosing this option. Test nested JSON,
 escaping, missing fields, and identifier handling against the real agent.
 
-No ready-to-apply transformation YAML is supplied here: the exact mapping and
-version compatibility remain unproven. Keep complex orchestration and durable
-state in an integration/workflow layer. See the upstream
+The [PoC manifests](poc/resources.yaml) contain the mapping tested on gateway 1.7.0;
+they depend on the named lab resources and are not portable deployment defaults.
+Malformed JSON returned HTTP 503 in this run, so production validation and error
+mapping need further work. Keep complex orchestration and durable state in an
+integration/workflow layer. See the upstream
 [transformation documentation](https://agentgateway.dev/docs/kubernetes/latest/documentation/traffic-management/transformations/).
 
 ## Option 3: Azure Logic Apps receives the payload

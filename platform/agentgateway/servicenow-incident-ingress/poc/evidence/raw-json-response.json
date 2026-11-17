@@ -1,0 +1,83 @@
+{
+  "jsonrpc": "2.0",
+  "id": "{{LAB_UUID_6}}",
+  "result": {
+    "kind": "task",
+    "id": "{{LAB_UUID_2}}",
+    "artifacts": [
+      {
+        "artifactId": "{{LAB_UUID_7}}",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"proof\":\"AGENT_RECEIVED_INCIDENT_JSON\",\"incident_number\":\"INC-POC-20261117\",\"priority\":\"2\",\"short_description\":\"Synthetic checkout API latency\",\"description\":\"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\",\"nonce\":\"RAW_JSON_A2A_20261117\",\"assessment\":\"This is a synthetic incident record received for intake verification only; no live checks were performed and no remediation was taken.\"}"
+          }
+        ]
+      }
+    ],
+    "contextId": "{{LAB_UUID_8}}",
+    "history": [
+      {
+        "kind": "message",
+        "messageId": "{{LAB_UUID_6}}",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"sys_id\":\"synthetic-record-001\",\"number\":\"INC-POC-20261117\",\"priority\":\"2\",\"short_description\":\"Synthetic checkout API latency\",\"description\":\"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\",\"nonce\":\"RAW_JSON_A2A_20261117\"}"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "kind": "message",
+        "messageId": "{{LAB_UUID_6}}",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"sys_id\":\"synthetic-record-001\",\"number\":\"INC-POC-20261117\",\"priority\":\"2\",\"short_description\":\"Synthetic checkout API latency\",\"description\":\"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\",\"nonce\":\"RAW_JSON_A2A_20261117\"}"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "kind": "message",
+        "messageId": "{{LAB_UUID_9}}",
+        "contextId": "{{LAB_UUID_8}}",
+        "metadata": {
+          "adk_app_name": "classic_agents__NS__incident_ingress_poc",
+          "adk_author": "incident_ingress_poc",
+          "adk_invocation_id": "e-{{LAB_UUID_10}}",
+          "adk_session_id": "{{LAB_UUID_8}}",
+          "adk_usage_metadata": {
+            "candidatesTokenCount": 103,
+            "promptTokenCount": 591
+          },
+          "adk_user_id": "{{LAB_USER}}"
+        },
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"proof\":\"AGENT_RECEIVED_INCIDENT_JSON\",\"incident_number\":\"INC-POC-20261117\",\"priority\":\"2\",\"short_description\":\"Synthetic checkout API latency\",\"description\":\"Synthetic only. Summary contains \\\"quotes\\\" and a newline.\\nNo production data.\",\"nonce\":\"RAW_JSON_A2A_20261117\",\"assessment\":\"This is a synthetic incident record received for intake verification only; no live checks were performed and no remediation was taken.\"}"
+          }
+        ],
+        "role": "agent",
+        "taskId": "{{LAB_UUID_2}}"
+      }
+    ],
+    "metadata": {
+      "adk_app_name": "classic_agents__NS__incident_ingress_poc",
+      "adk_author": "incident_ingress_poc",
+      "adk_invocation_id": "e-{{LAB_UUID_10}}",
+      "adk_session_id": "{{LAB_UUID_8}}",
+      "adk_usage_metadata": {
+        "candidatesTokenCount": 103,
+        "promptTokenCount": 591
+      },
+      "adk_user_id": "{{LAB_USER}}"
+    },
+    "status": {
+      "state": "completed",
+      "timestamp": "2026-11-17T11:45:25.2941621Z"
+    }
+  }
+}
