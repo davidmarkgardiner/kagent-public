@@ -1,0 +1,34 @@
+name: Agent platform documentation and roadmap
+on:
+  pull_request:
+    paths:
+      - 'work-agent-bundles/agent-platform-mkdocs/**'
+      - 'agents/**'
+      - 'platform/agentgateway/**'
+      - 'docs/security/**'
+      - 'docs/entra-agent-id/**'
+      - 'docs/agent-substrate-*.md'
+      - 'docs/AGENT-PLATFORM-DOCS.md'
+      - 'work-agent-bundles/agent-substrate/**'
+      - 'work-agent-bundles/kagent-agentgateway-tenant-isolation/**'
+      - 'work-agent-bundles/postgres-fastmcp-entra-uami/**'
+      - '.github/workflows/agent-platform-docs.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install documentation dependencies
+        run: |
+          python3 -m venv .docs-venv
+          .docs-venv/bin/python -m pip install -r work-agent-bundles/agent-platform-mkdocs/requirements.txt
+      - name: Check delivery impact
+        env:
+          DOCS_BASE_COMMIT: ${{ github.event.pull_request.base.sha }}
+        run: .docs-venv/bin/python work-agent-bundles/agent-platform-mkdocs/scripts/check_delivery_impact.py --base "$DOCS_BASE_COMMIT"
+      - name: Check generated pages and build
+        run: .docs-venv/bin/python work-agent-bundles/agent-platform-mkdocs/scripts/build_docs.py

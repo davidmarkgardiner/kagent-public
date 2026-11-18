@@ -89,6 +89,10 @@ Call these instead of hand-rolling the equivalent command sequences:
 - `scripts/check-skill-refs.sh` — reference-rot lint for `agents/skills/`; keep it green.
 - `scripts/tests/smoke-helpers.sh` — offline smoke test for all of the above; run it after editing any helper.
 
+## Platform documentation and roadmap
+
+For agent-platform documentation, agent, MCP/skill or governance milestones, follow `work-agent-bundles/agent-platform-mkdocs/AGENTS.md`. Keep roadmap impact, dated achievement evidence and generated pages in the same reviewed change.
+
 ## Common Validation
 
 Use the narrowest validation that proves the change:
