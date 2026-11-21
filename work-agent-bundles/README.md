@@ -25,6 +25,11 @@ receipts; they are not complete offline artifact distributions.
 
 ## Office demo and security handoff
 
+The [DICE gateway authentication and observability bundle](dice-gateway-auth-otel/ONE-SHEET.md)
+adds an isolated secured copy of the recorded agent, caller and agent JWT checks,
+OTel traces, and a Grafana dashboard. Its dated validation separates home-lab proof
+from workplace acceptance.
+
 Download this full repository as a ZIP, extract it, and copy the required folders
 into the workplace repository. No separate release asset or local package is needed.
 Start with [the office handoff](office-demo-security-2026-10-23/README.md).
