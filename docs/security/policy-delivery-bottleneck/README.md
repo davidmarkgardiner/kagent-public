@@ -4,6 +4,14 @@ When Azure Policy exceptions repeatedly delay pods, applications and runtimes, t
 
 This README explains the reasoning to managers and engineers, with a simple explanation first and the mathematics below. All numbers are illustrative. No workplace measurements or claims of measured savings are presented here.
 
+## Compare the engineering cluster with a Linux server
+
+Engineering teams deploy applications onto Linux servers as part of normal delivery. An engineering Kubernetes cluster also runs applications on Linux nodes, with an orchestration layer managing workloads. If equivalent deployments on servers are permitted while the cluster is routinely blocked, ask what additional risk each Kubernetes restriction addresses and whether the control is proportionate to this environment. This is an analogy, not an assertion that servers and clusters have identical risks or controls.
+
+Shared clusters and environments with customer data need controls appropriate to those workloads. For an isolated engineering cluster without customer workloads or data, assess the actual network paths, outbound access, identities and permissions, and assume cluster access may lead to node access. Verify the boundaries before describing external impact as limited: network isolation alone does not prevent misuse of an authorised identity or an allowed external connection. Review blocking policies individually and agree exceptions or an engineering baseline with appropriate alternative controls, owners and review.
+
+The [Teams draft](../engineering-policy-blocker-teams-message.md) puts this comparison to policy owners and asks for a decision.
+
 ## Explain it like I'm five
 
 Imagine we build toy cars and send them through a safety gate before children can play with them.
