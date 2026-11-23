@@ -24,3 +24,6 @@ https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/security/dev-e
 
 Option 2:
 https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/security/engineering-management-group-option.md
+
+Disposable cluster risk analysis:
+https://github.com/davidmarkgardiner/kagent-public/blob/main/docs/security/disposable-engineering-cluster-risk.md
