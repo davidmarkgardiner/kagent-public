@@ -10,54 +10,55 @@ its receipt. **Never claim a pass without a receipt, and never widen an allowlis
 
 ## Rollout: ONE PHASE AT A TIME
 
-The Sentinel (the central part) is already handed over separately and working. This bundle is added in the order below, easiest first. **Do only the phase you are told to do. Stop at its gate,
-report with receipts, and do not start the next phase until a human says "go".** Doing everything at once is the failure to avoid.
+The Sentinel (the central part) is already handed over separately and working. This bundle is added in the order below, easiest first. **Warden (the in-place A2A eval) and Assay (the pipeline eval) are two
+separate tasks with separate gates: do not do one while doing the other.** **Do only the phase you are told to do. Stop at its gate, report with receipts, and do not start the next phase until a human says "go".**
 
 | Phase | Scope | Needs | Gate: stop and report |
 |---|---|---|---|
 | **0. Readiness (no changes)** | Confirm the pinned versions; that **Grafana is reachable and its Loki, Tempo and Mimir/Prometheus datasources are healthy**; that **the applications are configured to send traces, logs and events** (find a recent trace and log for each); that Alertmanager exists and can call a webhook; that the model routes answer | Read access only | A readiness table. Anything red is reported, **not built**. Do not install or repair Grafana |
-| **1. Evaluation: Warden, then Assay** | Steps 1 to 12 | Rows 1 to 6 of `HUMAN-PREREQUISITES.md` (gateway auth, tools, models, CI; **no monitoring needed**) | Per-case verdicts and the negative tests, with receipts. This is the easiest integration |
-| **2. Guard: detection and proposals only** | Step 13, **detector and proposals, no enforcement** | Phase 0 green for telemetry; Phase 1 done | `detect.py` clean on good runs, `forbidden_tool` on a bad one, `degraded` on a gap; a proposal accepted by server dry-run, nothing applied |
-| **3. LGTM integration** | Steps 14 and 15: spend guards, model probe, alert intake, the agent-health agent | Phase 0 fully green; Phase 2 done; a separate model route for the overseer | One bounded overseer run (tool budget on, stop at the first failure), then one real alert end to end |
-| **4. Direct blocking** | The `enforce.py` part of step 13 | Written owner approval of which signals may auto-block; a narrow identity for `enforce.py` | Applied, read back and released on a **throwaway route**, with a real request proving the Deny blocks |
+| **1. Warden: the in-place A2A eval** | Steps 1 to 3 (common), then 4, 5, 6, 10, 11 and 12 | Rows 1 to 4 and 8 of `HUMAN-PREREQUISITES.md` (gateway auth, tools, model routes, the receiver). **No CI, no monitoring** | The worker sends its payload to the evaluator and is corrected; the ticket step only after PASS; the negative tests pass, with receipts |
+| **2. Assay: the pipeline eval** | Steps 7, 8 and 9 | Phase 1 done; rows 5 to 7 and 12 of `HUMAN-PREREQUISITES.md` (GitLab project, runner, variables, mirrored images, human review) | Smoke, then pass^3 per case through the gateway, with the CI runs; an unprotected-branch MR fails closed |
+| **3. Guard: detection and proposals only** | Step 13, **detector and proposals, no enforcement** | Phase 0 green for telemetry; Phases 1 and 2 done | `detect.py` clean on good runs, `forbidden_tool` on a bad one, `degraded` on a gap; a proposal accepted by server dry-run, nothing applied |
+| **4. LGTM integration** | Steps 14 and 15: spend guards, model probe, alert intake, the agent-health agent | Phase 0 fully green; Phase 3 done; a separate model route for the overseer | One bounded overseer run (tool budget on, stop at the first failure), then one real alert end to end |
+| **5. Direct blocking** | The `enforce.py` part of step 13 (it needs `--findings`, `--identity-map` and `--ledger`) | Written owner approval of which signals may auto-block; a narrow identity for `enforce.py` | Applied, read back and released on a **throwaway route**, with a real request proving the Deny blocks |
 
 Step 16 (the report) is written at the end of every phase.
 
-1. *[Phase 1]* **Inventory.** Record the actual kagent version and API group (0.7.x `kagent.dev/v1alpha2`, or 1.x
+1. *[Phases 1 and 2]* **Inventory.** Record the actual kagent version and API group (0.7.x `kagent.dev/v1alpha2`, or 1.x
    `api.kagent.dev/v1alpha3`), the gateway and route, the agent(s) to evaluate, their declared tools, and the model route. Read
    [docs/kagent-versions.md](docs/kagent-versions.md): the A2A path, request shape and tool-event location differ between versions.
-2. *[Phase 1]* **Prove the bundle offline.** Run `./verify-bundle.sh`. It must pass before you change anything.
-3. *[Phase 1]* **Prove plain A2A.** Call the target agent directly (no gateway) with a trivial read-only prompt. Inspect the real task status and
+2. *[Phases 1 and 2]* **Prove the bundle offline.** Run `./verify-bundle.sh`. It must pass before you change anything.
+3. *[Phases 1 and 2]* **Prove plain A2A.** Call the target agent directly (no gateway) with a trivial read-only prompt. Inspect the real task status and
    the answer. Kagent returns errors inside HTTP 200, so a 200 proves nothing.
-4. *[Phase 1]* **Capture one real receipt per version in use** and compare it with `tests/fixtures/` (0.7.x: `a2a-live-agent-tool-completed.json`;
+4. *[Phase 1 (Warden)]* **Capture one real receipt per version in use** and compare it with `tests/fixtures/` (0.7.x: `a2a-live-agent-tool-completed.json`;
    1.x: `a2a-v1x-subagent-completed.json`). If tool-call or usage shapes differ, fix `normalize()` in `a2a_capture.py` and
    `verify_completion.py`, add a sanitized receipt as a new fixture and a test, and keep the old fixtures. `python -m unittest discover -s tests` stays green.
-5. *[Phase 1]* **Write a contract per agent.** Copy `completion-gate/contracts/sentinel-investigator.yaml`. Set `agent`, replace `allowedTools` with the exact
+5. *[Phase 1 (Warden)]* **Write a contract per agent.** Copy `completion-gate/contracts/sentinel-investigator.yaml`. Set `agent`, replace `allowedTools` with the exact
    read-only tool names from the real tool server, set `requiredTools` (at least one tool that looks at the live object and one at events or logs), the
    output `envelope` and `sections`, and the evaluator name for the version in use. Then regenerate the evaluator:
    `python completion-gate/render_evaluator.py completion-gate/contracts/*.yaml --model-config {{MODEL_CONFIG}} > completion-gate/manifests/completion-evaluator-agent.yaml`.
-6. *[Phase 1]* **Deploy Warden.** Apply the generated evaluator and wire it into the target agent following `completion-gate/manifests/sentinel-investigator-agent.yaml`
+6. *[Phase 1 (Warden)]* **Deploy Warden.** Apply the generated evaluator and wire it into the target agent following `completion-gate/manifests/sentinel-investigator-agent.yaml`
    (0.7.x) or the `subAgent` form in `docs/kagent-versions.md` (1.x). The worker must have **no** ticket-writing tool. Check the deployed Agent against its contract:
    `python verify_completion.py --contract <contract> --receipt <receipt> --agent-crd <agent.yaml>`.
-7. *[Phase 1]* **Assay cases.** For each agent, add a case under `cases/` (copy `triage-crashloop-bad-env.yaml`): a seeded fault in `fixtures/cluster/` plus a healthy decoy,
+7. *[Phase 2 (Assay)]* **Assay cases.** For each agent, add a case under `cases/` (copy `triage-crashloop-bad-env.yaml`): a seeded fault in `fixtures/cluster/` plus a healthy decoy,
    the expected diagnosis and evidence terms, required and forbidden tools, budgets. `python tests/lint_cases.py cases` must pass. Have the agent owner review the
-   first real answers against the key terms (HUMAN-PREREQUISITES row 11).
-8. *[Phase 1]* **Wire CI.** Set the protected variables, point the matrix in `.gitlab-ci.yml` at the real agent(s), keep `EVAL_REQUIRE_CONTRACTS=false` until every matrix agent has
+   first real answers against the key terms (HUMAN-PREREQUISITES row 12).
+8. *[Phase 2 (Assay)]* **Wire CI.** Set the protected variables, point the matrix in `.gitlab-ci.yml` at the real agent(s), keep `EVAL_REQUIRE_CONTRACTS=false` until every matrix agent has
    a contract, then set it to `true`. Confirm an MR from an unprotected branch fails closed.
-9. *[Phase 1]* **Run Assay through the gateway.** `a2a_capture.py --tier smoke --repeat 1`, then `--tier full --repeat 3`, each followed by `score_and_gate.py` with
+9. *[Phase 2 (Assay)]* **Run Assay through the gateway.** `a2a_capture.py --tier smoke --repeat 1`, then `--tier full --repeat 3`, each followed by `score_and_gate.py` with
    `--contracts-dir completion-gate/contracts`. Report each verdict, score and latency. A real fail is a valid result.
-10. *[Phase 1]* **Run Warden.** Send the real Sentinel finding (or a synthetic one) to the agent through the gateway. Verify with `verify_completion.py` including
+10. *[Phase 1 (Warden)]* **Run Warden.** Send the real Sentinel finding (or a synthetic one) to the agent through the gateway. Verify with `verify_completion.py` including
     `--agent-crd`. Run it three times. Report PASS, FAIL and `reject` counts honestly: a correct block is a result, not a problem.
-11. *[Phase 1]* **Receiver read-back.** After the receiver writes the issue, run `verify_completion.py --readback issue.json`. Confirm the issue carries this run's incident key and the
+11. *[Phase 1 (Warden)]* **Receiver read-back.** After the receiver writes the issue, run `verify_completion.py --readback issue.json`. Confirm the issue carries this run's incident key and the
     required labels, and that nothing is written when the route is `reject`.
-12. *[Phase 1]* **Negative tests.** Prove the gate blocks: a worker that skips the evaluator, one that calls a tool outside the allowlist, a tool error on a required tool, and
+12. *[Phase 1 (Warden)]* **Negative tests.** Prove the gate blocks: a worker that skips the evaluator, one that calls a tool outside the allowlist, a tool error on a required tool, and
     a report changed after approval. Each must fail with its reason.
-13. *[Phases 2 and 4]* **Guard.** (Phase 2: detector and proposals only. The auto-apply parts of this step belong to Phase 4 and must wait for it.) Copy `guard/rules.yaml`, set each agent's budgets and allowlist from observed baselines, and copy `guard/identity-map.example.yaml` and fill it with gateway-authenticated subjects and routes only (never
+13. *[Phases 3 and 5]* **Guard.** (Phase 3: detector and proposals only. The auto-apply parts of this step belong to Phase 5 and must wait for it.) Copy `guard/rules.yaml`, set each agent's budgets and allowlist from observed baselines, and copy `guard/identity-map.example.yaml` and fill it with gateway-authenticated subjects and routes only (never
     from event data). Run `guard/detect.py` on real receipts: a good run must be `clean`, a worker with an extra tool must give `forbidden_tool`, and an agent with no telemetry must give `degraded`, never `clean`. Run
     `guard/propose.py --dry-run-server --context <explicit>`; confirm the policy is accepted and that **nothing was applied**. Then, only after the owner has confirmed which signals may auto-block, set `autoApply` in `rules.yaml`, give `guard/enforce.py` its narrow identity, and prove on a throwaway route: refused without `--auto-apply`; `apply --auto-apply --context <explicit>` applies and reads back; the caps and kill switch refuse; `release` removes it. Also prove the Deny **actually blocks** the caller with a real request, which was not possible in the lab.
-14. *[Phase 3]* **Spend guards.** Set `guard/loop-limits.yaml`. Prove with the replay tests and one live failure that a permanent error (400) is held and never retried, that a 429 backs off, that three failures open the breaker,
+14. *[Phase 4]* **Spend guards.** Set `guard/loop-limits.yaml`. Prove with the replay tests (offline, no live runs) that a permanent error (400) is held and never retried, that a 429 backs off, that three failures open the breaker,
     and that the kill switch stops everything. **Never run a failing agent in a loop to "see if it works".** Stop at the first failure and diagnose it from the receipt.
-15. *[Phase 3]* **Overseer and alerts.** Wire Alertmanager to `guard/alert_to_a2a.py`. Check that human-only alerts are not given to any agent. The agent-health agent has NOT passed a live run in the lab: a model 400 from a 4.4 MB tool result (fixed), then it wandered for 245000 tokens. It now has a tool-call budget and a prompt that says what an agent is. Prove ONE bounded run through its Warden contract (stop at the first failure, never loop) before enabling delivery. Keep a human-only paging path for the Guard heartbeat.
+15. *[Phase 4]* **Overseer and alerts.** Wire Alertmanager to `guard/alert_to_a2a.py`. Check that human-only alerts are not given to any agent. The agent-health agent has NOT passed a live run in the lab: a model 400 from a 4.4 MB tool result (fixed), then it wandered for 245000 tokens. It now has a tool-call budget and a prompt that says what an agent is. Prove ONE bounded run through its Warden contract (stop at the first failure, never loop) before enabling delivery. Keep a human-only paging path for the Guard heartbeat.
 16. *[every phase]* **Report.** Fill a private copy of `evidence/` from the actual receipts: versions, gateway, agents, per-case verdicts, scores, latencies, code changes, and everything you
     could not verify. Use placeholders for hosts and IPs.
 

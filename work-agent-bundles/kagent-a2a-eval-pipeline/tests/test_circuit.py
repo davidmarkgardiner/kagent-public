@@ -194,5 +194,19 @@ class HoldLengths(unittest.TestCase):
         c.now = 1000 + 21601; self.assertNotEqual(c.allow("a"), (False, "held_after_permanent_error"))
 
 
+class StateHygiene(unittest.TestCase):
+    def test_old_keys_are_pruned_and_live_holds_kept(self):
+        p = Path(tempfile.mkdtemp()) / "s.json"
+        c = cm.Circuit(p, L, 1000.0)
+        c.start("old"); c.start("held"); c.record("held", False, 1, 400)
+        c.save(); self.assertEqual(set(json.loads(p.read_text())["keys"]), {"old", "held"})
+        c2 = cm.Circuit(p, L, 1000.0 + L["windowS"] + 1); c2.save()
+        self.assertEqual(set(json.loads(p.read_text())["keys"]), {"held"})  # 'old' aged out; the 24 h hold is kept
+
+    def test_no_shared_temp_file_name_is_left_behind(self):
+        p = Path(tempfile.mkdtemp()) / "s.json"; c = cm.Circuit(p, L, 1000.0); c.start("a"); c.save()
+        self.assertFalse(list(p.parent.glob("*.tmp")))
+
+
 if __name__ == "__main__":
     unittest.main()

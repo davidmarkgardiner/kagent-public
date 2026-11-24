@@ -442,7 +442,7 @@ def _verify_v1(contract: dict[str, Any], task: dict[str, Any], readback: dict[st
     for cid, (pos, name, data) in sorted(calls.items(), key=lambda kv: kv[1][0]):
         if name == TRANSFER:
             target = str((data.get("args") or {}).get("agent_name") or "")
-            handoffs.append((pos, target))
+            handoffs.append((pos, target, cid))
             if target != eval_agent and target not in allowed_agents:
                 failures.append(f"handoff to agent not in allowedAgents: {target}")
                 scope_broken = True
@@ -473,6 +473,10 @@ def _verify_v1(contract: dict[str, Any], task: dict[str, Any], readback: dict[st
             failures.append(f"evaluator called {len(evals)} times, maxAttempts is {max_attempts}")
         last = evals[-1][0]
         prev = evals[-2][0] if len(evals) > 1 else -1
+        hr = (responses.get(evals[-1][2]) or (0, "", {}))[2]
+        hrr = hr.get("response") if isinstance(hr.get("response"), dict) else {}
+        if hr.get("isError") or hr.get("error") or hrr.get("isError") or hrr.get("error"):
+            failures.append("the handoff to the evaluator returned an error; a verdict after it cannot be trusted")
         if any(pos > last and kind == "function_call" for pos, kind, _ in timeline):
             failures.append("a tool was called after the last evaluation; that evidence was never reviewed")
         # What the evaluator judged: the worker's text between the previous handoff and this one.

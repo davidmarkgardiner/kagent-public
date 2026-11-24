@@ -67,6 +67,10 @@ def main() -> int:
     ap.add_argument("--window", type=int, default=3600)
     ap.add_argument("--now", type=float, default=None)
     args = ap.parse_args()
+    if args.breaker:  # one process at a time may read, decide and write the breaker state (check-then-act)
+        import fcntl
+        _lock = open(str(args.breaker) + ".lock", "a")
+        fcntl.flock(_lock, fcntl.LOCK_EX)
     now = args.now if args.now is not None else time.time()
     if args.record:
         if not (args.breaker and args.key):

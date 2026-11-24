@@ -1,6 +1,6 @@
 # Human prerequisites
 
-Phase 1 (evaluation) needs rows 1 to 6 only. Grafana, telemetry and alert rows (8 and later) are Phase 0 checks and gate Phases 2 and 3; see `docs/rollout.md`.
+Phase 1 (Warden) needs rows 1 to 4 and 8; Phase 2 (Assay) adds rows 5 to 7 and 12. Grafana, telemetry and alert rows (8 and later) are Phase 0 checks and gate Phases 2 and 3; see `docs/rollout.md`.
 
 The work agent cannot create these. Complete the sheet before handing over
 [WORK-AGENT-PROMPT.md](WORK-AGENT-PROMPT.md). Use placeholders in anything you commit.

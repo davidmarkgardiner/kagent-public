@@ -53,7 +53,7 @@ and tool attributes before relying on them; that has not been verified here.
 
 ## Open decisions
 
-Names; whether Guard may ever auto-apply a block (the code never does); which agents are on the never-block list; token baselines per agent; the ticket project and labels.
+Names; which signals may auto-block (decided: `forbidden_tool` only, through `enforce.py`); which agents are on the never-block list; token baselines per agent; the ticket project and labels.
 
 ## What was built (see `guard/` and `evidence/GUARD-AND-LOOP-2026-11-24.md`)
 

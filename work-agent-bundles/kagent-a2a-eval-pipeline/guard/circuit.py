@@ -120,6 +120,9 @@ class Circuit:
     def save(self) -> None:
         if self.corrupt:
             return  # leave the damaged file for a person to look at
-        tmp = self.path.with_suffix(".tmp")
+        L = self.limits  # prune keys that can no longer matter, so the state cannot grow without bound
+        self.s["keys"] = {k: v for k, v in self.s["keys"].items()
+                          if v.get("hold_until", 0) > self.now or v.get("next_try", 0) > self.now or any(self.now - t < L["windowS"] for t in v.get("attempts", []))}
+        tmp = self.path.with_suffix(f".{os.getpid()}.tmp")  # unique per process: two writers cannot share a temp file
         tmp.write_text(json.dumps(self.s, sort_keys=True))
         os.replace(tmp, self.path)

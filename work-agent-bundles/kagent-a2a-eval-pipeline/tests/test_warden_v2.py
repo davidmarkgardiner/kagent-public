@@ -130,5 +130,33 @@ class ToolBudget(unittest.TestCase):
         self.assertFalse([f for f in vc.verify(c, GOOD)["failures"] if "budget" in f])
 
 
+class FailedHandoff(unittest.TestCase):
+    """Peer review finding: a verdict-shaped text after an errored transfer_to_agent must not be accepted."""
+
+    def _with_error(self, key):
+        rec = copy.deepcopy(GOOD)
+        for a in rec["result"]["task"]["artifacts"]:
+            for p in a["parts"]:
+                d = p.get("data") or {}
+                if d.get("name") == "transfer_to_agent" and (p.get("metadata") or {}).get("kagent.dev/a2a/part-type") == "function_response":
+                    if key == "isError":
+                        d["isError"] = True
+                    elif key == "error":
+                        d["error"] = "agent not found"
+                    else:
+                        d["response"] = {"isError": True}
+        return rec
+
+    def test_errored_handoff_is_not_a_pass_in_any_error_shape(self):
+        for key in ("isError", "error", "nested"):
+            r = vc.verify(CONTRACT, self._with_error(key))
+            self.assertEqual(r["verdict"], "FAIL", key)
+            self.assertEqual(r["route"], "reject", key)
+            self.assertTrue(any("handoff to the evaluator returned an error" in f for f in r["failures"]), key)
+
+    def test_the_real_receipt_shape_still_passes(self):
+        self.assertEqual(vc.verify(CONTRACT, GOOD)["verdict"], "PASS")
+
+
 if __name__ == "__main__":
     unittest.main()

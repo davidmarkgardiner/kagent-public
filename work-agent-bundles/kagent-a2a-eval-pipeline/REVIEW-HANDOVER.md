@@ -18,7 +18,7 @@ Four parts for kagent agents, plus an overseer:
 Branch `feat/kagent-agent-eval-two-stage`, based on `main`. Commits, oldest first: `17a18cd3` (Assay and Warden), `5ad8a18f` (packaging), `732b2725` (Guard, overseer intake, Warden hardening),
 `81b89bb2` (air-gap, variables, Guard page), `834a27c3` (overseer root cause, tool-call budget), `6e14395b` (429 as a wait), `8c4e6e20` (lessons from the factory handoff). Not pushed.
 
-Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 162 tests.
+Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 175 tests.
 
 ## 2. Claims against evidence
 
@@ -61,8 +61,8 @@ A Codex review covered the plan, an early version of `verify_completion.py` (0.7
 4. **Circuit breaker.** Clock changes, concurrent writers (there is no file lock on the breaker state, unlike the Warden emitter), a state file that grows without bound, and whether `rate_limited_wait` can be used to starve a legitimate retry forever.
 5. **Prompt dependence.** Two agents went from failing to passing by prompt wording alone. Is the gate measuring the agent or the prompt? What is the failure rate over 20 runs?
 6. **Docs honesty.** Compare `FRONT-SHEET.md`'s status table, the deck and the explainer with the evidence files. The explainer (`EVALUATION-EXPLAINED.html`) was written before the Guard work and only had its counts updated.
-7. **Rollout order and phase gates.** `WORK-AGENT-PROMPT.md` now opens with five phases (0 readiness, 1 evaluation, 2 Guard detection, 3 LGTM integration, 4 direct blocking) with a gate after each. Check that each step is in the right phase, that no step quietly needs something from a later phase (for example telemetry in Phase 1), and that a work agent given only Phase 1 could not drift into the rest.
-8. **Replicability.** Could a work agent follow `WORK-AGENT-PROMPT.md` (16 steps, in five gated phases) with only the prerequisites listed? Note anything assumed but unwritten.
+7. **Rollout order and phase gates.** `WORK-AGENT-PROMPT.md` now opens with six phases (0 readiness, 1 Warden, 2 Assay, 3 Guard detection, 4 LGTM integration, 5 direct blocking) with a gate after each. Check that each step is in the right phase, that no step quietly needs something from a later phase (for example telemetry in Phase 1), and that a work agent given only Phase 1 could not drift into the rest.
+8. **Replicability.** Could a work agent follow `WORK-AGENT-PROMPT.md` (16 steps, in six gated phases) with only the prerequisites listed? Note anything assumed but unwritten.
 
 ## 6. Known rough edges
 
@@ -77,3 +77,17 @@ A Codex review covered the plan, an early version of `verify_completion.py` (0.7
 - **Do not run agents in a loop.** One live agent run once cost 245000 tokens. Prefer the offline tests and the recorded receipts. Stop at the first live failure and diagnose from the receipt.
 - Do not run `enforce.py apply` against any real cluster; the tests use a fake kubectl, so use those. Do not touch the lab or any production context.
 - Report findings ranked, each with a file and line and a concrete failing input. Say plainly if something you could not check.
+
+## 8. Review round 1 (an independent Codex pass, 24 Nov 2026) and what was done
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | Critical: `enforce.py` trusted editable `proposals.json` for the signal, subject and route | **Fixed**: it now needs `--findings` and `--identity-map`; signal and agent come from the detector finding; the policy must match the map (tests) |
+| 2 | High: caps bypassable (optional ledger, caller-supplied `--now`, corrupt lines skipped, repeat apply uses a slot, failed read-back recorded as failed, kill switch only in one place, no lock) | **Fixed**: ledger required, clock only overridable in test mode, corrupt ledger fails closed, idempotent re-apply, `applied_unverified` counts, kill switch checked per proposal in three places, file lock |
+| 3 | High: Warden accepted a verdict after an errored `transfer_to_agent` | **Fixed and reproduced first** (PASS before, FAIL now, three error shapes) |
+| 4 | High: circuit breaker not concurrency-safe, unbounded state | **Fixed**: lock in the intake, unique temp file, pruning. **Open:** `maxToolCalls` only checks a finished receipt, so it cannot stop a run in progress |
+| 5 | Medium: detector reports clean when no inventory is supplied | **Open**: not changed |
+| 6 | Medium: Phase 1 prerequisite conflicts; step 14 asked for a live failure while saying stop at the first failure | **Fixed** (rows corrected, phases split, step 14 now offline only) |
+| 7 | Medium: docs said the code never auto-applies; FRONT-SHEET contradicted itself on the Warden passes | **Fixed** |
+
+Not checked by that reviewer: its sandbox blocked temp directories and local servers, so it could not run most tests. Round 2 should be run with a reviewer that can.

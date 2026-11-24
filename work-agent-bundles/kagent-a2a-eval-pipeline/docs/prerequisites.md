@@ -51,7 +51,7 @@ Record each image, its source and its digest. Re-tag into the internal registry 
 | 7 | The receiver that writes the GitLab issue, plus read access to read it back | Warden's ticket check |
 | 8 | Monitoring for the Guard: Grafana, Alertmanager, Tempo metrics, a route into the agent system, **and a separate human-only paging route** | The loop is design-only without them |
 | 8b | A narrow identity for `guard/enforce.py`: create, get, list and delete `agentgatewaypolicies` with the guard label, in the one policy namespace only | It is the only component that writes to the cluster |
-| 9 | Decisions: where a first-try evaluator FAIL routes on 1.x; whether the Guard may ever auto-apply a block (the code never does); the never-block list; token baselines per agent | See `HUMAN-PREREQUISITES.md` |
+| 9 | Decisions: where a first-try evaluator FAIL routes on 1.x; which signals may auto-block (the code applies directly only for the signals you allow, through `enforce.py`, and a person releases it); the never-block list; token baselines per agent | See `HUMAN-PREREQUISITES.md` |
 
 ## 4. Known environment traps (all seen in the lab)
 

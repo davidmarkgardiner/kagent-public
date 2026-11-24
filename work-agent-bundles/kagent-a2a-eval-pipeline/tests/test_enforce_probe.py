@@ -52,9 +52,10 @@ def setup(findings=(FINDING,), mapping=MAP, active=()):
 
 
 def enforce(d, env, *extra, auto=True, ctx="lab", ledger=True, now="1000"):
-    cmd = [PY, str(B / "guard/enforce.py"), "apply", "--proposals", str(d / "out/proposals.json"), "--now", now]
+    cmd = [PY, str(B / "guard/enforce.py"), "apply", "--proposals", str(d / "out/proposals.json"), "--findings", str(d / "f.json"), "--identity-map", str(d / "m.yaml")]
     if ledger:
         cmd += ["--ledger", str(d / "ledger.jsonl")]
+    env = {**env, "GUARD_TEST_MODE": "1", "GUARD_TEST_NOW": now}
     if auto:
         cmd += ["--auto-apply"]
     if ctx:
@@ -162,6 +163,77 @@ class Enforce(unittest.TestCase):
         r = subprocess.run([PY, str(B / "guard/enforce.py"), "release", "--context", "lab", "--namespace", "agentgateway-system", "--name", "important", "--ledger", str(d / "ledger.jsonl")], capture_output=True, text=True, env=env)
         self.assertEqual(r.returncode, 1); self.assertIn("refused_not_guard_managed", r.stdout)
         self.assertFalse([c for c in calls(d) if " delete " in f" {c} "])
+
+
+class EnforceReview(unittest.TestCase):
+    """Peer review round 1: enforcement must trust the detector and the identity map, never the editable proposal."""
+
+    def test_a_tampered_proposal_signal_cannot_promote_a_ticket_only_finding_to_a_block(self):
+        d, env = setup([dict(FINDING, signal="token_burn", dedupe_key="x|token_burn|1")])
+        pj = d / "out/proposals.json"; doc = json.loads(pj.read_text()); doc["results"][0]["signal"] = "forbidden_tool"; pj.write_text(json.dumps(doc))
+        r, res = enforce(d, env)
+        self.assertEqual(res[0]["outcome"], "refused"); self.assertIn("ticket only", res[0]["reason"])
+        self.assertFalse([c for c in calls(d) if "apply" in c])
+
+    def test_a_policy_naming_a_different_subject_or_route_than_the_identity_map_is_refused(self):
+        for mutate in (lambda p: p["spec"]["traffic"]["authorization"]["policy"].update(matchExpressions=['jwt.sub == "someone-else"']),
+                       lambda p: p["spec"]["targetRefs"][0].update(name="another-route")):
+            d, env = setup()
+            pf = next((d / "out").glob("policy-*.yaml")); pol = yaml.safe_load(pf.read_text()); mutate(pol); pf.write_text(yaml.safe_dump(pol))
+            r, res = enforce(d, env)
+            self.assertEqual(res[0]["outcome"], "refused"); self.assertIn("trusted identity map", res[0]["reason"])
+            self.assertFalse([c for c in calls(d) if "apply" in c])
+
+    def test_a_proposal_with_no_matching_detector_finding_is_refused(self):
+        d, env = setup()
+        pj = d / "out/proposals.json"; doc = json.loads(pj.read_text()); doc["results"][0]["finding"] = "invented|forbidden_tool|9"; pj.write_text(json.dumps(doc))
+        r, res = enforce(d, env)
+        self.assertIn("no matching detector finding", res[0]["reason"])
+
+    def test_the_ledger_is_required(self):
+        d, env = setup()
+        r, _ = enforce(d, env, ledger=False)
+        self.assertEqual(r.returncode, 2); self.assertEqual(calls(d), [])
+
+    def test_a_corrupt_ledger_fails_closed(self):
+        d, env = setup(); (d / "ledger.jsonl").write_text("{not json\n")
+        r, _ = enforce(d, env)
+        self.assertEqual(r.returncode, 1); self.assertIn("corrupt", r.stdout); self.assertFalse([c for c in calls(d) if "apply" in c])
+
+    def test_the_clock_cannot_be_overridden_outside_test_mode(self):
+        d, env = setup()
+        (d / "ledger.jsonl").write_text("\n".join(json.dumps({"epoch": time.time() - 10, "outcome": "applied"}) for _ in range(2)) + "\n")
+        env2 = {k: v for k, v in env.items() if not k.startswith("GUARD_TEST")}; env2["GUARD_TEST_NOW"] = "1"  # ignored without GUARD_TEST_MODE
+        r = subprocess.run([PY, str(B / "guard/enforce.py"), "apply", "--proposals", str(d / "out/proposals.json"), "--findings", str(d / "f.json"), "--identity-map", str(d / "m.yaml"),
+                            "--ledger", str(d / "ledger.jsonl"), "--auto-apply", "--context", "lab"], capture_output=True, text=True, env=env2)
+        self.assertIn("hourly apply cap", r.stdout)
+
+    def test_a_repeat_apply_is_idempotent_and_uses_no_cap_slot(self):
+        d, env = setup()
+        pf = next((d / "out").glob("policy-*.yaml")); name = yaml.safe_load(pf.read_text())["metadata"]["name"]
+        (d / "active.json").write_text(json.dumps({"items": [{"metadata": {"name": name, "annotations": {"guard.kagent.dev/applied": "true"}}}]}))
+        r, res = enforce(d, env)
+        self.assertEqual(res[0]["outcome"], "already_applied"); self.assertEqual(r.returncode, 0)
+        self.assertFalse([c for c in calls(d) if " apply " in f" {c} "])
+
+    def test_an_apply_whose_readback_fails_is_recorded_as_active_and_counts_towards_the_cap(self):
+        d, env = setup(); env["FAKE_GET_RC"] = "1"
+        r, res = enforce(d, env)
+        self.assertEqual(res[0]["outcome"], "applied_unverified"); self.assertEqual(r.returncode, 1)
+        (d / "ledger.jsonl").write_text((d / "ledger.jsonl").read_text() * 2)
+        env.pop("FAKE_GET_RC"); r2, res2 = enforce(d, env)
+        self.assertIn("hourly apply cap", res2[0]["reason"])
+
+    def test_the_kill_switch_is_found_next_to_the_ledger_and_rules_too(self):
+        for where in ("ledger", "rules"):
+            d, env = setup()
+            target = d if where == "ledger" else B / "guard"
+            sw = target / "guard-enforce.disabled"; sw.write_text("")
+            try:
+                r, res = enforce(d, env)
+                self.assertEqual(res[0]["reason"], "kill switch", where)
+            finally:
+                sw.unlink()
 
 
 class H(BaseHTTPRequestHandler):

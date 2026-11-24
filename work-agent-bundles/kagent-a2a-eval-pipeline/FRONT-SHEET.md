@@ -35,11 +35,11 @@ separately approved agent. Warden checks the investigation, not a repair.
 
 | Claim | Status | Receipt |
 |---|---|---|
-| 162 offline tests, case lint, generated evaluator is current | PASS | `./verify-bundle.sh` |
+| 175 offline tests, case lint, generated evaluator is current | PASS | `./verify-bundle.sh` |
 | Assay: smoke and full pass^3 through the gateway on kagent 0.7.13 | PASS (1.0 each) | evidence file, stage 1 sections |
 | Warden on kagent 0.7.13 (evaluator as a `type: Agent` tool) | 1 live PASS | evidence file, stage 2 section |
 | Warden on kagent 1.0.0-alpha17 (evaluator as a `subAgent`), A2A 1.0 | 2 of 3 PASS; the third was a correct block | evidence file, 1.x section |
-| Warden, three live passes in a row | **NOT RUN** | |
+| Warden, three live passes in a row from a clean first attempt | **NOT ACHIEVED**: 3 of 3 came only after the prompt was tuned (a clean first run scored 0 of 3) | `evidence/GUARD-AND-LOOP-2026-11-24.md` |
 | Warden FAIL → fix → retry loop live | **NOT POSSIBLE on 1.x** (handoff does not return); 0.7.x not re-run | |
 | GitLab receiver write and read-back | **NOT RUN** | |
 | Warden: 0 of 3, then 3 of 3 live after a stricter worker prompt (1.0.0-alpha17) | PASS 3 of 3 (the first prompt failed all three, and Warden caught it) | `evidence/GUARD-AND-LOOP-2026-11-24.md` |
