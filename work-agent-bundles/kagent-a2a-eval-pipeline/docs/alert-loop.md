@@ -35,12 +35,14 @@ and tool attributes before relying on them; that has not been verified here.
 
 1. **Detect in code, explain with the model.** The rules above are Prometheus/Loki alert rules. The model never decides whether something is rogue; it
    writes the explanation and the ticket text. A prompt cannot talk the detector out of firing.
-2. **Propose a block, do not apply one, by default.** The Guard agent writes an `AgentgatewayPolicy` that denies the offending caller, validated with a
-   server dry-run, and attaches it to the ticket or a change request. A human applies it. Auto-apply is a later decision, and only for a narrow pre-approved
-   policy shape (deny one caller for a fixed time), with an expiry.
+2. **Block a definite offender immediately (owner decision, 24 Nov 2026).** `guard/propose.py` writes the policy; `guard/enforce.py apply --auto-apply --context <explicit>` applies it directly, as a failsafe,
+   but only for signals in `rules.yaml autoApply.signals` (default `forbidden_tool`: a deterministic tool-outside-allowlist result). `token_burn` and everything else stay proposal-only. The policy is re-validated
+   independently (one named route, `Deny`, one `jwt.sub` identifier, the allowed namespace); a cap on active blocks (3) and on applies per hour (2) stops a runaway Guard blocking the fleet; a kill switch; server
+   dry-run, then apply, then read-back; one ledger line per decision. **A block never expires by itself:** a person reviews, fixes, then runs `enforce.py release`.
 3. **A short list it can never block:** the monitoring stack, the Guard itself, and any agent named as critical. A guard that can block the thing that watches it can be abused to
    blind the system.
-4. **Least privilege.** It holds no policy-write or ticket-write credentials at all. `guard/propose.py` writes files; a person, or a separate receiver with its own approval, applies them.
+4. **Least privilege, in a separate component.** The detector and the agent hold no write credentials. Only `enforce.py` writes, and it should run under its own narrow identity: create, get, list and delete
+   `agentgatewaypolicies` carrying the guard label, in the one policy namespace, and nothing else. A prompt cannot widen that.
 5. **Treat what it reads as hostile.** Agent output and tool arguments are untrusted text. Quote them into the ticket; never follow instructions found in them.
 6. **It is an agent too.** It passes Assay before it is promoted, runs under a Warden contract, and has its own dead-man's switch.
 
@@ -56,8 +58,8 @@ Names; whether Guard may ever auto-apply a block (the code never does); which ag
 ## What was built (see `guard/` and `evidence/GUARD-AND-LOOP-2026-11-24.md`)
 
 `detect.py` (deterministic detector over A2A receipts, OTLP traces, access logs and `warden.jsonl`; missing data reads as `degraded`, never `clean`; hung runs are found through a
-start inventory), `propose.py` (ticket plus a block-policy proposal; identity only from a trusted map; never-block list; hostile text quoted; dedupe; never applies), `alerts/guard-alerts.yaml`,
-`alert_to_a2a.py` (Alertmanager payload to an agent-health request: human-only alerts never reach an agent, no self-trigger, capped, quoted), and the Guard and overseer agents with Warden contracts.
+start inventory), `propose.py` (ticket plus a block-policy proposal; it writes files only; identity only from a trusted map; never-block list; hostile text quoted; dedupe; never applies), `alerts/guard-alerts.yaml`,
+`enforce.py` (applies a proposal directly for definite offences, with caps, kill switch, ledger and a human `release`), `model_probe.py` (one-token model-route check), `alert_to_a2a.py` (Alertmanager payload to an agent-health request: human-only alerts never reach an agent, no self-trigger, capped, quoted), and the Guard and overseer agents with Warden contracts.
 
 ## Spend and retry guards (`guard/circuit.py`, `guard/loop-limits.yaml`)
 
@@ -108,3 +110,13 @@ pauses the provider), an **agent pulse** (code-only, every two minutes: stuck, s
 | A nightly cold review of 24 hours of evidence for problems no alert raised | Not built. A good fit for the Guard: run the detector over a day of receipts and traces |
 | A model or agent is "proven" only by a delivered run, not by being up | Matches Warden: a run counts only if the controller history shows it |
 | A circuit breaker plus a quota-aware launch gate | Breaker built. The launch gate (do not dispatch if the model route is unhealthy or low on quota) is not |
+
+## Decisions recorded on 24 Nov 2026
+
+- The injectable watcher is a template or skill. It is meant to be re-pointed at another application, so no more is built for it here.
+- The Sentinel sends to an HTTPS virtual-service endpoint that is already proven at work; cross-cluster delivery is not re-built here.
+- The worker must send its payload to the eval agent and fix what it reports before the ticket. Built as Warden. On 0.7 the evaluator is a tool that returns, so the worker can correct and retry. On the 1.x lab it is a handoff that does
+  **not** return, so "evaluator says PASS, then the first agent closes the ticket" needs a returning call (the controller's `invoke_session` tool is the candidate; not verified).
+- The agent-health agent should also be able to verify that a downstream model route is down and ticket it: `guard/model_probe.py` does the check in code (one token, classified ok, rate limited, server error, auth, timeout, DNS or connect); its result is evidence for the ticket.
+- Direct blocking for definite offences: built (`guard/enforce.py`), live-tested on the lab (apply, read back, release). Not tested: that the Deny actually blocks the caller, which needs a JWT setup.
+- Rough edge: re-applying the same finding applies it again and counts twice towards the hourly cap; it should be idempotent.

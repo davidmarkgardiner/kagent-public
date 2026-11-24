@@ -50,6 +50,7 @@ Record each image, its source and its digest. Re-tag into the internal registry 
 | 6 | Working DNS for the nodes and CoreDNS. Test it after every node restart | Kind and some node images regenerate resolver config on restart. Actors then hang silently with no error and no model call |
 | 7 | The receiver that writes the GitLab issue, plus read access to read it back | Warden's ticket check |
 | 8 | Monitoring for the Guard: Grafana, Alertmanager, Tempo metrics, a route into the agent system, **and a separate human-only paging route** | The loop is design-only without them |
+| 8b | A narrow identity for `guard/enforce.py`: create, get, list and delete `agentgatewaypolicies` with the guard label, in the one policy namespace only | It is the only component that writes to the cluster |
 | 9 | Decisions: where a first-try evaluator FAIL routes on 1.x; whether the Guard may ever auto-apply a block (the code never does); the never-block list; token baselines per agent | See `HUMAN-PREREQUISITES.md` |
 
 ## 4. Known environment traps (all seen in the lab)

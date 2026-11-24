@@ -11,14 +11,14 @@ Four parts for kagent agents, plus an overseer:
 |---|---|---|
 | **Assay** | Test an agent before it ships: GitLab pipeline, seeded fault, pass^3, through the gateway | `a2a_capture.py`, `score_and_gate.py`, `judge.py`, `.gitlab-ci.yml`, `cases/`, `fixtures/cluster/`, `gateway/` |
 | **Warden** | Sign off each run: an evaluator agent plus a deterministic check of the controller history | `verify_completion.py`, `a2a_shapes.py`, `completion-gate/` (contracts, generator, manifests) |
-| **Guard** | Detect rogue agents (long runs, token burn, tools outside the allowlist, non-200s, oversized tool output); propose a block and a ticket. Never applies | `guard/detect.py`, `guard/propose.py`, `guard/rules.yaml`, `guard/alerts/`, `guard/manifests/guard-agent.yaml` |
+| **Guard** | Detect rogue agents (long runs, token burn, tools outside the allowlist, non-200s, oversized tool output); propose a block and a ticket; **apply a block directly for definite offences** (`forbidden_tool`) with caps; probe a model route | `guard/detect.py`, `guard/propose.py`, `guard/enforce.py`, `guard/model_probe.py`, `guard/rules.yaml`, `guard/alerts/`, `guard/manifests/guard-agent.yaml` |
 | **Overseer intake + spend guards** | Alertmanager alert to an agent-health request; attempt caps, backoff, circuit breaker, token budget, kill switch | `guard/alert_to_a2a.py`, `guard/circuit.py`, `guard/loop-limits.yaml`, `guard/manifests/agent-health-agent.yaml` |
 | **Packaging** | What a work agent needs to replicate it | `FRONT-SHEET.md`, `WORK-AGENT-PROMPT.md`, `HUMAN-PREREQUISITES.md`, `PREREQUISITES-AIRGAP.md`, `VARIABLES.md`, `docs/` + `mkdocs.yml`, `presentation/`, `EVALUATION-EXPLAINED.html`, `verify-bundle.sh`, `SHA256SUMS` |
 
 Branch `feat/kagent-agent-eval-two-stage`, based on `main`. Commits, oldest first: `17a18cd3` (Assay and Warden), `5ad8a18f` (packaging), `732b2725` (Guard, overseer intake, Warden hardening),
 `81b89bb2` (air-gap, variables, Guard page), `834a27c3` (overseer root cause, tool-call budget), `6e14395b` (429 as a wait), `8c4e6e20` (lessons from the factory handoff). Not pushed.
 
-Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 148 tests.
+Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 162 tests.
 
 ## 2. Claims against evidence
 
@@ -44,18 +44,19 @@ Evidence files: `evidence/LIVE-PROXMOX-2026-11-23.md` and `evidence/GUARD-AND-LO
 - A live evaluator FAIL taking the quarantined-ticket route. Never run live.
 - kagent **1.0.1**. Only 1.0.0-alpha17 was run; the lab profile in the repo targets 1.0.1.
 - Three live Warden passes were achieved **only after** editing the prompt in response to failures. That is tuning, not a clean trial.
-- Policy expiry is an annotation. Nothing enforces it.
+- That a Deny policy actually blocks the offending caller. Only schema, apply, read-back and release were tested; there was no JWT setup to send a request through.
+- A block never expires by itself (by decision); there is no expiry job. A repeat apply of the same finding counts twice towards the hourly cap.
 - The overseer shares a model route with the agents it watches (a design flaw; see the prerequisites).
 
 ## 4. Never independently reviewed
 
 A Codex review covered the plan, an early version of `verify_completion.py` (0.7 path) and the original Stage 1/Stage 2 design; its findings were fixed. These were **written after and not reviewed by anyone else**:
-the whole 1.x path in `verify_completion.py` (`_verify_v1`), `guard/detect.py`, `guard/propose.py`, `guard/alert_to_a2a.py`, `guard/circuit.py`, `a2a_shapes.py`, `render_evaluator.py` (per-contract evaluators), and the alert rules.
+**`guard/enforce.py` (the highest-risk code: it writes to a cluster)**, `guard/model_probe.py`, the whole 1.x path in `verify_completion.py` (`_verify_v1`), `guard/detect.py`, `guard/propose.py`, `guard/alert_to_a2a.py`, `guard/circuit.py`, `a2a_shapes.py`, `render_evaluator.py` (per-contract evaluators), and the alert rules.
 
 ## 5. Where to push hardest
 
 1. **Can Warden be fooled on 1.x?** `_verify_v1` reads one flat list of artifact parts and cannot attribute text to an author. The verdict is accepted only as the evaluator's whole final reply as bare JSON, after the handoff. Look for a worker that can emit a forged verdict, hand off to a different agent name, or arrange parts so the "final text" is its own.
-2. **`propose.py` trust boundary.** Identity comes only from `--identity-map`. Try: a subject with CEL metacharacters, unicode lookalikes, a route name matching the never-block list by prefix, the same finding under a different dedupe key, state-file races, a `neverBlock` bypass through `completion-evaluator-*` naming.
+2. **`enforce.py` and the `propose.py` trust boundary.** Start with `enforce.py`: it applies to a cluster. Try to make it apply something other than a single-subject Deny: tampered policy files, label/namespace tricks, the cap and ledger under concurrency or a corrupt ledger, a kill switch bypass, `--now` abuse. Then Identity comes only from `--identity-map`. Try: a subject with CEL metacharacters, unicode lookalikes, a route name matching the never-block list by prefix, the same finding under a different dedupe key, state-file races, a `neverBlock` bypass through `completion-evaluator-*` naming.
 3. **False negatives in the detector.** Hung runs are only found through an inventory the caller supplies; if the inventory is empty, nothing is found. Per-hour token counting needs timestamps. A tool name that is in the allowlist but used on a forbidden resource is invisible to it.
 4. **Circuit breaker.** Clock changes, concurrent writers (there is no file lock on the breaker state, unlike the Warden emitter), a state file that grows without bound, and whether `rate_limited_wait` can be used to starve a legitimate retry forever.
 5. **Prompt dependence.** Two agents went from failing to passing by prompt wording alone. Is the gate measuring the agent or the prompt? What is the failure rate over 20 runs?
@@ -73,5 +74,5 @@ the whole 1.x path in `verify_completion.py` (`_verify_v1`), `guard/detect.py`, 
 
 - Read-only on the code unless asked to fix. Do not push, merge or open a PR.
 - **Do not run agents in a loop.** One live agent run once cost 245000 tokens. Prefer the offline tests and the recorded receipts. Stop at the first live failure and diagnose from the receipt.
-- Do not apply any proposed policy anywhere. Do not touch the lab or any production context.
+- Do not run `enforce.py apply` against any real cluster; the tests use a fake kubectl, so use those. Do not touch the lab or any production context.
 - Report findings ranked, each with a file and line and a concrete failing input. Say plainly if something you could not check.

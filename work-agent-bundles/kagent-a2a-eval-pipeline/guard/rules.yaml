@@ -10,7 +10,12 @@ defaults:
   maxNon2xxBurst: 5            # non-2xx from one caller in the window
   requireTokens: true          # an event with no token data is a coverage gap, never a clean zero
   requireTools: true           # an event with no tool data is a coverage gap
-blockSignals: [forbidden_tool, token_burn]   # others raise a ticket only
+blockSignals: [forbidden_tool, token_burn]   # a block PROPOSAL may be written for these; others raise a ticket only
+autoApply:                                     # guard/enforce.py applies a proposal directly, but only if the caller passes --auto-apply and --context
+  signals: [forbidden_tool]                    # definite only: a deterministic tool-outside-allowlist result. token_burn stays proposal-only
+  maxActiveBlocks: 3                           # a runaway Guard must not block the fleet
+  maxAppliesPerHour: 2
+  reviewDays: 1                                # a review date, not an expiry: a block stays until a person releases it
 policyNamespace: agentgateway-system        # the only namespace a proposed policy may live in
 # Never proposed for a block, whatever the evidence: the monitoring stack, the Guard itself, and agents named critical.
 neverBlock: [guard-agent, observability-agent, prometheus, alertmanager, grafana, tempo, loki, mimir, completion-evaluator]

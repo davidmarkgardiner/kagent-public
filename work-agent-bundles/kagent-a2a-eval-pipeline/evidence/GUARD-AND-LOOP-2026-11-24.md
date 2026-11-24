@@ -37,6 +37,9 @@ Its watchdog treats quota as a wait, never as broken. The circuit breaker was ch
 ## Further lessons from the factory's observability handoff
 401 and 403 are now held 6 hours rather than 24 (2 new tests). Recorded in `docs/alert-loop.md`: a per-task token stop-loss is recommended but not built; and the overseer shares a model route with the agents it watches, which is a design flaw to fix before relying on it (a separate route is now a prerequisite).
 
+## Direct blocking and the model probe (live, 24 Nov)
+Owner decision: block a definite offender immediately. `guard/enforce.py` (offline: 14 tests with a fake kubectl, plus 5 mutations of its safeguards, each caught). Live on the lab: refused without `--auto-apply`; applied for real; read back with `applied: true` and a review date; second apply allowed (cap 2); released; the cluster ended with no guard blocks; ledger has every step. Not tested: that the Deny blocks traffic. `guard/model_probe.py`: live ok (200, about 1.1 s) and a closed port classified `connect` (exit 2). Rough edge: a repeat apply of the same finding counts twice towards the cap.
+
 ## Lab pitfalls found
 - After the VM rebooted, the kind node's resolver was `0.0.0.0` again (Docker regenerates it on restart). Actors then hang with no error and no model call; the gateway log shows nothing. Resetting the node resolver and restarting the worker fixed it. The lab host also shuts down nightly.
 - A changed DHCP address for the VM triggered an SSH host-key warning; the key was verified out-of-band before updating `known_hosts`.

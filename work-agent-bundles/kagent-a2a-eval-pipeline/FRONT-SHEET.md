@@ -34,7 +34,7 @@ separately approved agent. Warden checks the investigation, not a repair.
 
 | Claim | Status | Receipt |
 |---|---|---|
-| 148 offline tests, case lint, generated evaluator is current | PASS | `./verify-bundle.sh` |
+| 162 offline tests, case lint, generated evaluator is current | PASS | `./verify-bundle.sh` |
 | Assay: smoke and full pass^3 through the gateway on kagent 0.7.13 | PASS (1.0 each) | evidence file, stage 1 sections |
 | Warden on kagent 0.7.13 (evaluator as a `type: Agent` tool) | 1 live PASS | evidence file, stage 2 section |
 | Warden on kagent 1.0.0-alpha17 (evaluator as a `subAgent`), A2A 1.0 | 2 of 3 PASS; the third was a correct block | evidence file, 1.x section |
@@ -42,7 +42,9 @@ separately approved agent. Warden checks the investigation, not a repair.
 | Warden FAIL → fix → retry loop live | **NOT POSSIBLE on 1.x** (handoff does not return); 0.7.x not re-run | |
 | GitLab receiver write and read-back | **NOT RUN** | |
 | Warden: 0 of 3, then 3 of 3 live after a stricter worker prompt (1.0.0-alpha17) | PASS 3 of 3 (the first prompt failed all three, and Warden caught it) | `evidence/GUARD-AND-LOOP-2026-11-24.md` |
-| Guard detector, block proposal (server dry-run only) and ticket, live on the lab | PASS; nothing applied | same |
+| Guard detector, block proposal and ticket, live on the lab | PASS | same |
+| Direct block (`guard/enforce.py`): apply, read back, release on a real cluster; caps and kill switch | PASS live and offline (mutation-tested). **Not tested:** that the Deny actually blocks the caller | same |
+| Model-route probe | PASS live (ok, and a closed port classified as a wait) | same |
 | Overseer (agent-health) agent live | **NOT PASSING.** First 3 runs: model 400 (a 4.4 MB tool result), fixed. One follow-up run: no 400, but it wandered (14 calls, 245000 tokens) and wrote no report; Warden blocked it. Budget and prompt fixes are offline-tested only | same |
 | Spend and retry guards for the loop (attempt cap, 400 hold, 429 backoff, breaker, token budget, kill switch) | PASS offline, 22 tests incl. a replay of a real failed run; not driven by a live scheduler | `guard/circuit.py` |
 | Alert delivery (Alertmanager to agent), Tempo span-metric alerts | **NOT RUN** | |
