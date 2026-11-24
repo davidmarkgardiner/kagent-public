@@ -61,7 +61,8 @@ A Codex review covered the plan, an early version of `verify_completion.py` (0.7
 4. **Circuit breaker.** Clock changes, concurrent writers (there is no file lock on the breaker state, unlike the Warden emitter), a state file that grows without bound, and whether `rate_limited_wait` can be used to starve a legitimate retry forever.
 5. **Prompt dependence.** Two agents went from failing to passing by prompt wording alone. Is the gate measuring the agent or the prompt? What is the failure rate over 20 runs?
 6. **Docs honesty.** Compare `FRONT-SHEET.md`'s status table, the deck and the explainer with the evidence files. The explainer (`EVALUATION-EXPLAINED.html`) was written before the Guard work and only had its counts updated.
-7. **Replicability.** Could a work agent follow `WORK-AGENT-PROMPT.md` (16 steps) with only the prerequisites listed? Note anything assumed but unwritten.
+7. **Rollout order and phase gates.** `WORK-AGENT-PROMPT.md` now opens with five phases (0 readiness, 1 evaluation, 2 Guard detection, 3 LGTM integration, 4 direct blocking) with a gate after each. Check that each step is in the right phase, that no step quietly needs something from a later phase (for example telemetry in Phase 1), and that a work agent given only Phase 1 could not drift into the rest.
+8. **Replicability.** Could a work agent follow `WORK-AGENT-PROMPT.md` (16 steps, in five gated phases) with only the prerequisites listed? Note anything assumed but unwritten.
 
 ## 6. Known rough edges
 

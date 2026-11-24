@@ -11,6 +11,7 @@ nav:
   - Warden (every run): warden.md
   - Scoring and gates: scoring.md
   - Contracts: contracts.md
+  - Rollout order: rollout.md
   - Prerequisites and air-gap: prerequisites.md
   - Variables: variables.md
   - Run it: run-it.md

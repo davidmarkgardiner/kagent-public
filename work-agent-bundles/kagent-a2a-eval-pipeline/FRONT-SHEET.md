@@ -17,6 +17,7 @@ separately approved agent. Warden checks the investigation, not a repair.
 | Need | File |
 |---|---|
 | Hand this to the work agent | [WORK-AGENT-PROMPT.md](WORK-AGENT-PROMPT.md) |
+| Rollout order (one phase at a time) | [docs/rollout.md](docs/rollout.md) and the top of `WORK-AGENT-PROMPT.md` |
 | What a human must supply first | [HUMAN-PREREQUISITES.md](HUMAN-PREREQUISITES.md) |
 | Air-gap image inventory and pinned versions | [PREREQUISITES-AIRGAP.md](PREREQUISITES-AIRGAP.md) |
 | What changes at work and what stays pinned | [VARIABLES.md](VARIABLES.md) |
