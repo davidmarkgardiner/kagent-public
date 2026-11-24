@@ -11,10 +11,13 @@ nav:
   - Warden (every run): warden.md
   - Scoring and gates: scoring.md
   - Contracts: contracts.md
+  - Prerequisites and air-gap: prerequisites.md
+  - Variables: variables.md
   - Run it: run-it.md
   - kagent 0.7 and 1.x: kagent-versions.md
   - Evidence and limits: evidence.md
-  - "Next: monitoring loop and guard": alert-loop.md
+  - Guard and spend guards: guard.md
+  - "Monitoring loop design": alert-loop.md
 markdown_extensions:
   - tables
   - fenced_code

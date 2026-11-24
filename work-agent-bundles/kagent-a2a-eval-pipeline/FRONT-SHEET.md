@@ -18,6 +18,8 @@ separately approved agent. Warden checks the investigation, not a repair.
 |---|---|
 | Hand this to the work agent | [WORK-AGENT-PROMPT.md](WORK-AGENT-PROMPT.md) |
 | What a human must supply first | [HUMAN-PREREQUISITES.md](HUMAN-PREREQUISITES.md) |
+| Air-gap image inventory and pinned versions | [PREREQUISITES-AIRGAP.md](PREREQUISITES-AIRGAP.md) |
+| What changes at work and what stays pinned | [VARIABLES.md](VARIABLES.md) |
 | Explainer (open in a browser) | [EVALUATION-EXPLAINED.html](EVALUATION-EXPLAINED.html) |
 | Presentation | [presentation/assay-warden-deck.pdf](presentation/assay-warden-deck.pdf) (source: `.html`) |
 | Handbook pages | `mkdocs.yml` + `docs/`; build with `requirements-docs.txt` |

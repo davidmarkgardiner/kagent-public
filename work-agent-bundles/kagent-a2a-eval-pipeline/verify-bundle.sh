@@ -10,7 +10,7 @@ bad(){ printf 'FAIL  %s\n' "$1"; fail=1; }
 for f in FRONT-SHEET.md HUMAN-PREREQUISITES.md WORK-AGENT-PROMPT.md README.md EVALUATION-EXPLAINED.html mkdocs.yml \
          presentation/assay-warden-deck.html presentation/assay-warden-deck.pdf verify_completion.py a2a_capture.py score_and_gate.py \
          .gitlab-ci.yml completion-gate/contracts/sentinel-investigator.yaml evidence/LIVE-PROXMOX-2026-11-23.md \
-         guard/detect.py guard/propose.py guard/alert_to_a2a.py guard/circuit.py guard/loop-limits.yaml guard/rules.yaml evidence/GUARD-AND-LOOP-2026-11-24.md; do
+         PREREQUISITES-AIRGAP.md VARIABLES.md docs/guard.md guard/detect.py guard/propose.py guard/alert_to_a2a.py guard/circuit.py guard/loop-limits.yaml guard/rules.yaml evidence/GUARD-AND-LOOP-2026-11-24.md; do
   [[ -s "$f" ]] && ok "present: $f" || bad "missing or empty: $f"
 done
 
@@ -25,6 +25,8 @@ for p in pathlib.Path('.').rglob('*.y*ml'):
     if '/out/' in str(p) or p.name == 'mkdocs.yml' or '{{' in text: continue   # templates with {{PLACEHOLDER}} are not valid YAML until filled
     list(yaml.safe_load_all(text))
 PY
+
+cmp -s PREREQUISITES-AIRGAP.md docs/prerequisites.md && cmp -s VARIABLES.md docs/variables.md && ok "docs copies match their sources" || bad "docs/prerequisites.md or docs/variables.md differs from the root file"
 
 # Public-safety: private addresses, tokens and unresolved real hosts must not be in the bundle (the gitignored private handover is excluded).
 pat='192\.168\.|(^|[^0-9.])10\.[0-9]+\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[01])\.|PRIVATE-TOKEN|password=|BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{20}|sk-[A-Za-z0-9]{20}'

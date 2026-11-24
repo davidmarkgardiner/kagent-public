@@ -37,7 +37,14 @@ its receipt. **Never claim a pass without a receipt, and never widen an allowlis
     required labels, and that nothing is written when the route is `reject`.
 12. **Negative tests.** Prove the gate blocks: a worker that skips the evaluator, one that calls a tool outside the allowlist, a tool error on a required tool, and
     a report changed after approval. Each must fail with its reason.
-13. **Report.** Fill a private copy of `evidence/` from the actual receipts: versions, gateway, agents, per-case verdicts, scores, latencies, code changes, and everything you
+13. **Guard.** Copy `guard/rules.yaml`, set each agent's budgets and allowlist from observed baselines, and copy `guard/identity-map.example.yaml` and fill it with gateway-authenticated subjects and routes only (never
+    from event data). Run `guard/detect.py` on real receipts: a good run must be `clean`, a worker with an extra tool must give `forbidden_tool`, and an agent with no telemetry must give `degraded`, never `clean`. Run
+    `guard/propose.py --dry-run-server --context <explicit>`; confirm the policy is accepted and that **nothing was applied**.
+14. **Spend guards.** Set `guard/loop-limits.yaml`. Prove with the replay tests and one live failure that a permanent error (400) is held and never retried, that a 429 backs off, that three failures open the breaker,
+    and that the kill switch stops everything. **Never run a failing agent in a loop to "see if it works".** Stop at the first failure and diagnose it from the receipt.
+15. **Overseer and alerts.** Wire Alertmanager to `guard/alert_to_a2a.py`. Check that human-only alerts are not given to any agent. The agent-health agent failed its lab run (a model 400 from oversized tool output): shrink its tool
+    outputs and prove one run through its Warden contract before enabling delivery. Keep a human-only paging path for the Guard heartbeat.
+16. **Report.** Fill a private copy of `evidence/` from the actual receipts: versions, gateway, agents, per-case verdicts, scores, latencies, code changes, and everything you
     could not verify. Use placeholders for hosts and IPs.
 
 Return: the contracts and cases you wrote, the deployed Agent manifests, the CI run links, the evidence file, and the list of NOT RUN gates with owners.
