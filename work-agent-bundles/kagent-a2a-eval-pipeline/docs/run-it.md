@@ -4,7 +4,7 @@ Offline, no cluster needed:
 
 ```sh
 pip install -r requirements.txt
-python -m unittest discover -s tests          # 184 tests
+python -m unittest discover -s tests          # 191 tests
 python tests/lint_cases.py cases
 ./verify-bundle.sh                            # all offline checks plus a safety scan
 ```

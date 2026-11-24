@@ -35,7 +35,7 @@ separately approved agent. Warden checks the investigation, not a repair.
 
 | Claim | Status | Receipt |
 |---|---|---|
-| 184 offline tests, case lint, generated evaluator is current | PASS | `./verify-bundle.sh` |
+| 191 offline tests, case lint, generated evaluator is current | PASS | `./verify-bundle.sh` |
 | Assay: smoke and full pass^3 through the gateway on kagent 0.7.13 | PASS (1.0 each) | evidence file, stage 1 sections |
 | Warden on kagent 0.7.13 (evaluator as a `type: Agent` tool) | 1 live PASS | evidence file, stage 2 section |
 | Warden on kagent 1.0.0-alpha17 (evaluator as a `subAgent`), A2A 1.0 | 2 of 3 PASS; the third was a correct block | evidence file, 1.x section |
