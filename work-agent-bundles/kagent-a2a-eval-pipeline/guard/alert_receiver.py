@@ -21,7 +21,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock
 
@@ -50,16 +50,20 @@ def handle(body: bytes, a: argparse.Namespace, token_ok: bool) -> tuple[int, dic
            "--state", str(a.state), "--breaker", str(a.breaker)]
     if a.limits:
         cmd += ["--limits", str(a.limits)]
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    if p.returncode != 0:
-        return 500, {"error": "intake failed", "stderr": p.stderr[-400:]}
-    res = json.loads(p.stdout)
+    cmd += ["--max-requests", str(a.max_sends if a.send_url else 20)]
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if p.returncode != 0:
+            raise ValueError(f"exit {p.returncode}")
+        res = json.loads(p.stdout)
+    except (subprocess.TimeoutExpired, ValueError, OSError):
+        return 500, {"error": "intake failed"}  # details stay out of the response: the caller is not trusted
     res["sent"] = []
     if a.send_url:
         written = [r["file"] for r in res["results"] if r.get("outcome") == "request_written"]  # only THIS call's requests
         for name in written[: a.max_sends]:
             res["sent"].append(send(out / name, out, a))
-        res["written_not_sent"] = written[a.max_sends:]  # over the per-call cap: left in the outbox for a person
+        res["deferred"] = [r["alert"] for r in res["results"] if r.get("outcome") == "deferred_over_cap"]  # not marked sent: Grafana re-delivers them
     return 200, res
 
 
@@ -81,29 +85,57 @@ def send(req: Path, out: Path, a: argparse.Namespace) -> dict:
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         data = json.dumps({"error": f"transport: {e}"}).encode()
     receipt = out / f"receipt-{req.stem}.json"
+    body = None
     try:
-        json.loads(data)
+        body = json.loads(data)
         receipt.write_bytes(data)
     except ValueError:
         receipt.write_text(json.dumps({"error": data[:400].decode("utf-8", "replace")}))
-    cmd = [sys.executable, str(HERE / "alert_to_a2a.py"), "--breaker", str(a.breaker), "--record", str(receipt), "--key", key,
-           "--status", str(status)]
+    timed_out = status == 0
+    if timed_out:
+        # The agent may still be running on the server and we do not know what it spends: stop ALL sending until a person looks.
+        (a.breaker.parent / "guard-loop.disabled").write_text("send timed out or transport failed; remove after checking the agent\n")
+    cmd = [sys.executable, str(HERE / "alert_to_a2a.py"), "--breaker", str(a.breaker), "--record", str(receipt), "--key", key]
+    # kagent returns errors as HTTP 200 with the error in the body: then the status says nothing, so let the breaker read the message.
+    if status and not (status == 200 and isinstance(body, dict) and (body.get("error") or "FAILED" in json.dumps((body.get("result") or {}).get("task", {}).get("status", {})))):
+        cmd += ["--status", str(status)]
     if a.limits:
         cmd += ["--limits", str(a.limits)]
     if retry_after is not None:
         cmd += ["--retry-after", str(retry_after)]
-    rec = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    return {"request": req.name, "http": status, "receipt": receipt.name, "recorded": json.loads(rec.stdout) if rec.returncode == 0 else rec.stderr[-300:]}
+    try:
+        rec = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    except (subprocess.TimeoutExpired, OSError):
+        rec = subprocess.CompletedProcess(cmd, 1, "", "")
+    if rec.returncode != 0:  # spend not counted: fail closed
+        (a.breaker.parent / "guard-loop.disabled").write_text("breaker record failed; remove after checking\n")
+        return {"request": req.name, "http": status, "receipt": receipt.name, "recorded": None, "kill_switch_set": True}
+    return {"request": req.name, "http": status, "receipt": receipt.name, "recorded": json.loads(rec.stdout), "kill_switch_set": timed_out}
 
 
 def make_handler(a: argparse.Namespace, token: str):
     class H(BaseHTTPRequestHandler):
+        timeout = 10  # a client that stalls cannot hold the server
+
         def do_POST(self):  # noqa: N802
-            n = int(self.headers.get("Content-Length") or 0)
-            body = self.rfile.read(min(n, MAX_BODY + 1))
+            try:
+                n = int(self.headers.get("Content-Length", ""))
+            except ValueError:
+                n = -1
+            if n < 0:
+                return self._reply(411, {"error": "valid Content-Length required"})
+            if n > MAX_BODY:
+                return self._reply(413, {"error": "payload too large"})
+            try:
+                body = self.rfile.read(n)
+            except OSError:
+                return self._reply(408, {"error": "read timed out"})
             ok = hmac.compare_digest(self.headers.get("Authorization", ""), f"Bearer {token}")
             with _LOCK:
                 code, res = handle(body, a, ok)
+            self._reply(code, res)
+
+        def _reply(self, code, res):
             data = json.dumps(res).encode()
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
@@ -135,7 +167,7 @@ def main() -> int:
         print("ALERT_RECEIVER_TOKEN (16+ chars) is required", file=sys.stderr)
         return 3
     host, port = a.listen.rsplit(":", 1)
-    HTTPServer((host, int(port)), make_handler(a, token)).serve_forever()
+    ThreadingHTTPServer((host, int(port)), make_handler(a, token)).serve_forever()
     return 0
 
 

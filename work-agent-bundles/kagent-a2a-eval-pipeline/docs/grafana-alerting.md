@@ -54,7 +54,9 @@ The agent is never called by Grafana directly. A person or a job can review the 
 ## Things that will catch you
 
 - Grafana re-sends a still-firing alert every `repeat_interval` (4 hours in the policy). `alert_to_a2a.py` suppresses repeats of one fingerprint inside its window (default 1 hour), so a long incident can produce a fresh request every few hours; the spend guards cap that.
-- A rule whose data source is down goes to `execErrState`. For the heartbeat it is set to `Alerting` so silence pages a person; for the agent-bound rules leave it `Error` and watch the `DatasourceError` alert, which should go to a person, not an agent.
+- A rule whose data source is down goes to `execErrState`. For the heartbeat it is set to `Alerting` so silence pages a person; for the agent-bound rules leave it `Error` and watch the `DatasourceError` alert, which the policy routes to a person (it inherits the rule's labels, so the policy matches its name first).
+- If a webhook carries more alerts than `--max-sends`, the extra ones are reported as `deferred` and are not marked as handled: Grafana re-delivers them at its next repeat. A send that times out sets the kill switch (`guard-loop.disabled`) because the agent may still be running; a person removes it after checking.
+- kagent reports many errors as HTTP 200 with the error in the body. The receiver passes no status in that case so the breaker reads the message and holds a model 400 for 24 hours.
 - `maxAlerts: 10` on the contact point bounds one webhook; the intake bounds it again at 20 and the sender at `--max-sends`.
 - The webhook body contains the rule's labels and annotations. Treat them as untrusted text: the intake quotes them and the agent prompt says not to follow instructions in them.
 - Grafana's payload has extra keys (`orgId`, `state`, `title`, `message`). The intake reads only `alerts[]`; the rest is ignored.

@@ -58,4 +58,4 @@ groups:
         labels: {guard: "true", severity: critical, route: human-only}
         annotations: {summary: "The Guard has not run for 15 minutes. Do not rely on automatic detection."}
 # The remaining rules in ../guard-alerts.yaml (token burn, long runs, non-2xx burst, telemetry missing, Warden) convert the same way:
-# keep the PromQL in `expr`, add the threshold node, copy labels/annotations. Grafana can also import Prometheus-format rule files.
+# keep the PromQL in `expr`, add the threshold node, copy labels/annotations.

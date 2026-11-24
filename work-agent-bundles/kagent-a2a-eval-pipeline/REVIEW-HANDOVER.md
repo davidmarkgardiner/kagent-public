@@ -18,7 +18,7 @@ Four parts for kagent agents, plus an overseer:
 Branch `feat/kagent-agent-eval-two-stage`, based on `main`. Commits, oldest first: `17a18cd3` (Assay and Warden), `5ad8a18f` (packaging), `732b2725` (Guard, overseer intake, Warden hardening),
 `81b89bb2` (air-gap, variables, Guard page), `834a27c3` (overseer root cause, tool-call budget), `6e14395b` (429 as a wait), `8c4e6e20` (lessons from the factory handoff). Not pushed.
 
-Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 191 tests.
+Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 195 tests.
 
 ## 2. Claims against evidence
 
@@ -113,3 +113,16 @@ Its test run: 175 passed, verifier OK. Findings and status (CONFIRMED FIXED / PA
 | D1-D5 | Stale or overstated docs | **Mostly fixed** (counts, "live" wording, "counts twice", the auto-apply question); re-check |
 
 Also still open from round 1: the detector reports clean when no inventory is supplied, and `maxToolCalls` is checked only after a run finishes. Not checked by the Opus reviewer: the real kagent error shape for a failed handoff, whether gateway traces mix agents in practice, the CEL behaviour of a Deny, `model_probe.py`, the alert rules, the explainer HTML, and the mutation tests were not re-run.
+
+## 10. Review round 3 (Opus, 24 Nov 2026): the alert receiver and Grafana files. Verdict REQUEST CHANGES, and what was done
+
+Scope: commits b500c838 and f13bd541 only. **Fixed, each with a test (one mutated to confirm the test fails):**
+- H1: a permanent model error returned as HTTP 200 (kagent's usual shape) was classed `unknown` and retried; the receiver now passes no status so the breaker reads the message and holds it for 24 hours.
+- H2: negative, missing or non-numeric Content-Length (unbounded read before the token check), no socket timeout on a single-threaded server, uncaught subprocess timeouts; now 411/413 before reading, a 10 s handler timeout, a threaded server (work still serialised by the lock), subprocess failures return a bare 500.
+- M1: Grafana's `DatasourceError` and `DatasourceNoData` alerts inherit `guard=true` and would have gone to the agent; a human route matches them first.
+- M2: `maxAlerts` truncation and unsent-but-deduped requests; the policy groups per offender, and requests over the send cap are `deferred_over_cap`, not marked handled.
+- M3: a send that times out or fails in transport sets the kill switch (the agent may still be running; spend unknown).
+- M4: a failed breaker record sets the kill switch.
+- M5 (row 13 wording), the breaker key mismatch when an alert has no fingerprint, the false "import Prometheus rule files" claim, row order, and the weak 400 test (now asserts `held_after_permanent_error`).
+
+**Left open:** the intake does not drop the self-test rule (by design: it is the proof the path works; the guide says delete it, and it would run the agent every 4 hours otherwise); an empty `--inventory []` still reads `clean` (a person chose to say nothing was started); the spool keeps every payload with no cleanup; the real kagent error shape for a failed run and Grafana 11.6's labels on `DatasourceError` were taken from documentation, not reproduced.
