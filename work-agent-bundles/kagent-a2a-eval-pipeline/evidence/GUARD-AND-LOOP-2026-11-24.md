@@ -34,6 +34,9 @@ Added after the overseer's three back-to-back reruns each burned about 11,000 to
 ## Lesson taken from the software factory
 Its watchdog treats quota as a wait, never as broken. The circuit breaker was changed to match: a 429 now pauses the whole loop and does not count towards the breaker (6 new tests). See `docs/alert-loop.md`, "Learnings from our software factory".
 
+## Further lessons from the factory's observability handoff
+401 and 403 are now held 6 hours rather than 24 (2 new tests). Recorded in `docs/alert-loop.md`: a per-task token stop-loss is recommended but not built; and the overseer shares a model route with the agents it watches, which is a design flaw to fix before relying on it (a separate route is now a prerequisite).
+
 ## Lab pitfalls found
 - After the VM rebooted, the kind node's resolver was `0.0.0.0` again (Docker regenerates it on restart). Actors then hang with no error and no model call; the gateway log shows nothing. Resetting the node resolver and restarting the worker fixed it. The lab host also shuts down nightly.
 - A changed DHCP address for the VM triggered an SSH host-key warning; the key was verified out-of-band before updating `known_hosts`.

@@ -66,7 +66,7 @@ A failing agent, a 429 storm or a bad alert must never become a loop that burns 
 | Guard | Behaviour |
 |---|---|
 | Attempt cap | At most 2 tries per alert per hour: the first, plus one retry |
-| Permanent errors | 400, 401, 403, 404, 422: the alert is held for 24 hours and **never retried**; a person is told |
+| Permanent errors | 400, 404, 422: held for 24 hours and **never retried**. 401 and 403: held for 6 hours (a person fixes credentials and permissions within hours). A person is told either way |
 | 429 (rate limit or quota) | **Pauses the whole loop** until the backoff (60 s, doubling, capped at 15 min, honouring `Retry-After`) passes, because a quota is shared. It counts as **waiting, never as broken**: it does not count towards the breaker and does not raise a failure |
 | 5xx | One bounded retry after the same backoff; counts towards the breaker |
 | Circuit breaker | 3 consecutive failures anywhere in the loop stop all calls for 30 minutes |
@@ -93,3 +93,18 @@ this bundle. What was taken from its notes, and what was not:
 | Reassign the work to another worker, then escalate | Not applicable: the overseer drafts an issue for a person; it does not reassign |
 
 The factory has traces and Grafana but no Loki, Mimir or Alertmanager yet, so its alert path is the watchdog rather than LGTM. The two systems could share the Guard rules and the circuit breaker.
+
+## What the factory's observability handoff adds (ideas only; its code is private)
+
+The factory built this same loop, and its handoff note names three layers: **live alerts** (agent events go to Loki, a Grafana rule fires on any `api_error`, and a plain-code webhook handler
+pauses the provider), an **agent pulse** (code-only, every two minutes: stuck, slow, looping or risky), and **token guards** (spent before anything is run). Ideas taken, and ideas not yet built:
+
+| Idea | Status here |
+|---|---|
+| A plain-code handler, not an agent, reacts to the alert first: 429 pauses the provider for an hour, repeated 5xx for 15 minutes, 401 and 403 for 6 hours and a person is woken | Partly built: `guard/circuit.py` (429 pauses the loop, 401 and 403 held 6 hours, 5xx counts towards the breaker). The factory's 1 hour 429 pause is longer than ours (60 s doubling, capped at 15 minutes); tune ours from real quota behaviour |
+| Tell **rate-limited** apart from **refused** at the source: errors that looked like permissions were often quota | Built for status codes; the classifier trusts the HTTP status and falls back to the error text, so a provider that hides a quota error inside a 403 will be mis-held |
+| **A per-task token stop-loss**, not just an attempt cap (4M tokens a sprint including fix rounds) | **Not built.** Our budget is per hour for the whole loop. One overseer run used 245000 tokens inside a single call sequence; a per-run cap plus the new `maxToolCalls` gate is the fix. Recommended next |
+| **The supervisor must not share a quota with what it supervises** | **A flaw in what we built:** the overseer and the agents it watches use the same model route in the lab. Give the overseer and the Guard their own route and credential, so a quota problem cannot take the watcher down with the watched. Added to the prerequisites |
+| A nightly cold review of 24 hours of evidence for problems no alert raised | Not built. A good fit for the Guard: run the detector over a day of receipts and traces |
+| A model or agent is "proven" only by a delivered run, not by being up | Matches Warden: a run counts only if the controller history shows it |
+| A circuit breaker plus a quota-aware launch gate | Breaker built. The launch gate (do not dispatch if the model route is unhealthy or low on quota) is not |

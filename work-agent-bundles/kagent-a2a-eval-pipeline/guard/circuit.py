@@ -18,7 +18,7 @@ from typing import Any
 import yaml
 
 DEFAULTS = {"maxAttemptsPerKey": 2, "windowS": 3600, "backoffBaseS": 60, "backoffCapS": 900, "permanentStatuses": [400, 401, 403, 404, 422],
-            "permanentHoldS": 86400, "retryableStatuses": [429, 500, 502, 503, 504], "breakerFailures": 3, "cooldownS": 1800,
+            "permanentHoldS": 86400, "holdByStatus": {401: 21600, 403: 21600}, "retryableStatuses": [429, 500, 502, 503, 504], "breakerFailures": 3, "cooldownS": 1800,
             "tokenBudgetPerHour": 150000, "killSwitchFile": "guard-loop.disabled"}
 
 
@@ -106,7 +106,8 @@ class Circuit:
             return "rate_limited"
         self.s["consecutive_failures"] += 1
         if kind == "permanent":
-            k["hold_until"] = self.now + L["permanentHoldS"]
+            # 401/403 are held for less time: credentials and permissions get fixed by a person within hours; a 400 or 404 will not fix itself
+            k["hold_until"] = self.now + (L.get("holdByStatus") or {}).get(status, L["permanentHoldS"])
         else:
             delay = min(L["backoffBaseS"] * 2 ** (k["failures"] - 1), L["backoffCapS"])
             if retry_after_s is not None:

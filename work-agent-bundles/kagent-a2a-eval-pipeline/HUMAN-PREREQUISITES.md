@@ -15,7 +15,8 @@ The work agent cannot create these. Complete the sheet before handing over
 | 8 | For Warden: the receiver that writes the GitLab issue after a PASS, and read access to read the issue back | Warden's ticket check reads the issue the receiver wrote | Receiver owner |
 | 9 | Decision: where a worker's **first-try evaluator FAIL** routes on 1.x (a handoff cannot retry). Options: labelled `evaluation-failed` ticket, or reject and alert | The code currently rejects | Product owner |
 | 10 | Decision: who owns an agent that fails Assay or Warden, and the escalation route | A gate that nobody reads is not a gate | Product owner |
-| 11 | A human to review the first full run of each case against the real agent's answer | Scoring is key-term based; a person calibrates it | Agent owner |
+| 11 | **A separate model route and credential for the overseer and the Guard**, not the one the watched agents use | A quota or outage on the shared route would take down the watcher together with the watched (a lesson from our software factory) | Platform |
+| 12 | A human to review the first full run of each case against the real agent's answer | Scoring is key-term based; a person calibrates it | Agent owner |
 
 ## Do not do
 

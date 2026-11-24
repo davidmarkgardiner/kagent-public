@@ -182,5 +182,17 @@ class RateLimitIsAWait(unittest.TestCase):
         self.assertEqual(c.tokens_last_hour(), 5000)
 
 
+class HoldLengths(unittest.TestCase):
+    def test_credential_errors_are_held_6h_and_bad_requests_24h(self):
+        for status, hold in ((401, 21600), (403, 21600), (400, 86400), (404, 86400)):
+            c = circ(); c.record("a", False, 1, status)
+            self.assertEqual(c.s["keys"]["a"]["hold_until"], 1000 + hold, status)
+
+    def test_a_403_is_retryable_by_a_person_after_6h_but_not_before(self):
+        c = circ(); c.start("a"); c.record("a", False, 1, 403)
+        c.now = 1000 + 21599; self.assertEqual(c.allow("a"), (False, "held_after_permanent_error"))
+        c.now = 1000 + 21601; self.assertNotEqual(c.allow("a"), (False, "held_after_permanent_error"))
+
+
 if __name__ == "__main__":
     unittest.main()

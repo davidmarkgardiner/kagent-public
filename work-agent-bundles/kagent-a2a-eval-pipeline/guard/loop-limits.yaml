@@ -6,6 +6,7 @@ backoffBaseS: 60              # retry delay doubles each failure: 60, 120, 240 .
 backoffCapS: 900
 permanentStatuses: [400, 401, 403, 404, 422]   # retrying cannot help: hold the alert, tell a human
 permanentHoldS: 86400
+holdByStatus: {401: 21600, 403: 21600}   # a credential or permission error is held 6 h, not 24 h, and a person is told
 retryableStatuses: [429, 500, 502, 503, 504]   # one bounded retry, honouring Retry-After
 breakerFailures: 3            # consecutive failures anywhere in the loop open the breaker
 cooldownS: 1800

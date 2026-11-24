@@ -44,7 +44,7 @@ Record each image, its source and its digest. Re-tag into the internal registry 
 |---|---|---|
 | 1 | Gateway route to the A2A endpoint with caller authentication, and a test token for the eval agents | Assay and Warden call agents only through the gateway |
 | 2 | Read-only Kubernetes tool server and its exact tool names | They become each contract's `allowedTools` |
-| 3 | An approved model route for the agents **and** for each evaluator | Evaluators are agents too |
+| 3 | An approved model route for the agents **and** for each evaluator, plus a **separate route and credential for the overseer and Guard** | Evaluators are agents too; the supervisor must not share a quota with what it supervises |
 | 4 | GitLab project, protected runner tagged `kagent-eval`, protected masked variables `AGW_BASE_URL`, `AGW_TOKEN`, `EVAL_KUBECONFIG`, `EVAL_IMAGE` | `.gitlab-ci.yml` fails closed without them |
 | 5 | Service account for `EVAL_KUBECONFIG` limited to `eval-*` namespaces | Assay seeds a fault in a throwaway namespace |
 | 6 | Working DNS for the nodes and CoreDNS. Test it after every node restart | Kind and some node images regenerate resolver config on restart. Actors then hang silently with no error and no model call |
