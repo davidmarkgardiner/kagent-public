@@ -27,6 +27,7 @@ separately approved agent. Warden checks the investigation, not a repair.
 | Warden code and contracts | `verify_completion.py`, `completion-gate/` |
 | Evidence | `evidence/LIVE-PROXMOX-2026-11-23.md`, `tests/fixtures/` (sanitized live receipts) |
 | Guard (rogue-agent detector, block proposals, overseer intake) | `guard/`, `docs/alert-loop.md`, `evidence/GUARD-AND-LOOP-2026-11-24.md` |
+| Independent review: claims, gaps, where to push | [REVIEW-HANDOVER.md](REVIEW-HANDOVER.md) |
 | Check the bundle is intact | `./verify-bundle.sh` |
 
 ## Status: what is proven and what is not
@@ -43,7 +44,7 @@ separately approved agent. Warden checks the investigation, not a repair.
 | Warden: 0 of 3, then 3 of 3 live after a stricter worker prompt (1.0.0-alpha17) | PASS 3 of 3 (the first prompt failed all three, and Warden caught it) | `evidence/GUARD-AND-LOOP-2026-11-24.md` |
 | Guard detector, block proposal (server dry-run only) and ticket, live on the lab | PASS; nothing applied | same |
 | Overseer (agent-health) agent live | **NOT PASSING.** First 3 runs: model 400 (a 4.4 MB tool result), fixed. One follow-up run: no 400, but it wandered (14 calls, 245000 tokens) and wrote no report; Warden blocked it. Budget and prompt fixes are offline-tested only | same |
-| Spend and retry guards for the loop (attempt cap, 400 hold, 429 backoff, breaker, token budget, kill switch) | PASS offline, 14 tests incl. a replay of a real failed run; not driven by a live scheduler | `guard/circuit.py` |
+| Spend and retry guards for the loop (attempt cap, 400 hold, 429 backoff, breaker, token budget, kill switch) | PASS offline, 22 tests incl. a replay of a real failed run; not driven by a live scheduler | `guard/circuit.py` |
 | Alert delivery (Alertmanager to agent), Tempo span-metric alerts | **NOT RUN** | |
 | kagent 1.0.1 (the lab profile version) | **NOT RUN**; verified on alpha17 only | |
 
