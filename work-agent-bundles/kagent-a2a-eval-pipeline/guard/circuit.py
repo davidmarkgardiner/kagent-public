@@ -45,7 +45,7 @@ class Circuit:
     def __init__(self, state_path: Path, limits: dict[str, Any], now: float):
         self.path, self.limits, self.now = state_path, limits, now
         self.corrupt = False
-        self.s: dict[str, Any] = {"consecutive_failures": 0, "open_until": 0.0, "spend": [], "keys": {}}
+        self.s: dict[str, Any] = {"consecutive_failures": 0, "open_until": 0.0, "pause_until": 0.0, "spend": [], "keys": {}}
         if state_path.exists():
             try:
                 d = json.loads(state_path.read_text())
@@ -69,6 +69,8 @@ class Circuit:
             return False, "state_corrupt_fail_closed"
         if self.now < self.s["open_until"]:
             return False, "circuit_open"
+        if self.now < self.s.get("pause_until", 0.0):
+            return False, "rate_limited_wait"  # a shared quota is full: waiting, not broken
         if self.tokens_last_hour() >= L["tokenBudgetPerHour"]:
             return False, "token_budget_exhausted"
         if self.now < k.get("hold_until", 0):
@@ -91,9 +93,18 @@ class Circuit:
         if ok:
             self.s["consecutive_failures"], k["failures"] = 0, 0
             return "ok"
-        self.s["consecutive_failures"] += 1
         k["failures"] = k.get("failures", 0) + 1
         kind = classify(status, message, L)
+        if status == 429 or re.search(r"\b429\b", message or ""):
+            # Rate limit / quota. The quota is shared by the whole loop, so pause everything until the backoff passes. This is a wait,
+            # not a failure: it never counts towards the breaker, so it is never reported as broken (lesson from the software factory).
+            delay = min(L["backoffBaseS"] * 2 ** (k["failures"] - 1), L["backoffCapS"])
+            if retry_after_s is not None:
+                delay = max(delay, min(retry_after_s, L["backoffCapS"]))
+            self.s["pause_until"] = max(self.s.get("pause_until", 0.0), self.now + delay)
+            k["next_try"] = self.now + delay
+            return "rate_limited"
+        self.s["consecutive_failures"] += 1
         if kind == "permanent":
             k["hold_until"] = self.now + L["permanentHoldS"]
         else:

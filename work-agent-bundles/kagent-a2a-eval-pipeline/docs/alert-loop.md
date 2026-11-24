@@ -67,7 +67,8 @@ A failing agent, a 429 storm or a bad alert must never become a loop that burns 
 |---|---|
 | Attempt cap | At most 2 tries per alert per hour: the first, plus one retry |
 | Permanent errors | 400, 401, 403, 404, 422: the alert is held for 24 hours and **never retried**; a person is told |
-| 429 and 5xx | One bounded retry after exponential backoff (60 s, 120 s, ... capped at 15 min), honouring `Retry-After`; never immediate |
+| 429 (rate limit or quota) | **Pauses the whole loop** until the backoff (60 s, doubling, capped at 15 min, honouring `Retry-After`) passes, because a quota is shared. It counts as **waiting, never as broken**: it does not count towards the breaker and does not raise a failure |
+| 5xx | One bounded retry after the same backoff; counts towards the breaker |
 | Circuit breaker | 3 consecutive failures anywhere in the loop stop all calls for 30 minutes |
 | Token budget | 150000 tokens per hour for the whole loop, **failed runs included** |
 | Kill switch | Create `guard-loop.disabled` next to the state file, or set `GUARD_LOOP_DISABLED=1` |
@@ -75,3 +76,20 @@ A failing agent, a 429 storm or a bad alert must never become a loop that burns 
 
 Each withheld alert is reported as `withheld_<reason>_human_notified`, so a person hears about it instead of a retry happening. The overseer's real failed run (a model 400 after about 11,000
 tokens) is replayed in the tests: the alert is parked and the retries stop. Wiring: `alert_to_a2a.py --breaker STATE` before a call, `--record RECEIPT --key FP` after it.
+
+## Learnings from our software factory (reference only)
+
+The software factory is a separate system with the same shape: code-owned liveness, an escalation ladder, run traces in Tempo shown in Grafana, and a nightly summary. It is not part of
+this bundle. What was taken from its notes, and what was not:
+
+| Factory lesson | Used here |
+|---|---|
+| **Quota is a wait, not a death.** A shared quota filled on 23 Nov and three sprints were wrongly reported as broken; the watchdog now keeps the run and retries, and quota never counts towards "broken" | Yes, built: a 429 pauses the whole loop and never opens the breaker (`guard/circuit.py`, 6 tests) |
+| After 3 failures of the same task, stop that task and tell a human | Same rule: 3 consecutive failures open the breaker and a person is told |
+| Liveness is owned by code, never by a prompt | Same: detection, budgets and the breaker are code; the model only explains |
+| Silence is a defect: every piece of work ends as done, or as a specific question to a human | Same: a withheld alert is reported as `withheld_<reason>_human_notified`, never dropped quietly |
+| Check every model and tool before assigning work; use a model only when healthy and under its quota | **Not built.** A preflight on the model route before the intake dispatches would have avoided the 400 and the 245000-token run. Recommended next step |
+| Every autonomous decision is one ledger line: what, why, cost if wrong | Partly: `warden.jsonl` and `proposals.json` record outcomes; a single rulings ledger is not built |
+| Reassign the work to another worker, then escalate | Not applicable: the overseer drafts an issue for a person; it does not reassign |
+
+The factory has traces and Grafana but no Loki, Mimir or Alertmanager yet, so its alert path is the watchdog rather than LGTM. The two systems could share the Guard rules and the circuit breaker.

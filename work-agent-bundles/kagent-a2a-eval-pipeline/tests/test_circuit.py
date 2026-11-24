@@ -37,7 +37,7 @@ class Guards(unittest.TestCase):
     def test_429_backs_off_exponentially_capped_and_honours_retry_after(self):
         c = circ(); c.start("a"); c.record("a", False, 0, 429)
         self.assertEqual(c.s["keys"]["a"]["next_try"], 1000 + 60)
-        c.now = 1059; self.assertEqual(c.allow("a"), (False, "backoff"))
+        c.now = 1059; self.assertEqual(c.allow("a"), (False, "rate_limited_wait"))
         c.now = 1061; self.assertTrue(c.allow("a")[0])
         c2 = circ(); c2.start("a"); c2.record("a", False, 0, 429, retry_after_s=600)
         self.assertEqual(c2.s["keys"]["a"]["next_try"], 1000 + 600)
@@ -140,6 +140,46 @@ class Intake(unittest.TestCase):
     def test_record_needs_breaker_and_key(self):
         d = Path(tempfile.mkdtemp())
         self.assertEqual(self.cli(d, "--record", str(FX)).returncode, 3)
+
+
+class RateLimitIsAWait(unittest.TestCase):
+    """The software factory's lesson: quota is a wait, never 'broken'. A shared quota that fills must not look like a failing loop."""
+
+    def test_429_pauses_every_alert_not_just_the_one_that_hit_it(self):
+        c = circ(); c.start("a"); self.assertEqual(c.record("a", False, 0, 429), "rate_limited")
+        c.now = 1030
+        self.assertEqual(c.allow("some-other-alert"), (False, "rate_limited_wait"))
+        c.now = 1000 + 61
+        self.assertTrue(c.allow("some-other-alert")[0])
+
+    def test_a_quota_wave_never_opens_the_breaker_or_counts_as_broken(self):
+        c = circ()
+        for k in ("a", "b", "c", "d", "e"):
+            c.record(k, False, 0, 429)
+        self.assertEqual(c.s["consecutive_failures"], 0)
+        self.assertEqual(c.s["open_until"], 0.0)
+        c.now += L["backoffCapS"] + 1
+        self.assertTrue(c.allow("fresh")[0])
+
+    def test_a_real_failure_still_opens_the_breaker(self):
+        c = circ()
+        for k in ("a", "b", "c"):
+            c.record(k, False, 100, 500)
+        self.assertEqual(c.allow("fresh"), (False, "circuit_open"))
+
+    def test_429_found_in_error_text_is_also_a_wait(self):
+        c = circ(); self.assertEqual(c.record("a", False, 0, None, "upstream said 429 too many requests"), "rate_limited")
+        self.assertEqual(c.s["consecutive_failures"], 0)
+
+    def test_retry_after_is_honoured_up_to_the_cap(self):
+        c = circ(); c.record("a", False, 0, 429, retry_after_s=600)
+        self.assertEqual(c.s["pause_until"], 1000 + 600)
+        c2 = circ(); c2.record("a", False, 0, 429, retry_after_s=99999)
+        self.assertEqual(c2.s["pause_until"], 1000 + L["backoffCapS"])
+
+    def test_tokens_spent_on_a_rate_limited_run_still_count(self):
+        c = circ(); c.record("a", False, 5000, 429)
+        self.assertEqual(c.tokens_last_hour(), 5000)
 
 
 if __name__ == "__main__":

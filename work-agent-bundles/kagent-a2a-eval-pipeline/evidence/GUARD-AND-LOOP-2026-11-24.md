@@ -31,6 +31,9 @@ gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`
 ## Spend guards
 Added after the overseer's three back-to-back reruns each burned about 11,000 tokens on a permanent 400. `guard/circuit.py` enforces an attempt cap, permanent-error holds, bounded 429 backoff, a circuit breaker, an hourly token budget, a kill switch and fail-closed corrupt state. 14 tests, including a replay of that real failed receipt (`tests/fixtures/a2a-v1x-overseer-400-live.json`): the alert is parked and the retries stop. Not run live: there is no scheduler in the lab to drive it.
 
+## Lesson taken from the software factory
+Its watchdog treats quota as a wait, never as broken. The circuit breaker was changed to match: a 429 now pauses the whole loop and does not count towards the breaker (6 new tests). See `docs/alert-loop.md`, "Learnings from our software factory".
+
 ## Lab pitfalls found
 - After the VM rebooted, the kind node's resolver was `0.0.0.0` again (Docker regenerates it on restart). Actors then hang with no error and no model call; the gateway log shows nothing. Resetting the node resolver and restarting the worker fixed it. The lab host also shuts down nightly.
 - A changed DHCP address for the VM triggered an SSH host-key warning; the key was verified out-of-band before updating `known_hosts`.
