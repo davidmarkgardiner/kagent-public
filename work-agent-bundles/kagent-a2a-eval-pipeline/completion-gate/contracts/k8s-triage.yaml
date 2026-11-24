@@ -1,13 +1,12 @@
 # Completion contract matching the red-cluster A2A evaluation gate
 # (homelab-verified-triage-replication/a2a-evaluation-gate, live 2026-07-31).
-# Migration note: the July evaluator prompt does not echo the contract; deploy
-# manifests/completion-evaluator-agent.yaml (or add the echo) before enforcing.
+# One evaluator per contract: render_evaluator.py gives this contract its own evaluator, so the worker never chooses the rules.
 schemaVersion: completion-contract/v1alpha1
 name: k8s-readonly-triage
 version: "1"
 agent: evaluated-k8s-readonly-triage-agent
 evaluator:
-  agent: completion-evaluator-agent
+  agent: completion-evaluator-k8s-triage-agent
   namespace: kagent
   maxAttempts: 3
 allowedTools:

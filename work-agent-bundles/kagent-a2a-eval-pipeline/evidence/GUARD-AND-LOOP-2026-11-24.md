@@ -1,0 +1,38 @@
+# Guard, overseer intake and Warden changes: evidence, 24 November 2026
+
+Live runs were on the kagent 1.0.0-alpha17 + Substrate lab (kind inside a Proxmox VM), model Kimi through the lab gateway, A2A 1.0. Receipts stay in the
+gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`. Offline suite: **120 tests**.
+
+## Warden changes
+- **A planned check was dropped.** I planned to verify that the worker named its contract in the handoff. On 1.x the handoff message is not in the receipt, so it cannot be
+  checked, and a run that passed earlier showed no such line either. Replaced with **one evaluator per contract** (`render_evaluator.py`): the contract is baked into the evaluator,
+  so the worker never chooses the rules.
+- A first-try evaluator FAIL on 1.x (a handoff cannot retry) now routes to `evaluation_failed_ticket` (quarantined, labelled); protocol or scope breaks still `reject`. `evaluator.onFail: reject` overrides.
+- The 1.x verdict must be the evaluator's whole reply as bare JSON; a verdict-shaped string inside worker text is ignored.
+- `--emit-dir` writes `warden.jsonl` and an atomically rewritten `warden.prom` (`warden_runs_total{agent,verdict,route}`), monotonic because it is recounted from the log.
+
+## Live results
+| Test | Result |
+|---|---|
+| Sentinel worker, first-draft prompt, 3 runs | **0 of 3**. Two handed off without writing the report; one never called the evaluator. Warden blocked all three |
+| Sentinel worker, ordered-steps prompt, 3 runs | **3 of 3 PASS**, route `ticket`, deployed Agent checked against the contract |
+| Deliberately misbehaving worker (one extra, read-only tool outside the allowlist) | Warden: `reject`, for exactly that tool, in both the run and the deployed manifest |
+| Guard detector on real receipts | 3 clean runs: `clean`. Rogue run: one `forbidden_tool` finding. Budgets lowered on purpose (30000 tokens, 20 s): `token_burn` and `long_running` fire on genuine numbers |
+| Block-policy proposal | Generated for the rogue finding; the lab API server accepted it under `kubectl apply --dry-run=server`; **nothing was applied** (confirmed absent afterwards) |
+| Guard agent writes the ticket, first prompt | Stopped mid-ticket, no handoff: Warden `reject` |
+| Guard agent, ordered-steps prompt, 3 runs | **3 of 3 PASS**; dedupe key copied exactly, evidence quoted, no claim that anything was blocked |
+| Overseer (agent-health agent), 3 runs | **FAILED 3 of 3** (not a pass): `llm error STREAM_ERROR: OpenAI API error 400 Bad Request` after about 11,000 tokens each, probably oversized tool output. Warden returned UNDECIDABLE, never PASS. An earlier attempt sent an empty message because of a bug in my test harness. The three back-to-back reruns burned roughly 34,000 tokens |
+
+## Spend guards
+Added after the overseer's three back-to-back reruns each burned about 11,000 tokens on a permanent 400. `guard/circuit.py` enforces an attempt cap, permanent-error holds, bounded 429 backoff, a circuit breaker, an hourly token budget, a kill switch and fail-closed corrupt state. 14 tests, including a replay of that real failed receipt (`tests/fixtures/a2a-v1x-overseer-400-live.json`): the alert is parked and the retries stop. Not run live: there is no scheduler in the lab to drive it.
+
+## Lab pitfalls found
+- After the VM rebooted, the kind node's resolver was `0.0.0.0` again (Docker regenerates it on restart). Actors then hang with no error and no model call; the gateway log shows nothing. Resetting the node resolver and restarting the worker fixed it. The lab host also shuts down nightly.
+- A changed DHCP address for the VM triggered an SSH host-key warning; the key was verified out-of-band before updating `known_hosts`.
+
+## Not run, and not claimed
+- Alertmanager → Argo → overseer delivery, and Tempo span-metric alerts firing: no such stack in the lab. Alert rules are structure-tested only; `promtool` was not available; the metric names are an unverified mapping.
+- Whether the gateway exports token and tool attributes in its spans.
+- Overseer: no successful live run. It needs a tighter tool-output budget before it is retried.
+- A live evaluator FAIL on the quarantined-ticket route, and the GitLab receiver write and read-back.
+- Policy expiry is a review annotation only; nothing removes a policy. Guard heartbeat and its human-only paging path are design only.

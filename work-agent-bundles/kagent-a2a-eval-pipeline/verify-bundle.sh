@@ -9,7 +9,8 @@ bad(){ printf 'FAIL  %s\n' "$1"; fail=1; }
 
 for f in FRONT-SHEET.md HUMAN-PREREQUISITES.md WORK-AGENT-PROMPT.md README.md EVALUATION-EXPLAINED.html mkdocs.yml \
          presentation/assay-warden-deck.html presentation/assay-warden-deck.pdf verify_completion.py a2a_capture.py score_and_gate.py \
-         .gitlab-ci.yml completion-gate/contracts/sentinel-investigator.yaml evidence/LIVE-PROXMOX-2026-11-23.md; do
+         .gitlab-ci.yml completion-gate/contracts/sentinel-investigator.yaml evidence/LIVE-PROXMOX-2026-11-23.md \
+         guard/detect.py guard/propose.py guard/alert_to_a2a.py guard/circuit.py guard/loop-limits.yaml guard/rules.yaml evidence/GUARD-AND-LOOP-2026-11-24.md; do
   [[ -s "$f" ]] && ok "present: $f" || bad "missing or empty: $f"
 done
 

@@ -322,7 +322,7 @@ def verify(contract: dict[str, Any], receipt: dict[str, Any], readback: dict[str
         verdict, route = "PASS", "ticket"
     elif scope_broken:
         verdict, route = "FAIL", "reject"
-    elif (verdict_fail_msg and len(evals) == max_attempts
+    elif (verdict_fail_msg and len(evals) == max_attempts and contract["evaluator"].get("onFail", "evaluation_failed_ticket") != "reject"
           and set(failures) <= fixable | {verdict_fail_msg}):
         # Protocol intact, evaluator still unhappy after every attempt: ticket it, labelled.
         verdict, route = "FAIL", "evaluation_failed_ticket"
@@ -474,10 +474,18 @@ def _verify_v1(contract: dict[str, Any], task: dict[str, Any], readback: dict[st
             if not approved:
                 failures.append("the text handed to the evaluator is empty")
         after = [d["text"] for pos, kind, d in timeline if kind == "text" and pos > last]
-        v = _parse_verdict(after)
-        if v is None:
+        v = None
+        if not after:
             failures.append("no JSON verdict from the evaluator after the handoff")
         else:
+            try:  # the evaluator's reply is its whole final text; prose around a verdict is not accepted
+                v = json.loads(after[-1].strip())
+                if not isinstance(v, dict) or "verdict" not in v:
+                    raise ValueError
+            except ValueError:
+                v = None
+                failures.append("evaluator reply after the handoff is not a bare JSON verdict")
+        if v is not None:
             last_verdict = str(v.get("verdict", "")).upper()
             out["evaluator_failures"] = v.get("failures") or []
             if v.get("contract") != out["contract"]:
@@ -525,12 +533,50 @@ def _verify_v1(contract: dict[str, Any], task: dict[str, Any], readback: dict[st
         verdict, route = "PASS", "ticket"
     elif scope_broken:
         verdict, route = "FAIL", "reject"
-    elif verdict_fail_msg and len(evals) == max_attempts and set(failures) <= fixable | {verdict_fail_msg}:
+    elif (verdict_fail_msg and ev.get("onFail", "evaluation_failed_ticket") != "reject"
+          and set(failures) <= fixable | {verdict_fail_msg}):
+        # A subAgent handoff cannot retry, so the evaluator's first FAIL is final. Quarantined ticket, not a normal finding.
         verdict, route = "FAIL", "evaluation_failed_ticket"
     else:
         verdict, route = "FAIL", "reject"
     return {**out, "verdict": verdict, "route": route, "failures": failures, "warnings": warnings,
             "tools_succeeded": sorted(succeeded)}
+
+
+def emit(directory: Path, result: dict[str, Any], receipt: dict[str, Any] | None = None) -> None:
+    """Append one JSON line per run to warden.jsonl and rewrite warden.prom from ALL lines, so the
+    Prometheus counters are monotonic by construction and survive restarts. Atomic replace, flock-guarded."""
+    import fcntl
+    import os
+    import time
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from a2a_shapes import summarize
+    directory.mkdir(parents=True, exist_ok=True)
+    facts = summarize(receipt) if receipt is not None else {}
+    line = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "agent": result.get("agent"), "contract": result.get("contract"),
+            "verdict": result.get("verdict"), "route": result.get("route"), "failures": result.get("failures", []),
+            "evaluator_attempts": result.get("evaluator_attempts"), "tools": sorted(result.get("tools_succeeded", [])),
+            "tokens_total": facts.get("tokens_total"), "duration_s": facts.get("duration_s")}
+    with open(directory / "warden.lock", "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        with open(directory / "warden.jsonl", "a") as fh:
+            fh.write(json.dumps(line, sort_keys=True) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        counts: dict[tuple[str, str, str], int] = {}
+        for raw in (directory / "warden.jsonl").read_text().splitlines():
+            try:
+                d = json.loads(raw)
+            except ValueError:
+                continue
+            k = (str(d.get("agent")), str(d.get("verdict")), str(d.get("route")))
+            counts[k] = counts.get(k, 0) + 1
+        esc = lambda v: v.replace("\\", "\\\\").replace('"', '\\"')
+        rows = ["# HELP warden_runs_total Warden completion-gate verdicts per agent.", "# TYPE warden_runs_total counter"]
+        rows += [f'warden_runs_total{{agent="{esc(a)}",verdict="{esc(v)}",route="{esc(r)}"}} {n}' for (a, v, r), n in sorted(counts.items())]
+        tmp = directory / "warden.prom.tmp"
+        tmp.write_text("\n".join(rows) + "\n")
+        os.replace(tmp, directory / "warden.prom")
 
 
 def _load(path: Path) -> Any:
@@ -545,11 +591,14 @@ def main() -> int:
     ap.add_argument("--agent-crd", type=Path, help="deployed Agent YAML/JSON (kubectl get agent -o yaml)")
     ap.add_argument("--readback", type=Path, help="ticket JSON read back from GitLab after the downstream write")
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--emit-dir", type=Path, help="append warden.jsonl and rewrite warden.prom here (Loki/Prometheus signals)")
     args = ap.parse_args()
     contract = load_contract(args.contract)
     result = verify(contract, _load(args.receipt),
                     readback=_load(args.readback) if args.readback else None,
                     agent_crd=_load(args.agent_crd) if args.agent_crd else None)
+    if args.emit_dir:
+        emit(args.emit_dir, result, _load(args.receipt))
     text = json.dumps(result, indent=2, sort_keys=True)
     if args.out:
         args.out.write_text(text + "\n")

@@ -10,6 +10,10 @@ Full record: `evidence/LIVE-PROXMOX-2026-11-23.md`. Sanitized live receipts are 
 | Warden, kagent 1.0.0-alpha17 (A2A 1.0, subAgent) | 3 live runs: PASS, FAIL (worker omitted the `contract:` line, a correct block), PASS |
 | Review | Codex found 7 ways to get a false PASS in the first version of the verifier; all fixed, each with a test |
 
+## Guard and the overseer (24 Nov 2026, kagent 1.0.0-alpha17 lab)
+
+Full record: `evidence/GUARD-AND-LOOP-2026-11-24.md`. Sentinel worker 0 of 3 with the first prompt, 3 of 3 with ordered steps; a misbehaving worker rejected for exactly its extra tool; Guard detector clean on 3 real runs and firing on the rogue one; a block proposal accepted by the lab API under server dry-run and never applied; the Guard agent's ticket 3 of 3 through Warden. **The overseer agent failed all 3 live runs** (model 400 error).
+
 ## Not proven
 
 - Three live Warden passes in a row; a first-try FAIL on 1.x has no retry and its route is undecided.
@@ -18,3 +22,4 @@ Full record: `evidence/LIVE-PROXMOX-2026-11-23.md`. Sanitized live receipts are 
 - kagent 1.0.1 (the profile version); only alpha17 was run.
 - The forbidden-tool check relies on agent history; join gateway or OTel audit data to prove it.
 - `judge.py` scores are uncalibrated and advisory.
+- Alert delivery to the overseer and Tempo span-metric alerts firing: no such stack in the lab. The overseer agent has no successful live run.
