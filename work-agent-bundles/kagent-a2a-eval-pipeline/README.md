@@ -7,6 +7,17 @@ trajectory, and scores it with the existing deterministic scorer
 
 Visual explainer: [EVALUATION-EXPLAINED.html](EVALUATION-EXPLAINED.html).
 
+## Assay and Warden
+
+| Name | What | Where |
+|---|---|---|
+| **Assay** | Tests an agent before it ships: a GitLab pipeline sends seeded-fault cases through the gateway and scores the result (pass^3) | this folder |
+| **Warden** | Signs off each run after it ships: an evaluator agent plus a deterministic check of the controller history gate delivery | `completion-gate/`, `verify_completion.py` |
+
+**Handing this to a work agent?** Start at [FRONT-SHEET.md](FRONT-SHEET.md), complete [HUMAN-PREREQUISITES.md](HUMAN-PREREQUISITES.md), then give the work agent
+[WORK-AGENT-PROMPT.md](WORK-AGENT-PROMPT.md). `./verify-bundle.sh` checks the bundle offline. The agents here are read-only investigators: they diagnose and report, they do not fix.
+The folder name `kagent-a2a-eval-pipeline` is kept for stable paths.
+
 ## Why this shape
 
 Earlier work in this repo built the scorer (for captured runs) and Promptfoo

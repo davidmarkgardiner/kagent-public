@@ -1,6 +1,6 @@
-# Completion gate: evaluation stage 2 (runtime)
+# Warden: the completion gate (evaluation stage 2, runtime)
 
-Stage 1 (the parent bundle) answers *is this agent fit for purpose?* before
+Assay (stage 1, the parent bundle) answers *is this agent fit for purpose?* before
 promotion. Stage 2 answers *did this agent finish this job properly?* every
 time it runs in production.
 

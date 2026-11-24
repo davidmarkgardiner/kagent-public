@@ -99,9 +99,9 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
 
 <header>
   <span class="eyebrow">kagent · agent evaluation · GitLab CI</span>
-  <h1>How we test and score kagent agents</h1>
+  <h1>Assay and Warden: how we test and score kagent agents</h1>
   <p class="lede">A GitLab pipeline sends test questions to real agents through the agentgateway A2A endpoint, records what each agent did and said, and scores it against a written answer key. This page covers what gets checked, how the score works, and what blocks a merge.</p>
-  <p class="lede">There are two stages. <strong>Stage 1</strong> runs before an agent is promoted: is it fit for purpose? <strong>Stage 2</strong> runs on every production job: did this run finish properly? In Stage 2, a second agent checks the first agent's work over A2A, and a deterministic check confirms it before anything is ticketed. Most of this page covers Stage 1; <a href="#stage2">Stage 2</a> is further down.</p>
+  <p class="lede">There are two stages. <strong>Assay</strong> (Stage 1) runs before an agent is promoted: is it fit for purpose? <strong>Warden</strong> (Stage 2) runs on every production job: did this run finish properly? In Stage 2, a second agent checks the first agent's work over A2A, and a deterministic check confirms it before anything is ticketed. Most of this page covers Stage 1; <a href="#stage2">Stage 2</a> is further down.</p>
 </header>
 
 <section>
@@ -223,7 +223,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
 </section>
 
 <section id="stage2">
-  <span class="eyebrow">Stage 2 · every production run</span>
+  <span class="eyebrow">Warden · every production run</span>
   <h2>A second agent checks the work before it ships</h2>
   <p>When a worker agent such as the Sentinel investigator finishes, it sends its output to an evaluator agent through a native kagent <code>type: Agent</code> tool, which is A2A inside kagent. The evaluator answers PASS or FAIL. On FAIL, the worker fixes the listed problems and asks again, up to 3 times. Only then does it return.</p>
   <div class="flow">
