@@ -1,7 +1,7 @@
 # Guard, overseer intake and Warden changes: evidence, 24 November 2026
 
 Live runs were on the kagent 1.0.0-alpha17 + Substrate lab (kind inside a Proxmox VM), model Kimi through the lab gateway, A2A 1.0. Receipts stay in the
-gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`. Offline suite: **184 tests** at the time of the last review fixes.
+gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`. Offline suite: **191 tests** at the time of the last review fixes.
 
 ## Warden changes
 - **A planned check was dropped.** I planned to verify that the worker named its contract in the handoff. On 1.x the handoff message is not in the receipt, so it cannot be
@@ -38,7 +38,7 @@ Its watchdog treats quota as a wait, never as broken. The circuit breaker was ch
 401 and 403 are now held 6 hours rather than 24 (2 new tests). Recorded in `docs/alert-loop.md`: a per-task token stop-loss is recommended but not built; and the overseer shares a model route with the agents it watches, which is a design flaw to fix before relying on it (a separate route is now a prerequisite).
 
 ## Direct blocking and the model probe (live, 24 Nov)
-Owner decision: block a definite offender immediately. `guard/enforce.py` (offline: 14 tests with a fake kubectl, plus 5 mutations of its safeguards, each caught). Live on the lab: refused without `--auto-apply`; applied for real; read back with `applied: true` and a review date; second apply allowed (cap 2); released; the cluster ended with no guard blocks; ledger has every step. Not tested: that the Deny blocks traffic. `guard/model_probe.py`: live ok (200, about 1.1 s) and a closed port classified `connect` (exit 2). Rough edge: a repeat apply of the same finding counts twice towards the cap.
+Owner decision: block a definite offender immediately. `guard/enforce.py` (offline: 14 tests with a fake kubectl, plus 5 mutations of its safeguards, each caught). Live on the lab: refused without `--auto-apply`; applied for real; read back with `applied: true` and a review date; second apply allowed (cap 2); released; the cluster ended with no guard blocks; ledger has every step. Not tested: that the Deny blocks traffic. `guard/model_probe.py`: live ok (200, about 1.1 s) and a closed port classified `connect` (exit 2). A repeat apply for the same offender reuses one policy (the name hashes agent, subject and route), and the hourly cap is also counted from the applied-at annotations on the cluster, so a fresh ledger cannot reset it (round 2 fix, offline tests).
 
 ## Lab pitfalls found
 - After the VM rebooted, the kind node's resolver was `0.0.0.0` again (Docker regenerates it on restart). Actors then hang with no error and no model call; the gateway log shows nothing. Resetting the node resolver and restarting the worker fixed it. The lab host also shuts down nightly.
@@ -50,3 +50,9 @@ Owner decision: block a definite offender immediately. `guard/enforce.py` (offli
 - Overseer: no successful live run. It needs a tighter tool-output budget before it is retried.
 - A live evaluator FAIL on the quarantined-ticket route, and the GitLab receiver write and read-back.
 - Policy expiry is a review annotation only; nothing removes a policy. Guard heartbeat and its human-only paging path are design only.
+
+## Grafana-managed alerting into the intake (24 November 2026, lab)
+
+Grafana 11.6.0 in Docker with the provisioning files from `guard/alerts/grafana/` (webhook contact point with a bearer token, a notification policy, a self-test rule that needs no data source). The built-in Grafana Alertmanager delivered the first firing alert to `guard/alert_receiver.py`; the intake wrote one A2A request with the labels quoted as untrusted text. The raw webhook is the fixture `tests/fixtures/grafana-webhook-live.json`. Wrong token gave 401, a non-object body 400, a repeat delivery `suppressed_duplicate`. Sending to a gateway was tested offline only, against a fake gateway: a 400 is recorded and never retried, one webhook sends at most one request, and a human-only alert is never sent. A test caught a real bug on the way: two webhooks in the same second shared an outbox folder, so a withheld alert re-sent an old request (fixed: unique folder, only this call's requests are sent). Not run: real Loki, Tempo or Mimir rules, delivery to a live agent, Grafana in the work cluster. Setup for the work cluster: `docs/grafana-alerting.md`.
+
+Also changed: the detector now reports `degraded` (gap `no_inventory`) when no start inventory is supplied, because a hung run is invisible without one.

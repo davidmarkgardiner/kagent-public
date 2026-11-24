@@ -63,6 +63,6 @@ td{padding:9px 12px;border-bottom:1px solid var(--line);background:#fff}td.ok{ba
 <li><b>Spend guards (tested offline):</b> attempt cap, a 400 is never retried, bounded 429 backoff, a circuit breaker, an hourly token budget, a kill switch; corrupt state fails closed</li>
 <li><b>Overseer (agent-health):</b> intake built; its agent is <b>not passing live yet</b>: a 4.4 MB tool result broke the model call (fixed), then it wandered for 245k tokens; a tool-call budget now gates it, untested live</li></ul>
 <p class="note">Alert delivery from LGTM to the overseer is not run: the lab has no Alertmanager.</p></section><section class="slide"><div class="k">Open</div><h2>Decisions needed</h2><ul><li>Where does a first-try evaluator FAIL route on 1.x: a labelled ticket, or reject and alert?</li>
-<li>May the Guard ever auto-apply a block, or always propose?</li>
+<li>Decided: the Guard auto-applies a block only for a deterministic tool-outside-allowlist finding from a receipt or run; everything else is proposal-only. Which agents go on the never-block list?</li>
 <li>Which agents are on the never-block list?</li>
 <li>Who owns an agent that fails Assay or Warden?</li></ul></section></body></html>

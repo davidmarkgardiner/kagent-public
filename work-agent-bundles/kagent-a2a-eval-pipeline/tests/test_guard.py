@@ -51,7 +51,7 @@ def write(d, name, obj):
 
 def run(events_files, rules=RULES, **kw):
     evs = [e for p in events_files for e in det.load_events(p, kw.pop("agent", AGENT))] if events_files else []
-    return det.evaluate(evs, rules, NOW, kw.get("inventory"), kw.get("contract_tools"))
+    return det.evaluate(evs, rules, NOW, kw.get("inventory", []), kw.get("contract_tools"))
 
 
 def signals(rep):
@@ -99,7 +99,7 @@ class Detect(unittest.TestCase):
         rules = RULES
         zero = det.event(src="log", id="a", agent=AGENT, tokens=0, tools=[], ts=NOW)
         none = det.event(src="log", id="b", agent=AGENT, tokens=None, tools=[])
-        self.assertEqual(det.evaluate([zero], rules, NOW)["coverage"], [])
+        self.assertEqual(det.evaluate([zero], rules, NOW, [])["coverage"], [])
         self.assertTrue(any(c["gap"] == "no_token_data" for c in det.evaluate([none], rules, NOW)["coverage"]))
 
     def test_expected_agent_with_no_telemetry_is_degraded(self):
@@ -197,6 +197,9 @@ class Detect(unittest.TestCase):
         def cli(path, *extra):
             return subprocess.run([sys.executable, str(BUNDLE / "guard/detect.py"), "--events", str(path), "--agent", AGENT, "--now", "2026-11-24T12:00:00Z", *extra],
                                   capture_output=True, text=True).returncode
+        inv = write(d, "inv.json", [])
+        self.assertEqual(cli(clean), 2)  # no inventory supplied: a hung run would be invisible, so not "clean"
+        cli = lambda path, *extra, _c=cli: _c(path, "--inventory", str(inv), *extra)
         self.assertEqual(cli(clean), 0)
         self.assertEqual(cli(findings), 1)
         self.assertEqual(cli(bad), 3)

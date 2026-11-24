@@ -18,6 +18,12 @@ The work agent cannot create these. Complete the sheet before handing over
 | 9 | Decision: where a worker's **first-try evaluator FAIL** routes on 1.x (a handoff cannot retry). Options: labelled `evaluation-failed` ticket, or reject and alert | The code currently rejects | Product owner |
 | 10 | Decision: who owns an agent that fails Assay or Warden, and the escalation route | A gate that nobody reads is not a gate | Product owner |
 | 11 | **A separate model route and credential for the overseer and the Guard**, not the one the watched agents use | A quota or outage on the shared route would take down the watcher together with the watched (a lesson from our software factory) | Platform |
+| 13 | Read-only RBAC (`get`, `list`, `create --dry-run=server` on `agentgatewaypolicies` in the policy namespace) for the identity that runs `propose.py --dry-run-server` | Phase 3 proves the policy is accepted without applying it | Platform / Security |
+| 14 | A **start inventory** source for agent runs (gateway or controller list of started tasks: id, agent, started, caller) | Without it the detector cannot see a run that never finishes and reports `degraded`, never `clean` | Platform |
+| 15 | Grafana: data source UIDs, a place to run `guard/alert_receiver.py` (Service reachable only from Grafana), a Secret for `ALERT_RECEIVER_TOKEN`, a human paging contact point that does not use the agent system | Phase 4 alert path; see `docs/grafana-alerting.md` | Platform / Observability |
+| 16 | Written owner approval of which signals may auto-block (default: only `forbidden_tool` from a receipt or run) and the never-block list | Phase 5 enforcement | Product owner |
+| 17 | A narrow identity for `enforce.py` (create, get, list, delete `agentgatewaypolicies` with the guard label, in one namespace) and findings, identity map and rules files writable only by that identity | The trust anchor for what it applies is operational | Platform / Security |
+| 18 | A JWT-authenticated test caller and a throwaway route | Phase 5 must prove a Deny really blocks traffic; it was never proven in the lab | Platform |
 | 12 | A human to review the first full run of each case against the real agent's answer | Scoring is key-term based; a person calibrates it | Agent owner |
 
 ## Do not do

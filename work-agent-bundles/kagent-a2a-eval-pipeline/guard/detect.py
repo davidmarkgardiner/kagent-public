@@ -242,6 +242,8 @@ def evaluate(events: list[dict[str, Any]], rules: dict[str, Any], now: datetime,
 
     # A run that never finished cannot show up as a completed span or receipt: check an independent start inventory.
     finished_ids = {e["id"] for e in events}
+    if inventory is None:
+        gap("no_inventory", None, "no start inventory supplied: a run that never finished cannot be seen, so a hung agent would read as clean")
     for item in inventory or []:
         started = parse_ts(item.get("started"))
         agent = item.get("agent")

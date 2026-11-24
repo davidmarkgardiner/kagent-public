@@ -48,7 +48,7 @@ class LiveReplay(unittest.TestCase):
 
     def test_guard_detector_on_real_receipts(self):
         ev = lambda n: det.load_events(FX / n, "sentinel-investigator")
-        ok = det.evaluate(ev("a2a-v1x-sentinel-pass-live.json"), RULES, NOW)
+        ok = det.evaluate(ev("a2a-v1x-sentinel-pass-live.json"), RULES, NOW, [])
         self.assertEqual(ok["status"], "clean", ok)
         bad = det.evaluate(ev("a2a-v1x-rogue-extra-tool-live.json"), RULES, NOW)
         self.assertEqual([f["signal"] for f in bad["findings"]], ["forbidden_tool"])
