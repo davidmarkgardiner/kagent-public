@@ -4,6 +4,7 @@ never as zero."""
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
@@ -27,7 +28,7 @@ def _int(value: Any) -> int | None:
 def summarize(receipt: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {"version": None, "state": None, "completed": False, "error_code": None, "tool_calls": [],
                            "tokens_in": None, "tokens_out": None, "tokens_total": None,
-                           "started": None, "finished": None, "duration_s": None}
+                           "started": None, "finished": None, "duration_s": None, "max_tool_output_chars": None}
     result = receipt.get("result") if isinstance(receipt, dict) else None
     if not isinstance(result, dict):
         return out
@@ -62,6 +63,9 @@ def summarize(receipt: dict[str, Any]) -> dict[str, Any]:
             if cid not in seen:
                 seen.add(cid)
                 out["tool_calls"].append({"id": cid, "name": str(d.get("name") or "")})
+    sizes = [len(json.dumps(p["data"].get("response"))) for p in parts
+             if kind(p) == "function_response" and isinstance(p.get("data"), dict)]
+    out["max_tool_output_chars"] = max(sizes) if sizes else None
     a, b = _ts(out["started"]), _ts(out["finished"])
     if a and b and b >= a:
         out["duration_s"] = round((b - a).total_seconds(), 3)

@@ -9,7 +9,8 @@ evaluator:
   subAgent: completion-evaluator-agent-health
   namespace: kagent
   maxAttempts: 3
-allowedTools: [k8s_get_resources, k8s_describe_resource, k8s_get_events, k8s_get_pod_logs, k8s_get_resource_yaml]
+maxToolCalls: 8   # hard gate; the prompt asks for 6. One live run made 14 calls and used 245000 tokens
+allowedTools: [k8s_get_resources, k8s_describe_resource, k8s_get_pod_logs, k8s_get_resource_yaml]  # no k8s_get_events: it returns a whole namespace and once produced a 4.4 MB result
 requiredTools:
   - anyOf: [k8s_get_resources, k8s_describe_resource, k8s_get_resource_yaml]   # looked at the agents or pods named in the alert
 output:

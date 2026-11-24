@@ -5,7 +5,7 @@ Reads normalised events from any of: a2a_capture `*.run.json`, raw A2A task rece
 exports (Tempo `/api/traces`), warden.jsonl, and generic JSONL access logs. Applies the budgets in rules.yaml and prints
 findings JSON. It never changes anything.
 
-Signals: long_running, token_burn, forbidden_tool, http_errors, task_failed, warden_block.
+Signals: oversized_tool_output, long_running, token_burn, forbidden_tool, http_errors, task_failed, warden_block.
 Missing data is never clean: an event with no token or tool data, an agent with no telemetry, or an agent with no
 tool allowlist is reported under `coverage`, and the status becomes `degraded` rather than `clean`.
 
@@ -27,7 +27,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from a2a_shapes import summarize  # noqa: E402
 
-SIGNALS = ("long_running", "token_burn", "forbidden_tool", "http_errors", "task_failed", "warden_block")
+SIGNALS = ("oversized_tool_output", "long_running", "token_burn", "forbidden_tool", "http_errors", "task_failed", "warden_block")
 
 
 def parse_ts(v: Any) -> datetime | None:
@@ -44,7 +44,7 @@ def parse_ts(v: Any) -> datetime | None:
 
 def event(**kw: Any) -> dict[str, Any]:
     base = {"src": None, "id": None, "agent": None, "caller": None, "ts": None, "duration_s": None, "tokens": None,
-            "tools": None, "status": None, "failed": False, "error_code": None, "warden": None}
+            "tools": None, "status": None, "failed": False, "error_code": None, "warden": None, "max_tool_output": None}
     base.update(kw)
     return base
 
@@ -148,7 +148,8 @@ def load_events(path: Path, agent_hint: str | None) -> list[dict[str, Any]]:
             return [event(src="receipt", id=str(doc.get("id")), agent=agent_hint, failed=True, error_code="jsonrpc_error")]
         f = summarize(doc)
         return [event(src="receipt", id=str(doc.get("id")), agent=agent_hint, ts=parse_ts(f["finished"]), duration_s=f["duration_s"], tokens=f["tokens_total"],
-                      tools=[c["name"] for c in f["tool_calls"]], failed=not f["completed"], error_code=f["error_code"])]
+                      tools=[c["name"] for c in f["tool_calls"]], failed=not f["completed"], error_code=f["error_code"],
+                      max_tool_output=f["max_tool_output_chars"])]
     raise ValueError(f"{path}: unrecognised telemetry shape")
 
 
@@ -202,6 +203,9 @@ def evaluate(events: list[dict[str, Any]], rules: dict[str, Any], now: datetime,
                 add("task_failed", agent, e["id"], e["caller"], {"error_code": e["error_code"]})
             if e["duration_s"] is not None and e["duration_s"] > r["maxDurationS"]:
                 add("long_running", agent, e["id"], e["caller"], {"duration_s": e["duration_s"], "max": r["maxDurationS"]})
+            if e["max_tool_output"] is not None and e["max_tool_output"] > r.get("maxToolOutputChars", 200000):
+                add("oversized_tool_output", agent, e["id"], e["caller"], {"largest_tool_output_chars": e["max_tool_output"], "max": r.get("maxToolOutputChars", 200000),
+                                                                          "why": "a tool result this large cannot fit a model context; the next model call is likely to fail"})
             if e["tokens"] is None:
                 if r.get("requireTokens"):
                     gap("no_token_data", agent, f"{e['src']} event {e['id']} has no token usage; cannot judge token burn")

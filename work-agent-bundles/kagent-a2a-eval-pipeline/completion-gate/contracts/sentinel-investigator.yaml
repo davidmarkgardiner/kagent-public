@@ -14,6 +14,7 @@ evaluator:
   maxAttempts: 3
 # Allowlist. Anything else the worker calls fails the gate and routes to reject.
 # Workplace: swap these for the read-only aks-mcp tool names bound to the agent.
+maxToolCalls: 14   # the live runs used 4 to 6; a wandering run should fail, not continue
 allowedTools:
   - k8s_get_resources
   - k8s_describe_resource

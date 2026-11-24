@@ -6,6 +6,7 @@ defaults:
   maxTokensPerHour: 400000
   maxNon2xxRatio: 0.20         # of events with a known status, per agent (needs minEvents)
   minEvents: 5
+  maxToolOutputChars: 200000   # one tool result larger than this will not fit a model context (a 4.4 MB result caused a model 400 in the lab)
   maxNon2xxBurst: 5            # non-2xx from one caller in the window
   requireTokens: true          # an event with no token data is a coverage gap, never a clean zero
   requireTools: true           # an event with no tool data is a coverage gap

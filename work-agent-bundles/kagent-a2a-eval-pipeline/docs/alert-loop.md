@@ -1,6 +1,6 @@
 # Next: the monitoring loop and the guard agent
 
-**Status: the Guard is built and live-tested on the lab (detector, proposal, ticket); the overseer intake is built but its agent failed its live run; the alert delivery path is not run.** Five parts:
+**Status: the Guard is built and live-tested on the lab (detector, proposal, ticket); the overseer intake is built but its agent is not passing live yet (a tool-output 400 was fixed, then it wandered); the alert delivery path is not run.** Five parts:
 
 | # | Use case | Role | State |
 |---|---|---|---|
@@ -8,7 +8,7 @@
 | 2 | **Assay** | Tests an agent before it ships | verified live (kagent 0.7.13) |
 | 3 | **Warden** | Signs off each run before anything is ticketed | verified live, 2 of 3 runs on 1.x alpha |
 | 4 | **Guard** (working name) | Watches the agents themselves for rogue behaviour; proposes a block and a ticket | built; detector, proposal and ticket tested live on the lab |
-| 5 | **Overseer** (agent-health agent) | Receives LGTM alerts by API, investigates read-only, drafts an issue with a recommendation | intake built; agent failed its live run (model 400 error) |
+| 5 | **Overseer** (agent-health agent) | Receives LGTM alerts by API, investigates read-only, drafts an issue with a recommendation | intake built; agent not passing live yet: its model 400 (a 4.4 MB tool result) was fixed, then it wandered for 245000 tokens and wrote no report; a tool-call budget and a better prompt now gate it, untested live |
 
 ## Loop: when an agent fails
 

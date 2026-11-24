@@ -400,5 +400,23 @@ class Pipeline(unittest.TestCase):
         self.assertIn("k8s_apply_manifest", (out / "ticket-01.md").read_text())
 
 
+
+class OversizedToolOutput(unittest.TestCase):
+    def test_real_4mb_events_result_is_flagged_before_it_breaks_a_model_call(self):
+        ev = det.load_events(FX / "a2a-v1x-overseer-400-live.json", "agent-health-agent")
+        self.assertGreater(ev[0]["max_tool_output"], 4_000_000)
+        rep = det.evaluate(ev, RULES, NOW)
+        f = [x for x in rep["findings"] if x["signal"] == "oversized_tool_output"]
+        self.assertEqual(len(f), 1)
+        self.assertGreater(f[0]["evidence"]["largest_tool_output_chars"], 4_000_000)
+
+    def test_normal_outputs_do_not_trip_it(self):
+        ev = det.load_events(FX / "a2a-v1x-sentinel-pass-live.json", AGENT)
+        self.assertLess(ev[0]["max_tool_output"], 200000)
+        self.assertNotIn("oversized_tool_output", signals(det.evaluate(ev, RULES, NOW)))
+
+    def test_it_is_ticket_only_never_a_block(self):
+        self.assertNotIn("oversized_tool_output", RULES["blockSignals"])
+
 if __name__ == "__main__":
     unittest.main()

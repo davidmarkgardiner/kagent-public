@@ -12,7 +12,7 @@ Full record: `evidence/LIVE-PROXMOX-2026-11-23.md`. Sanitized live receipts are 
 
 ## Guard and the overseer (24 Nov 2026, kagent 1.0.0-alpha17 lab)
 
-Full record: `evidence/GUARD-AND-LOOP-2026-11-24.md`. Sentinel worker 0 of 3 with the first prompt, 3 of 3 with ordered steps; a misbehaving worker rejected for exactly its extra tool; Guard detector clean on 3 real runs and firing on the rogue one; a block proposal accepted by the lab API under server dry-run and never applied; the Guard agent's ticket 3 of 3 through Warden. **The overseer agent failed all 3 live runs** (model 400 error).
+Full record: `evidence/GUARD-AND-LOOP-2026-11-24.md`. Sentinel worker 0 of 3 with the first prompt, 3 of 3 with ordered steps; a misbehaving worker rejected for exactly its extra tool; Guard detector clean on 3 real runs and firing on the rogue one; a block proposal accepted by the lab API under server dry-run and never applied; the Guard agent's ticket 3 of 3 through Warden. **The overseer agent is not passing yet:** 3 runs hit a model 400 (a 4.4 MB tool result, fixed), then a follow-up run wandered for 245000 tokens and wrote no report; a tool-call budget now gates it, untested live.
 
 ## Not proven
 

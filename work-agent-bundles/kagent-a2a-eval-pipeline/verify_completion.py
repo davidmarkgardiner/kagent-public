@@ -8,6 +8,7 @@ what actually happened against a completion contract, instead of trusting the
 worker's or the evaluator's prose.
 
 FAIL unless all of these hold:
+  - the optional contract field maxToolCalls is not exceeded (a wandering agent burns tokens); over budget routes to reject
   - every call/response pair is complete, ids unique (fails closed otherwise)
   - every tool called is in allowedTools / allowedAgents (plus the evaluator); an allowlist, not a deny list
   - each requiredTools group has at least one successful response (isError=true never counts)
@@ -197,6 +198,11 @@ def verify(contract: dict[str, Any], receipt: dict[str, Any], readback: dict[str
             failures.append(f"tool not in allowedTools: {name}")
             scope_broken = True
 
+    budget = contract.get("maxToolCalls")
+    used = len([p for p in pairs if p[2] != eval_name])
+    if budget is not None and used > int(budget):
+        failures.append(f"tool call budget exceeded: {used} > {budget}")
+        scope_broken = True
     succeeded = {name for _, _, name, _, resp in pairs if resp and _ok(resp)}
     for group in contract.get("requiredTools") or []:
         if not succeeded & set(group["anyOf"]):
@@ -444,6 +450,11 @@ def _verify_v1(contract: dict[str, Any], task: dict[str, Any], readback: dict[st
             failures.append(f"tool not in allowedTools: {name}")
             scope_broken = True
 
+    budget = contract.get("maxToolCalls")
+    used = len([1 for _, (_, name, _) in calls.items() if name != TRANSFER])
+    if budget is not None and used > int(budget):
+        failures.append(f"tool call budget exceeded: {used} > {budget}")
+        scope_broken = True
     succeeded = {name for cid, (_, name, _) in calls.items()
                  if name != TRANSFER and cid in responses and _ok(responses[cid][2])}
     for group in contract.get("requiredTools") or []:

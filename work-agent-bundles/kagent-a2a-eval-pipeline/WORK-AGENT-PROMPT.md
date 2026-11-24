@@ -42,8 +42,7 @@ its receipt. **Never claim a pass without a receipt, and never widen an allowlis
     `guard/propose.py --dry-run-server --context <explicit>`; confirm the policy is accepted and that **nothing was applied**.
 14. **Spend guards.** Set `guard/loop-limits.yaml`. Prove with the replay tests and one live failure that a permanent error (400) is held and never retried, that a 429 backs off, that three failures open the breaker,
     and that the kill switch stops everything. **Never run a failing agent in a loop to "see if it works".** Stop at the first failure and diagnose it from the receipt.
-15. **Overseer and alerts.** Wire Alertmanager to `guard/alert_to_a2a.py`. Check that human-only alerts are not given to any agent. The agent-health agent failed its lab run (a model 400 from oversized tool output): shrink its tool
-    outputs and prove one run through its Warden contract before enabling delivery. Keep a human-only paging path for the Guard heartbeat.
+15. **Overseer and alerts.** Wire Alertmanager to `guard/alert_to_a2a.py`. Check that human-only alerts are not given to any agent. The agent-health agent has NOT passed a live run in the lab: a model 400 from a 4.4 MB tool result (fixed), then it wandered for 245000 tokens. It now has a tool-call budget and a prompt that says what an agent is. Prove ONE bounded run through its Warden contract (stop at the first failure, never loop) before enabling delivery. Keep a human-only paging path for the Guard heartbeat.
 16. **Report.** Fill a private copy of `evidence/` from the actual receipts: versions, gateway, agents, per-case verdicts, scores, latencies, code changes, and everything you
     could not verify. Use placeholders for hosts and IPs.
 

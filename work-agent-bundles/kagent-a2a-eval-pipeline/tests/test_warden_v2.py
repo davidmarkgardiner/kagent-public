@@ -110,5 +110,25 @@ class Warden(unittest.TestCase):
         self.assertTrue((d / "sig" / "warden.prom").exists())
 
 
+
+class ToolBudget(unittest.TestCase):
+    def test_real_wandering_overseer_run_fails_the_budget(self):
+        rec = json.loads((FX / "a2a-v1x-overseer-wander-live.json").read_text())
+        c = vc.load_contract(BUNDLE / "completion-gate" / "contracts" / "agent-health.yaml")
+        r = vc.verify(c, rec)
+        self.assertEqual((r["verdict"], r["route"]), ("FAIL", "reject"))
+        self.assertIn("tool call budget exceeded: 14 > 8", r["failures"])
+
+    def test_normal_run_is_inside_the_budget(self):
+        r = vc.verify(CONTRACT, GOOD)
+        self.assertFalse([f for f in r["failures"] if "budget" in f])
+        self.assertLessEqual(CONTRACT.get("maxToolCalls", 99), 14)
+
+    def test_budget_is_optional(self):
+        c = copy.deepcopy(CONTRACT)
+        c.pop("maxToolCalls", None)
+        self.assertFalse([f for f in vc.verify(c, GOOD)["failures"] if "budget" in f])
+
+
 if __name__ == "__main__":
     unittest.main()
