@@ -39,20 +39,20 @@ def kubectl(ctx: str, *args: str, stdin: str | None = None) -> subprocess.Comple
     return subprocess.run(["kubectl", "--context", ctx, *args], capture_output=True, text=True, input=stdin)
 
 
-def validate(pol: dict[str, Any], rules: dict[str, Any]) -> tuple[str | None, str]:
+def validate(pol: dict[str, Any], rules: dict[str, Any], agent: str | None = None) -> tuple[str | None, str]:
     """Return (subject or None, reason). Independent of propose.py on purpose."""
     try:
         md, spec = pol["metadata"], pol["spec"]
         if pol.get("kind") != "AgentgatewayPolicy" or pol.get("apiVersion") != "agentgateway.dev/v1alpha1":
             return None, "not an AgentgatewayPolicy v1alpha1"
-        if not str(md.get("name", "")).startswith("guard-deny-") or not NAME.match(md["name"]):
+        if not str(md.get("name", "")).startswith("guard-deny-") or not NAME.fullmatch(md["name"]):
             return None, "name must be guard-deny-<slug>"
         if md.get("namespace") != rules.get("policyNamespace"):
             return None, "namespace is not the allowed policy namespace"
         if (md.get("labels") or {}).get(LABEL) != OWNER:
             return None, "missing the guard managed-by label"
         refs = spec["targetRefs"]
-        if len(refs) != 1 or refs[0].get("kind") != "HTTPRoute" or not NAME.match(str(refs[0].get("name", ""))):
+        if len(refs) != 1 or refs[0].get("kind") != "HTTPRoute" or not NAME.fullmatch(str(refs[0].get("name", ""))):
             return None, "must target exactly one named HTTPRoute"
         if set(spec) != {"targetRefs", "traffic"} or set(spec["traffic"]) != {"authorization"}:
             return None, "unexpected fields in spec"
@@ -60,15 +60,15 @@ def validate(pol: dict[str, Any], rules: dict[str, Any]) -> tuple[str | None, st
         exprs = auth["policy"]["matchExpressions"]
         if auth.get("action") != "Deny" or len(exprs) != 1 or set(auth) != {"action", "policy"} or set(auth["policy"]) != {"matchExpressions"}:
             return None, "must be a single-expression Deny"
-        m = EXPR.match(exprs[0])
-        if not m or not SUBJECT.match(m.group(1)):
+        m = EXPR.fullmatch(exprs[0])
+        if not m or not SUBJECT.fullmatch(m.group(1)):
             return None, "expression is not exactly jwt.sub == \"<plain identifier>\""
         subject = m.group(1)
     except (KeyError, TypeError, AttributeError):
         return None, "policy is malformed"
     deny = [str(n).lower() for n in rules.get("neverBlock") or []]
-    for n in (subject, refs[0]["name"], md["name"]):
-        low = n.lower()
+    for n in filter(None, (subject, refs[0]["name"], md["name"], agent)):  # the AGENT is checked too: a policy name never matches the never-block prefixes
+        low = str(n).lower()
         if any(low == d or low.startswith(d + "-") for d in deny):
             return None, f"{n!r} is on the never-block list"
     return subject, "ok"
@@ -93,7 +93,7 @@ def recent_applies(path: Path | None, now: float, window: int = 3600) -> int:
     return n
 
 
-def main() -> int:
+def _main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("apply")
@@ -140,7 +140,7 @@ def main() -> int:
                     print(json.dumps({"outcome": "refused", "reason": "ledger is corrupt; failing closed so the cap cannot be silently bypassed"})); return 1
     lock = open(str(args.ledger) + ".lock", "a"); fcntl.flock(lock, fcntl.LOCK_EX)  # one enforcer at a time: the caps are check-then-apply
     def killed() -> bool:  # checked per proposal, in every place an operator might have put it
-        return os.environ.get("GUARD_ENFORCE_DISABLED") == "1" or any((d / "guard-enforce.disabled").exists() for d in (args.proposals.parent, args.ledger.parent, args.rules.parent))
+        return os.environ.get("GUARD_ENFORCE_DISABLED", "").lower() in ("1", "true", "yes") or any((d / "guard-enforce.disabled").exists() for d in (args.proposals.parent, args.ledger.parent, args.rules.parent))
     for p in props:
         rec: dict[str, Any] = {"epoch": now, "finding": p.get("finding"), "signal": p.get("signal"), "agent": p.get("agent")}
         def done(outcome: str, reason: str = "") -> None:
@@ -155,13 +155,15 @@ def main() -> int:
         if not f:
             done("refused", "no matching detector finding for this proposal"); continue
         rec["signal"], rec["agent"] = f["signal"], f.get("agent")
+        if f.get("source") not in (cfg.get("autoApplySources") or ["receipt", "run"]):
+            done("refused", f"finding source {f.get('source')!r} cannot auto-block: a trace can mix agents, so its attribution is not trusted (proposal only)"); continue
         if f["signal"] not in (cfg.get("signals") or []):
             done("refused", f"signal {f['signal']!r} is not in autoApply.signals (ticket only)"); continue
         try:
             pol = yaml.safe_load((args.proposals.parent / p["policy_file"]).read_text())
         except (OSError, yaml.YAMLError):
             done("refused", "policy file unreadable"); continue
-        subject, why = validate(pol, rules)
+        subject, why = validate(pol, rules, f.get("agent"))
         if not subject:
             done("refused", f"re-validation failed: {why}"); continue
         ns, name = pol["metadata"]["namespace"], pol["metadata"]["name"]
@@ -169,17 +171,23 @@ def main() -> int:
         m = (idmap.get("agents") or {}).get(f.get("agent"))
         if not m or m.get("subject") != subject or m.get("route") != rec["route"] or (m.get("namespace") or rules.get("policyNamespace")) != ns:
             done("refused", "the policy does not match the trusted identity map for this agent"); continue
-        if recent_applies(args.ledger, now) >= int(cfg.get("maxAppliesPerHour", 2)):
-            done("refused", "hourly apply cap reached; a person must decide"); continue
         lst = kubectl(args.context, "-n", ns, "get", "agentgatewaypolicies.agentgateway.dev", "-l", f"{LABEL}={OWNER}", "-o", "json")
         if lst.returncode != 0:
             done("refused", "cannot count existing guard blocks; failing closed"); continue
         active = [i for i in json.loads(lst.stdout).get("items", []) if (i["metadata"].get("annotations") or {}).get("guard.kagent.dev/applied") == "true"]
+        def _recent(i: dict[str, Any]) -> bool:
+            try:
+                return now - datetime.fromisoformat(i["metadata"]["annotations"]["guard.kagent.dev/applied-at"]).timestamp() < 3600
+            except (KeyError, ValueError, TypeError):
+                return False
+        # The cap is counted on the cluster as well as in the ledger, so a fresh or different --ledger cannot reset it.
+        if max(recent_applies(args.ledger, now), sum(1 for i in active if _recent(i))) >= int(cfg.get("maxAppliesPerHour", 2)):
+            done("refused", "hourly apply cap reached; a person must decide"); continue
         if name in {i.get("metadata", {}).get("name") for i in active}:
             done("already_applied", "this block is already active; nothing re-applied and no cap slot used"); continue
         if len(active) >= int(cfg.get("maxActiveBlocks", 3)):
             done("refused", f"{len(active)} guard blocks are already active (cap {cfg.get('maxActiveBlocks', 3)}); a person must review"); continue
-        pol["metadata"]["annotations"].update({"guard.kagent.dev/applied": "true", "guard.kagent.dev/applied-at": datetime.fromtimestamp(now, timezone.utc).isoformat(),
+        pol["metadata"].setdefault("annotations", {}).update({"guard.kagent.dev/applied": "true", "guard.kagent.dev/applied-at": datetime.fromtimestamp(now, timezone.utc).isoformat(),
                                                "guard.kagent.dev/review-by": (datetime.fromtimestamp(now, timezone.utc) + timedelta(days=int(cfg.get("reviewDays", 1)))).isoformat(),
                                                "guard.kagent.dev/note": "Applied automatically by the Guard for a definite offence. Never expires by itself: a person reviews, fixes, then runs `enforce.py release`."})
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tf:
@@ -189,6 +197,8 @@ def main() -> int:
             done("refused", "server dry-run rejected it: " + dry.stderr.strip()[:200]); continue
         ap_ = kubectl(args.context, "apply", "-f", path)
         chk = kubectl(args.context, "-n", ns, "get", "agentgatewaypolicies.agentgateway.dev", name, "-o", "name")
+        if ap_.returncode != 0 and chk.returncode == 0:
+            done("applied_unverified", "apply reported a failure but the object exists: treat the block as ACTIVE; it counts towards the caps"); continue
         if ap_.returncode == 0 and chk.returncode != 0:
             done("applied_unverified", "the apply succeeded but the read-back failed: treat the block as ACTIVE and check by hand; it counts towards the caps"); continue
         if ap_.returncode != 0:
@@ -196,6 +206,16 @@ def main() -> int:
         done("applied", "definite offence; blocked until a person releases it")
     print(json.dumps({"results": out}, indent=1))
     return rc
+
+
+def main() -> int:
+    try:
+        return _main()
+    except SystemExit:
+        raise
+    except Exception as exc:  # fail closed and loudly rather than with a bare traceback
+        print(json.dumps({"outcome": "crashed", "error": f"{type(exc).__name__}: {exc}", "note": "treat the state as unknown and check by hand"}), file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

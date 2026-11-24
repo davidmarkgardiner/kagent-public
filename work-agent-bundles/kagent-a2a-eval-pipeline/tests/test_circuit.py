@@ -208,5 +208,12 @@ class StateHygiene(unittest.TestCase):
         self.assertFalse(list(p.parent.glob("*.tmp")))
 
 
+class Misclassification(unittest.TestCase):
+    def test_a_429_inside_a_message_does_not_override_a_real_status(self):
+        self.assertEqual(cm.classify(404, "deployment web-429 not found", L), "permanent")
+        c = circ(); self.assertEqual(c.record("a", False, 1, 404, "deployment web-429 not found"), "permanent")
+        self.assertEqual(c.s["pause_until"], 0.0); self.assertEqual(c.s["consecutive_failures"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

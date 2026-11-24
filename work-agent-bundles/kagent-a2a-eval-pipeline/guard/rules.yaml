@@ -13,6 +13,7 @@ defaults:
 blockSignals: [forbidden_tool, token_burn]   # a block PROPOSAL may be written for these; others raise a ticket only
 autoApply:                                     # guard/enforce.py applies a proposal directly, but only if the caller passes --auto-apply and --context
   signals: [forbidden_tool]                    # definite only: a deterministic tool-outside-allowlist result. token_burn stays proposal-only
+  autoApplySources: [receipt, run]             # trace-derived findings are proposal-only: one trace can contain several agents, so who did what is not trusted
   maxActiveBlocks: 3                           # a runaway Guard must not block the fleet
   maxAppliesPerHour: 2
   reviewDays: 1                                # a review date, not an expiry: a block stays until a person releases it

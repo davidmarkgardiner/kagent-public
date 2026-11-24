@@ -143,12 +143,14 @@ class FailedHandoff(unittest.TestCase):
                         d["isError"] = True
                     elif key == "error":
                         d["error"] = "agent not found"
+                    elif key == "string":
+                        d["response"] = "Error: agent unavailable"
                     else:
                         d["response"] = {"isError": True}
         return rec
 
     def test_errored_handoff_is_not_a_pass_in_any_error_shape(self):
-        for key in ("isError", "error", "nested"):
+        for key in ("isError", "error", "nested", "string"):
             r = vc.verify(CONTRACT, self._with_error(key))
             self.assertEqual(r["verdict"], "FAIL", key)
             self.assertEqual(r["route"], "reject", key)

@@ -475,7 +475,8 @@ def _verify_v1(contract: dict[str, Any], task: dict[str, Any], readback: dict[st
         prev = evals[-2][0] if len(evals) > 1 else -1
         hr = (responses.get(evals[-1][2]) or (0, "", {}))[2]
         hrr = hr.get("response") if isinstance(hr.get("response"), dict) else {}
-        if hr.get("isError") or hr.get("error") or hrr.get("isError") or hrr.get("error"):
+        hs = hr.get("response") if isinstance(hr.get("response"), str) else ""
+        if hr.get("isError") or hr.get("error") or hrr.get("isError") or hrr.get("error") or re.search(r"(?i)\b(error|unavailable|failed|not found|denied)\b", hs):
             failures.append("the handoff to the evaluator returned an error; a verdict after it cannot be trusted")
         if any(pos > last and kind == "function_call" for pos, kind, _ in timeline):
             failures.append("a tool was called after the last evaluation; that evidence was never reviewed")

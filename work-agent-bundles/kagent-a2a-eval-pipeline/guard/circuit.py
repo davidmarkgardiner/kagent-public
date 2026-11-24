@@ -95,7 +95,7 @@ class Circuit:
             return "ok"
         k["failures"] = k.get("failures", 0) + 1
         kind = classify(status, message, L)
-        if status == 429 or re.search(r"\b429\b", message or ""):
+        if status == 429 or (status is None and re.search(r"\b429\b", message or "")):
             # Rate limit / quota. The quota is shared by the whole loop, so pause everything until the backoff passes. This is a wait,
             # not a failure: it never counts towards the breaker, so it is never reported as broken (lesson from the software factory).
             delay = min(L["backoffBaseS"] * 2 ** (k["failures"] - 1), L["backoffCapS"])

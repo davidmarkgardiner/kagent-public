@@ -18,7 +18,7 @@ Four parts for kagent agents, plus an overseer:
 Branch `feat/kagent-agent-eval-two-stage`, based on `main`. Commits, oldest first: `17a18cd3` (Assay and Warden), `5ad8a18f` (packaging), `732b2725` (Guard, overseer intake, Warden hardening),
 `81b89bb2` (air-gap, variables, Guard page), `834a27c3` (overseer root cause, tool-call budget), `6e14395b` (429 as a wait), `8c4e6e20` (lessons from the factory handoff). Not pushed.
 
-Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 175 tests.
+Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 184 tests.
 
 ## 2. Claims against evidence
 
@@ -45,7 +45,7 @@ Evidence files: `evidence/LIVE-PROXMOX-2026-11-23.md` and `evidence/GUARD-AND-LO
 - kagent **1.0.1**. Only 1.0.0-alpha17 was run; the lab profile in the repo targets 1.0.1.
 - Three live Warden passes were achieved **only after** editing the prompt in response to failures. That is tuning, not a clean trial.
 - That a Deny policy actually blocks the offending caller. Only schema, apply, read-back and release were tested; there was no JWT setup to send a request through.
-- A block never expires by itself (by decision); there is no expiry job. A repeat apply of the same finding counts twice towards the hourly cap.
+- A block never expires by itself (by decision); there is no expiry job. A repeat apply of the same finding (fixed after review: a repeat apply is now idempotent and uses no cap slot).
 - The overseer shares a model route with the agents it watches (a design flaw; see the prerequisites).
 
 ## 4. Never independently reviewed
@@ -91,3 +91,25 @@ A Codex review covered the plan, an early version of `verify_completion.py` (0.7
 | 7 | Medium: docs said the code never auto-applies; FRONT-SHEET contradicted itself on the Warden passes | **Fixed** |
 
 Not checked by that reviewer: its sandbox blocked temp directories and local servers, so it could not run most tests. Round 2 should be run with a reviewer that can.
+
+## 9. Review round 2 (Opus, 24 Nov 2026): verdict REQUEST CHANGES, and what was done
+
+Its test run: 175 passed, verifier OK. Findings and status (CONFIRMED FIXED / PARTIAL / OPEN):
+
+| # | Finding | Status |
+|---|---|---|
+| H1 | The hourly cap and lock hang off a caller-chosen ledger path | **Fixed**: the cap is also counted from `applied-at` annotations on the cluster, so a fresh ledger cannot reset it. The lock is still tied to the ledger path (**partial**) |
+| H2 | One trace can mix agents, so a sub-agent's tool is charged to the parent; agent names come from the agent's own runtime | **Partial**: findings now carry a `source`; trace-sourced and aggregate findings **cannot auto-block** (`autoApplySources`, default receipt and run). Per-span attribution from gateway-emitted spans is **not done** |
+| H3 | The errored-handoff check misses a string-shaped error | **Partial**: string errors are now caught. The reviewer's `_ok()` fix was **rejected**: the real `transfer_to_agent` response has no `response` key at all, so `_ok()` would fail every genuine pass. An absent or null response is therefore still accepted, because the real error shape is unknown |
+| H4 | Never-block checked the policy and not the agent | **Fixed** (the agent name is checked too) |
+| M1 | A `429` inside a message overrode a real 404 | **Fixed** |
+| M2 | The policy name hashed the time bucket, so duplicates | **Fixed** (name is `agent|subject|route`) |
+| M3 | Prerequisite rows missing for Phases 1, 3 and 5; step 13 mixes phases | **Open**: not yet updated in the prompt |
+| M4 | Crashes leave no audit record | **Partial**: no crash on missing annotations; a wrapper prints a structured error. No ledger line on a crash |
+| L1 / L3 / L4 | Trailing newline, kill-switch values, apply-failed-but-persisted | **Fixed** |
+| L2 / L5 | Temp files not deleted; spans without a spanId | **Open** |
+| Round 1 #1 | The trust anchor moved, not gone: `--findings`, `--identity-map`, `--rules` are caller-chosen paths | **Open by nature**: run `enforce.py` under its own identity with those files owned and writable only by that identity, ideally mounted read-only |
+| Round 1 #2 | `GUARD_TEST_MODE` and `--now` still give the caller the clock | **Open**: an environment override is operator-controlled; `alert_to_a2a.py` still accepts `--now` and uses a fixed `.tmp` for `--state` |
+| D1-D5 | Stale or overstated docs | **Mostly fixed** (counts, "live" wording, "counts twice", the auto-apply question); re-check |
+
+Also still open from round 1: the detector reports clean when no inventory is supplied, and `maxToolCalls` is checked only after a run finishes. Not checked by the Opus reviewer: the real kagent error shape for a failed handoff, whether gateway traces mix agents in practice, the CEL behaviour of a Deny, `model_probe.py`, the alert rules, the explainer HTML, and the mutation tests were not re-run.

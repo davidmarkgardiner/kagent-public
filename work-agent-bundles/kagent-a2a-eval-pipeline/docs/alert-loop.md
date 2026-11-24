@@ -119,4 +119,4 @@ pauses the provider), an **agent pulse** (code-only, every two minutes: stuck, s
   **not** return, so "evaluator says PASS, then the first agent closes the ticket" needs a returning call (the controller's `invoke_session` tool is the candidate; not verified).
 - The agent-health agent should also be able to verify that a downstream model route is down and ticket it: `guard/model_probe.py` does the check in code (one token, classified ok, rate limited, server error, auth, timeout, DNS or connect); its result is evidence for the ticket.
 - Direct blocking for definite offences: built (`guard/enforce.py`), live-tested on the lab (apply, read back, release). Not tested: that the Deny actually blocks the caller, which needs a JWT setup.
-- Rough edge: re-applying the same finding applies it again and counts twice towards the hourly cap; it should be idempotent.
+- Rough edge: re-applying the same finding applies it again and (fixed after review: a repeat apply is now idempotent and uses no cap slot); it should be idempotent.

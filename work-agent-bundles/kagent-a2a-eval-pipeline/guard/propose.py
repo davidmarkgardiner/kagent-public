@@ -90,7 +90,7 @@ def build_policy(finding: dict[str, Any], mapping: dict[str, Any], rules: dict[s
         return None, f"{hit!r} is on the never-block list"
     if finding.get("caller") and str(finding["caller"]) != subject and not (finding["caller"] is None):
         return None, "the event's caller does not match the mapped subject; refusing to block a different identity"
-    name = f"guard-deny-{slug(agent)}-{hashlib.sha256((finding['dedupe_key'] + subject).encode()).hexdigest()[:8]}"
+    name = f"guard-deny-{slug(agent)}-{hashlib.sha256(f"{agent}|{subject}|{route}".encode()).hexdigest()[:8]}"
     policy = {
         "apiVersion": "agentgateway.dev/v1alpha1", "kind": "AgentgatewayPolicy",
         "metadata": {"name": name, "namespace": ns,

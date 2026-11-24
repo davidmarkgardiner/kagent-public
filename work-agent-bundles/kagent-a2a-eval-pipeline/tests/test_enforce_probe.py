@@ -27,6 +27,7 @@ if "apply" in a:
     if "--dry-run=server" in a:
         if os.environ.get("FAKE_DRY_RC", "0") != "0": sys.stderr.write("admission webhook denied"); sys.exit(1)
         print("policy created (server dry run)"); sys.exit(0)
+    if os.environ.get("FAKE_APPLY_RC", "0") != "0": sys.stderr.write("timeout"); sys.exit(1)
     print("policy created"); sys.exit(0)
 if "get" in a and "-l" in a:
     if os.environ.get("FAKE_LIST_RC", "0") != "0": sys.stderr.write("forbidden"); sys.exit(1)
@@ -36,7 +37,7 @@ if "get" in a:
     print(open(d + "/policy.json").read() if "json" in a else "agentgatewaypolicy/x"); sys.exit(0)
 sys.exit(0)
 '''
-FINDING = {"signal": "forbidden_tool", "agent": "sentinel-investigator", "caller": None, "id": "t1", "dedupe_key": "sentinel-investigator|forbidden_tool|1", "evidence": {"tools": ["k8s_scale"]}}
+FINDING = {"signal": "forbidden_tool", "source": "receipt", "agent": "sentinel-investigator", "caller": None, "id": "t1", "dedupe_key": "sentinel-investigator|forbidden_tool|1", "evidence": {"tools": ["k8s_scale"]}}
 MAP = {"agents": {"sentinel-investigator": {"subject": "svc-sentinel", "route": "sentinel-a2a"}}}
 
 
@@ -234,6 +235,59 @@ class EnforceReview(unittest.TestCase):
                 self.assertEqual(res[0]["reason"], "kill switch", where)
             finally:
                 sw.unlink()
+
+
+class EnforceRound2(unittest.TestCase):
+    """Opus review, round 2."""
+
+    def test_the_agent_name_is_checked_against_never_block_not_just_the_policy(self):
+        d, env = setup()
+        f = json.loads((d / "f.json").read_text()); f["findings"][0]["agent"] = "completion-evaluator"; (d / "f.json").write_text(json.dumps(f))
+        m = yaml.safe_load((d / "m.yaml").read_text()); m["agents"]["completion-evaluator"] = m["agents"]["sentinel-investigator"]; (d / "m.yaml").write_text(yaml.safe_dump(m))
+        r, res = enforce(d, env)
+        self.assertEqual(res[0]["outcome"], "refused"); self.assertIn("never-block", res[0]["reason"])
+        self.assertFalse([c for c in calls(d) if " apply " in f" {c} " and "--dry-run=server" not in c])
+
+    def test_a_fresh_ledger_cannot_reset_the_hourly_cap_because_the_cluster_is_counted_too(self):
+        import datetime as dt
+        iso = dt.datetime.fromtimestamp(990, dt.timezone.utc).isoformat()
+        act = [{"metadata": {"name": f"guard-deny-other-{i}", "annotations": {"guard.kagent.dev/applied": "true", "guard.kagent.dev/applied-at": iso}}} for i in range(2)]
+        d, env = setup(active=act)
+        r, res = enforce(d, env)
+        self.assertEqual(res[0]["outcome"], "refused"); self.assertIn("hourly apply cap", res[0]["reason"])
+
+    def test_a_trace_sourced_or_unsourced_finding_cannot_auto_block(self):
+        d, env = setup([dict(FINDING, source="otlp")])
+        self.assertIn("cannot auto-block", enforce(d, env)[1][0]["reason"])
+        d2, env2 = setup([{k: v for k, v in FINDING.items() if k != "source"}])
+        self.assertIn("cannot auto-block", enforce(d2, env2)[1][0]["reason"])
+
+    def test_a_trailing_newline_cannot_slip_through_the_name_checks(self):
+        d, env = setup()
+        pf = next((d / "out").glob("policy-*.yaml")); pol = yaml.safe_load(pf.read_text()); pol["spec"]["targetRefs"][0]["name"] = "kagent-controller\n"; pf.write_text(yaml.safe_dump(pol))
+        self.assertEqual(enforce(d, env)[1][0]["outcome"], "refused")
+
+    def test_true_and_yes_also_trip_the_kill_switch(self):
+        for v in ("true", "YES"):
+            d, env = setup(); env["GUARD_ENFORCE_DISABLED"] = v
+            self.assertEqual(enforce(d, env)[1][0]["reason"], "kill switch", v)
+
+    def test_an_apply_that_errors_but_persisted_is_recorded_active(self):
+        d, env = setup(); env["FAKE_APPLY_RC"] = "1"
+        self.assertEqual(enforce(d, env)[1][0]["outcome"], "applied_unverified")
+
+    def test_a_policy_without_annotations_does_not_crash(self):
+        d, env = setup()
+        pf = next((d / "out").glob("policy-*.yaml")); pol = yaml.safe_load(pf.read_text()); pol["metadata"].pop("annotations"); pf.write_text(yaml.safe_dump(pol))
+        r, res = enforce(d, env)
+        self.assertNotIn("Traceback", r.stderr); self.assertIsNotNone(res)
+
+    def test_the_same_offender_gets_the_same_policy_name_in_every_time_bucket(self):
+        names = []
+        for key in ("sentinel-investigator|forbidden_tool|1", "sentinel-investigator|forbidden_tool|2"):
+            d, env = setup([dict(FINDING, dedupe_key=key)])
+            names.append(yaml.safe_load(next((d / "out").glob("policy-*.yaml")).read_text())["metadata"]["name"])
+        self.assertEqual(names[0], names[1])
 
 
 class H(BaseHTTPRequestHandler):

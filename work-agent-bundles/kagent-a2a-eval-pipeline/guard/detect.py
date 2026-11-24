@@ -259,6 +259,9 @@ def evaluate(events: list[dict[str, Any]], rules: dict[str, Any], now: datetime,
         if r.get("expectRuns") and agent not in seen_agents:
             gap("no_telemetry", agent, "no events at all for an agent that is expected to run: the export may be down")
 
+    src_by_id = {str(e["id"]): e["src"] for e in events}  # lets enforce.py refuse trace-sourced findings: a trace can mix agents
+    for f in findings:
+        f["source"] = src_by_id.get(str(f["id"]), "aggregate")
     status = "findings" if findings else ("degraded" if coverage else "clean")
     return {"status": status, "now": now.isoformat(), "window_s": window_s, "findings": findings, "coverage": coverage}
 

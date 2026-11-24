@@ -1,7 +1,7 @@
 # Guard, overseer intake and Warden changes: evidence, 24 November 2026
 
 Live runs were on the kagent 1.0.0-alpha17 + Substrate lab (kind inside a Proxmox VM), model Kimi through the lab gateway, A2A 1.0. Receipts stay in the
-gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`. Offline suite: **120 tests**.
+gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`. Offline suite: **184 tests** at the time of the last review fixes.
 
 ## Warden changes
 - **A planned check was dropped.** I planned to verify that the worker named its contract in the handoff. On 1.x the handoff message is not in the receipt, so it cannot be
