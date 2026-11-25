@@ -1,7 +1,7 @@
 # Guard, overseer intake and Warden changes: evidence, 24 November 2026
 
 Live runs were on the kagent 1.0.0-alpha17 + Substrate lab (kind inside a Proxmox VM), model Kimi through the lab gateway, A2A 1.0. Receipts stay in the
-gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`. Offline suite: **195 tests** at the time of the last review fixes.
+gitignored `out/`; sanitized copies are fixtures in `tests/fixtures/*-live.json`. Offline suite: **210 tests** at the time of the last review fixes.
 
 ## Warden changes
 - **A planned check was dropped.** I planned to verify that the worker named its contract in the handoff. On 1.x the handoff message is not in the receipt, so it cannot be
@@ -62,3 +62,15 @@ Also changed: the detector now reports `degraded` (gap `no_inventory`) when no s
 Setup: the lab's Kimi route was out of quota (weekly limit, 429 on a one-token probe), so the overseer was moved to a separate route: GLM `glm-4.5-flash` (the only model the account could use; the paid models returned "insufficient balance") through a new ModelConfig. The alert was a real one, a Grafana-shaped payload about that Kimi 429, turned into a request by `alert_to_a2a.py`. ONE run, no retry.
 
 Result: `TASK_STATE_FAILED` after 45 s and about 20,700 tokens. The agent made 5 read-only tool calls (4 `k8s_get_resources`, 1 `k8s_describe_resource`; within the budget), then the model route answered `OpenAI API error: 429 Too Many Requests` mid-run. The breaker recorded it as a rate limit: a wait, not a failure, and no retry was made. **No report was produced, so no Warden verdict exists.** The free GLM tier's rate or concurrency limit is the likely cause; unverified. Not shown: that the overseer can finish a run, or that its output passes its contract. Left in the lab: ModelConfig `glm-overseer` and `agent-health-agent` pointed at it (it was `flow-demo-model`).
+
+## Live demo: Deny on real traffic and the fix-it step (25 November 2026, lab)
+
+**Deny proven on live traffic.** A throwaway gateway route behind JWT authentication (service-account tokens). Through the full Guard path (detect on a real receipt, propose with server dry-run, `enforce.py apply`), the caller's request went **200 → 403 "authorization failed"**; the same caller on a different route stayed 200; after `enforce.py release`, 200 again. Learned: a listener-level policy and a route-level policy stack, so the route's own Require must name a caller the listener also allows.
+
+**Fix-it step built and proven.** `guard/remediate.py` (new): an agent whose ModelConfig points at a 429 stub failed with `TASK_STATE_FAILED` / `429 Too Many Requests`; probes gave `rate_limited` and `ok`; it switched the agent to the approved fallback, read back Ready, and the same question completed (`TASK_STATE_COMPLETED`, about 3 s); a ticket was written; a second apply was refused. 15 offline tests; five safeguards broken on purpose, each caught.
+
+**Rogue agent in real time.** A demo agent given an injected instruction called `k8s_delete_resource` (also refused by read-only RBAC); the detector flagged `forbidden_tool` from the live receipt. The healthy agent's live run was `clean`. Both receipts are fixtures.
+
+**Full walkthrough.** `demo/run-demo.sh all` passed end to end in 6 min 30 s (`docs/demo.md`).
+
+Lab notes: after the nightly host restart the kind node's DNS was `0.0.0.0` again and the agent runtime's worker pool held a stale session ("input was not accepted"); fixed by setting the node's resolver and restarting the worker pool. The free GLM tier rate-limited any multi-call agent (429), and the paid lab model was out of its weekly quota, so the demo agents and the fallback used the in-cluster local model. Not shown: Grafana firing on the real failure (the alert path is proven separately), and a full overseer agent run gated by Warden.

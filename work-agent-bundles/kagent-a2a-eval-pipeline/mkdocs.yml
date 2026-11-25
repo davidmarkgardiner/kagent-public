@@ -19,6 +19,7 @@ nav:
   - Evidence and limits: evidence.md
   - Guard and spend guards: guard.md
   - Grafana alerting setup: grafana-alerting.md
+  - "Live demo: healthy, rogue, broken": demo.md
   - "Monitoring loop design": alert-loop.md
 markdown_extensions:
   - tables

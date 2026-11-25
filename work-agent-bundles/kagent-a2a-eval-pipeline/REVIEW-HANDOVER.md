@@ -18,7 +18,7 @@ Four parts for kagent agents, plus an overseer:
 Branch `feat/kagent-agent-eval-two-stage`, based on `main`. Commits, oldest first: `17a18cd3` (Assay and Warden), `5ad8a18f` (packaging), `732b2725` (Guard, overseer intake, Warden hardening),
 `81b89bb2` (air-gap, variables, Guard page), `834a27c3` (overseer root cause, tool-call budget), `6e14395b` (429 as a wait), `8c4e6e20` (lessons from the factory handoff). Not pushed.
 
-Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 195 tests.
+Start here: run `./verify-bundle.sh` (needs `pip install -r requirements-docs.txt` for the MkDocs check). It must print `BUNDLE_OK: yes`. It currently runs 210 tests.
 
 ## 2. Claims against evidence
 
@@ -44,7 +44,7 @@ Evidence files: `evidence/LIVE-PROXMOX-2026-11-23.md` and `evidence/GUARD-AND-LO
 - A live evaluator FAIL taking the quarantined-ticket route. Never run live.
 - kagent **1.0.1**. Only 1.0.0-alpha17 was run; the lab profile in the repo targets 1.0.1.
 - Three live Warden passes were achieved **only after** editing the prompt in response to failures. That is tuning, not a clean trial.
-- That a Deny policy actually blocks the offending caller. Only schema, apply, read-back and release were tested; there was no JWT setup to send a request through.
+- ~~That a Deny policy actually blocks the offending caller.~~ Proven 25 Nov 2026 on a throwaway JWT route: 200 → 403 → 200 after release (see `docs/demo.md`).
 - A block never expires by itself (by decision); there is no expiry job. A repeat apply of the same finding (fixed after review: a repeat apply is now idempotent and uses no cap slot).
 - The overseer shares a model route with the agents it watches (a design flaw; see the prerequisites).
 
