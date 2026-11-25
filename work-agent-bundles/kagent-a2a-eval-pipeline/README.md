@@ -100,3 +100,7 @@ Live findings now built in:
 - `judge.py` scores are uncalibrated; keep advisory.
 - Receipts contain prompts, tool arguments and answers: keep artifact access at
   developer level and short retention; never commit raw receipts.
+
+## Launch deck
+
+`presentation/launch-deck.html`: the five-product launch deck (Sentinel, Assay, Warden, Guard, Overseer) with the two live demos and the evidence. One self-contained file: open it in Chrome, no network needed. Arrow keys or space to move, N for speaker notes, F for full screen, Ctrl+P prints one slide per page.
