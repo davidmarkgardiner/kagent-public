@@ -24,7 +24,7 @@ separately approved agent. Warden checks the investigation, not a repair.
 | Air-gap image inventory and pinned versions | [PREREQUISITES-AIRGAP.md](PREREQUISITES-AIRGAP.md) |
 | What changes at work and what stays pinned | [VARIABLES.md](VARIABLES.md) |
 | Explainer (open in a browser) | [EVALUATION-EXPLAINED.html](EVALUATION-EXPLAINED.html) |
-| Presentation | [presentation/assay-warden-deck.pdf](presentation/assay-warden-deck.pdf) (source: `.html`) |
+| Presentation | [presentation/assay-warden-deck.pdf](presentation/assay-warden-deck.pdf) (Assay and Warden, source: `.html`); the full launch deck with Lookout: [presentation/launch-deck.pdf](presentation/launch-deck.pdf) (24 slides, source: `launch-deck.html`) |
 | Handbook pages | `mkdocs.yml` + `docs/`; build with `requirements-docs.txt` |
 | Assay code and CI | `a2a_capture.py`, `score_and_gate.py`, `judge.py`, `.gitlab-ci.yml`, `cases/`, `fixtures/`, `gateway/` |
 | Warden code and contracts | `verify_completion.py`, `completion-gate/` |
