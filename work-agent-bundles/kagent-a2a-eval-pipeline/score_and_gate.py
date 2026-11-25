@@ -2,7 +2,7 @@
 """Score captured A2A runs with the existing deterministic scorer, apply the
 gate-level checks it does not cover, and decide the pipeline verdict.
 
-Reuses observability/agent-evals/scripts/score-agent-run.py unchanged.
+Uses the scorer vendored at scorer/score-agent-run.py (a verbatim copy of observability/agent-evals/scripts/score-agent-run.py), so the bundle works on its own.
 
 Per case, with k repeats (pass^k):
   pass     every repeat exists, completed, and passed scorer + gate checks
@@ -33,7 +33,7 @@ from typing import Any
 from xml.sax.saxutils import escape, quoteattr
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_SCORER = HERE.parents[1] / "observability" / "agent-evals" / "scripts" / "score-agent-run.py"
+DEFAULT_SCORER = HERE / "scorer" / "score-agent-run.py"
 
 
 def load_scorer(path: Path):

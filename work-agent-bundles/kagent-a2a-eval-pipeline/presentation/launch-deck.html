@@ -135,21 +135,22 @@ aside.notes{display:none}
     <h1>Five products.<br>One loop.</h1>
     <p class="intro">Sentinel, Assay, Warden, Guard and Overseer: how we keep AI agents honest in production.</p>
   </div>
-  <p class="foot">kagent · agentgateway · Grafana · GitLab · proven live on the home lab</p>
-  <aside class="notes">Morning, everyone. Today we’re launching five products that sit around our AI agents. Together they answer one question: can we trust an agent in production? Watch it, test it before it ships, check its work every time, police it, and respond when it fails. Everything I show you has run live on the home lab, and I’ll be clear about the one piece still to prove.</aside>
+  <p class="foot">kagent · agentgateway · Grafana · GitLab · proof of concept proven</p>
+  <aside class="notes">Morning, everyone. Today we’re launching five products that sit around our AI agents. Together they answer one question: can we trust an agent in production? Watch it, test it before it ships, check its work every time, police it, and respond when it fails. The proof of concept is proven end to end, and I’ll be clear about the one piece still to come.</aside>
 </section>
 
 <section class="slide">
   <div class="accent-rule"></div>
   <div class="eyebrow">The problem</div>
-  <h1>Agents fail quietly</h1>
-  <div class="grid" style="top:260px;grid-template-columns:1fr 1fr;row-gap:44px">
+  <h1>Burnt tokens and hidden errors</h1>
+  <p class="intro">This is the problem we’re trying to solve.</p>
+  <div class="grid" style="top:300px;grid-template-columns:1fr 1fr;row-gap:44px">
+    <div class="fact"><h2>Token burn</h2><p>One agent run burned 245,000 tokens and wrote nothing. Retrying a broken run multiplies the bill.</p></div>
+    <div class="fact"><h2>429s and model outages</h2><p>A model hits its rate limit or quota. Agents keep retrying and keep paying until someone notices.</p></div>
     <div class="fact"><h2>Errors that look like success</h2><p>kagent returns many failures as HTTP 200. A normal monitor sees a healthy agent.</p></div>
-    <div class="fact"><h2>245,000 tokens, no report</h2><p>A real overseer run in our lab wandered for 14 tool calls and wrote nothing.</p></div>
-    <div class="fact"><h2>It marks its own homework</h2><p>An agent says “done” and writes the ticket. Nobody checks what it actually ran.</p></div>
-    <div class="fact"><h2>A tool it was never given</h2><p>One injected instruction, and an agent reaches for something outside its job.</p></div>
+    <div class="fact"><h2>Agents doing what they shouldn’t</h2><p>One injected instruction, and an agent reaches for a tool outside its job.</p></div>
   </div>
-  <aside class="notes">Here’s why we built this. Four things we hit for real. kagent reports many errors as HTTP 200, so normal monitoring thinks everything’s fine. One of our own agents burned 245,000 tokens and produced nothing. Agents write their own tickets and nobody checks the work. And an agent can be talked into using a tool it should never touch. Each product solves one of these.</aside>
+  <aside class="notes">This is the problem we’re trying to solve. Agents burn tokens: one run burned 245,000 and produced nothing, and every retry of a broken run costs again. Models hit rate limits and quotas, and agents keep retrying and paying. kagent reports many of those failures as HTTP 200, so normal monitoring thinks everything is fine. And an agent can be talked into using a tool it should never touch. Each product takes on part of this.</aside>
 </section>
 
 <section class="slide">
@@ -191,9 +192,9 @@ aside.notes{display:none}
     <div class="row"><div class="k">What it does</div><p>A GitLab pipeline plants a real fault, asks the agent three times, and scores every answer.</p></div>
     <div class="row"><div class="k">How</div><p>Same gateway and agent as production. A wrong tool, or one bad run of three, blocks the merge.</p></div>
     <div class="row"><div class="k">Proof</div><p>Passed 3 of 3 on a real agent through the gateway, kagent 0.7.13.</p></div>
-    <p style="margin-top:14px"><span class="chip ok">Proven live</span></p>
+    <p style="margin-top:14px"><span class="chip ok">Proven</span></p>
   </div>
-  <aside class="notes">Assay is the exam before an agent ships. A GitLab pipeline plants a real fault in a throwaway namespace, a crash-looping pod with a healthy decoy beside it, and asks the agent to find it three times. One bad answer out of three fails the merge. It calls the agent through the same gateway as production, so we test what we run. Three out of three on a real agent in the lab.</aside>
+  <aside class="notes">Assay is the exam before an agent ships. A GitLab pipeline plants a real fault in a throwaway namespace, a crash-looping pod with a healthy decoy beside it, and asks the agent to find it three times. One bad answer out of three fails the merge. It calls the agent through the same gateway as production, so we test what we run. Three out of three on a real agent.</aside>
 </section>
 
 <section class="slide">
@@ -206,7 +207,7 @@ aside.notes{display:none}
     <div class="row"><div class="k">What it does</div><p>The agent sends its draft to an evaluator agent, fixes what it flags, then plain code checks what really ran.</p></div>
     <div class="row"><div class="k">How</div><p>Only a pass reaches GitLab. The agent never writes the ticket; a receiver does, then reads it back.</p></div>
     <div class="row"><div class="k">Proof</div><p>3 of 3 live runs passed on kagent 1.x after tuning the prompt.</p></div>
-    <p style="margin-top:14px"><span class="chip ok">Proven live</span></p>
+    <p style="margin-top:14px"><span class="chip ok">Proven</span></p>
   </div>
   <aside class="notes">Warden is the sign-off on every single run. Before anything becomes a ticket, the agent sends its draft to a second agent, the evaluator, and fixes what it’s told. Then plain code reads what the agent actually did, not what it claims. Only a pass reaches GitLab, and the agent never writes the ticket itself. Three out of three live runs passed on kagent 1.x.</aside>
 </section>
@@ -220,10 +221,10 @@ aside.notes{display:none}
     <p class="line">A rogue agent gets cut off at the source.</p>
     <div class="row"><div class="k">What it does</div><p>Spots a forbidden tool, a runaway run, token burn or error bursts, and blocks the offender.</p></div>
     <div class="row"><div class="k">How</div><p>Code decides, never a model. A gateway Deny for one caller, with caps, a kill switch and a human release.</p></div>
-    <div class="row"><div class="k">Proof</div><p>Caught a rogue agent live; its caller went from 200 to 403 at the gateway, then 200 after release.</p></div>
-    <p style="margin-top:14px"><span class="chip ok">Proven live</span></p>
+    <div class="row"><div class="k">Proof</div><p>Caught a rogue agent; its caller went from 200 to 403 at the gateway, then 200 after release.</p></div>
+    <p style="margin-top:14px"><span class="chip ok">Proven</span></p>
   </div>
-  <aside class="notes">Guard polices the agents themselves. It watches every call through the gateway for a tool outside the agent’s allowlist, runs that go on too long, token burn and error bursts. The decision is made by code, not a model, so a clever prompt can’t talk its way out. For a definite offence it blocks that one caller at the gateway, raises a ticket, and waits for a person to release it. We ran it live: 200 before, 403 after, 200 on release.</aside>
+  <aside class="notes">Guard polices the agents themselves. It watches every call through the gateway for a tool outside the agent’s allowlist, runs that go on too long, token burn and error bursts. The decision is made by code, not a model, so a clever prompt can’t talk its way out. For a definite offence it blocks that one caller at the gateway, raises a ticket, and waits for a person to release it. Proven: 200 before, 403 after, 200 on release.</aside>
 </section>
 
 <section class="slide">
@@ -235,10 +236,10 @@ aside.notes{display:none}
     <p class="line">When an agent breaks, it gets fixed.</p>
     <div class="row"><div class="k">What it does</div><p>Checks the failing agent and its model route, switches it to an approved fallback, and raises a ticket.</p></div>
     <div class="row"><div class="k">How</div><p>Code applies the fix from an approved list, capped, with an undo. Spend guards stop token loops.</p></div>
-    <div class="row"><div class="k">Proof</div><p>Fix-it step proven live: a broken agent switched to a fallback and answered again.</p></div>
+    <div class="row"><div class="k">Proof</div><p>Fix-it step proven: a broken agent switched to a fallback and answered again.</p></div>
     <p style="margin-top:14px"><span class="chip ok">Fix-it proven</span></p>
   </div>
-  <aside class="notes">Overseer is the responder. When an agent’s model route is down, plain code confirms it with a one-token probe, switches the agent to an approved fallback model, checks it came back, and writes a ticket. Spend guards make sure a failing agent never turns into a loop that burns tokens. We proved the fix live. What’s left is the overseer agent writing its own full report through Warden.</aside>
+  <aside class="notes">Overseer is the responder. When an agent’s model route is down, plain code confirms it with a one-token probe, switches the agent to an approved fallback model, checks it came back, and writes a ticket. Spend guards make sure a failing agent never turns into a loop that burns tokens. The fix is proven. What’s left is the overseer agent writing its own full report through Warden.</aside>
 </section>
 
 <section class="slide">
@@ -265,13 +266,13 @@ aside.notes{display:none}
   <div class="eyebrow">Demo 1 · self-healing</div>
   <h1>An agent stops working, and gets fixed</h1>
   <div class="steps">
-    <div class="step"><div class="n">1</div><div class="what">The agent’s model answers 429 <span>· the agent fails, exactly as it did for real on 24 Nov</span></div><div><span class="chip ok">Proven live</span></div></div>
-    <div class="step"><div class="n">2</div><div class="what">Grafana fires, the receiver checks it, spend guards decide <span>· proven on its own, not yet wired into this demo</span></div><div><span class="chip ok">Proven in lab</span></div></div>
-    <div class="step"><div class="n">3</div><div class="what">Both model routes probed: one token each <span>· failing route 429, fallback ok</span></div><div><span class="chip ok">Proven live</span></div></div>
-    <div class="step"><div class="n">4</div><div class="what">Switched to the approved fallback, then read back <span>· plain code, capped, with an undo</span></div><div><span class="chip ok">Proven live</span></div></div>
-    <div class="step"><div class="n">5</div><div class="what">Same question again: answered <span>· ticket says what changed and how to revert</span></div><div><span class="chip ok">Proven live</span></div></div>
+    <div class="step"><div class="n">1</div><div class="what">The agent’s model answers 429 <span>· the agent fails, just as in a real quota outage</span></div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">2</div><div class="what">Grafana fires, the receiver checks it, spend guards decide <span>· proven on its own, not yet wired into this demo</span></div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">3</div><div class="what">Both model routes probed: one token each <span>· failing route 429, fallback ok</span></div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">4</div><div class="what">Switched to the approved fallback, then read back <span>· plain code, capped, with an undo</span></div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">5</div><div class="what">Same question again: answered <span>· ticket says what changed and how to revert</span></div><div><span class="chip ok">Proven</span></div></div>
   </div>
-  <aside class="notes">Demo one, the self-healing loop. We make an agent fail: its model returns 429, rate limited. That really happened in our lab when the Kimi quota ran out. In production Grafana picks it up, our receiver checks it and the spend guards decide whether to act; we’ve proven that path on its own, and the live demo starts from the failure itself. Both model routes are probed with one token. Code switches the agent to an approved fallback, checks it reports ready, and we ask the same question again: it answers. A ticket says exactly what changed. The model can suggest a fix, but code applies it, from an approved list, with a cap and an undo.</aside>
+  <aside class="notes">Demo one, the self-healing loop. We make an agent fail: its model returns 429, rate limited. That’s exactly what a real quota outage looks like. In production Grafana picks it up, our receiver checks it and the spend guards decide whether to act; we’ve proven that path on its own, and the live demo starts from the failure itself. Both model routes are probed with one token. Code switches the agent to an approved fallback, checks it reports ready, and we ask the same question again: it answers. A ticket says exactly what changed. The model can suggest a fix, but code applies it, from an approved list, with a cap and an undo.</aside>
 </section>
 
 <section class="slide">
@@ -279,11 +280,11 @@ aside.notes{display:none}
   <div class="eyebrow">Demo 2 · cut off at the source</div>
   <h1>An agent goes rogue, and is blocked</h1>
   <div class="steps">
-    <div class="step"><div class="n">1</div><div class="what">An injected instruction: “delete the pod” <span>· the agent calls k8s_delete_resource</span></div><div><span class="chip ok">Proven live</span></div></div>
-    <div class="step"><div class="n">2</div><div class="what">Guard flags it from the real run <span>· forbidden tool, decided in code</span></div><div><span class="chip ok">Proven live</span></div></div>
-    <div class="step"><div class="n">3</div><div class="what">A gateway Deny for that one caller, dry-run, applied, read back</div><div><span class="chip ok">Proven live</span></div></div>
-    <div class="step"><div class="n">4</div><div class="what">Its caller is refused at the gateway <span>· 200 before, 403 after; other routes untouched</span></div><div><span class="chip ok">Proven live</span></div></div>
-    <div class="step"><div class="n">5</div><div class="what">Ticket to a person, who reviews and releases <span>· 200 again; blocks never expire on their own</span></div><div><span class="chip ok">Proven live</span></div></div>
+    <div class="step"><div class="n">1</div><div class="what">An injected instruction: “delete the pod” <span>· the agent calls k8s_delete_resource</span></div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">2</div><div class="what">Guard flags it from the real run <span>· forbidden tool, decided in code</span></div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">3</div><div class="what">A gateway Deny for that one caller, dry-run, applied, read back</div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">4</div><div class="what">Its caller is refused at the gateway <span>· 200 before, 403 after; other routes untouched</span></div><div><span class="chip ok">Proven</span></div></div>
+    <div class="step"><div class="n">5</div><div class="what">Ticket to a person, who reviews and releases <span>· 200 again; blocks never expire on their own</span></div><div><span class="chip ok">Proven</span></div></div>
   </div>
   <aside class="notes">Demo two, the rogue agent. An injected instruction tells an agent to delete a pod, and it tries. Its tools are read-only, so Kubernetes refuses too, but Guard doesn’t rely on that: it reads the actual run and flags a forbidden tool, in code, so no prompt can argue with it. It writes a gateway policy that denies that one caller, checks it with the server, applies it and reads it back. The caller got 200 before and 403 after, while its other routes kept working. A person gets a ticket, reviews it, and releases the block.</aside>
 </section>
@@ -294,14 +295,14 @@ aside.notes{display:none}
   <h1>What we have proven, and where</h1>
   <div class="tablewrap"><table>
     <tr><th style="width:34%">Claim</th><th style="width:18%">Status</th><th>Evidence</th></tr>
-    <tr><td>Assay passes a real agent</td><td><span class="chip ok">Proven live</span></td><td>3 of 3 through the gateway, kagent 0.7.13</td></tr>
-    <tr><td>Warden signs off real runs</td><td><span class="chip ok">Proven live</span></td><td>3 of 3 on kagent 1.x, after prompt tuning</td></tr>
-    <tr><td>Guard catches a rogue agent</td><td><span class="chip ok">Proven live</span></td><td>Forbidden tool found in its live run</td></tr>
-    <tr><td>Deny stops live traffic</td><td><span class="chip ok">Proven live</span></td><td>200 → 403 → 200 on a throwaway JWT route</td></tr>
-    <tr><td>Overseer fixes a broken agent</td><td><span class="chip ok">Proven live</span></td><td>429 → switched → same question answered</td></tr>
-    <tr><td>Alert reaches Overseer’s intake</td><td><span class="chip ok">Proven in lab</span></td><td>Grafana 11.6 built-in alerting to the receiver</td></tr>
-    <tr><td>Model route outage confirmed</td><td><span class="chip ok">Proven live</span></td><td>One-token probe returned a real 429</td></tr>
-    <tr><td>Overseer agent’s own report</td><td><span class="chip todo">To prove</span></td><td>Needs a model route with headroom</td></tr>
+    <tr><td>Assay passes a real agent</td><td><span class="chip ok">Proven</span></td><td>3 of 3 through the gateway, kagent 0.7.13</td></tr>
+    <tr><td>Warden signs off real runs</td><td><span class="chip ok">Proven</span></td><td>3 of 3 on kagent 1.x, after prompt tuning</td></tr>
+    <tr><td>Guard catches a rogue agent</td><td><span class="chip ok">Proven</span></td><td>Forbidden tool found in its live run</td></tr>
+    <tr><td>Deny stops live traffic</td><td><span class="chip ok">Proven</span></td><td>200 → 403 → 200 on a throwaway JWT route</td></tr>
+    <tr><td>Overseer fixes a broken agent</td><td><span class="chip ok">Proven</span></td><td>429 → switched → same question answered</td></tr>
+    <tr><td>Alert reaches Overseer’s intake</td><td><span class="chip ok">Proven</span></td><td>Grafana 11.6 built-in alerting to the receiver</td></tr>
+    <tr><td>Model route outage confirmed</td><td><span class="chip ok">Proven</span></td><td>One-token probe returned a real 429</td></tr>
+    <tr><td>Overseer agent’s own report</td><td><span class="chip todo">Next</span></td><td>Needs its own paid model route; free and shared tiers rate-limit it</td></tr>
   </table></div>
   <p class="foot">Offline: 210 tests and a bundle verifier · reviewed by Codex, then two Opus rounds</p>
   <aside class="notes">This is the honest scorecard. Seven claims are proven, with receipts, including the gateway block stopping real traffic and Overseer fixing a broken agent. One is left: the overseer agent writing its own full report through Warden. Behind it are 210 offline tests and three independent code reviews. When we say proven, there’s a receipt behind it.</aside>
@@ -310,7 +311,7 @@ aside.notes{display:none}
 <section class="slide">
   <div class="accent-rule"></div>
   <div class="eyebrow">See it for yourself</div>
-  <h1>The live walkthrough, about six minutes</h1>
+  <h1>Run it yourself</h1>
   <div class="term">
     <div><span class="p">$</span> <span class="c">./verify-bundle.sh</span> <span class="r"># BUNDLE_OK: yes · 210 tests</span></div>
     <div><span class="p">$</span> <span class="c">demo/run-demo.sh lights</span> <span class="r"># agents, model routes, gateway, active blocks</span></div>
@@ -320,18 +321,18 @@ aside.notes{display:none}
     <div><span class="p">$</span> <span class="c">demo/run-demo.sh broken</span> <span class="r"># 429 · switched to fallback · answered · ticket</span></div>
     <div><span class="p">$</span> <span class="c">demo/run-demo.sh reset</span> <span class="r"># put it all back</span></div>
   </div>
-  <aside class="notes">You don’t have to take my word for it. This is the walkthrough we run on the home lab, about six minutes end to end. Lights shows every agent and model route. Healthy shows a good agent and Guard finding nothing. Rogue shows an agent told to delete a pod, Guard catching it from the real run, and the gateway refusing its caller. Release lifts the block. Broken shows an agent whose model is rate limited getting switched to a fallback and answering again. Happy to run it now.</aside>
+  <aside class="notes">You don’t have to take my word for it. These are the commands. Lights shows every agent and model route. Healthy shows a good agent and Guard finding nothing. Rogue shows an agent told to delete a pod, Guard catching it from the real run, and the gateway refusing its caller. Release lifts the block. Broken shows an agent whose model is rate limited getting switched to a fallback and answering again. Happy to run it now.</aside>
 </section>
 
 <section class="slide dark">
   <div class="accent-rule"></div>
   <div class="eyebrow">Where we are</div>
-  <h1>Built, and proven live on the home lab.</h1>
+  <h1>Built. Proof of concept proven.</h1>
   <div class="close-grid">
-    <div><h2>Next</h2><p>The overseer agent writes its own report through Warden, and Grafana fires on the live failure itself. Then the same walkthrough on a work cluster.</p></div>
-    <div><h2>What we need from you</h2><p>A separate model route for Overseer, owners for the never-block and fallback lists, and a slot to run the live demo.</p></div>
+    <div><h2>Next</h2><p>Give Overseer its own model route and prove its full report through Warden. Wire Grafana to fire on the failure itself. Then run the same demo on a work cluster.</p></div>
+    <div><h2>What we need from you</h2><p>A dedicated, paid model route for Overseer that the agents it watches don’t share, with enough quota for tool calls. Owners for the never-block and fallback lists.</p></div>
   </div>
-  <aside class="notes">So, where we are. Five products, built and proven live on the home lab. Both demos run end to end. Next: the overseer agent writing its own report, and Grafana firing on the real failure, then the same walkthrough on a work cluster. We need a model route for Overseer that the other agents don’t share, so it isn’t taken down by the same outage, and agreement on which agents can never be blocked and which fallback models are approved. Questions?</aside>
+  <aside class="notes">So, where we are. Five products, built, proof of concept proven. Both demos run end to end. What’s left is the overseer agent writing its own full report. It can’t run on the shared or free model tiers we tried: they rate-limit it after a few calls. So we need a dedicated, paid model route for Overseer that the agents it watches don’t share, so an outage on their model can’t take it down too. Plus agreement on which agents can never be blocked and which fallback models are approved. Questions?</aside>
 </section>
 
 </div></div>
