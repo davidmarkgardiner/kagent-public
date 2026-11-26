@@ -11,6 +11,7 @@ theme:
 nav:
 - Start here: index.md
 - Delivery roadmap: roadmap.md
+- Proposed funding roadmap: funding-roadmap-2027.md
 - Achievements: achievements.md
 - Historical achievements: historical-achievements.md
 - Workflows built with kagent: workflows.md
