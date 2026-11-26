@@ -72,7 +72,7 @@ separately approved agent. Warden checks the investigation, not a repair.
 | Live demo on **kagent 0.9**: `KAGENT_API=0.9` switches every scene; `demo/lab/v1alpha2/*.yaml` generated from the 1.x files | Offline only: schema-checked against 0.9.12, 0.x A2A call tested over HTTP, Warden passes a recorded 0.x Sentinel run. **NOT RUN** on a 0.9 cluster | `docs/kagent-versions.md` |
 | Lookout config review: four MRs (safe route; loosened policy + delete tool; kro drops a policy; kro rejects the RGD) through the agent, note posted before merge, every high finding cited | PASSED live in the lab, 26 Nov 2026, kagent 1.0.0-alpha17 + kro 0.9.4 + GLM 4.6, **mock** GitLab, lab cluster as both real and sandbox; re-run after an independent code review (3 high, 10 medium, all fixed) | `evidence/LIVE-CONFIG-REVIEW-LAB-2026-11-26.md` |
 | Config review admission fences (sandbox ServiceAccount and kro children limited to `lookout-mr-*`) | PASSED live, 12 of 12 negative tests (`lookout/lab/negative-config-review.sh`), including kro rendering a real agent (denied) | same |
-| Config review from a real GitLab / CI runner / separate sandbox cluster / kagent 0.9 | **NOT RUN** | |
+| Config review from a real GitLab / CI runner / separate sandbox cluster / kagent 0.9 | **NOT RUN** (the 0.9 agent manifest is validated offline against the 0.9.12 schema; the work agent does this as Phase 7) | |
 | Lookout independent code review | **NOT DONE** (the reviewer was unavailable) | |
 
 A gate with no receipt is NOT RUN, never PASS.

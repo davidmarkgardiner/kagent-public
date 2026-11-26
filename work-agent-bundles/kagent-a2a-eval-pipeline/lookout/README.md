@@ -85,6 +85,7 @@ ServiceAccount and kro's children to `lookout-mr-*`; a janitor CronJob removes a
 | `config_review_mcp.py` | The three-tool MCP server; enforces "cite every high finding" |
 | `manifests/config-review-sandbox.yaml` | ServiceAccount, ClusterRole (no Secrets), two ValidatingAdmissionPolicies, Deployment, Service, RemoteMCPServer |
 | `manifests/mr-config-review-agent-v1alpha3.yaml` | The agent (kagent 1.x) |
+| `manifests/mr-config-review-agent.yaml` | The same agent for kagent 0.7.x / 0.9 (`kagent.dev/v1alpha2`; offline-validated against the 0.9.12 schema) |
 | `config_review/fixtures/platform-config-mrs.json` | Mock GitLab project `lab/platform-config`: main plus MRs 21-24 (good, bad, kro valid, kro broken) |
 | `lab/deploy-config-review.sh`, `lab/negative-config-review.sh` | Lab deploy, and live negative tests of the admission fences |
 

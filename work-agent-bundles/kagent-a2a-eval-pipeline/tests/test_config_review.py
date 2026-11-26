@@ -588,3 +588,18 @@ class ApprovalLowNotes(unittest.TestCase):
             def delete(self, *a):
                 pass
         self.assertEqual(J.sweep(K(), now=2_000_000_000, log=lambda *_: None)["namespaces"], ["lookout-mr-3-a"])
+
+
+class KagentVersions(unittest.TestCase):
+    def test_v1alpha2_agent_matches_v1alpha3(self):
+        a2 = yaml.safe_load((LOOKOUT / "manifests/mr-config-review-agent.yaml").read_text())
+        a3 = yaml.safe_load((LOOKOUT / "manifests/mr-config-review-agent-v1alpha3.yaml").read_text())
+        self.assertEqual(a2["apiVersion"], "kagent.dev/v1alpha2")
+        self.assertEqual(a2["spec"]["declarative"]["systemMessage"], a3["spec"]["template"]["inline"]["systemPrompt"])
+        self.assertEqual(a2["spec"]["declarative"]["tools"][0]["mcpServer"]["toolNames"], a3["spec"]["template"]["inline"]["tools"][0]["mcp"]["tools"])
+
+    def test_v1alpha2_agent_valid_against_0_9_12_schema(self):
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_demo_kagent09 as k09
+        doc = yaml.safe_load((LOOKOUT / "manifests/mr-config-review-agent.yaml").read_text().replace("{{MODEL_CONFIG}}", "m"))
+        self.assertEqual(k09.check_0_9(doc), [])
