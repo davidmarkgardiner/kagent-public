@@ -1,6 +1,6 @@
 # Agent Substrate: security, reliability, performance, and efficiency
 
-**We are evaluating Substrate to give agents isolated execution, controlled access, and continuity across pauses, alongside faster starts and better use of infrastructure.**
+**We are evaluating Substrate to give agents isolated execution, controlled access, and continuity across pauses, alongside faster starts and better use of infrastructure. We have now run it end to end on private AKS and in our lab: see [what we have proven so far](#what-we-have-proven-so-far).**
 
 An agent can execute code, call tools, create files, and wait for human approval. Its execution environment needs to control those actions and preserve its working state.
 
@@ -56,6 +56,18 @@ Google AX explicitly uses Agent Substrate for sandboxed task execution. Microsof
 The Agent Sessions repository carries Microsoft Corporation's copyright. Substrate is a pluggable backend rather than a requirement for every session. This evidence concerns the open-source implementation, not the infrastructure behind Foundry hosted sessions. [Microsoft copyright](https://github.com/agent-primitives/sessions/blob/main/LICENSE), [Agent Sessions overview](https://github.com/agent-primitives/sessions)
 
 These examples support a common direction: make agent execution a shared platform responsibility, so each application team does not have to build its own isolation and session lifecycle.
+
+## What we have proven so far
+
+Updated **27 November 2026**. These are our own runs, not upstream claims.
+
+| Date | Where | What worked |
+|---|---|---|
+| 24 Nov 2026 | Private AKS 1.37 (Azure), outbound internet denied by network security group | Substrate v1.0.0 (microVM isolation) with kagent v1.0.1 installed. A test actor kept its state across suspend and resume. A kagent agent answered over A2A using an external model, with the model key added by the egress gateway rather than held by the agent. The environment was then deleted. |
+| 26 Nov 2026 | Home lab Kubernetes, public internet blocked | kagent 1.0.1 with Substrate gVisor isolation: install from the command line, gVisor loaded from the in-cluster object store with no patch, agent ready, two-turn A2A conversation (mock model). |
+| 26 Nov 2026 | Home lab Kubernetes, egress rejected, local image registry | Substrate on its own, installed by manual Helm from an empty cluster: golden snapshot built, actor suspended and resumed. This is the install path prepared for our air-gapped AKS. |
+
+**Not yet proven:** the install on our own work AKS cluster, external PostgreSQL, a GitOps (Flux) install, measured cost savings on our workloads, and production-grade authorisation (the AKS run used broad bootstrap and preview settings).
 
 ## What our evaluation needs to establish
 
